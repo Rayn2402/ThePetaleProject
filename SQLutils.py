@@ -69,7 +69,7 @@ class DataManager:
         # Else, we add the corresponding column names to the query
         else:
             for col in columns:
-                query = f"{query} {col}"
+                query = f"{query} \"{col}\""
 
         # We add table name to the query
         query = f"{query} FROM {self.schema}.\"{table_name}\""
@@ -83,6 +83,7 @@ class DataManager:
 
         # We retrive column names and data
         columns = [desc[0] for desc in self.cur.description]
+        print(self.cur.description)
         data = self.cur.fetchall()
 
         # We create a pandas dataframe

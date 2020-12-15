@@ -83,7 +83,6 @@ class DataManager:
 
         # We retrive column names and data
         columns = [desc[0] for desc in self.cur.description]
-        print(self.cur.description)
         data = self.cur.fetchall()
 
         # We create a pandas dataframe

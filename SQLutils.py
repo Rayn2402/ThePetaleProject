@@ -8,11 +8,12 @@ This file contains all functions linked to SQL data management
 
 import psycopg2
 import pandas as pd
-from matplotlib import pyplot as plt
 import os
+import csv
 
 
 import helpers
+import chartServices
 
 
 class DataManager:
@@ -113,8 +114,11 @@ class DataManager:
 
         """
         # we execute the query
-        self.cur.execute(
-            f"SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_CATALOG='petale' AND table_schema = '{self.schema}' ")
+        try:
+            self.cur.execute(
+                f"SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_CATALOG='petale' AND table_schema = '{self.schema}' ")
+        except psycopg2.Error as e:
+            print(e.pgerror)
         tables = self.cur.fetchall()
 
         # We reset the cursor
@@ -128,7 +132,7 @@ class DataManager:
         get the count of all the missing data of one given table
 
         :param tableName: name of the table
-        :param drawChart: boolean to indicated if chart should be created from the data
+        :param drawChart: boolean to indicate if a chart should be created to visulize the missing data
         :param: excludeCols: list of strings containing the list of columns to exclude 
         :return: a python dictionary containing the missing data count and the number of complete rows
 
@@ -136,23 +140,29 @@ class DataManager:
 
         # Extracting the name of the columns of the given  table
         escapedTableName = tableName.replace("'", "''")
-        self.cur.execute(
-            f"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME= \'{escapedTableName}\'")
-        columns_x = []
+        try:
+            self.cur.execute(
+                f"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME= \'{escapedTableName}\'")
+        except psycopg2.Error as e:
+            print(e.pgerror)
+        columns_y = []
         cols = self.cur.fetchall()
-        columns_x = list(map(lambda c: c[0], cols))
+        columns_y = list(map(lambda c: c[0], cols))
 
         # Excluding the none needed columns
-        columns_x = [col for col in columns_x if col not in excludedCols]
+        columns_y = [col for col in columns_y if col not in excludedCols]
 
-        missing_y = [0] * len(columns_x)
+        missing_x = [0] * len(columns_y)
 
         # Get the cols ready to be in the SQL query
-        columnsToFetch = helpers.colsForSql(columns_x)
+        columnsToFetch = helpers.colsForSql(columns_y)
 
         # we execute the query
-        self.cur.execute(
-            f'SELECT {columnsToFetch} FROM \"{tableName}\" ')
+        try:
+            self.cur.execute(
+                f'SELECT {columnsToFetch} FROM \"{tableName}\" ')
+        except psycopg2.Error as e:
+            print(e.pgerror)
         rows = self.cur.fetchall()
         # we intialize the counters
         missingCount = 0
@@ -164,34 +174,17 @@ class DataManager:
                 if(item == None):
                     completedRow = False
                     missingCount += 1
-                    missing_y[index] += 1
+                    missing_x[index] += 1
             if(completedRow == True):
                 completedRowCount += 1
 
         # Plotting the bar chart
         if(drawChart):
-            # specifying the figure size
-            fig = plt.figure(figsize=(40, .7*len(columns_x)))
-
-            # specifying the type of the chart and the data in it
-            plt.barh(columns_x, missing_y, color="#874bf2")
-
-            # specifying the labels of the chart
-            plt.ylabel('Columns')
-            plt.xlabel('Data missing')
-
-            # specifying the title of the chart
-            plt.title(
-                f'Count of missing data by columns names for the table {tableName}', fontsize=15)
-
-            # saving the chart in a file in teh folder missing_data_charts
-            if not os.path.exists('missing_data_charts'):
-                os.makedirs('missing_data_charts')
-            escapedName = tableName.replace(".", "")
-            plt.savefig(
-                f'./missing_data_charts/missing_data_{escapedName}.png')
-
-            plt.close(fig)
+            fileName = "missing_data_" + tableName.replace(".", "").replace(":","")
+            folderName="missing_data_charts"
+            figureTitle=f'Count of missing data by columns names for the table {tableName}'
+            chartServices.drawBarhChart(columns_y,missing_x,"Columns","Data missing",figureTitle,fileName,folderName)
+            
         # We reset the cursor
         self.reset_cursor()
 
@@ -199,16 +192,90 @@ class DataManager:
         return {"tableName": tableName, "missingCount": missingCount, "completedRowCount": completedRowCount, "totalRows": len(rows)}
 
     def getAllMissingDataCount(self, filename, drawCharts=True):
+        """
+        Function that generate a csv file containing the count of the missing data of all the tables of the database
+
+        :param filename: the name of file to be genrated 
+        :param foldername: the name of the folder where the file will be created
+        :param drawChart:  boolean to indicate if a chart should be created to visulize the missing data of each table
+
+        :generate a csv file
+
+
+        """
+        #we initalize the results
         results = []
+
+        #we get all the table names
         tables = self.getAllTables()
         length = len(tables)
+
+        #For each table we get the missing data count
         for index, table in enumerate(tables):
             print(f"Processing data... {index}/{length}")
             missingDataCount = self.getMissingDataCount(table, drawCharts)
+
+            #we save the missing data count in results
             results.append(missingDataCount)
+            
+        #we generate a csv file from the data in results
         helpers.writeCsvFile(results, filename)
+    
+    def getCommonCount(self, tables, columns = ["Participant","Tag"],saveInFile=False):
+        """
+        get the number of common survivors from a list of tables
+
+        :param tebles: the list of tables
+        :param columns: list of the columns according to we want to get the the common survivors
+        :return: number of common survivors
+
+        """
+        #we prepare the columns to be in the SQL query
+        colsInQuery = helpers.colsForSql(columns)
+
+        #we build the request
+        query = 'SELECT COUNT(*) FROM ('
+        for index, table in enumerate(tables):
+            if(index == 0):
+                query += f'(SELECT {colsInQuery} FROM \"{table}\")'
+            else:
+                query += f' INTERSECT (SELECT "Participant","Tag" FROM \"{table}\")'
+        query += ') l'
+
+        # We execute the query
+        try:
+            self.cur.execute(query)
+        except psycopg2.Error as e:
+            print(e.pgerror)
+
+        row = self.cur.fetchall()[0]
+
+        if(saveInFile==True):
+            #Saving in file
+            if(os.path.isfile("cummonPatients.csv") == False):
+                try:
+                    with open("cummonPatients.csv", 'w', newline='') as csvfile:
+                        writer = csv.DictWriter(
+                            csvfile, ["tables", "cummonSurvivors"])
+                        writer.writeheader()
+                        separator = " & "
+                        writer.writerow({"tables": separator.join(
+                            tables), "cummonSurvivors": row[0]})
+                except IOError:
+                    print("I/O error")
+            else:
+                try:
+                    # Open file in append mode
+                    with open("cummonPatients.csv", 'a+', newline='') as csvfile:
+                        # Create a writer object from csv module
+                        writer = csv.DictWriter(csvfile,["tables", "cummonSurvivors"])
+                        # Add a new row to the csv file
+                        separator = " & "
+                        writer.writerow({"tables": separator.join(
+                            tables), "cummonSurvivors": row[0]})
+                except IOError:
+                    print("I/O error")
+        return row[0]
+    
 
 
-manager = DataManager("mitm2902")
-
-print(manager.getAllMissingDataCount("petale.png"))

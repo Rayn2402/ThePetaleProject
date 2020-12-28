@@ -1,12 +1,14 @@
 from matplotlib import pyplot as plt
 import os
+import numpy as np
+import pandas as pd
 
 
-def drawBarhChart(data_y,data_x,label_y,label_x,title,filename,foldername):
+def drawBarhChart(data_y, data_x, label_y, label_x, title, filename, foldername):
     """
     Function that generate a barh chart using matplot lib
 
-        :param data_y: the data to be in axe y 
+        :param data_y: the data to be in axe y
         :param data_x: the data to be in axe x
         :param label_y:  label on the axe y
         :param label_x:  label on the axe x
@@ -27,7 +29,7 @@ def drawBarhChart(data_y,data_x,label_y,label_x,title,filename,foldername):
     plt.xlabel(label_y)
 
     # specifying the title of the chart
-    plt.title(title,fontsize=15)
+    plt.title(title, fontsize=15)
 
     # saving the chart in a file in teh folder missing_data_charts
     if not os.path.exists(f'{foldername}'):
@@ -35,3 +37,32 @@ def drawBarhChart(data_y,data_x,label_y,label_x,title,filename,foldername):
     plt.savefig(
         f'{foldername}/{filename}.png')
     plt.close(fig)
+
+
+def drawBinaryGroupedBarChart(data_x, group_1, group_2, label_x, label_y, title, filename, foldername):
+
+    # width of the bar
+    w = 0.4
+
+    # we plot two bars, one for male and one for females
+    plt.bar(data_x, group_1["values"], w,
+            label=group_1["label"], color="#874bf2")
+    plt.bar(data_x, group_2["values"], w,
+            bottom=group_1["values"], label=group_2["label"], color="#55f1a0")
+
+    # specifying the labels of the chart
+    plt.xlabel(label_x)
+    plt.ylabel(label_y)
+
+    # specifying the title of the chart
+    plt.title(title)
+
+    # showing the legend
+    plt.legend()
+
+    # saving the chart in a file in teh folder missing_data_charts
+    if not os.path.exists(f'{foldername}'):
+        os.makedirs(f'{foldername}')
+    plt.savefig(
+        f'{foldername}/{filename}.png')
+    plt.close()

@@ -465,9 +465,24 @@ class DataManager:
             if(val != None):
                 dict[val] = [df[df[var_name] == val].shape[0], df_female[df_female[var_name]
                                                                          == val].shape[0], df_male[df_male[var_name] == val].shape[0]]
-        if(df[df[var_name].isnull()].shape[0] != 0):
-            dict["null"] = [df[df[var_name].isnull()].shape[0], df_female[df_female[var_name].isnull(
-            )].shape[0], df_male[df_male[var_name].isnull()].shape[0]]
+        # if(df[df[var_name].isnull()].shape[0] != 0):
+        #    dict["null"] = [df[df[var_name].isnull()].shape[0], df_female[df_female[var_name].isnull(
+        #    )].shape[0], df_male[df_male[var_name].isnull()].shape[0]]
+
+        # we make a chart from this analysis
+
+        # Preparing the data to plot chart
+        data_male = {"label": "Male", "values": []}
+        data_female = {"label": "Female", "values": []}
+
+        for key in dict.keys():
+            data_male["values"].append(float(dict[key][2]))
+            data_female["values"].append(float(dict[key][1]))
+
+        # ploting the chart
+        filename = var_name.replace(".", "").replace(": ", "").replace("?", "")
+        chartServices.drawBinaryGroupedBarChart(
+            dict.keys(), data_male, data_female, "Categories", "Count", var_name, f"general_chart_{filename}", "general_charts")
 
         # we return the data frame containing the informations
         return pd.DataFrame(dict)
@@ -553,3 +568,8 @@ class DataManager:
                 os.remove("./general_stats/general_stats.csv")
             df.to_csv("./general_stats/general_stats.csv")
         return df
+
+
+manager = DataManager("mitm2902")
+
+print(manager.getGeneraleStats())

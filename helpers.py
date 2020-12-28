@@ -41,3 +41,14 @@ def writeCsvFile(data, filename):
                 writer.writerow(item)
     except IOError:
         print("I/O error")
+
+
+def timeDeltaToMonths(timeDelta):
+    """
+    Function that transform from the type TimeDelta to months
+
+    :param data: timeDelta object
+    :return: number of month
+    """
+
+    return round(timeDelta.total_seconds() / 2592000, 2)

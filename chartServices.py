@@ -40,6 +40,20 @@ def drawBarhChart(data_y, data_x, label_y, label_x, title, filename, foldername)
 
 
 def drawBinaryGroupedBarChart(data_x, group_1, group_2, label_x, label_y, title, filename, foldername):
+    """
+    Function that generate a grouped bar chart using matplotlib
+
+        :param data_x: the data to be in axe x
+        :param group_1: the data of the first group
+        :param group_2:  the data of the second group
+        :param label_x:  label on the axe x
+        :param label_t:  label on the axe t
+        :param title:  title of the chart
+        :param filename:  the file where the figure containing the chart will be saved
+        :param foldername:  the folder where the figure containing the chart will be saved
+
+        :generate a figure containing the chart from the data given
+    """
 
     # width of the bar
     w = 0.4
@@ -59,6 +73,23 @@ def drawBinaryGroupedBarChart(data_x, group_1, group_2, label_x, label_y, title,
 
     # showing the legend
     plt.legend()
+
+    # saving the chart in a file in teh folder missing_data_charts
+    if not os.path.exists(f'{foldername}'):
+        os.makedirs(f'{foldername}')
+    plt.savefig(
+        f'{foldername}/{filename}.png')
+    plt.close()
+
+
+def drawHistogram(data, bins, density, label_x, label_y, title, filename, foldername):
+
+    plt.hist(data, bins=bins, edgecolor='white',
+             density=density, color="#55f1a0")
+
+    plt.title(title)
+    plt.xlabel(label_x)
+    plt.ylabel(label_y)
 
     # saving the chart in a file in teh folder missing_data_charts
     if not os.path.exists(f'{foldername}'):

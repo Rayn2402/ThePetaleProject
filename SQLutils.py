@@ -393,6 +393,9 @@ class DataManager:
             axis=0), 2), "var": round(df_female[var_name].astype("float").var(axis=0), 2)}
 
         # Plot Chart Comming soon
+        filename = var_name.replace(".", "").replace(": ", "").replace("?", "")
+        chartServices.drawHistogram(df[var_name].astype("float").to_list(
+        ), 10, True, "Values", "Count", var_name, f"general_chart_{filename}", "general_charts")
 
         # we return the results
         return [all_stats, female_stats, male_stats]

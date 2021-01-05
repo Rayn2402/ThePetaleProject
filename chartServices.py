@@ -2,6 +2,8 @@ from matplotlib import pyplot as plt
 import os
 import numpy as np
 import pandas as pd
+import seaborn as sns
+from pathlib import Path
 
 
 def drawBarhChart(data_y, data_x, label_y, label_x, title, filename, foldername):
@@ -19,7 +21,7 @@ def drawBarhChart(data_y, data_x, label_y, label_x, title, filename, foldername)
         :generate a figure containing the chart from the data given
     """
     # specifying the figure size
-    fig = plt.figure(figsize=(40, .7*len(data_x)))
+    fig = plt.figure(figsize=(15, 12.5))
 
     # specifying the type of the chart and the data in it
     plt.barh(data_y, data_x, color="#874bf2")
@@ -32,10 +34,10 @@ def drawBarhChart(data_y, data_x, label_y, label_x, title, filename, foldername)
     plt.title(title, fontsize=15)
 
     # saving the chart in a file in teh folder missing_data_charts
-    if not os.path.exists(f'{foldername}'):
-        os.makedirs(f'{foldername}')
+    if not os.path.exists(f'./charts/{foldername}'):
+        Path(f'./charts/{foldername}').mkdir(parents=True, exist_ok=True)
     plt.savefig(
-        f'{foldername}/{filename}.png')
+        f'./charts/{foldername}/{filename}.png')
     plt.close(fig)
 
 
@@ -74,26 +76,26 @@ def drawBinaryGroupedBarChart(data_x, group_1, group_2, label_x, label_y, title,
     # showing the legend
     plt.legend()
 
-    # saving the chart in a file in teh folder missing_data_charts
-    if not os.path.exists(f'{foldername}'):
-        os.makedirs(f'{foldername}')
+    # saving the chart in a file in the folder missing_data_charts
+    if not os.path.exists(f'./charts/{foldername}'):
+        Path(f'./charts/{foldername}').mkdir(parents=True, exist_ok=True)
     plt.savefig(
-        f'{foldername}/{filename}.png')
+        f'./charts/{foldername}/{filename}.png')
     plt.close()
 
 
-def drawHistogram(data, bins, density, label_x, label_y, title, filename, foldername):
+def drawHistogram(data, label_x, label_y, title, filename, foldername):
+    colors = ["#55f1a0"]
+    # Set your custom color palette
+    sns.set_palette(sns.color_palette(colors))
+    sns_plot = sns.histplot(data=data, x=title)
+    sns_plot.set_title(title)
 
-    plt.hist(data, bins=bins, edgecolor='white',
-             density=density, color="#55f1a0")
-
-    plt.title(title)
-    plt.xlabel(label_x)
-    plt.ylabel(label_y)
+    # sns_plot.savefig("output.png")
 
     # saving the chart in a file in teh folder missing_data_charts
-    if not os.path.exists(f'{foldername}'):
-        os.makedirs(f'{foldername}')
+    if not os.path.exists(f'./charts/{foldername}'):
+        Path(f'./charts/{foldername}').mkdir(parents=True, exist_ok=True)
     plt.savefig(
-        f'{foldername}/{filename}.png')
+        f'./charts/{foldername}/{filename}.png')
     plt.close()

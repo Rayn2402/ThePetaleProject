@@ -52,3 +52,33 @@ def timeDeltaToMonths(timeDelta):
     """
 
     return round(timeDelta.total_seconds() / 2592000, 2)
+
+
+def extract_var_id(var_name):
+    """
+    Function that return the id of the varible of a given variable
+
+    :param var_name: the variable name
+    :return:a string
+    """
+
+    return var_name.split()[0]
+
+
+def check_categorical_var(data):
+    """
+    Function that get the data of a variable and return True if this variable is categorical
+
+    :param data:the data of the variable
+    :return: Bool
+    """
+    values_are_string = False
+    for item in data:
+        if(item != None):
+            if(isinstance(item, str)):
+                values_are_string = True
+                return True
+
+    if(len(data.unique()) > 10):
+        return False
+    return True

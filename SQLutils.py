@@ -10,6 +10,8 @@ import psycopg2
 import pandas as pd
 import os
 import csv
+import numbers
+from pathlib import Path
 
 
 import helpers
@@ -110,7 +112,7 @@ class DataManager:
         self.cur.close()
         self.cur = self.conn.cursor()
 
-    def getAllTables(self):
+    def get_all_tables(self):
         """
         Retrieves the names of all the tables of the database
 
@@ -131,7 +133,7 @@ class DataManager:
         # we return the result
         return list(map(lambda t: t[0], tables))
 
-    def getMissingDataCount(self, tableName, drawChart=False, excludedCols=["Remarks"]):
+    def get_missing_data_count(self, tableName, drawChart=False, excludedCols=["Remarks"]):
         """
         get the count of all the missing data of one given table
 
@@ -197,7 +199,7 @@ class DataManager:
         # returning a dictionary containing the data needed
         return {"tableName": tableName, "missingCount": missingCount, "completedRowCount": completedRowCount, "totalRows": len(rows)}
 
-    def getAllMissingDataCount(self, filename, drawCharts=True):
+    def get_all_missing_data_count(self, filename="petale_missing_data.csv", drawCharts=True):
         """
         Function that generate a csv file containing the count of the missing data of all the tables of the database
 
@@ -226,8 +228,9 @@ class DataManager:
 
         # we generate a csv file from the data in results
         helpers.writeCsvFile(results, filename)
+        print("File is ready in the folder missing_data! ")
 
-    def getCommonCount(self, tables, columns=["Participant", "Tag"], saveInFile=False):
+    def get_common_count(self, tables, columns=["Participant", "Tag"], saveInFile=False):
         """
         get the number of common survivors from a list of tables
 
@@ -284,7 +287,7 @@ class DataManager:
                     print("I/O error")
         return row[0]
 
-    def getGenderStats(self):
+    def get_gender_stats(self):
         """
         get the count of all participant, the count of males, and the count of females from phase 01
 
@@ -305,7 +308,7 @@ class DataManager:
         # we return the results
         return [df_male.shape[0] + df_female.shape[0], df_female.shape[0], df_male.shape[0]]
 
-    def getNumiricalVarAnalysis(self, table_name, var_name):
+    def get_numirical_var_analysis(self, table_name, var_name):
         """
         Calculate the mean and variance for All, Male, and Female survivors  of a given numirical variable in a given table
 
@@ -394,13 +397,15 @@ class DataManager:
 
         # Plot Chart Comming soon
         filename = var_name.replace(".", "").replace(": ", "").replace("?", "")
-        chartServices.drawHistogram(df[var_name].astype("float").to_list(
-        ), 10, True, "Values", "Count", var_name, f"general_chart_{filename}", "general_charts")
+        folder_name = table_name.replace(
+            ".", "").replace(": ", "").replace("?", "")
+        chartServices.drawHistogram(
+            df, "Values", "Count", var_name, f"chart_{filename}", f"charts_{folder_name}")
 
         # we return the results
         return [all_stats, female_stats, male_stats]
 
-    def getCategoricalVarAnalysis(self, table_name, var_name):
+    def get_categorical_var_analysis(self, table_name, var_name):
         """Calculate the counts of all the category of this variable for All, Female, and male survivors
 
         :param table_name: name of the table
@@ -484,13 +489,15 @@ class DataManager:
 
         # ploting the chart
         filename = var_name.replace(".", "").replace(": ", "").replace("?", "")
+        folder_name = table_name.replace(
+            ".", "").replace(": ", "").replace("?", "")
         chartServices.drawBinaryGroupedBarChart(
-            dict.keys(), data_male, data_female, "Categories", "Count", var_name, f"general_chart_{filename}", "general_charts")
+            dict.keys(), data_male, data_female, "Categories", "Count", var_name, f"chart_{filename}", f"charts_{folder_name}")
 
         # we return the data frame containing the informations
         return pd.DataFrame(dict)
 
-    def getGeneraleStats(self, saveInFile=False):
+    def get_generale_stats(self, save_in_file=True):
         """
         Function that return a dataframe containing statistics from the generale Table
 
@@ -525,7 +532,7 @@ class DataManager:
                   "Male": [], "Female": []}
 
         # we get the gender stats
-        nb, nb_female, nb_male = self.getGenderStats()
+        nb, nb_female, nb_male = self.get_gender_stats()
 
         # we save the gender stats in the results dictionary
         result["variable"].append("Number of survivors")
@@ -537,7 +544,7 @@ class DataManager:
         for source in sources:
             # if type 0, its a numirical variable, so we use getNumiricalVarAnalysis
             if(source["type"] == 0):
-                all_survivors, female_survivors, male_survivors = self.getNumiricalVarAnalysis(
+                all_survivors, female_survivors, male_survivors = self.get_numirical_var_analysis(
                     source["table_name"], source["var_name"])
                 result["variable"].append(source["var_name"])
                 result["All Survivors"].append(
@@ -548,7 +555,7 @@ class DataManager:
                     f"{male_survivors['mean']} ({male_survivors['var']})")
             # if type 1, its a categorical variable, so we use getCategoricalVarAnalysis
             else:
-                df = self.getCategoricalVarAnalysis(
+                df = self.get_categorical_var_analysis(
                     source["table_name"], source["var_name"])
                 for col in df.columns:
                     result["variable"].append(f"{source['var_name']} : {col}")
@@ -564,15 +571,82 @@ class DataManager:
         df = pd.DataFrame(result)
 
         # if saveInFile True we save the dataframe in a csv file
-        if(saveInFile == True):
-            if not os.path.exists("general_stats"):
-                os.makedirs("general_stats")
-            if(os.path.isfile("./general_stats/general_stats.csv") == True):
-                os.remove("./general_stats/general_stats.csv")
-            df.to_csv("./general_stats/general_stats.csv")
+        if(save_in_file == True):
+            if not os.path.exists("./stats/stats_general"):
+                Path(f"./stats/stats_general").mkdir(parents=True, exist_ok=True)
+            if(os.path.isfile("./stats/stats_general/stats_general.csv") == True):
+                os.remove("./stats/stats_general/stats_general.csv")
+            df.to_csv("./stats/stats_general/stats_general.csv")
+
         return df
 
+    def get_table_stats(self, table_name, include="ALL", exclude=[], save_in_file=True):
+        # we get a dataframe of the given tablename
+        if(include == "ALL"):
+            table_df = self.get_table(table_name)
+        else:
+            table_df = self.get_table(table_name, include)
 
-manager = DataManager("mitm2902")
+        # we retreive the columns of the table
+        cols = table_df.columns
 
-print(manager.getGeneraleStats())
+        # we select only the columns with the name in this format "nnnnn VariableName" ex : 35428 niveau d'activité physique(temps)
+        cols = [col for col in cols if col.split()[0].isnumeric()]
+
+        # we exclude the parameters specified with the exclude parameter
+        cols = [col for col in cols if col not in exclude]
+
+        # we set up a python dictionary that will contain the results
+        result = {"variable": [], "All Survivors": [],
+                  "Male": [], "Female": []}
+
+        # for each columns we analyse the variable
+        for col in cols:
+            # we check if the the variable is categorical or numirical
+            if(helpers.check_categorical_var(table_df[col])):
+                # Categorical variable analysis
+                df_categories = self.get_categorical_var_analysis(
+                    table_name, col)
+                for catg in df_categories.columns:
+                    # we save the results
+                    result["variable"].append(f"{col} : {catg}")
+                    result["All Survivors"].append(
+                        f"{df_categories[catg][0]} (100%)")
+                    percent_female = round(
+                        df_categories[catg][1]/df_categories[catg][0] * 100, 2)
+                    result["Female"].append(
+                        f"{df_categories[catg][1]} ({percent_female}%)")
+                    percent_male = round(
+                        df_categories[catg][2]/df_categories[catg][0] * 100, 2)
+                    result["Male"].append(
+                        f"{df_categories[catg][2]} ({percent_male}%)")
+            else:
+                # Numirical variable analysis
+                all_survivors, female_survivors, male_survivors = self.get_numirical_var_analysis(
+                    table_name, col)
+                # we save the results
+                result["variable"].append(col)
+                result["All Survivors"].append(
+                    f"{all_survivors['mean']} ({all_survivors['var']})")
+                result["Female"].append(
+                    f"{female_survivors['mean']} ({female_survivors['var']})")
+                result["Male"].append(
+                    f"{male_survivors['mean']} ({male_survivors['var']})")
+
+        # we create the dataframe from results
+        result_df = pd.DataFrame(result)
+        # if saveInFile True we save the dataframe in a csv file
+
+        filename = table_name.replace(
+            ".", "").replace(": ", "").replace("?", "")
+
+        if(save_in_file == True):
+            if not os.path.exists(f"./stats/stats_{filename}"):
+                Path(
+                    f"./stats/stats_{filename}").mkdir(parents=True, exist_ok=True)
+            if(os.path.isfile(f"./stats/stats_{filename}/stats_{filename}.csv") == True):
+                os.remove(f"./stats/stats_{filename}/stats_{filename}.csv")
+            result_df.to_csv(f"./stats/stats_{filename}/stats_{filename}.csv")
+
+        # we return the dataframe
+        return result_df

@@ -395,12 +395,15 @@ class DataManager:
         female_stats = {"mean": round(df_female[var_name].astype("float").mean(
             axis=0), 2), "var": round(df_female[var_name].astype("float").var(axis=0), 2)}
 
+        # we get the unit of the variable
+        unit = self.get_variable_info(var_name)["unit"]
+
         # Plot Chart Comming soon
         filename = var_name.replace(".", "").replace(": ", "").replace("?", "")
         folder_name = table_name.replace(
             ".", "").replace(": ", "").replace("?", "")
         chartServices.drawHistogram(
-            df, "Values", "Count", var_name, f"chart_{filename}", f"charts_{folder_name}")
+            df, var_name, "Count", f"{var_name} ({unit})", f"chart_{filename}", f"charts_{folder_name}")
 
         # we return the results
         return [all_stats, female_stats, male_stats]
@@ -581,6 +584,15 @@ class DataManager:
         return df
 
     def get_table_stats(self, table_name, include="ALL", exclude=[], save_in_file=True):
+        """
+        Function that return a dataframe containing statistics from any given table
+
+        :param table_name: The name of the table
+        :param include: a list of all the columns to include, "ALL" if all columns included
+        :param exclude: a list of all the columns to exclude
+        :param saveInFile: Boolean, if true the dataframe will be saved in a csv file
+        :return: pandas DataFrame
+        """
         # we get a dataframe of the given tablename
         if(include == "ALL"):
             table_df = self.get_table(table_name)
@@ -624,8 +636,12 @@ class DataManager:
                 # Numirical variable analysis
                 all_survivors, female_survivors, male_survivors = self.get_numirical_var_analysis(
                     table_name, col)
+
+                # we get the unit of the variable
+                unit = self.get_variable_info(col)["unit"]
+
                 # we save the results
-                result["variable"].append(col)
+                result["variable"].append(f"{col} ({unit})")
                 result["All Survivors"].append(
                     f"{all_survivors['mean']} ({all_survivors['var']})")
                 result["Female"].append(
@@ -650,3 +666,41 @@ class DataManager:
 
         # we return the dataframe
         return result_df
+
+    def get_variable_info(self, var_name):
+        """
+        Function that return all the information about a specific variable
+
+        :param var_name: The name of the variable
+        :return: a python dictionarry containing all the infos
+        """
+        # we extract the variable id from the variable name
+        var_id = helpers.extract_var_id(var_name)
+
+        # we prepare the query
+        query = f'SELECT * FROM "PETALE_meta_data" WHERE "Test ID" = {var_id}'
+
+        # We execute the query
+        try:
+            self.cur.execute(query)
+        except psycopg2.Error as e:
+            print(e.pgerror)
+
+        row = self.cur.fetchall()
+
+        # we initialize the dictionarry that will contain the result
+        var_info = {}
+
+        # we create an array containg all the keys
+        var_info_labels = ["test_id", "editorial_board", "form", "number",
+                           "section", "test", "description", "type", "option", "unit", "remarks"]
+
+        # we fill the dictionarry with informations
+        for index, data in enumerate(row[0]):
+            var_info[var_info_labels[index]] = data
+
+        # We reset the cursor
+        self.reset_cursor()
+
+        # we return the result
+        return var_info

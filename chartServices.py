@@ -85,7 +85,7 @@ def drawBinaryGroupedBarChart(data_x, group_1, group_2, label_x, label_y, title,
 
 
 def drawHistogram(data, label_x, label_y, title, filename, foldername):
-        """
+    """
     Function that generate a historam charts using seaborn
 
         :param data: the data to plot
@@ -98,17 +98,16 @@ def drawHistogram(data, label_x, label_y, title, filename, foldername):
         :generate a figure containing the chart from the data given
     """
 
-    #we select the color of the palette
+    # we select the color of the palette
     colors = ["#55f1a0"]
     # we apply our custom color palette
     sns.set_palette(sns.color_palette(colors))
 
-    #we plot the histogram
-    sns_plot = sns.histplot(data=data, x=title)
+    # we plot the histogram
+    sns_plot = sns.histplot(data=data, x=label_x)
 
-    #we set the title of the plot
+    # we set the title of the plot
     sns_plot.set_title(title)
-
 
     # saving the chart in a file in teh folder missing_data_charts
     if not os.path.exists(f'./charts/{foldername}'):

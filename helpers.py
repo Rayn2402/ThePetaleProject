@@ -84,7 +84,7 @@ def check_categorical_var(data):
     return True
 
 
-def saveChartsOnHTML(folders):
+def save_charts_html(folders):
     """
     Function that display all the charts of the project in one HTML page
 
@@ -159,6 +159,3 @@ def saveChartsOnHTML(folders):
     file = open("PETALE_Charts.html", "w")
     file.write(text)
     file.close()
-
-
-saveChartsOnHTML(["charts_Cardio_4_Test de Marche de 6 Minutes (TDM6)"])

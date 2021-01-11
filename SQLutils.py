@@ -187,7 +187,7 @@ class DataManager:
         # Plotting the bar chart
         if(drawChart):
             fileName = "missing_data_" + \
-                tableName.replace(".", "").replace(":", "")
+                tableName.replace(".", "").replace(":", "").replace("/","")
             folderName = "missing_data_charts"
             figureTitle = f'Count of missing data by columns names for the table {tableName}'
             chartServices.drawBarhChart(
@@ -396,14 +396,14 @@ class DataManager:
             axis=0), 2), "var": round(df_female[var_name].astype("float").var(axis=0), 2)}
 
         # we get the unit of the variable
-        unit = self.get_variable_info(var_name)["unit"]
+        #unit = self.get_variable_info(var_name)["unit"]
 
         # Plot Chart Comming soon
-        filename = var_name.replace(".", "").replace(": ", "").replace("?", "")
+        filename = var_name.replace(".", "").replace(": ", "").replace("?", "").replace("/","")
         folder_name = table_name.replace(
-            ".", "").replace(": ", "").replace("?", "")
+            ".", "").replace(": ", "").replace("?", "").replace("/","")
         chartServices.drawHistogram(
-            df, var_name, "Count", f"{var_name} ({unit})", f"chart_{filename}", f"charts_{folder_name}")
+            df, var_name, "Count", f"{var_name} (unit)", f"chart_{filename}", f"charts_{folder_name}")
 
         # we return the results
         return [all_stats, female_stats, male_stats]
@@ -491,9 +491,9 @@ class DataManager:
             data_female["values"].append(float(dict[key][1]))
 
         # ploting the chart
-        filename = var_name.replace(".", "").replace(": ", "").replace("?", "")
+        filename = var_name.replace(".", "").replace(": ", "").replace("?", "").replace("/","")
         folder_name = table_name.replace(
-            ".", "").replace(": ", "").replace("?", "")
+            ".", "").replace(": ", "").replace("?", "").replace("/","")
         chartServices.drawBinaryGroupedBarChart(
             dict.keys(), data_male, data_female, "Categories", "Count", var_name, f"chart_{filename}", f"charts_{folder_name}")
 
@@ -560,10 +560,12 @@ class DataManager:
             else:
                 df = self.get_categorical_var_analysis(
                     source["table_name"], source["var_name"])
+                total = df.iloc[0].sum()
                 for col in df.columns:
+                    percent_all = round(df[col][0]/total * 100, 2)
                     result["variable"].append(f"{source['var_name']} : {col}")
                     result["All Survivors"].append(
-                        f"{df[col][0]} (100%)")
+                        f"{df[col][0]} ({percent_all}%)")
                     percent_female = round(df[col][1]/df[col][0] * 100, 2)
                     result["Female"].append(
                         f"{df[col][1]} ({percent_female}%)")
@@ -619,8 +621,11 @@ class DataManager:
                 # Categorical variable analysis
                 df_categories = self.get_categorical_var_analysis(
                     table_name, col)
+                total = df_categories.iloc[0].sum()
                 for catg in df_categories.columns:
                     # we save the results
+                    percent_all = round(
+                        df_categories[catg][0]/total * 100, 2)
                     result["variable"].append(f"{col} : {catg}")
                     result["All Survivors"].append(
                         f"{df_categories[catg][0]} (100%)")
@@ -654,7 +659,7 @@ class DataManager:
         # if saveInFile True we save the dataframe in a csv file
 
         filename = table_name.replace(
-            ".", "").replace(": ", "").replace("?", "")
+            ".", "").replace(": ", "").replace("?", "").replace("/","")
 
         if(save_in_file == True):
             if not os.path.exists(f"./stats/stats_{filename}"):
@@ -704,3 +709,9 @@ class DataManager:
 
         # we return the result
         return var_info
+
+
+manager = DataManager("mitm2902")
+manager.get_table_stats("Cardio_4_Test de Marche de 6 Minutes (TDM6)")
+manager.get_table_stats("Cardio_0_Évaluation à l'Effort (EE)")
+manager.get_table_stats("Cardio_1_Hémodynamie Cardiaque par Impédancemétrie (IMP)")

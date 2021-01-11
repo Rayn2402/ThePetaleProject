@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from pathlib import Path
+import math
 
 
 def drawBarhChart(data_y, data_x, label_y, label_x, title, filename, foldername):
@@ -97,17 +98,12 @@ def drawHistogram(data, label_x, label_y, title, filename, foldername):
 
         :generate a figure containing the chart from the data given
     """
+    num_bins = math.ceil(math.sqrt(len(data[label_x].values)))
+    plt.hist(data[label_x].dropna(), num_bins,
+             facecolor='#63ffbb', density=True, edgecolor='white', linewidth=1.2)
 
-    # we select the color of the palette
-    colors = ["#55f1a0"]
-    # we apply our custom color palette
-    sns.set_palette(sns.color_palette(colors))
-
-    # we plot the histogram
-    sns_plot = sns.histplot(data=data, x=label_x)
-
-    # we set the title of the plot
-    sns_plot.set_title(title)
+    # specifying the title of the chart
+    plt.title(title, fontsize=15)
 
     # saving the chart in a file in teh folder missing_data_charts
     if not os.path.exists(f'./charts/{foldername}'):

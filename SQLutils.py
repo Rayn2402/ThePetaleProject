@@ -187,7 +187,7 @@ class DataManager:
         # Plotting the bar chart
         if(drawChart):
             fileName = "missing_data_" + \
-                tableName.replace(".", "").replace(":", "").replace("/","")
+                tableName.replace(".", "").replace(":", "").replace("/", "")
             folderName = "missing_data_charts"
             figureTitle = f'Count of missing data by columns names for the table {tableName}'
             chartServices.drawBarhChart(
@@ -308,9 +308,9 @@ class DataManager:
         # we return the results
         return [df_male.shape[0] + df_female.shape[0], df_female.shape[0], df_male.shape[0]]
 
-    def get_numirical_var_analysis(self, table_name, var_name):
+    def get_numerical_var_analysis(self, table_name, var_name):
         """
-        Calculate the mean and variance for All, Male, and Female survivors  of a given numirical variable in a given table
+        Calculate the mean and variance for All, Male, and Female survivors  of a given numerical variable in a given table
 
         :param table_name: name of the table
         :param cvar_name: name of the variable
@@ -399,9 +399,10 @@ class DataManager:
         #unit = self.get_variable_info(var_name)["unit"]
 
         # Plot Chart Comming soon
-        filename = var_name.replace(".", "").replace(": ", "").replace("?", "").replace("/","")
+        filename = var_name.replace(".", "").replace(
+            ": ", "").replace("?", "").replace("/", "")
         folder_name = table_name.replace(
-            ".", "").replace(": ", "").replace("?", "").replace("/","")
+            ".", "").replace(": ", "").replace("?", "").replace("/", "")
         chartServices.drawHistogram(
             df, var_name, "Count", f"{var_name} (unit)", f"chart_{filename}", f"charts_{folder_name}")
 
@@ -491,9 +492,10 @@ class DataManager:
             data_female["values"].append(float(dict[key][1]))
 
         # ploting the chart
-        filename = var_name.replace(".", "").replace(": ", "").replace("?", "").replace("/","")
+        filename = var_name.replace(".", "").replace(
+            ": ", "").replace("?", "").replace("/", "")
         folder_name = table_name.replace(
-            ".", "").replace(": ", "").replace("?", "").replace("/","")
+            ".", "").replace(": ", "").replace("?", "").replace("/", "")
         chartServices.drawBinaryGroupedBarChart(
             dict.keys(), data_male, data_female, "Categories", "Count", var_name, f"chart_{filename}", f"charts_{folder_name}")
 
@@ -545,9 +547,9 @@ class DataManager:
 
         # for each variable we calculate the stats and we save it in results
         for source in sources:
-            # if type 0, its a numirical variable, so we use getNumiricalVarAnalysis
+            # if type 0, its a numerical variable, so we use getnumericalVarAnalysis
             if(source["type"] == 0):
-                all_survivors, female_survivors, male_survivors = self.get_numirical_var_analysis(
+                all_survivors, female_survivors, male_survivors = self.get_numerical_var_analysis(
                     source["table_name"], source["var_name"])
                 result["variable"].append(source["var_name"])
                 result["All Survivors"].append(
@@ -616,7 +618,7 @@ class DataManager:
 
         # for each columns we analyse the variable
         for col in cols:
-            # we check if the the variable is categorical or numirical
+            # we check if the the variable is categorical or numerical
             if(helpers.check_categorical_var(table_df[col])):
                 # Categorical variable analysis
                 df_categories = self.get_categorical_var_analysis(
@@ -638,8 +640,8 @@ class DataManager:
                     result["Male"].append(
                         f"{df_categories[catg][2]} ({percent_male}%)")
             else:
-                # Numirical variable analysis
-                all_survivors, female_survivors, male_survivors = self.get_numirical_var_analysis(
+                # numerical variable analysis
+                all_survivors, female_survivors, male_survivors = self.get_numerical_var_analysis(
                     table_name, col)
 
                 # we get the unit of the variable
@@ -659,7 +661,7 @@ class DataManager:
         # if saveInFile True we save the dataframe in a csv file
 
         filename = table_name.replace(
-            ".", "").replace(": ", "").replace("?", "").replace("/","")
+            ".", "").replace(": ", "").replace("?", "").replace("/", "")
 
         if(save_in_file == True):
             if not os.path.exists(f"./stats/stats_{filename}"):
@@ -709,9 +711,3 @@ class DataManager:
 
         # we return the result
         return var_info
-
-
-manager = DataManager("mitm2902")
-manager.get_table_stats("Cardio_4_Test de Marche de 6 Minutes (TDM6)")
-manager.get_table_stats("Cardio_0_Évaluation à l'Effort (EE)")
-manager.get_table_stats("Cardio_1_Hémodynamie Cardiaque par Impédancemétrie (IMP)")

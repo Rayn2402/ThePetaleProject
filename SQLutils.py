@@ -1,6 +1,7 @@
 """
 
 Authors : Nicolas Raymond
+          Mehdi Mitiche
 
 This file contains all functions linked to SQL data management
 
@@ -12,6 +13,7 @@ import os
 import csv
 import numbers
 from pathlib import Path
+from tqdm import tqdm
 
 
 import helpers
@@ -33,6 +35,7 @@ class DataManager:
         self.conn, self.cur = DataManager.connect(
             user, password, database, host, port)
         self.schema = schema
+        self.database = database
 
     @staticmethod
     def connect(user, password, database, host, port):
@@ -77,9 +80,6 @@ class DataManager:
         # Else, we add the corresponding column names to the query
         else:
             query = query
-            # for col in columns:
-            #    query = f"{query} \"{col}\""
-            # Small Fix happened here
             columnsToFetch = helpers.colsForSql(columns)
             query = f"{query} {columnsToFetch}"
 
@@ -122,7 +122,7 @@ class DataManager:
         # we execute the query
         try:
             self.cur.execute(
-                f"SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_CATALOG='petale' AND table_schema = '{self.schema}' ")
+                f"SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_CATALOG='{self.database}' AND table_schema = '{self.schema}' ")
         except psycopg2.Error as e:
             print(e.pgerror)
         tables = self.cur.fetchall()
@@ -132,6 +132,25 @@ class DataManager:
 
         # we return the result
         return list(map(lambda t: t[0], tables))
+
+    def get_column_names(self, tableName):
+        """
+        Function that Retrieves the names of all the columns of a given table
+        :param tableName : the name of the table
+        :return: list of strings
+
+        """
+        escapedTableName = tableName.replace("'", "''")
+        try:
+            self.cur.execute(
+                f"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME= \'{escapedTableName}\'")
+        except psycopg2.Error as e:
+            print(e.pgerror)
+        cols = self.cur.fetchall()
+        cols = list(map(lambda c: c[0], cols))
+        # We reset the cursor
+        self.reset_cursor()
+        return cols
 
     def get_missing_data_count(self, tableName, drawChart=False, excludedCols=["Remarks"]):
         """
@@ -145,44 +164,20 @@ class DataManager:
         """
 
         # Extracting the name of the columns of the given  table
-        escapedTableName = tableName.replace("'", "''")
-        try:
-            self.cur.execute(
-                f"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME= \'{escapedTableName}\'")
-        except psycopg2.Error as e:
-            print(e.pgerror)
-        columns_y = []
-        cols = self.cur.fetchall()
-        columns_y = list(map(lambda c: c[0], cols))
+        cols = self.get_column_names(tableName)
 
         # Excluding the none needed columns
-        columns_y = [col for col in columns_y if col not in excludedCols]
+        cols = [col for col in cols if col not in excludedCols]
 
-        missing_x = [0] * len(columns_y)
+        df_table = self.get_table(tableName, cols)
 
-        # Get the cols ready to be in the SQL query
-        columnsToFetch = helpers.colsForSql(columns_y)
+        missing_x = df_table.isnull().sum().values
 
-        # we execute the query
-        try:
-            self.cur.execute(
-                f'SELECT {columnsToFetch} FROM \"{tableName}\" ')
-        except psycopg2.Error as e:
-            print(e.pgerror)
-        rows = self.cur.fetchall()
-        # we intialize the counters
-        missingCount = 0
-        completedRowCount = 0
-
-        for r in rows:
-            completedRow = True
-            for index, item in enumerate(r):
-                if(item == None):
-                    completedRow = False
-                    missingCount += 1
-                    missing_x[index] += 1
-            if(completedRow == True):
-                completedRowCount += 1
+        # we get the counts we need from the dataframe
+        missingCount = df_table.isnull().sum().sum()
+        completedRowCount = len(
+            [complete for complete in df_table.isnull().sum(axis=1) if complete == 0])
+        totalRows = df_table.shape[0]
 
         # Plotting the bar chart
         if(drawChart):
@@ -191,17 +186,14 @@ class DataManager:
             folderName = "missing_data_charts"
             figureTitle = f'Count of missing data by columns names for the table {tableName}'
             chartServices.drawBarhChart(
-                columns_y, missing_x, "Columns", "Data missing", figureTitle, fileName, folderName)
-
-        # We reset the cursor
-        self.reset_cursor()
+                cols, missing_x, "Columns", "Data missing", figureTitle, fileName, folderName)
 
         # returning a dictionary containing the data needed
-        return {"tableName": tableName, "missingCount": missingCount, "completedRowCount": completedRowCount, "totalRows": len(rows)}
+        return {"tableName": tableName, "missingCount": missingCount, "completedRowCount": completedRowCount, "totalRows": 1}
 
     def get_all_missing_data_count(self, filename="petale_missing_data.csv", drawCharts=True):
         """
-        Function that generate a csv file containing the count of the missing data of all the tables of the database
+        Function that generates a csv file containing the count of the missing data of all the tables of the database
 
         :param filename: the name of file to be genrated
         :param foldername: the name of the folder where the file will be created
@@ -215,19 +207,21 @@ class DataManager:
         results = []
 
         # we get all the table names
-        tables = self.getAllTables()
+        tables = self.get_all_tables()
         length = len(tables)
 
         # For each table we get the missing data count
-        for index, table in enumerate(tables):
-            print(f"Processing data... {index}/{length}")
-            missingDataCount = self.getMissingDataCount(table, drawCharts)
+        with tqdm(total=len(tables)) as pbar:
+            for table in tables:
+                pbar.update(1)
+                missingDataCount = self.get_missing_data_count(
+                    table, drawCharts)
 
-            # we save the missing data count in results
-            results.append(missingDataCount)
+                # we save the missing data count in results
+                results.append(missingDataCount)
 
         # we generate a csv file from the data in results
-        helpers.writeCsvFile(results, filename)
+        helpers.writeCsvFile(results, filename, "missing_data")
         print("File is ready in the folder missing_data! ")
 
     def get_common_count(self, tables, columns=["Participant", "Tag"], saveInFile=False):
@@ -248,7 +242,7 @@ class DataManager:
             if(index == 0):
                 query += f'(SELECT {colsInQuery} FROM \"{table}\")'
             else:
-                query += f' INTERSECT (SELECT "Participant","Tag" FROM \"{table}\")'
+                query += f' INTERSECT (SELECT {colsInQuery} FROM \"{table}\")'
         query += ') l'
 
         # We execute the query
@@ -504,7 +498,7 @@ class DataManager:
 
     def get_generale_stats(self, save_in_file=True):
         """
-        Function that return a dataframe containing statistics from the generale Table
+        Function that returns a dataframe containing statistics from the generale Table
 
         :param saveInFile: Boolean, if true the dataframe will be saved in a csv file in the folder generale_stats
         :return: pandas DataFrame
@@ -545,35 +539,38 @@ class DataManager:
         result["Female"].append(nb_female)
         result["Male"].append(nb_male)
 
-        # for each variable we calculate the stats and we save it in results
-        for source in sources:
-            # if type 0, its a numerical variable, so we use getnumericalVarAnalysis
-            if(source["type"] == 0):
-                all_survivors, female_survivors, male_survivors = self.get_numerical_var_analysis(
-                    source["table_name"], source["var_name"])
-                result["variable"].append(source["var_name"])
-                result["All Survivors"].append(
-                    f"{all_survivors['mean']} ({all_survivors['var']})")
-                result["Female"].append(
-                    f"{female_survivors['mean']} ({female_survivors['var']})")
-                result["Male"].append(
-                    f"{male_survivors['mean']} ({male_survivors['var']})")
-            # if type 1, its a categorical variable, so we use getCategoricalVarAnalysis
-            else:
-                df = self.get_categorical_var_analysis(
-                    source["table_name"], source["var_name"])
-                total = df.iloc[0].sum()
-                for col in df.columns:
-                    percent_all = round(df[col][0]/total * 100, 2)
-                    result["variable"].append(f"{source['var_name']} : {col}")
+        with tqdm(total=len(sources)) as pbar:
+            # for each variable we calculate the stats and we save it in results
+            for source in sources:
+                pbar.update(1)
+                # if type 0, its a numerical variable, so we use getnumericalVarAnalysis
+                if(source["type"] == 0):
+                    all_survivors, female_survivors, male_survivors = self.get_numerical_var_analysis(
+                        source["table_name"], source["var_name"])
+                    result["variable"].append(source["var_name"])
                     result["All Survivors"].append(
-                        f"{df[col][0]} ({percent_all}%)")
-                    percent_female = round(df[col][1]/df[col][0] * 100, 2)
+                        f"{all_survivors['mean']} ({all_survivors['var']})")
                     result["Female"].append(
-                        f"{df[col][1]} ({percent_female}%)")
-                    percent_male = round(df[col][2]/df[col][0] * 100, 2)
+                        f"{female_survivors['mean']} ({female_survivors['var']})")
                     result["Male"].append(
-                        f"{df[col][2]} ({percent_male}%)")
+                        f"{male_survivors['mean']} ({male_survivors['var']})")
+                # if type 1, its a categorical variable, so we use getCategoricalVarAnalysis
+                else:
+                    df = self.get_categorical_var_analysis(
+                        source["table_name"], source["var_name"])
+                    total = df.iloc[0].sum()
+                    for col in df.columns:
+                        percent_all = round(df[col][0]/total * 100, 2)
+                        result["variable"].append(
+                            f"{source['var_name']} : {col}")
+                        result["All Survivors"].append(
+                            f"{df[col][0]} ({percent_all}%)")
+                        percent_female = round(df[col][1]/df[col][0] * 100, 2)
+                        result["Female"].append(
+                            f"{df[col][1]} ({percent_female}%)")
+                        percent_male = round(df[col][2]/df[col][0] * 100, 2)
+                        result["Male"].append(
+                            f"{df[col][2]} ({percent_male}%)")
         # we create the dataframe
         df = pd.DataFrame(result)
 
@@ -616,45 +613,47 @@ class DataManager:
         result = {"variable": [], "All Survivors": [],
                   "Male": [], "Female": []}
 
-        # for each columns we analyse the variable
-        for col in cols:
-            # we check if the the variable is categorical or numerical
-            if(helpers.check_categorical_var(table_df[col])):
-                # Categorical variable analysis
-                df_categories = self.get_categorical_var_analysis(
-                    table_name, col)
-                total = df_categories.iloc[0].sum()
-                for catg in df_categories.columns:
+        with tqdm(total=len(cols)) as pbar:
+            # for each columns we analyse the variable
+            for col in cols:
+                pbar.update(1)
+                # we check if the the variable is categorical or numerical
+                if(helpers.check_categorical_var(table_df[col])):
+                    # Categorical variable analysis
+                    df_categories = self.get_categorical_var_analysis(
+                        table_name, col)
+                    total = df_categories.iloc[0].sum()
+                    for catg in df_categories.columns:
+                        # we save the results
+                        percent_all = round(
+                            df_categories[catg][0]/total * 100, 2)
+                        result["variable"].append(f"{col} : {catg}")
+                        result["All Survivors"].append(
+                            f"{df_categories[catg][0]} (100%)")
+                        percent_female = round(
+                            df_categories[catg][1]/df_categories[catg][0] * 100, 2)
+                        result["Female"].append(
+                            f"{df_categories[catg][1]} ({percent_female}%)")
+                        percent_male = round(
+                            df_categories[catg][2]/df_categories[catg][0] * 100, 2)
+                        result["Male"].append(
+                            f"{df_categories[catg][2]} ({percent_male}%)")
+                else:
+                    # numerical variable analysis
+                    all_survivors, female_survivors, male_survivors = self.get_numerical_var_analysis(
+                        table_name, col)
+
+                    # we get the unit of the variable
+                    unit = self.get_variable_info(col)["unit"]
+
                     # we save the results
-                    percent_all = round(
-                        df_categories[catg][0]/total * 100, 2)
-                    result["variable"].append(f"{col} : {catg}")
+                    result["variable"].append(f"{col} ({unit})")
                     result["All Survivors"].append(
-                        f"{df_categories[catg][0]} (100%)")
-                    percent_female = round(
-                        df_categories[catg][1]/df_categories[catg][0] * 100, 2)
+                        f"{all_survivors['mean']} ({all_survivors['var']})")
                     result["Female"].append(
-                        f"{df_categories[catg][1]} ({percent_female}%)")
-                    percent_male = round(
-                        df_categories[catg][2]/df_categories[catg][0] * 100, 2)
+                        f"{female_survivors['mean']} ({female_survivors['var']})")
                     result["Male"].append(
-                        f"{df_categories[catg][2]} ({percent_male}%)")
-            else:
-                # numerical variable analysis
-                all_survivors, female_survivors, male_survivors = self.get_numerical_var_analysis(
-                    table_name, col)
-
-                # we get the unit of the variable
-                unit = self.get_variable_info(col)["unit"]
-
-                # we save the results
-                result["variable"].append(f"{col} ({unit})")
-                result["All Survivors"].append(
-                    f"{all_survivors['mean']} ({all_survivors['var']})")
-                result["Female"].append(
-                    f"{female_survivors['mean']} ({female_survivors['var']})")
-                result["Male"].append(
-                    f"{male_survivors['mean']} ({male_survivors['var']})")
+                        f"{male_survivors['mean']} ({male_survivors['var']})")
 
         # we create the dataframe from results
         result_df = pd.DataFrame(result)

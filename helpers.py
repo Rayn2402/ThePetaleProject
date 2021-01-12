@@ -4,7 +4,7 @@ import csv
 
 def colsForSql(cols):
     """
-    Transform a list of strings containing the name of columns to a string ready to use in a SQL query, Ex: ["name","age","gender"]  ==> "name","age","gender"
+    Function that transforms a list of strings containing the name of columns to a string ready to use in a SQL query, Ex: ["name","age","gender"]  ==> "name","age","gender"
 
     :param cols: the list of column names
     :return: a string
@@ -15,7 +15,7 @@ def colsForSql(cols):
     return ",".join(cols)
 
 
-def writeCsvFile(data, filename):
+def writeCsvFile(data, filename, foldername):
     """
     Function that takes a list of python dictionaries and generate a CSV file from them
 
@@ -28,11 +28,11 @@ def writeCsvFile(data, filename):
     """
     try:
         # we check if the folder exists
-        if not os.path.exists('missing_data'):
+        if not os.path.exists(foldername):
             # if the folder wasn't created, we create it
-            os.makedirs('missing_data')
+            os.makedirs(foldername)
         # we open a new file
-        with open(f"./missing_data/{filename}", 'w', newline='') as csvfile:
+        with open(f"./{foldername}/{filename}", 'w', newline='') as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=data[0].keys())
             # we write the headers of the CSV file
             writer.writeheader()
@@ -45,7 +45,7 @@ def writeCsvFile(data, filename):
 
 def timeDeltaToMonths(timeDelta):
     """
-    Function that transform from the type TimeDelta to months
+    Function that transforms from the type TimeDelta to months
 
     :param data: timeDelta object
     :return: number of month
@@ -56,7 +56,7 @@ def timeDeltaToMonths(timeDelta):
 
 def extract_var_id(var_name):
     """
-    Function that return the id of the varible of a given variable
+    Function that returns the id of the varible of a given variable
 
     :param var_name: the variable name
     :return:a string
@@ -67,16 +67,14 @@ def extract_var_id(var_name):
 
 def check_categorical_var(data):
     """
-    Function that get the data of a variable and return True if this variable is categorical
+    Function that gets the data of a variable and return True if this variable is categorical
 
     :param data:the data of the variable
     :return: Bool
     """
-    values_are_string = False
     for item in data:
         if(item != None):
             if(isinstance(item, str)):
-                values_are_string = True
                 return True
 
     if(len(data.unique()) > 10):
@@ -86,7 +84,7 @@ def check_categorical_var(data):
 
 def save_charts_html(folders):
     """
-    Function that display all the charts of the project in one HTML page
+    Function that displays all the charts of the project in one HTML page
 
     :param folders: the list of the folder names containing the charts we want to display
     :return:a string

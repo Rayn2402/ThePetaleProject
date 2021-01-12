@@ -9,7 +9,7 @@ import math
 
 def drawBarhChart(data_y, data_x, label_y, label_x, title, filename, foldername):
     """
-    Function that generate a barh chart using matplot lib
+    Function that generates a barh chart using matplot lib
 
         :param data_y: the data to be in axe y
         :param data_x: the data to be in axe x
@@ -44,7 +44,7 @@ def drawBarhChart(data_y, data_x, label_y, label_x, title, filename, foldername)
 
 def drawBinaryGroupedBarChart(data_x, group_1, group_2, label_x, label_y, title, filename, foldername):
     """
-    Function that generate a grouped bar chart using matplotlib
+    Function that generates a grouped bar chart using matplotlib
 
         :param data_x: the data to be in axe x
         :param group_1: the data of the first group
@@ -87,7 +87,7 @@ def drawBinaryGroupedBarChart(data_x, group_1, group_2, label_x, label_y, title,
 
 def drawHistogram(data, label_x, label_y, title, filename, foldername):
     """
-    Function that generate a historam charts using seaborn
+    Function that generates a historam charts using seaborn
 
         :param data: the data to plot
         :param label_y:  label on the axe y

@@ -57,7 +57,6 @@ def drawBinaryGroupedBarChart(data_x, group_1, group_2, label_x, label_y, title,
 
         :generate a figure containing the chart from the data given
     """
-
     # width of the bar
     w = 0.4
 

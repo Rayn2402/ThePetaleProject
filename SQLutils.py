@@ -302,199 +302,158 @@ class DataManager:
         # we return the results
         return [df_male.shape[0] + df_female.shape[0], df_female.shape[0], df_male.shape[0]]
 
-    def get_numerical_var_analysis(self, table_name, var_name):
+    def get_numerical_var_analysis(self, table_name, df, group=None):
         """
-        Calculate the mean and variance for All, Male, and Female survivors  of a given numerical variable in a given table
+
+        Function that calculates the mean and variance for All, Male, and Female survivors fot eavh variable in the given data frame
 
         :param table_name: name of the table
-        :param cvar_name: name of the variable
-        return: a list  of three dictionary, each dictionary contains two keys : mean and var [dict_all, dict_female, dict_male]
+        :param df: pandas data frame containing the data of numerical variables
+        :param group: name of a column, we calculate the stats for the overall data and the stats of the data grouped by this column, Ex : group = 34500 Sex will give us the stats for all the data, for Male, and for Female
+        return: a pandas data frame
         """
-        # if the given table is diffrent from the table general_1 we merge the two tables
-        if(table_name != "General_1_Demographic Questionnaire"):
-            # we build a dataframe from the table the table containing the gender information
-            df_1 = self.get_table("General_1_Demographic Questionnaire", [
-                "Participant", "Tag", "34500 Sex"])
-
-            # we extract only survivors from Phase 1
-            df_1 = df_1[df_1["Tag"] == "Phase 1"]
-
-            # we select only two columns Participant and 34500 Sex
-            df_1 = df_1[["Participant", "34500 Sex"]]
-
-            # We get a dataframe of the given table with tha variables that wee need
-            if(var_name != "Time of treatment"):
-                cols = ["Participant", "Tag", var_name]
-            # in the case of the variable time of treatment we have to slect two more cols : Date at diagnosis and date of treatment end
-            else:
-                cols = ["Participant", "Tag", "34471 Date of diagnosis",
-                        "34474 Date of treatment end"]
-            try:
-                df_2 = self.get_table(table_name, cols)
-            except:
-                print(
-                    "Error occured, please check if the tableName and the varName are correct")
-                return [None, None, None]
-
-            # we extract only survivors from Phase 1
-            df_2 = df_2[df_2["Tag"] == "Phase 1"]
-
-            # we select only two columns Participant and the Variable we want
-            if(var_name != "Time of treatment"):
-                df_2 = df_2[["Participant", var_name]]
-            # in the case of the variable Time of treatment we create a new column : Time of treatment = date of the end of treatment - date of diagnosis
-            else:
-                # we calculate the time of treatment
-                df_2["Time of treatment"] = df_2["34474 Date of treatment end"] - \
-                    df_2["34471 Date of diagnosis"]
-                # we transform the time of treatment to months
-                df_2["Time of treatment"] = df_2["Time of treatment"].apply(
-                    helpers.timeDeltaToMonths)
-                # we select only two columns Participant and the time of treatment
-                df_2 = df_2[["Participant", var_name]]
-            # we merge the two dataframes by the column "Participant"
-            df = pd.merge(df_2, df_1, on="Participant", how="inner")
-        # we work directly in the table general_1
+        # we intialize a python dictionary where we will save the results
+        var_name = "Variable Name"
+        all_ = "All"
+        if(group == None):
+            results = {
+                var_name: [],
+                all_: []
+            }
         else:
-            # We get a dataframe of the given table with tha variables that wee need
-            try:
-                df = self.get_table("General_1_Demographic Questionnaire", [
-                    "Participant", "Tag", "34500 Sex", var_name])
-            except:
-                print(
-                    "Error occured, please check if the tableName and the varName are correct")
-                return [None, None, None]
+            group_values = df[group].unique()
+            results = {
+                var_name: [],
+                all_: []
+            }
+            for group_val in group_values:
+                results[f"{group} {group_val}"] = []
 
-            # we extract only survivors from Phase 1
-            df = df[df["Tag"] == "Phase 1"]
+        # we get the columns on which we will calculate the stats
+        cols = [col for col in df.columns if col != group]
 
-            # we select only the columns Participant and 34500 Sex and given variable
-            df = df[["Participant", "34500 Sex", var_name]]
+        # for each column we calculate the mean and the variance
+        for col in cols:
+            # we append the mean and the var for all participants to the results dictionary
+            results[var_name].append(col)
+            all_mean = round(df[col].astype("float").mean(axis=0), 2)
+            all_var = round(df[col].astype("float").var(axis=0), 2)
+            results[all_].append(f"{all_mean} ({all_var})")
 
-        # we extract the only the male survivors
-        df_male = df[df["34500 Sex"] == "1.0"]
+            # if the group is given, we calculate the stats for each possible value of that group
+            if(group != None):
+                for group_val in group_values:
+                    # we append the mean and the var for sub group participants to the results dictionary
+                    df_group = df[df[group] == group_val]
+                    group_mean = round(
+                        df_group[col].astype("float").mean(axis=0), 2)
+                    group_var = round(
+                        df_group[col].astype("float").var(axis=0), 2)
+                    results[f"{group} {group_val}"].append(
+                        f"{group_mean} ({group_var})")
 
-        # we extract the only the female survivors
-        df_female = df[df["34500 Sex"] == "0.0"]
-
-        # we get the stats(mean, variance) of all survivors
-        all_stats = {"mean": round(df[var_name].astype("float").mean(
-            axis=0), 2), "var": round(df[var_name].astype("float").var(axis=0), 2)}
-
-        # we get the stats(mean, variance) of Male survivors
-        male_stats = {"mean": round(df_male[var_name].astype("float").mean(
-            axis=0), 2), "var": round(df_male[var_name].astype("float").var(axis=0), 2)}
-
-        # we get the stats(mean, variance) of Female survivors
-        female_stats = {"mean": round(df_female[var_name].astype("float").mean(
-            axis=0), 2), "var": round(df_female[var_name].astype("float").var(axis=0), 2)}
-
-        # we get the unit of the variable
-        #unit = self.get_variable_info(var_name)["unit"]
-
-        # Plot Chart Comming soon
-        filename = var_name.replace(".", "").replace(
-            ": ", "").replace("?", "").replace("/", "")
-        folder_name = table_name.replace(
-            ".", "").replace(": ", "").replace("?", "").replace("/", "")
-        chartServices.drawHistogram(
-            df, var_name, "Count", f"{var_name} (unit)", f"chart_{filename}", f"charts_{folder_name}")
+        # for each variable of the given dataframe we plot a chart
+        for var_name in cols:
+            # we plot and save a chart for a single variable
+            filename = var_name.replace(".", "").replace(
+                ": ", "").replace("?", "").replace("/", "")
+            folder_name = table_name.replace(
+                ".", "").replace(": ", "").replace("?", "").replace("/", "")
+            chartServices.drawHistogram(
+                df, var_name, "Count", f"{var_name}", f"chart_{filename}", f"charts_{folder_name}")
 
         # we return the results
-        return [all_stats, female_stats, male_stats]
+        return pd.DataFrame(results)
 
-    def get_categorical_var_analysis(self, table_name, var_name):
-        """Calculate the counts of all the category of this variable for All, Female, and male survivors
+    def get_categorical_var_analysis(self, table_name, df, group=None):
+        """Function that calculate the counts and percentage of all the categorical variables given in dataframe for All, Female, and male survivors
 
         :param table_name: name of the table
         :param cvar_name: name of the variable
         return: a pandas dataframe
         """
 
-        if(table_name != "General_1_Demographic Questionnaire"):
-            # we build a dataframe from the table the table containing the gender information
-            df_1 = self.get_table("General_1_Demographic Questionnaire", [
-                "Participant", "Tag", "34500 Sex"])
-
-            # we extract only survivors from Phase 1
-            df_1 = df_1[df_1["Tag"] == "Phase 1"]
-
-            # we select only two columns Participant and 34500 Sex
-            df_1 = df_1[["Participant", "34500 Sex"]]
-
-            # We get a dataframe of the given table with tha variables that wee need
-            cols = ["Participant", "Tag", var_name]
-            try:
-                df_2 = self.get_table(table_name, cols)
-            except:
-                print(
-                    "Error occured, please check if the tableName and the varName are correct")
-                return [None, None, None]
-
-            # we extract only survivors from Phase 1
-            df_2 = df_2[df_2["Tag"] == "Phase 1"]
-
-            # we select only two columns Participant and the Variable we want
-            df_2 = df_2[["Participant", var_name]]
-
-            # we merge the two dataframes by the column "Participant"
-            df = pd.merge(df_2, df_1, on="Participant", how="inner")
-        # we work directly in the table general_1
+        # we intialize a python dictionary where we will save the results
+        var_name = "Variable Name"
+        all_ = "All"
+        if(group == None):
+            results = {
+                var_name: [],
+                all_: []
+            }
         else:
-            # We get a dataframe of the given table with tha variables that wee need
-            try:
-                df = self.get_table("General_1_Demographic Questionnaire", [
-                    "Participant", "Tag", "34500 Sex", var_name])
-            except:
-                print(
-                    "Error occured, please check if the tableName and the varName are correct")
-                return [None, None, None]
+            group_values = df[group].unique()
+            results = {
+                var_name: [],
+                all_: []
+            }
+            for group_val in group_values:
+                results[f"{group} {group_val}"] = []
 
-            # we extract only survivors from Phase 1
-            df = df[df["Tag"] == "Phase 1"]
+        # we get the columns on which we will calculate the stats
+        cols = [col for col in df.columns if col != group]
 
-            # we select only the columns Participant and 34500 Sex and given variable
-            df = df[["Participant", "34500 Sex", var_name]]
+        # we intialize a python list where we will save data that will be useful when plotting the charts
+        data_for_chart = []
 
-        # we extract the only the male survivors
-        df_male = df[df["34500 Sex"] == "1.0"]
+        # for each column we calculate the count and the percentage
+        for col in cols:
+            # we intialize an object that will contain data that will beuseful to plot this particulat variable
+            if(group == None):
+                single_data_for_chart = {
+                    "col_name": col, "values": [], "all": []}
+            else:
+                single_data_for_chart = {
+                    "col_name": col, "values": [], "all": []}
+                for group_val in group_values:
+                    single_data_for_chart[group_val] = []
 
-        # we extract the only the female survivors
-        df_female = df[df["34500 Sex"] == "0.0"]
+            # we get all the categories of this variable
+            categories = df[col].unique()
+            # we get the toal count
+            total = df.shape[0]
 
-        # we get all the possible values of this variable
-        values = df[var_name].unique()
+            # for each category of this variable we get the counts and the percentage
+            for category in categories:
+                if(category != None):
+                    # we get the total count of this category
+                    category_total = df[df[col] == category].shape[0]
+                    # we get the total percentage of this category
+                    all_percent = round(category_total/total * 100, 2)
+                    # we save the results
+                    results[var_name].append(f"{col} : {category}")
+                    results[all_].append(f"{category_total} ({all_percent}%)")
 
-        dict = {}
-        # For each value we save the count of this value in all, female, and male survivors
-        for val in values:
-            if(val != None):
-                dict[val] = [df[df[var_name] == val].shape[0], df_female[df_female[var_name]
-                                                                         == val].shape[0], df_male[df_male[var_name] == val].shape[0]]
-        # if(df[df[var_name].isnull()].shape[0] != 0):
-        #    dict["null"] = [df[df[var_name].isnull()].shape[0], df_female[df_female[var_name].isnull(
-        #    )].shape[0], df_male[df_male[var_name].isnull()].shape[0]]
+                    # we save the data that will be useful when plotting
+                    single_data_for_chart["values"].append(category)
+                    single_data_for_chart["all"].append(float(category_total))
+                    if(group != None):
+                        for group_val in group_values:
+                            df_group = df[df[group] == group_val]
+                            sub_category_total = df_group[df_group[col]
+                                                          == category].shape[0]
+                            sub_category_percent = round(
+                                sub_category_total/category_total * 100, 2)
+                            results[f"{group} {group_val}"].append(
+                                f"{category_total} ({sub_category_percent}%)")
+
+                            single_data_for_chart[group_val].append(
+                                float(sub_category_total))
+            data_for_chart.append(single_data_for_chart)
 
         # we make a chart from this analysis
-
-        # Preparing the data to plot chart
-        data_male = {"label": "Male", "values": []}
-        data_female = {"label": "Female", "values": []}
-
-        for key in dict.keys():
-            data_male["values"].append(float(dict[key][2]))
-            data_female["values"].append(float(dict[key][1]))
-
-        # ploting the chart
-        filename = var_name.replace(".", "").replace(
-            ": ", "").replace("?", "").replace("/", "")
-        folder_name = table_name.replace(
-            ".", "").replace(": ", "").replace("?", "").replace("/", "")
-        chartServices.drawBinaryGroupedBarChart(
-            dict.keys(), data_male, data_female, "Categories", "Count", var_name, f"chart_{filename}", f"charts_{folder_name}")
+        for item in data_for_chart:
+            if(group != None):
+                # ploting the chart
+                filename = item["col_name"].replace(".", "").replace(
+                    ": ", "").replace("?", "").replace("/", "")
+                folder_name = table_name.replace(
+                    ".", "").replace(": ", "").replace("?", "").replace("/", "")
+                chartServices.drawBinaryGroupedBarChart(
+                    item["values"], {"label": "Male", "values": item["1.0"]}, {"label": "Female", "values": item["0.0"]}, "Categories", "Count", item["col_name"], f"chart_{filename}", f"charts_{folder_name}")
 
         # we return the data frame containing the informations
-        return pd.DataFrame(dict)
+        return pd.DataFrame(results)
 
     def get_generale_stats(self, save_in_file=True):
         """
@@ -505,11 +464,13 @@ class DataManager:
         """
 
         # the variables for which we will calculate the statistics
-        sources = [
+        variables = [
             {"table_name": "General_2_CRF Hematology-Oncology",
                 "var_name": "34472 Age at diagnosis", "type": 0},
             {"table_name": "General_2_CRF Hematology-Oncology",
-                "var_name": "Time of treatment", "type": 0},
+                "var_name": "34471 Date of diagnosis", "type": 0},
+            {"table_name": "General_2_CRF Hematology-Oncology",
+                "var_name": "34474 Date of treatment end", "type": 0},
             {"table_name": "General_2_CRF Hematology-Oncology",
                 "var_name": "34475 Risk group", "type": 1},
             {"table_name": "General_2_CRF Hematology-Oncology",
@@ -524,67 +485,104 @@ class DataManager:
                 "var_name": "34503 Weight", "type": 0},
             {"table_name": "General_1_Demographic Questionnaire",
                 "var_name": "34604 Is currently smoking?", "type": 1},
+            {"table_name": "General_1_Demographic Questionnaire",
+                "var_name": "34500 Sex", "type": 1}
         ]
 
-        # we set up a python dictionary that will contain the results
-        result = {"variable": [], "All Survivors": [],
-                  "Male": [], "Female": []}
+        # we intialize the lists that will contain the name of the categorical and numerical columns for both tables general_1 and general_2
+        categorical_cols_1 = []
+        categorical_cols_2 = []
+        numerical_cols_1 = []
+        numerical_cols_2 = []
 
-        # we get the gender stats
-        nb, nb_female, nb_male = self.get_gender_stats()
-
-        # we save the gender stats in the results dictionary
-        result["variable"].append("Number of survivors")
-        result["All Survivors"].append(nb)
-        result["Female"].append(nb_female)
-        result["Male"].append(nb_male)
-
-        with tqdm(total=len(sources)) as pbar:
-            # for each variable we calculate the stats and we save it in results
-            for source in sources:
-                pbar.update(1)
-                # if type 0, its a numerical variable, so we use getnumericalVarAnalysis
-                if(source["type"] == 0):
-                    all_survivors, female_survivors, male_survivors = self.get_numerical_var_analysis(
-                        source["table_name"], source["var_name"])
-                    result["variable"].append(source["var_name"])
-                    result["All Survivors"].append(
-                        f"{all_survivors['mean']} ({all_survivors['var']})")
-                    result["Female"].append(
-                        f"{female_survivors['mean']} ({female_survivors['var']})")
-                    result["Male"].append(
-                        f"{male_survivors['mean']} ({male_survivors['var']})")
-                # if type 1, its a categorical variable, so we use getCategoricalVarAnalysis
+        # we fill the lists with categorical and numerical columns for both tables general_1 and general_2
+        for var in variables:
+            if var["table_name"] == "General_1_Demographic Questionnaire":
+                if var["type"] == 1:
+                    categorical_cols_1.append(var["var_name"])
                 else:
-                    df = self.get_categorical_var_analysis(
-                        source["table_name"], source["var_name"])
-                    total = df.iloc[0].sum()
-                    for col in df.columns:
-                        percent_all = round(df[col][0]/total * 100, 2)
-                        result["variable"].append(
-                            f"{source['var_name']} : {col}")
-                        result["All Survivors"].append(
-                            f"{df[col][0]} ({percent_all}%)")
-                        percent_female = round(df[col][1]/df[col][0] * 100, 2)
-                        result["Female"].append(
-                            f"{df[col][1]} ({percent_female}%)")
-                        percent_male = round(df[col][2]/df[col][0] * 100, 2)
-                        result["Male"].append(
-                            f"{df[col][2]} ({percent_male}%)")
-        # we create the dataframe
-        df = pd.DataFrame(result)
+                    numerical_cols_1.append(var["var_name"])
+            elif var["table_name"] == "General_2_CRF Hematology-Oncology":
+                if var["type"] == 1:
+                    categorical_cols_2.append(var["var_name"])
+                else:
+                    numerical_cols_2.append(var["var_name"])
 
-        # if saveInFile True we save the dataframe in a csv file
+        # we get a dataframe from the table general_1
+        df_general_1 = self.get_table(
+            "General_1_Demographic Questionnaire",  categorical_cols_1 + numerical_cols_1 + ["Participant", "Tag"])
+        # we get a dataframe from the table general_2
+        df_general_2 = self.get_table(
+            "General_2_CRF Hematology-Oncology", categorical_cols_2 + numerical_cols_2 + ["Participant", "Tag"])
+
+        # we add a new column to the table general_2 : Time of treatment
+        df_general_2["Time of treatment"] = df_general_2["34474 Date of treatment end"] - \
+            df_general_2["34471 Date of diagnosis"]
+        # we transform the time of treatment to months
+        df_general_2["Time of treatment"] = df_general_2["Time of treatment"].apply(
+            helpers.timeDeltaToMonths)
+
+        # we get only survivors from Phase 1
+        df_general_1 = df_general_1[df_general_1["Tag"] == "Phase 1"]
+        df_general_2 = df_general_2[df_general_2["Tag"] == "Phase 1"]
+
+        # we delete "34474 Date of treatment end", and "34471 Date of diagnosis" from the numerical columns of general_2 and we replace them by time of treatment
+        numerical_cols_2.remove("34474 Date of treatment end")
+        numerical_cols_2.remove("34471 Date of diagnosis")
+        numerical_cols_2.append("Time of treatment")
+
+        # we retreive only the categorical columns for the table general_1
+        categorical_data_1 = df_general_1[categorical_cols_1]
+        # we retreive only the numerical columns for the table general_1
+        numerical_data_1 = df_general_1[numerical_cols_1 + ["34500 Sex"]]
+
+        # we retreive only the categorical columns for the table general_2
+        categorical_data_2 = df_general_2[categorical_cols_2 + ["Participant"]]
+        # we retreive only the numerical columns for the table general_2
+        numerical_data_2 = df_general_2[numerical_cols_2 + ["Participant"]]
+
+        # we add the column "34500 Sex"to numerical_data_2 and categorical_data_2,  this is useful because we want to get the stats for each value  of this group
+        categorical_data_2 = pd.merge(categorical_data_2, df_general_1,
+                                      on="Participant", how="inner")
+        categorical_data_2 = categorical_data_2[[
+            col for col in categorical_data_2.columns if col in categorical_cols_2 + ["34500 Sex"]]]
+        numerical_data_2 = pd.merge(numerical_data_2, df_general_1,
+                                    on="Participant", how="inner")
+        numerical_data_2 = numerical_data_2[[
+            col for col in numerical_data_2.columns if col in numerical_cols_2 + ["34500 Sex"]]]
+
+        # we make a categorical var analysis for general_1
+        categorical_stats_1 = self.get_categorical_var_analysis("General_1_Demographic Questionnaire",
+                                                                categorical_data_1, group="34500 Sex")
+        # we make a numerical var analysis for general_1
+        numerical_stats_1 = self.get_numerical_var_analysis(
+            "General_1_Demographic Questionnaire", numerical_data_1, group="34500 Sex")
+
+        # we make a categorical var analysis for general_2
+        categorical_stats_2 = self.get_categorical_var_analysis("General_2_CRF Hematology-Oncology",
+                                                                categorical_data_2, group="34500 Sex")
+        # we make a numerical var analysis for general_2
+        numerical_stats_2 = self.get_numerical_var_analysis(
+            "General_2_CRF Hematology-Oncology", numerical_data_2, group="34500 Sex")
+
+        # we concatenate all the results to get the final dataframe
+        final_df = pd.concat(
+            [categorical_stats_1, numerical_stats_1, categorical_stats_2, numerical_stats_2], ignore_index=True)
+
+        filename = "General"
+        # we save the dataframe in a csv file
         if(save_in_file == True):
-            if not os.path.exists("./stats/stats_general"):
-                Path(f"./stats/stats_general").mkdir(parents=True, exist_ok=True)
-            if(os.path.isfile("./stats/stats_general/stats_general.csv") == True):
-                os.remove("./stats/stats_general/stats_general.csv")
-            df.to_csv("./stats/stats_general/stats_general.csv")
+            if not os.path.exists(f"./stats/stats_{filename}"):
+                Path(
+                    f"./stats/stats_{filename}").mkdir(parents=True, exist_ok=True)
+            if(os.path.isfile(f"./stats/stats_{filename}/stats_{filename}.csv") == True):
+                os.remove(f"./stats/stats_{filename}/stats_{filename}.csv")
+            final_df.to_csv(f"./stats/stats_{filename}/stats_{filename}.csv")
 
-        return df
+        # we return the dataframe
+        return final_df
 
-    def get_table_stats(self, table_name, include="ALL", exclude=[], save_in_file=True):
+    def get_table_stats(self, table_name, conditions=[{"col": "Tag", "val": "Phase 1"}], include="ALL", exclude=["Date", "Form", "Status", "Remarks"], save_in_file=True):
         """
         Function that return a dataframe containing statistics from any given table
 
@@ -603,75 +601,70 @@ class DataManager:
         # we retreive the columns of the table
         cols = table_df.columns
 
-        # we select only the columns with the name in this format "nnnnn VariableName" ex : 35428 niveau d'activité physique(temps)
-        cols = [col for col in cols if col.split()[0].isnumeric()]
-
         # we exclude the parameters specified with the exclude parameter
         cols = [col for col in cols if col not in exclude]
+        table_df = table_df[cols]
 
-        # we set up a python dictionary that will contain the results
-        result = {"variable": [], "All Survivors": [],
-                  "Male": [], "Female": []}
+        # we get only the rows that satisfy the given conditions
+        for cond in conditions:
+            table_df = table_df[table_df[cond["col"]] == cond["val"]]
 
-        with tqdm(total=len(cols)) as pbar:
-            # for each columns we analyse the variable
-            for col in cols:
-                pbar.update(1)
-                # we check if the the variable is categorical or numerical
-                if(helpers.check_categorical_var(table_df[col])):
-                    # Categorical variable analysis
-                    df_categories = self.get_categorical_var_analysis(
-                        table_name, col)
-                    total = df_categories.iloc[0].sum()
-                    for catg in df_categories.columns:
-                        # we save the results
-                        percent_all = round(
-                            df_categories[catg][0]/total * 100, 2)
-                        result["variable"].append(f"{col} : {catg}")
-                        result["All Survivors"].append(
-                            f"{df_categories[catg][0]} (100%)")
-                        percent_female = round(
-                            df_categories[catg][1]/df_categories[catg][0] * 100, 2)
-                        result["Female"].append(
-                            f"{df_categories[catg][1]} ({percent_female}%)")
-                        percent_male = round(
-                            df_categories[catg][2]/df_categories[catg][0] * 100, 2)
-                        result["Male"].append(
-                            f"{df_categories[catg][2]} ({percent_male}%)")
-                else:
-                    # numerical variable analysis
-                    all_survivors, female_survivors, male_survivors = self.get_numerical_var_analysis(
-                        table_name, col)
+        # we retrieve categorical data
+        categorical_df = helpers.retreive_categorical(
+            table_df, ids=["Participant"])
+        # we retrieve numerical data
+        numerical_df = helpers.retreive_numerical(
+            table_df, ids=["Participant"])
 
-                    # we get the unit of the variable
-                    unit = self.get_variable_info(col)["unit"]
+        # we build a dataframe from the table the table containing the gender information
+        df_general = self.get_table("General_1_Demographic Questionnaire", [
+                                    "Participant", "Tag", "34500 Sex"])
 
-                    # we save the results
-                    result["variable"].append(f"{col} ({unit})")
-                    result["All Survivors"].append(
-                        f"{all_survivors['mean']} ({all_survivors['var']})")
-                    result["Female"].append(
-                        f"{female_survivors['mean']} ({female_survivors['var']})")
-                    result["Male"].append(
-                        f"{male_survivors['mean']} ({male_survivors['var']})")
+        # we get only the rows that satisfy the given conditions
+        for cond in conditions:
+            df_general = df_general[df_general[cond["col"]] == cond["val"]]
 
-        # we create the dataframe from results
-        result_df = pd.DataFrame(result)
-        # if saveInFile True we save the dataframe in a csv file
+        # we select only two columns Participant and 34500 Sex
+        df_general = df_general[["Participant", "34500 Sex"]]
+
+        # we merge the the categorical dataframe with the general dataframe by the column "Participant"
+        categorical_df = pd.merge(
+            categorical_df, df_general, on="Participant", how="inner")
+
+        # we merge the the numerical dataframe with the general dataframe by the column "Participant"
+        numerical_df = pd.merge(numerical_df, df_general,
+                                on="Participant", how="inner")
+
+        # we remove useless columns
+        categorical_df = categorical_df[[
+            col for col in categorical_df.columns if col not in ["Participant", "Tag"]]]
+        numerical_df = numerical_df[[
+            col for col in numerical_df.columns if col not in ["Participant", "Tag"]]]
+
+        # we make a categorical var analysis for this table
+        categorical_stats = self.get_categorical_var_analysis(table_name,
+                                                              categorical_df, group="34500 Sex")
+        # we make a numerical var analysis for this table
+        numerical_stats = self.get_numerical_var_analysis(
+            table_name, numerical_df, group="34500 Sex")
+
+        # we concatenate all the results to get the final dataframe
+        final_df = pd.concat(
+            [categorical_stats, numerical_stats], ignore_index=True)
 
         filename = table_name.replace(
             ".", "").replace(": ", "").replace("?", "").replace("/", "")
-
+        # if saveInFile True we save the dataframe in a csv file
         if(save_in_file == True):
             if not os.path.exists(f"./stats/stats_{filename}"):
                 Path(
                     f"./stats/stats_{filename}").mkdir(parents=True, exist_ok=True)
             if(os.path.isfile(f"./stats/stats_{filename}/stats_{filename}.csv") == True):
                 os.remove(f"./stats/stats_{filename}/stats_{filename}.csv")
-            result_df.to_csv(f"./stats/stats_{filename}/stats_{filename}.csv")
+            final_df.to_csv(f"./stats/stats_{filename}/stats_{filename}.csv")
 
         # we return the dataframe
-        return result_df
+        return final_df
 
     def get_variable_info(self, var_name):
         """
@@ -710,3 +703,7 @@ class DataManager:
 
         # we return the result
         return var_info
+
+
+manager = DataManager("mitm2902")
+print(manager.get_table_stats("Cardio_4_Test de Marche de 6 Minutes (TDM6)"))

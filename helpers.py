@@ -157,3 +157,33 @@ def save_charts_html(folders):
     file = open("PETALE_Charts.html", "w")
     file.write(text)
     file.close()
+
+
+def retreive_categorical(df, ids):
+    """
+    Function that return a dataframe containing only categorical variables from a given dataframe
+
+    :param df: a pandas dataframe
+    :return:a string
+    """
+    categorical_cols = [
+        col for col in df.columns if (check_categorical_var(df[col]) == True)]
+    for col_id in ids:
+        if col_id not in categorical_cols:
+            categorical_cols.append(col_id)
+    return df[categorical_cols]
+
+
+def retreive_numerical(df, ids):
+    """
+    Function that return a dataframe containing only numerical variables from a given dataframe
+
+    :param df: a pandas dataframe
+    :return:a string
+    """
+    numerical_cols = [
+        col for col in df.columns if (check_categorical_var(df[col]) == False)]
+    for col_id in ids:
+        if col_id not in numerical_cols:
+            numerical_cols.append(col_id)
+    return df[numerical_cols]

@@ -703,7 +703,3 @@ class DataManager:
 
         # we return the result
         return var_info
-
-
-manager = DataManager("mitm2902")
-print(manager.get_table_stats("Cardio_4_Test de Marche de 6 Minutes (TDM6)"))

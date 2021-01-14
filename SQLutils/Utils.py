@@ -78,8 +78,13 @@ class DataManager:
             query += f", PRIMARY KEY ({keys}) );"
 
         # We execute the query
-        self.cur.execute(query)
-        self.conn.commit()
+        try:
+            self.cur.execute(query)
+            self.conn.commit()
+
+        except psycopg2.Error as e:
+            print(e.pgerror)
+            raise
 
         # We reset the cursor
         self.reset_cursor()

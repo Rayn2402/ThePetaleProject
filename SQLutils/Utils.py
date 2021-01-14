@@ -89,6 +89,39 @@ class DataManager:
         # We reset the cursor
         self.reset_cursor()
 
+    def create_and_fill_table(self, df, table_name, types, primary_key=None):
+        """
+        Creates a new table and fill it using data from the dataframe "df"
+
+        :param df: pandas dataframe
+        :param table_name: name of the new table
+        :param types: names of the columns (key) and their respective types (value) in a dict
+        :param primary_key: list of column names to use as primary key (or composite key when more than 1)
+        """
+        # We first create the table
+        self.create_table(table_name, types, primary_key)
+
+        # We save the df in a temporary csv
+        df.to_csv("temp", index=False, na_rep=" ", sep="!")
+
+        # We copy the data from the csv into the table
+        file = open("temp", mode="r", newline="\n")
+        file.readline()
+
+        # We copy the data to the table
+        try:
+            self.cur.copy_from(file, f"{self.schema}.\"{table_name}\"", sep="!", null=" ")
+            self.conn.commit()
+            os.remove("temp")
+
+        except psycopg2.Error as e:
+            print(e.pgerror)
+            os.remove("temp")
+            raise
+
+        # We reset the cursor
+        self.reset_cursor()
+
     def get_table(self, table_name, columns=None):
         """
         Retrieves a table from the database

@@ -6,17 +6,14 @@ Authors : Nicolas Raymond
 This file contains all functions linked to SQL data management
 
 """
-
+import ChartServices
+import Helpers
 import psycopg2
 import pandas as pd
 import os
 import csv
 from pathlib import Path
 from tqdm import tqdm
-
-
-import helpers
-import chartServices
 
 
 class DataManager:
@@ -80,7 +77,7 @@ class DataManager:
         # Else, we add the corresponding column names to the query
         else:
             query = query
-            columnsToFetch = helpers.colsForSql(columns)
+            columnsToFetch = Helpers.colsForSql(columns)
             query = f"{query} {columnsToFetch}"
 
         # We add table name to the query
@@ -194,7 +191,7 @@ class DataManager:
                 tableName.replace(".", "").replace(":", "").replace("/", "")
             folderName = "missing_data_charts"
             figureTitle = f'Count of missing data by columns names for the table {tableName}'
-            chartServices.drawBarhChart(
+            ChartServices.drawBarhChart(
                 cols, missing_x, "Columns", "Data missing", figureTitle, fileName, folderName)
 
         # returning a dictionary containing the data needed
@@ -226,12 +223,12 @@ class DataManager:
                 results.append(missingDataCount)
 
         # we generate a csv file from the data in results
-        helpers.writeCsvFile(results, filename, "missing_data")
+        Helpers.writeCsvFile(results, filename, "missing_data")
         print("File is ready in the folder missing_data! ")
 
     def get_common_count(self, tables, columns=["Participant", "Tag"], saveInFile=False):
         """
-        get the number of common survivors from a list of tables
+        Gets the number of common survivors from a list of tables
 
         :param tables: the list of tables
         :param columns: list of the columns according to we want to get the the common survivors
@@ -239,7 +236,7 @@ class DataManager:
 
         """
         # we prepare the columns to be in the SQL query
-        colsInQuery = helpers.colsForSql(columns)
+        colsInQuery = Helpers.colsForSql(columns)
 
         # we build the request
         query = 'SELECT COUNT(*) FROM ('
@@ -356,8 +353,8 @@ class DataManager:
                 ": ", "").replace("?", "").replace("/", "")
             folder_name = table_name.replace(
                 ".", "").replace(": ", "").replace("?", "").replace("/", "")
-            chartServices.drawHistogram(
-                df, var_name, "Count", f"{var_name}", f"chart_{filename}", f"charts_{folder_name}")
+            ChartServices.drawHistogram(
+                df, var_name, f"Count_{var_name}", f"chart_{filename}", f"charts_{folder_name}")
 
         # we return the results
         return pd.DataFrame(results)
@@ -446,7 +443,7 @@ class DataManager:
                     ": ", "").replace("?", "").replace("/", "")
                 folder_name = table_name.replace(
                     ".", "").replace(": ", "").replace("?", "").replace("/", "")
-                chartServices.drawBinaryGroupedBarChart(
+                ChartServices.drawBinaryGroupedBarChart(
                     item["values"], {"label": "Male", "values": item["1.0"]},
                     {"label": "Female", "values": item["0.0"]}, "Categories", "Count", item["col_name"],
                     f"chart_{filename}", f"charts_{folder_name}")
@@ -481,7 +478,7 @@ class DataManager:
         """
         Function that returns a dataframe containing statistics from the generale Table
 
-        :param saveInFile: Boolean, if true the dataframe will be saved in a csv file in the folder generale_stats
+        :param save_in_file: Boolean, if true the dataframe will be saved in a csv file in the folder generale_stats
         :return: pandas DataFrame
         """
 
@@ -543,7 +540,7 @@ class DataManager:
             df_general_2["34471 Date of diagnosis"]
         # we transform the time of treatment to months
         df_general_2["Time of treatment"] = df_general_2["Time of treatment"].apply(
-            helpers.timeDeltaToMonths)
+            Helpers.timeDeltaToMonths)
 
         # we get only survivors from Phase 1
         df_general_1 = df_general_1[df_general_1["Tag"] == "Phase 1"]
@@ -594,11 +591,11 @@ class DataManager:
 
         filename = "General"
         # we save the dataframe in a csv file
-        if(save_in_file == True):
+        if save_in_file:
             if not os.path.exists(f"./stats/stats_{filename}"):
                 Path(
                     f"./stats/stats_{filename}").mkdir(parents=True, exist_ok=True)
-            if(os.path.isfile(f"./stats/stats_{filename}/stats_{filename}.csv") == True):
+            if os.path.isfile(f"./stats/stats_{filename}/stats_{filename}.csv"):
                 os.remove(f"./stats/stats_{filename}/stats_{filename}.csv")
             final_df.to_csv(f"./stats/stats_{filename}/stats_{filename}.csv")
 
@@ -634,10 +631,10 @@ class DataManager:
             table_df = table_df[table_df[cond["col"]] == cond["val"]]
 
         # we retrieve categorical data
-        categorical_df = helpers.retrieve_categorical(
+        categorical_df = Helpers.retrieve_categorical(
             table_df, ids=["Participant"])
         # we retrieve numerical data
-        numerical_df = helpers.retrieve_numerical(
+        numerical_df = Helpers.retrieve_numerical(
             table_df, ids=["Participant"])
 
         # we build a dataframe from the table the table containing the gender information
@@ -698,7 +695,7 @@ class DataManager:
         :return: a python dictionary containing all the infos
         """
         # we extract the variable id from the variable name
-        var_id = helpers.extract_var_id(var_name)
+        var_id = Helpers.extract_var_id(var_name)
 
         # we prepare the query
         query = f'SELECT * FROM "PETALE_meta_data" WHERE "Test ID" = {var_id}'

@@ -81,12 +81,11 @@ def drawBinaryGroupedBarChart(data_x, group_1, group_2, label_x, label_y, title,
     plt.close()
 
 
-def drawHistogram(data, label_x, label_y, title, filename, foldername):
+def drawHistogram(data, label_x, title, filename, foldername):
     """
-    Function that generates a historam charts using seaborn
+    Function that generates a histogram charts using matplotlin
 
         :param data: the data to plot
-        :param label_y:  label on the axe y
         :param label_x:  label on the axe x
         :param title:  title of the chart
         :param filename:  the file where the figure containing the chart will be saved

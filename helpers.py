@@ -4,7 +4,8 @@ import csv
 
 def colsForSql(cols):
     """
-    Function that transforms a list of strings containing the name of columns to a string ready to use in a SQL query, Ex: ["name","age","gender"]  ==> "name","age","gender"
+    Function that transforms a list of strings containing the name of columns to a string
+     ready to use in a SQL query, Ex: ["name","age","gender"]  ==> "name","age","gender"
 
     :param cols: the list of column names
     :return: a string
@@ -47,7 +48,6 @@ def timeDeltaToMonths(timeDelta):
     """
     Function that transforms from the type TimeDelta to months
 
-    :param data: timeDelta object
     :return: number of month
     """
 
@@ -56,7 +56,7 @@ def timeDeltaToMonths(timeDelta):
 
 def extract_var_id(var_name):
     """
-    Function that returns the id of the varible of a given variable
+    Function that returns the id of the variable of a given variable
 
     :param var_name: the variable name
     :return:a string
@@ -73,11 +73,11 @@ def check_categorical_var(data):
     :return: Bool
     """
     for item in data:
-        if(item != None):
-            if(isinstance(item, str)):
+        if item is not None:
+            if isinstance(item, str):
                 return True
 
-    if(len(data.unique()) > 10):
+    if len(data.unique()) > 10:
         return False
     return True
 
@@ -159,7 +159,7 @@ def save_charts_html(folders):
     file.close()
 
 
-def retreive_categorical(df, ids):
+def retrieve_categorical(df, ids):
     """
     Function that return a dataframe containing only categorical variables from a given dataframe
 
@@ -167,14 +167,14 @@ def retreive_categorical(df, ids):
     :return:a string
     """
     categorical_cols = [
-        col for col in df.columns if (check_categorical_var(df[col]) == True)]
+        col for col in df.columns if (check_categorical_var(df[col]))]
     for col_id in ids:
         if col_id not in categorical_cols:
             categorical_cols.append(col_id)
     return df[categorical_cols]
 
 
-def retreive_numerical(df, ids):
+def retrieve_numerical(df, ids):
     """
     Function that return a dataframe containing only numerical variables from a given dataframe
 
@@ -182,7 +182,7 @@ def retreive_numerical(df, ids):
     :return:a string
     """
     numerical_cols = [
-        col for col in df.columns if (check_categorical_var(df[col]) == False)]
+        col for col in df.columns if (not check_categorical_var(df[col]))]
     for col_id in ids:
         if col_id not in numerical_cols:
             numerical_cols.append(col_id)

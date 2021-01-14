@@ -11,7 +11,6 @@ import psycopg2
 import pandas as pd
 import os
 import csv
-import numbers
 from pathlib import Path
 from tqdm import tqdm
 
@@ -59,6 +58,7 @@ class DataManager:
 
         except psycopg2.Error as e:
             print(e.pgerror)
+            raise
 
         return conn, cur
 
@@ -93,7 +93,7 @@ class DataManager:
         except psycopg2.Error as e:
             print(e.pgerror)
 
-        # We retrive column names and data
+        # We retrieve column names and data
         columns = [desc[0] for desc in self.cur.description]
         data = self.cur.fetchall()
 
@@ -119,35 +119,43 @@ class DataManager:
         :return: list of strings
 
         """
-        # we execute the query
+        # We execute the query
         try:
             self.cur.execute(
-                f"SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_CATALOG='{self.database}' AND table_schema = '{self.schema}' ")
+                f"SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE"
+                f" TABLE_TYPE = 'BASE TABLE' AND TABLE_CATALOG='{self.database}' AND table_schema = '{self.schema}' ")
         except psycopg2.Error as e:
             print(e.pgerror)
+            raise
+
         tables = self.cur.fetchall()
 
         # We reset the cursor
         self.reset_cursor()
 
-        # we return the result
+        # We return the names of the tables in the database
         return list(map(lambda t: t[0], tables))
 
     def get_column_names(self, tableName):
         """
-        Function that Retrieves the names of all the columns of a given table
+        Function that retrieves the names of all the columns in a given table
+
         :param tableName : the name of the table
         :return: list of strings
 
         """
         escapedTableName = tableName.replace("'", "''")
+
         try:
             self.cur.execute(
                 f"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME= \'{escapedTableName}\'")
         except psycopg2.Error as e:
             print(e.pgerror)
+            raise
+
         cols = self.cur.fetchall()
         cols = list(map(lambda c: c[0], cols))
+
         # We reset the cursor
         self.reset_cursor()
         return cols
@@ -157,8 +165,8 @@ class DataManager:
         get the count of all the missing data of one given table
 
         :param tableName: name of the table
-        :param drawChart: boolean to indicate if a chart should be created to visulize the missing data
-        :param: excludeCols: list of strings containing the list of columns to exclude
+        :param drawChart: boolean to indicate if a chart should be created to visualize the missing data
+        :param: excludedCols: list of strings containing the list of columns to exclude
         :return: a python dictionary containing the missing data count and the number of complete rows
 
         """
@@ -166,9 +174,10 @@ class DataManager:
         # Extracting the name of the columns of the given  table
         cols = self.get_column_names(tableName)
 
-        # Excluding the none needed columns
+        # Excluding the non needed columns
         cols = [col for col in cols if col not in excludedCols]
 
+        # We retrieve the table
         df_table = self.get_table(tableName, cols)
 
         missing_x = df_table.isnull().sum().values
@@ -180,7 +189,7 @@ class DataManager:
         totalRows = df_table.shape[0]
 
         # Plotting the bar chart
-        if(drawChart):
+        if drawChart:
             fileName = "missing_data_" + \
                 tableName.replace(".", "").replace(":", "").replace("/", "")
             folderName = "missing_data_charts"
@@ -189,26 +198,22 @@ class DataManager:
                 cols, missing_x, "Columns", "Data missing", figureTitle, fileName, folderName)
 
         # returning a dictionary containing the data needed
-        return {"tableName": tableName, "missingCount": missingCount, "completedRowCount": completedRowCount, "totalRows": 1}
+        return {"tableName": tableName, "missingCount": missingCount,
+                "completedRowCount": completedRowCount, "totalRows": totalRows}
 
     def get_all_missing_data_count(self, filename="petale_missing_data.csv", drawCharts=True):
         """
         Function that generates a csv file containing the count of the missing data of all the tables of the database
 
-        :param filename: the name of file to be genrated
-        :param foldername: the name of the folder where the file will be created
-        :param drawChart:  boolean to indicate if a chart should be created to visulize the missing data of each table
+        :param filename: the name of file to be generated
 
-        :generate a csv file
-
-
+        :generates a csv file
         """
-        # we initalize the results
+        # we initialize the results
         results = []
 
         # we get all the table names
         tables = self.get_all_tables()
-        length = len(tables)
 
         # For each table we get the missing data count
         with tqdm(total=len(tables)) as pbar:
@@ -228,7 +233,7 @@ class DataManager:
         """
         get the number of common survivors from a list of tables
 
-        :param tebles: the list of tables
+        :param tables: the list of tables
         :param columns: list of the columns according to we want to get the the common survivors
         :return: number of common survivors
 
@@ -239,7 +244,7 @@ class DataManager:
         # we build the request
         query = 'SELECT COUNT(*) FROM ('
         for index, table in enumerate(tables):
-            if(index == 0):
+            if index == 0:
                 query += f'(SELECT {colsInQuery} FROM \"{table}\")'
             else:
                 query += f' INTERSECT (SELECT {colsInQuery} FROM \"{table}\")'
@@ -253,30 +258,30 @@ class DataManager:
 
         row = self.cur.fetchall()[0]
 
-        if(saveInFile == True):
+        if saveInFile:
             # Saving in file
-            if(os.path.isfile("cummonPatients.csv") == False):
+            if not os.path.isfile("commonPatients.csv"):
                 try:
-                    with open("cummonPatients.csv", 'w', newline='') as csvfile:
+                    with open("commonPatients.csv", 'w', newline='') as csvfile:
                         writer = csv.DictWriter(
-                            csvfile, ["tables", "cummonSurvivors"])
+                            csvfile, ["tables", "commonSurvivors"])
                         writer.writeheader()
                         separator = " & "
                         writer.writerow({"tables": separator.join(
-                            tables), "cummonSurvivors": row[0]})
+                            tables), "commonSurvivors": row[0]})
                 except IOError:
                     print("I/O error")
             else:
                 try:
                     # Open file in append mode
-                    with open("cummonPatients.csv", 'a+', newline='') as csvfile:
+                    with open("commonPatients.csv", 'a+', newline='') as csvfile:
                         # Create a writer object from csv module
                         writer = csv.DictWriter(
-                            csvfile, ["tables", "cummonSurvivors"])
+                            csvfile, ["tables", "commonSurvivors"])
                         # Add a new row to the csv file
                         separator = " & "
                         writer.writerow({"tables": separator.join(
-                            tables), "cummonSurvivors": row[0]})
+                            tables), "commonSurvivors": row[0]})
                 except IOError:
                     print("I/O error")
         return row[0]
@@ -305,17 +310,18 @@ class DataManager:
     def get_numerical_var_analysis(self, table_name, df, group=None):
         """
 
-        Function that calculates the mean and variance for All, Male, and Female survivors fot eavh variable in the given data frame
+        Function that calculates the mean and variance for All,
+        Male, and Female survivors fot each variable in the given data frame
 
         :param table_name: name of the table
         :param df: pandas data frame containing the data of numerical variables
         :param group: name of a column, we calculate the stats for the overall data and the stats of the data grouped by this column, Ex : group = 34500 Sex will give us the stats for all the data, for Male, and for Female
         return: a pandas data frame
         """
-        # we intialize a python dictionary where we will save the results
+        # we initialize a python dictionary where we will save the results
         var_name = "Variable Name"
         all_ = "All"
-        if(group == None):
+        if group is None:
             results = {
                 var_name: [],
                 all_: []
@@ -341,7 +347,7 @@ class DataManager:
             results[all_].append(f"{all_mean} ({all_var})")
 
             # if the group is given, we calculate the stats for each possible value of that group
-            if(group != None):
+            if group is not None:
                 for group_val in group_values:
                     # we append the mean and the var for sub group participants to the results dictionary
                     df_group = df[df[group] == group_val]
@@ -366,17 +372,18 @@ class DataManager:
         return pd.DataFrame(results)
 
     def get_categorical_var_analysis(self, table_name, df, group=None):
-        """Function that calculate the counts and percentage of all the categorical variables given in dataframe for All, Female, and male survivors
+
+        """Function that calculates the counts and percentage of all the categorical variables given in dataframe for All, Female, and male survivors
 
         :param table_name: name of the table
         :param cvar_name: name of the variable
         return: a pandas dataframe
         """
 
-        # we intialize a python dictionary where we will save the results
+        # we initialize a python dictionary where we will save the results
         var_name = "Variable Name"
         all_ = "All"
-        if(group == None):
+        if group is None:
             results = {
                 var_name: [],
                 all_: []
@@ -393,13 +400,13 @@ class DataManager:
         # we get the columns on which we will calculate the stats
         cols = [col for col in df.columns if col != group]
 
-        # we intialize a python list where we will save data that will be useful when plotting the charts
+        # we initialize a python list where we will save data that will be useful when plotting the charts
         data_for_chart = []
 
         # for each column we calculate the count and the percentage
         for col in cols:
-            # we intialize an object that will contain data that will beuseful to plot this particulat variable
-            if(group == None):
+            # we initialize an object that will contain data that will be useful to plot this particular variable
+            if group is None:
                 single_data_for_chart = {
                     "col_name": col, "values": [], "all": []}
             else:
@@ -410,16 +417,21 @@ class DataManager:
 
             # we get all the categories of this variable
             categories = df[col].unique()
-            # we get the toal count
+
+            # we get the total count
             total = df.shape[0]
 
             # for each category of this variable we get the counts and the percentage
             for category in categories:
-                if(category != None):
+
+                if category is not None:
+
                     # we get the total count of this category
                     category_total = df[df[col] == category].shape[0]
+
                     # we get the total percentage of this category
                     all_percent = round(category_total/total * 100, 2)
+
                     # we save the results
                     results[var_name].append(f"{col} : {category}")
                     results[all_].append(f"{category_total} ({all_percent}%)")
@@ -427,7 +439,9 @@ class DataManager:
                     # we save the data that will be useful when plotting
                     single_data_for_chart["values"].append(category)
                     single_data_for_chart["all"].append(float(category_total))
-                    if(group != None):
+
+                    if group is not None:
+
                         for group_val in group_values:
                             df_group = df[df[group] == group_val]
                             sub_category_total = df_group[df_group[col]
@@ -443,14 +457,17 @@ class DataManager:
 
         # we make a chart from this analysis
         for item in data_for_chart:
-            if(group != None):
-                # ploting the chart
+            if group is not None:
+
+                # plotting the chart
                 filename = item["col_name"].replace(".", "").replace(
                     ": ", "").replace("?", "").replace("/", "")
                 folder_name = table_name.replace(
                     ".", "").replace(": ", "").replace("?", "").replace("/", "")
                 chartServices.drawBinaryGroupedBarChart(
-                    item["values"], {"label": "Male", "values": item["1.0"]}, {"label": "Female", "values": item["0.0"]}, "Categories", "Count", item["col_name"], f"chart_{filename}", f"charts_{folder_name}")
+                    item["values"], {"label": "Male", "values": item["1.0"]},
+                    {"label": "Female", "values": item["0.0"]}, "Categories", "Count", item["col_name"],
+                    f"chart_{filename}", f"charts_{folder_name}")
 
         # we return the data frame containing the informations
         return pd.DataFrame(results)
@@ -489,7 +506,8 @@ class DataManager:
                 "var_name": "34500 Sex", "type": 1}
         ]
 
-        # we intialize the lists that will contain the name of the categorical and numerical columns for both tables general_1 and general_2
+        # we initialize the lists that will contain the name of the
+        # categorical and numerical columns for both tables general_1 and general_2
         categorical_cols_1 = []
         categorical_cols_2 = []
         numerical_cols_1 = []
@@ -531,14 +549,14 @@ class DataManager:
         numerical_cols_2.remove("34471 Date of diagnosis")
         numerical_cols_2.append("Time of treatment")
 
-        # we retreive only the categorical columns for the table general_1
+        # we retrieve only the categorical columns for the table general_1
         categorical_data_1 = df_general_1[categorical_cols_1]
-        # we retreive only the numerical columns for the table general_1
+        # we retrieve only the numerical columns for the table general_1
         numerical_data_1 = df_general_1[numerical_cols_1 + ["34500 Sex"]]
 
-        # we retreive only the categorical columns for the table general_2
+        # we retrieve only the categorical columns for the table general_2
         categorical_data_2 = df_general_2[categorical_cols_2 + ["Participant"]]
-        # we retreive only the numerical columns for the table general_2
+        # we retrieve only the numerical columns for the table general_2
         numerical_data_2 = df_general_2[numerical_cols_2 + ["Participant"]]
 
         # we add the column "34500 Sex"to numerical_data_2 and categorical_data_2,  this is useful because we want to get the stats for each value  of this group
@@ -582,23 +600,24 @@ class DataManager:
         # we return the dataframe
         return final_df
 
-    def get_table_stats(self, table_name, conditions=[{"col": "Tag", "val": "Phase 1"}], include="ALL", exclude=["Date", "Form", "Status", "Remarks"], save_in_file=True):
+    def get_table_stats(self, table_name, conditions=[{"col": "Tag", "val": "Phase 1"}],
+                        include="ALL", exclude=["Date", "Form", "Status", "Remarks"], save_in_file=True):
         """
         Function that return a dataframe containing statistics from any given table
 
         :param table_name: The name of the table
         :param include: a list of all the columns to include, "ALL" if all columns included
         :param exclude: a list of all the columns to exclude
-        :param saveInFile: Boolean, if true the dataframe will be saved in a csv file
+        :param save_in_file: Boolean, if true the dataframe will be saved in a csv file
         :return: pandas DataFrame
         """
         # we get a dataframe of the given tablename
-        if(include == "ALL"):
+        if include == "ALL":
             table_df = self.get_table(table_name)
         else:
             table_df = self.get_table(table_name, include)
 
-        # we retreive the columns of the table
+        # we retrieve the columns of the table
         cols = table_df.columns
 
         # we exclude the parameters specified with the exclude parameter
@@ -610,10 +629,10 @@ class DataManager:
             table_df = table_df[table_df[cond["col"]] == cond["val"]]
 
         # we retrieve categorical data
-        categorical_df = helpers.retreive_categorical(
+        categorical_df = helpers.retrieve_categorical(
             table_df, ids=["Participant"])
         # we retrieve numerical data
-        numerical_df = helpers.retreive_numerical(
+        numerical_df = helpers.retrieve_numerical(
             table_df, ids=["Participant"])
 
         # we build a dataframe from the table the table containing the gender information
@@ -655,11 +674,11 @@ class DataManager:
         filename = table_name.replace(
             ".", "").replace(": ", "").replace("?", "").replace("/", "")
         # if saveInFile True we save the dataframe in a csv file
-        if(save_in_file == True):
+        if save_in_file:
             if not os.path.exists(f"./stats/stats_{filename}"):
                 Path(
                     f"./stats/stats_{filename}").mkdir(parents=True, exist_ok=True)
-            if(os.path.isfile(f"./stats/stats_{filename}/stats_{filename}.csv") == True):
+            if os.path.isfile(f"./stats/stats_{filename}/stats_{filename}.csv"):
                 os.remove(f"./stats/stats_{filename}/stats_{filename}.csv")
             final_df.to_csv(f"./stats/stats_{filename}/stats_{filename}.csv")
 
@@ -671,7 +690,7 @@ class DataManager:
         Function that return all the information about a specific variable
 
         :param var_name: The name of the variable
-        :return: a python dictionarry containing all the infos
+        :return: a python dictionary containing all the infos
         """
         # we extract the variable id from the variable name
         var_id = helpers.extract_var_id(var_name)
@@ -687,14 +706,14 @@ class DataManager:
 
         row = self.cur.fetchall()
 
-        # we initialize the dictionarry that will contain the result
+        # we initialize the dictionary that will contain the result
         var_info = {}
 
-        # we create an array containg all the keys
+        # we create an array containing all the keys
         var_info_labels = ["test_id", "editorial_board", "form", "number",
                            "section", "test", "description", "type", "option", "unit", "remarks"]
 
-        # we fill the dictionarry with informations
+        # we fill the dictionary with informations
         for index, data in enumerate(row[0]):
             var_info[var_info_labels[index]] = data
 

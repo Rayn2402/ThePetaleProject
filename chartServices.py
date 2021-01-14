@@ -1,8 +1,5 @@
 from matplotlib import pyplot as plt
 import os
-import numpy as np
-import pandas as pd
-import seaborn as sns
 from pathlib import Path
 import math
 
@@ -29,12 +26,12 @@ def drawBarhChart(data_y, data_x, label_y, label_x, title, filename, foldername)
 
     # specifying the labels of the chart
     plt.ylabel(label_y)
-    plt.xlabel(label_y)
+    plt.xlabel(label_x)
 
     # specifying the title of the chart
     plt.title(title, fontsize=15)
 
-    # saving the chart in a file in teh folder missing_data_charts
+    # saving the chart in a file in the folder missing_data_charts
     if not os.path.exists(f'./charts/{foldername}'):
         Path(f'./charts/{foldername}').mkdir(parents=True, exist_ok=True)
     plt.savefig(
@@ -49,8 +46,8 @@ def drawBinaryGroupedBarChart(data_x, group_1, group_2, label_x, label_y, title,
         :param data_x: the data to be in axe x
         :param group_1: the data of the first group
         :param group_2:  the data of the second group
-        :param label_x:  label on the axe x
-        :param label_t:  label on the axe t
+        :param label_x:  label on the x axis
+        :param label_y:  label on the y axis
         :param title:  title of the chart
         :param filename:  the file where the figure containing the chart will be saved
         :param foldername:  the folder where the figure containing the chart will be saved

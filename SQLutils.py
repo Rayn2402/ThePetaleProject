@@ -288,7 +288,7 @@ class DataManager:
 
     def get_gender_stats(self):
         """
-        get the count of all participant, the count of males, and the count of females from phase 01
+        Gets the count of all participant, the count of males, and the count of females from phase 01
 
 
         return: a list  of three numbers [#all, #female, #male]
@@ -307,33 +307,24 @@ class DataManager:
         # we return the results
         return [df_male.shape[0] + df_female.shape[0], df_female.shape[0], df_male.shape[0]]
 
-    def get_numerical_var_analysis(self, table_name, df, group=None):
+    @staticmethod
+    def get_numerical_var_analysis(table_name, df, group=None):
         """
 
-        Function that calculates the mean and variance for All,
+        Function that calculates the mean and variance of variable of a given data frame over all rows,
+        and also over groups contained in a specified column "group".
+
         Male, and Female survivors fot each variable in the given data frame
 
         :param table_name: name of the table
         :param df: pandas data frame containing the data of numerical variables
-        :param group: name of a column, we calculate the stats for the overall data and the stats of the data grouped by this column, Ex : group = 34500 Sex will give us the stats for all the data, for Male, and for Female
+        :param group: name of a column, we calculate the stats for the overall data and the stats of the data grouped
+        by this column, Ex : group = 34500 Sex will give us the stats for all the data, for Male, and for Female
+
         return: a pandas data frame
         """
         # we initialize a python dictionary where we will save the results
-        var_name = "Variable Name"
-        all_ = "All"
-        if group is None:
-            results = {
-                var_name: [],
-                all_: []
-            }
-        else:
-            group_values = df[group].unique()
-            results = {
-                var_name: [],
-                all_: []
-            }
-            for group_val in group_values:
-                results[f"{group} {group_val}"] = []
+        results, var_name, all_, group_values = DataManager.__initialize_results_dict(df, group)
 
         # we get the columns on which we will calculate the stats
         cols = [col for col in df.columns if col != group]
@@ -371,31 +362,21 @@ class DataManager:
         # we return the results
         return pd.DataFrame(results)
 
-    def get_categorical_var_analysis(self, table_name, df, group=None):
+    @staticmethod
+    def get_categorical_var_analysis(table_name, df, group=None):
 
-        """Function that calculates the counts and percentage of all the categorical variables given in dataframe for All, Female, and male survivors
+        """Function that calculates the counts and percentage of all the categorical variables given in dataframe
+         over all rows, and also over groups contained in a specified column "group".
 
         :param table_name: name of the table
-        :param cvar_name: name of the variable
+        :param df: pandas data frame containing the data of numerical variables
+        :param group: name of a column, we calculate the stats for the overall data and the stats of the data grouped
+        by this column, Ex : group = 34500 Sex will give us the stats for all the data, for Male, and for Female
         return: a pandas dataframe
         """
 
         # we initialize a python dictionary where we will save the results
-        var_name = "Variable Name"
-        all_ = "All"
-        if group is None:
-            results = {
-                var_name: [],
-                all_: []
-            }
-        else:
-            group_values = df[group].unique()
-            results = {
-                var_name: [],
-                all_: []
-            }
-            for group_val in group_values:
-                results[f"{group} {group_val}"] = []
+        results, var_name, all_, group_values = DataManager.__initialize_results_dict(df, group)
 
         # we get the columns on which we will calculate the stats
         cols = [col for col in df.columns if col != group]
@@ -453,6 +434,7 @@ class DataManager:
 
                             single_data_for_chart[group_val].append(
                                 float(sub_category_total))
+
             data_for_chart.append(single_data_for_chart)
 
         # we make a chart from this analysis
@@ -471,6 +453,29 @@ class DataManager:
 
         # we return the data frame containing the informations
         return pd.DataFrame(results)
+
+    @staticmethod
+    def __initialize_results_dict(df, group):
+
+        var_name = "Variable Name"
+        all_ = "All"
+        group_values = None
+
+        if group is None:
+            results = {
+                var_name: [],
+                all_: []
+            }
+        else:
+            group_values = df[group].unique()
+            results = {
+                var_name: [],
+                all_: []
+            }
+            for group_val in group_values:
+                results[f"{group} {group_val}"] = []
+
+        return results, var_name, all_, group_values
 
     def get_generale_stats(self, save_in_file=True):
         """

@@ -18,7 +18,7 @@ from tqdm import tqdm
 
 class DataManager:
 
-    def __init__(self, user, password='petale101', database='petale', host='localhost', port='5437', schema='public'):
+    def __init__(self, user, password, database, host='localhost', port='5432', schema='public'):
         """
         Object that can interact with a PostgreSQL database
 
@@ -474,6 +474,99 @@ class DataManager:
 
         return results, var_name, all_, group_values
 
+
+class PetaleDataManager(DataManager):
+
+    def __init__(self, user, host='localhost', port='5437'):
+        super().__init__(user, 'petale101', 'petale', host, port, 'public')
+
+    def get_table_stats(self, table_name, conditions=[{"col": "Tag", "val": "Phase 1"}],
+                        include="ALL", exclude=["Date", "Form", "Status", "Remarks"], save_in_file=True):
+        """
+        Function that return a dataframe containing statistics from any given table of the PETALE database
+
+        :param table_name: The name of the table
+        :param include: a list of all the columns to include, "ALL" if all columns included
+        :param exclude: a list of all the columns to exclude
+        :param save_in_file: Boolean, if true the dataframe will be saved in a csv file
+        :return: pandas DataFrame
+        """
+        # we get a dataframe for the given tablename
+        if include == "ALL":
+            table_df = self.get_table(table_name)
+        else:
+            table_df = self.get_table(table_name, include)
+
+        # we retrieve the columns of the table
+        cols = table_df.columns
+
+        # we exclude the parameters specified with the exclude parameter
+        cols = [col for col in cols if col not in exclude]
+        table_df = table_df[cols]
+
+        # we get only the rows that satisfy the given conditions
+        for cond in conditions:
+            table_df = table_df[table_df[cond["col"]] == cond["val"]]
+
+        # we retrieve categorical data
+        categorical_df = Helpers.retrieve_categorical(
+            table_df, ids=["Participant"])
+
+        # we retrieve numerical data
+        numerical_df = Helpers.retrieve_numerical(
+            table_df, ids=["Participant"])
+
+        # we build a dataframe from the table the table containing the gender information
+        df_general = self.get_table("General_1_Demographic Questionnaire", [
+            "Participant", "Tag", "34500 Sex"])
+
+        # we get only the rows that satisfy the given conditions
+        for cond in conditions:
+            df_general = df_general[df_general[cond["col"]] == cond["val"]]
+
+        # we select only two columns Participant and 34500 Sex
+        df_general = df_general[["Participant", "34500 Sex"]]
+
+        # we merge the the categorical dataframe with the general dataframe by the column "Participant"
+        categorical_df = pd.merge(
+            categorical_df, df_general, on="Participant", how="inner")
+
+        # we merge the the numerical dataframe with the general dataframe by the column "Participant"
+        numerical_df = pd.merge(numerical_df, df_general,
+                                on="Participant", how="inner")
+
+        # we remove useless columns
+        categorical_df = categorical_df[[
+            col for col in categorical_df.columns if col not in ["Participant", "Tag"]]]
+        numerical_df = numerical_df[[
+            col for col in numerical_df.columns if col not in ["Participant", "Tag"]]]
+
+        # we make a categorical var analysis for this table
+        categorical_stats = self.get_categorical_var_analysis(table_name,
+                                                              categorical_df, group="34500 Sex")
+        # we make a numerical var analysis for this table
+        numerical_stats = self.get_numerical_var_analysis(
+            table_name, numerical_df, group="34500 Sex")
+
+        # we concatenate all the results to get the final dataframe
+        final_df = pd.concat(
+            [categorical_stats, numerical_stats], ignore_index=True)
+
+        filename = table_name.replace(
+            ".", "").replace(": ", "").replace("?", "").replace("/", "")
+
+        # if saveInFile True we save the dataframe in a csv file
+        if save_in_file:
+            if not os.path.exists(f"./stats/stats_{filename}"):
+                Path(
+                    f"./stats/stats_{filename}").mkdir(parents=True, exist_ok=True)
+            if os.path.isfile(f"./stats/stats_{filename}/stats_{filename}.csv"):
+                os.remove(f"./stats/stats_{filename}/stats_{filename}.csv")
+            final_df.to_csv(f"./stats/stats_{filename}/stats_{filename}.csv")
+
+        # we return the dataframe
+        return final_df
+
     def get_generale_stats(self, save_in_file=True):
         """
         Function that returns a dataframe containing statistics from the generale Table
@@ -485,27 +578,27 @@ class DataManager:
         # the variables for which we will calculate the statistics
         variables = [
             {"table_name": "General_2_CRF Hematology-Oncology",
-                "var_name": "34472 Age at diagnosis", "type": 0},
+             "var_name": "34472 Age at diagnosis", "type": 0},
             {"table_name": "General_2_CRF Hematology-Oncology",
-                "var_name": "34471 Date of diagnosis", "type": 0},
+             "var_name": "34471 Date of diagnosis", "type": 0},
             {"table_name": "General_2_CRF Hematology-Oncology",
-                "var_name": "34474 Date of treatment end", "type": 0},
+             "var_name": "34474 Date of treatment end", "type": 0},
             {"table_name": "General_2_CRF Hematology-Oncology",
-                "var_name": "34475 Risk group", "type": 1},
+             "var_name": "34475 Risk group", "type": 1},
             {"table_name": "General_2_CRF Hematology-Oncology",
-                "var_name": "34477 Boston protocol followed", "type": 1},
+             "var_name": "34477 Boston protocol followed", "type": 1},
             {"table_name": "General_2_CRF Hematology-Oncology",
-                "var_name": "34479 Radiotherapy?", "type": 1},
+             "var_name": "34479 Radiotherapy?", "type": 1},
             {"table_name": "General_2_CRF Hematology-Oncology",
-                "var_name": "34480 Radiotherapy dose", "type": 0},
+             "var_name": "34480 Radiotherapy dose", "type": 0},
             {"table_name": "General_1_Demographic Questionnaire",
              "var_name": "34502 Height", "type": 0},
             {"table_name": "General_1_Demographic Questionnaire",
-                "var_name": "34503 Weight", "type": 0},
+             "var_name": "34503 Weight", "type": 0},
             {"table_name": "General_1_Demographic Questionnaire",
-                "var_name": "34604 Is currently smoking?", "type": 1},
+             "var_name": "34604 Is currently smoking?", "type": 1},
             {"table_name": "General_1_Demographic Questionnaire",
-                "var_name": "34500 Sex", "type": 1}
+             "var_name": "34500 Sex", "type": 1}
         ]
 
         # we initialize the lists that will contain the name of the
@@ -537,7 +630,7 @@ class DataManager:
 
         # we add a new column to the table general_2 : Time of treatment
         df_general_2["Time of treatment"] = df_general_2["34474 Date of treatment end"] - \
-            df_general_2["34471 Date of diagnosis"]
+                                            df_general_2["34471 Date of diagnosis"]
         # we transform the time of treatment to months
         df_general_2["Time of treatment"] = df_general_2["Time of treatment"].apply(
             Helpers.timeDeltaToMonths)
@@ -602,94 +695,9 @@ class DataManager:
         # we return the dataframe
         return final_df
 
-    def get_table_stats(self, table_name, conditions=[{"col": "Tag", "val": "Phase 1"}],
-                        include="ALL", exclude=["Date", "Form", "Status", "Remarks"], save_in_file=True):
-        """
-        Function that return a dataframe containing statistics from any given table
-
-        :param table_name: The name of the table
-        :param include: a list of all the columns to include, "ALL" if all columns included
-        :param exclude: a list of all the columns to exclude
-        :param save_in_file: Boolean, if true the dataframe will be saved in a csv file
-        :return: pandas DataFrame
-        """
-        # we get a dataframe of the given tablename
-        if include == "ALL":
-            table_df = self.get_table(table_name)
-        else:
-            table_df = self.get_table(table_name, include)
-
-        # we retrieve the columns of the table
-        cols = table_df.columns
-
-        # we exclude the parameters specified with the exclude parameter
-        cols = [col for col in cols if col not in exclude]
-        table_df = table_df[cols]
-
-        # we get only the rows that satisfy the given conditions
-        for cond in conditions:
-            table_df = table_df[table_df[cond["col"]] == cond["val"]]
-
-        # we retrieve categorical data
-        categorical_df = Helpers.retrieve_categorical(
-            table_df, ids=["Participant"])
-        # we retrieve numerical data
-        numerical_df = Helpers.retrieve_numerical(
-            table_df, ids=["Participant"])
-
-        # we build a dataframe from the table the table containing the gender information
-        df_general = self.get_table("General_1_Demographic Questionnaire", [
-                                    "Participant", "Tag", "34500 Sex"])
-
-        # we get only the rows that satisfy the given conditions
-        for cond in conditions:
-            df_general = df_general[df_general[cond["col"]] == cond["val"]]
-
-        # we select only two columns Participant and 34500 Sex
-        df_general = df_general[["Participant", "34500 Sex"]]
-
-        # we merge the the categorical dataframe with the general dataframe by the column "Participant"
-        categorical_df = pd.merge(
-            categorical_df, df_general, on="Participant", how="inner")
-
-        # we merge the the numerical dataframe with the general dataframe by the column "Participant"
-        numerical_df = pd.merge(numerical_df, df_general,
-                                on="Participant", how="inner")
-
-        # we remove useless columns
-        categorical_df = categorical_df[[
-            col for col in categorical_df.columns if col not in ["Participant", "Tag"]]]
-        numerical_df = numerical_df[[
-            col for col in numerical_df.columns if col not in ["Participant", "Tag"]]]
-
-        # we make a categorical var analysis for this table
-        categorical_stats = self.get_categorical_var_analysis(table_name,
-                                                              categorical_df, group="34500 Sex")
-        # we make a numerical var analysis for this table
-        numerical_stats = self.get_numerical_var_analysis(
-            table_name, numerical_df, group="34500 Sex")
-
-        # we concatenate all the results to get the final dataframe
-        final_df = pd.concat(
-            [categorical_stats, numerical_stats], ignore_index=True)
-
-        filename = table_name.replace(
-            ".", "").replace(": ", "").replace("?", "").replace("/", "")
-        # if saveInFile True we save the dataframe in a csv file
-        if save_in_file:
-            if not os.path.exists(f"./stats/stats_{filename}"):
-                Path(
-                    f"./stats/stats_{filename}").mkdir(parents=True, exist_ok=True)
-            if os.path.isfile(f"./stats/stats_{filename}/stats_{filename}.csv"):
-                os.remove(f"./stats/stats_{filename}/stats_{filename}.csv")
-            final_df.to_csv(f"./stats/stats_{filename}/stats_{filename}.csv")
-
-        # we return the dataframe
-        return final_df
-
     def get_variable_info(self, var_name):
         """
-        Function that return all the information about a specific variable
+        Function that returns all the information about a specific variable
 
         :param var_name: The name of the variable
         :return: a python dictionary containing all the infos

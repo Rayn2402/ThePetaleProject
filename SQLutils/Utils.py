@@ -59,6 +59,32 @@ class DataManager:
 
         return conn, cur
 
+    # def create_table(self, table_name, types, primary_key=None):
+    #
+    #     """
+    #     Creates a table named "table_name" that as columns and types indicates in the dict "types".
+    #
+    #     :param table_name: name of the table
+    #     :param types: names of the columns (key) and their respective types (value) in a dict
+    #     :param primary_key: list of column names to use as primary key (or composite key when more than 1)
+    #     """
+    #
+    #     query = f"CREATE TABLE {self.schema}.\"{table_name} ("
+    #
+    #     query = f"CREATE TABLE {schema}.\"{table_name}\" (\"Date\" date, \"Participant\" text, \"Form\" text, " \
+    #             f"\"Day of Study\" numeric, \"Status\" text, \"Tag\" text, \"Remarks\" text ,"
+    #
+    #     for col in types:
+    #         query += f"\"{col}\" {types[col]}, "
+    #
+    #     # We define the composite key
+    #     query += f"PRIMARY KEY (\"Participant\", \"Tag\") );"
+    #
+    #     cur.execute(query)
+    #     conn.commit()
+
+
+
     def get_table(self, table_name, columns=None):
         """
         Retrieves a table from the database
@@ -603,10 +629,8 @@ class PetaleDataManager(DataManager):
 
         # we initialize the lists that will contain the name of the
         # categorical and numerical columns for both tables general_1 and general_2
-        categorical_cols_1 = []
-        categorical_cols_2 = []
-        numerical_cols_1 = []
-        numerical_cols_2 = []
+        categorical_cols_1, categorical_cols_2 = [], []
+        numerical_cols_1, numerical_cols_2 = [], []
 
         # we fill the lists with categorical and numerical columns for both tables general_1 and general_2
         for var in variables:

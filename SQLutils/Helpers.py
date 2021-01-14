@@ -5,7 +5,7 @@ import csv
 def colsForSql(cols):
     """
     Function that transforms a list of strings containing the name of columns to a string
-     ready to use in a SQL query, Ex: ["name","age","gender"]  ==> "name","age","gender"
+    ready to use in an SQL query. Ex: ["name","age","gender"]  ==> "name","age","gender"
 
     :param cols: the list of column names
     :return: a string
@@ -14,6 +14,20 @@ def colsForSql(cols):
     cols = list(map(lambda c: '"'+c+'"', cols))
 
     return ",".join(cols)
+
+
+def colsAndTypes(types):
+    """
+    Function that transform a dictionary with column names (string) as keys and types (string) as values
+    to a string to use in an SQL query. Ex: {"name":"text", "Age":"numeric"} ==> '"name" text, "Age" numeric'
+
+    :param types: dictionary
+    :return: string
+    """
+    cols = types.keys()
+    query_parts = list(map(lambda c: f"\"{c}\" {types[c]}", cols))
+
+    return ",".join(query_parts)
 
 
 def writeCsvFile(data, filename, foldername):

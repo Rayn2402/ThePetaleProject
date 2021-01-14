@@ -6,8 +6,8 @@ Authors : Nicolas Raymond
 This file contains all functions linked to SQL data management
 
 """
-import ChartServices
-import Helpers
+import SQLutils.ChartServices as ChartServices
+import SQLutils.Helpers as Helpers
 import psycopg2
 import pandas as pd
 import os
@@ -59,31 +59,30 @@ class DataManager:
 
         return conn, cur
 
-    # def create_table(self, table_name, types, primary_key=None):
-    #
-    #     """
-    #     Creates a table named "table_name" that as columns and types indicates in the dict "types".
-    #
-    #     :param table_name: name of the table
-    #     :param types: names of the columns (key) and their respective types (value) in a dict
-    #     :param primary_key: list of column names to use as primary key (or composite key when more than 1)
-    #     """
-    #
-    #     query = f"CREATE TABLE {self.schema}.\"{table_name} ("
-    #
-    #     query = f"CREATE TABLE {schema}.\"{table_name}\" (\"Date\" date, \"Participant\" text, \"Form\" text, " \
-    #             f"\"Day of Study\" numeric, \"Status\" text, \"Tag\" text, \"Remarks\" text ,"
-    #
-    #     for col in types:
-    #         query += f"\"{col}\" {types[col]}, "
-    #
-    #     # We define the composite key
-    #     query += f"PRIMARY KEY (\"Participant\", \"Tag\") );"
-    #
-    #     cur.execute(query)
-    #     conn.commit()
+    def create_table(self, table_name, types, primary_key=None):
 
+        """
+        Creates a table named "table_name" that as columns and types indicates in the dict "types".
 
+        :param table_name: name of the table
+        :param types: names of the columns (key) and their respective types (value) in a dict
+        :param primary_key: list of column names to use as primary key (or composite key when more than 1)
+        """
+
+        query = f"CREATE TABLE {self.schema}.\"{table_name}\" (" + Helpers.colsAndTypes(types)
+
+        if primary_key is not None:
+
+            # We define the primary key
+            keys = Helpers.colsForSql(primary_key)
+            query += f", PRIMARY KEY ({keys}) );"
+
+        # We execute the query
+        self.cur.execute(query)
+        self.conn.commit()
+
+        # We reset the cursor
+        self.reset_cursor()
 
     def get_table(self, table_name, columns=None):
         """

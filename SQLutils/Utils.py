@@ -346,27 +346,6 @@ class DataManager:
                     print("I/O error")
         return row[0]
 
-    def get_gender_stats(self):
-        """
-        Gets the count of all participant, the count of males, and the count of females from phase 01
-
-
-        return: a list  of three numbers [#all, #female, #male]
-        """
-
-        # we create a data frame from the data in the table
-        df = self.get_table("General_1_Demographic Questionnaire", [
-                            "Participant", "Tag", "34500 Sex"])
-
-        # we select only male participants from phase 01
-        df_male = df[(df["Tag"] == "Phase 1") & (df["34500 Sex"] == "1.0")]
-
-        # we select only female participants from phase 02
-        df_female = df[(df["Tag"] == "Phase 1") & (df["34500 Sex"] == "0.0")]
-
-        # we return the results
-        return [df_male.shape[0] + df_female.shape[0], df_female.shape[0], df_male.shape[0]]
-
     @staticmethod
     def get_numerical_var_analysis(table_name, df, group=None):
         """
@@ -543,8 +522,8 @@ class PetaleDataManager(DataManager):
     def __init__(self, user, host='localhost', port='5437'):
         super().__init__(user, 'petale101', 'petale', host, port, 'public')
 
-    def get_table_stats(self, table_name, conditions=[{"col": "Tag", "val": "Phase 1"}],
-                        include="ALL", exclude=["Date", "Form", "Status", "Remarks"], save_in_file=True):
+    def get_table_stats(self, table_name, include="ALL",
+                        exclude=["Date", "Form", "Status", "Remarks"], save_in_file=True):
         """
         Function that return a dataframe containing statistics from any given table of the PETALE database
 
@@ -567,56 +546,32 @@ class PetaleDataManager(DataManager):
         cols = [col for col in cols if col not in exclude]
         table_df = table_df[cols]
 
-        # we get only the rows that satisfy the given conditions
-        for cond in conditions:
-            table_df = table_df[table_df[cond["col"]] == cond["val"]]
+        # we get only the rows that satisfy the given conditions (
+        table_df = table_df[table_df["Tag"] == "Phase 1"]
 
-        # we retrieve categorical data
-        categorical_df = Helpers.retrieve_categorical(
-            table_df, ids=["Participant"])
+        # we retrieve categorical and numerical data
+        categorical_df = Helpers.retrieve_categorical(table_df, ids=["Participant"])
+        numerical_df = Helpers.retrieve_numerical(table_df, ids=["Participant"])
 
-        # we retrieve numerical data
-        numerical_df = Helpers.retrieve_numerical(
-            table_df, ids=["Participant"])
-
-        # we build a dataframe from the table the table containing the gender information
-        df_general = self.get_table("General_1_Demographic Questionnaire", [
-            "Participant", "Tag", "34500 Sex"])
-
-        # we get only the rows that satisfy the given conditions
-        for cond in conditions:
-            df_general = df_general[df_general[cond["col"]] == cond["val"]]
-
-        # we select only two columns Participant and 34500 Sex
-        df_general = df_general[["Participant", "34500 Sex"]]
+        # We get the dataframe from the table the table containing the gender information
+        df_general = self.get_table("General_4_FilteredData", columns=["Participant", "34500 Sex"])
 
         # we merge the the categorical dataframe with the general dataframe by the column "Participant"
-        categorical_df = pd.merge(
-            categorical_df, df_general, on="Participant", how="inner")
+        categorical_df = pd.merge(categorical_df, df_general, on="Participant", how="inner")
+        categorical_df.drop(["Participant"], axis=1)
 
         # we merge the the numerical dataframe with the general dataframe by the column "Participant"
-        numerical_df = pd.merge(numerical_df, df_general,
-                                on="Participant", how="inner")
-
-        # we remove useless columns
-        categorical_df = categorical_df[[
-            col for col in categorical_df.columns if col not in ["Participant", "Tag"]]]
-        numerical_df = numerical_df[[
-            col for col in numerical_df.columns if col not in ["Participant", "Tag"]]]
+        numerical_df = pd.merge(numerical_df, df_general, on="Participant", how="inner")
+        numerical_df.drop(["Participant"], axis=1)
 
         # we make a categorical var analysis for this table
-        categorical_stats = self.get_categorical_var_analysis(table_name,
-                                                              categorical_df, group="34500 Sex")
+        categorical_stats = self.get_categorical_var_analysis(table_name, categorical_df, group="34500 Sex")
         # we make a numerical var analysis for this table
-        numerical_stats = self.get_numerical_var_analysis(
-            table_name, numerical_df, group="34500 Sex")
+        numerical_stats = self.get_numerical_var_analysis(table_name, numerical_df, group="34500 Sex")
 
         # we concatenate all the results to get the final dataframe
-        final_df = pd.concat(
-            [categorical_stats, numerical_stats], ignore_index=True)
-
-        filename = table_name.replace(
-            ".", "").replace(": ", "").replace("?", "").replace("/", "")
+        final_df = pd.concat([categorical_stats, numerical_stats], ignore_index=True)
+        filename = table_name.replace(".", "").replace(": ", "").replace("?", "").replace("/", "")
 
         # if saveInFile True we save the dataframe in a csv file
         if save_in_file:
@@ -755,6 +710,27 @@ class PetaleDataManager(DataManager):
 
         # we return the dataframe
         return final_df
+
+    def get_gender_stats(self):
+        """
+        Gets the count of all participant, the count of males, and the count of females from phase 01
+
+
+        return: a list  of three numbers [#all, #female, #male]
+        """
+
+        # we create a data frame from the data in the table
+        df = self.get_table("General_1_Demographic Questionnaire", [
+            "Participant", "Tag", "34500 Sex"])
+
+        # we select only male participants from phase 01
+        df_male = df[(df["Tag"] == "Phase 1") & (df["34500 Sex"] == "1.0")]
+
+        # we select only female participants from phase 02
+        df_female = df[(df["Tag"] == "Phase 1") & (df["34500 Sex"] == "0.0")]
+
+        # we return the results
+        return [df_male.shape[0] + df_female.shape[0], df_female.shape[0], df_male.shape[0]]
 
     def get_variable_info(self, var_name):
         """

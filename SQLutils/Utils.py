@@ -12,7 +12,6 @@ import psycopg2
 import pandas as pd
 import os
 import csv
-from pathlib import Path
 from tqdm import tqdm
 
 
@@ -577,19 +576,15 @@ class PetaleDataManager(DataManager):
 
         # if saveInFile True we save the dataframe in a csv file
         if save_in_file:
-            if not os.path.exists(f"./stats/stats_{filename}"):
-                Path(
-                    f"./stats/stats_{filename}").mkdir(parents=True, exist_ok=True)
-            if os.path.isfile(f"./stats/stats_{filename}/stats_{filename}.csv"):
-                os.remove(f"./stats/stats_{filename}/stats_{filename}.csv")
-            final_df.to_csv(f"./stats/stats_{filename}/stats_{filename}.csv")
+            Helpers.save_stats_file(filename, final_df)
 
         # we return the dataframe
         return final_df
 
     def get_generale_stats(self, save_in_file=True):
         """
-        Function that returns a dataframe containing statistics from the generale Table
+        Function that returns a dataframe containing statistics from the generale Table.
+        It's just a faster way to get results from get_table_stats("General_4_FilteredData")
 
         :param save_in_file: Boolean, if true the dataframe will be saved in a csv file in the folder generale_stats
         :return: pandas DataFrame
@@ -614,16 +609,9 @@ class PetaleDataManager(DataManager):
         # We concatenate all the results to get the final dataframe
         general_stats = pd.concat([cat_stats, num_stats], ignore_index=True)
 
-        filename = "General"
-
         # we save the dataframe in a csv file
         if save_in_file:
-            if not os.path.exists(f"./stats/stats_{filename}"):
-                Path(
-                    f"./stats/stats_{filename}").mkdir(parents=True, exist_ok=True)
-            if os.path.isfile(f"./stats/stats_{filename}/stats_{filename}.csv"):
-                os.remove(f"./stats/stats_{filename}/stats_{filename}.csv")
-            general_stats.to_csv(f"./stats/stats_{filename}/stats_{filename}.csv")
+            Helpers.save_stats_file("General", general_stats)
 
         # we return the dataframe
         return general_stats

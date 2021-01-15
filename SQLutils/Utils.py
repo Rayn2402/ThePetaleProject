@@ -548,6 +548,7 @@ class PetaleDataManager(DataManager):
 
         # we get only the rows that satisfy the given conditions (
         table_df = table_df[table_df["Tag"] == "Phase 1"]
+        table_df = table_df.drop(["34500 Sex", "Tag"], axis=1, errors='ignore')
 
         # we retrieve categorical and numerical data
         categorical_df = Helpers.retrieve_categorical(table_df, ids=["Participant"])
@@ -557,15 +558,16 @@ class PetaleDataManager(DataManager):
         df_general = self.get_table("General_4_FilteredData", columns=["Participant", "34500 Sex"])
 
         # we merge the the categorical dataframe with the general dataframe by the column "Participant"
-        categorical_df = pd.merge(categorical_df, df_general, on="Participant", how="inner")
-        categorical_df.drop(["Participant"], axis=1)
+        categorical_df = pd.merge(df_general, categorical_df, on="Participant", how="inner")
+        categorical_df = categorical_df.drop(["Participant"], axis=1)
 
         # we merge the the numerical dataframe with the general dataframe by the column "Participant"
-        numerical_df = pd.merge(numerical_df, df_general, on="Participant", how="inner")
-        numerical_df.drop(["Participant"], axis=1)
+        numerical_df = pd.merge(df_general, numerical_df, on="Participant", how="inner")
+        numerical_df = numerical_df.drop(["Participant"], axis=1)
 
         # we make a categorical var analysis for this table
         categorical_stats = self.get_categorical_var_analysis(table_name, categorical_df, group="34500 Sex")
+
         # we make a numerical var analysis for this table
         numerical_stats = self.get_numerical_var_analysis(table_name, numerical_df, group="34500 Sex")
 
@@ -592,113 +594,28 @@ class PetaleDataManager(DataManager):
         :param save_in_file: Boolean, if true the dataframe will be saved in a csv file in the folder generale_stats
         :return: pandas DataFrame
         """
+        group = "34500 Sex"
 
-        # the variables for which we will calculate the statistics
-        variables = [
-            {"table_name": "General_2_CRF Hematology-Oncology",
-             "var_name": "34472 Age at diagnosis", "type": 0},
-            {"table_name": "General_2_CRF Hematology-Oncology",
-             "var_name": "34471 Date of diagnosis", "type": 0},
-            {"table_name": "General_2_CRF Hematology-Oncology",
-             "var_name": "34474 Date of treatment end", "type": 0},
-            {"table_name": "General_2_CRF Hematology-Oncology",
-             "var_name": "34475 Risk group", "type": 1},
-            {"table_name": "General_2_CRF Hematology-Oncology",
-             "var_name": "34477 Boston protocol followed", "type": 1},
-            {"table_name": "General_2_CRF Hematology-Oncology",
-             "var_name": "34479 Radiotherapy?", "type": 1},
-            {"table_name": "General_2_CRF Hematology-Oncology",
-             "var_name": "34480 Radiotherapy dose", "type": 0},
-            {"table_name": "General_1_Demographic Questionnaire",
-             "var_name": "34502 Height", "type": 0},
-            {"table_name": "General_1_Demographic Questionnaire",
-             "var_name": "34503 Weight", "type": 0},
-            {"table_name": "General_1_Demographic Questionnaire",
-             "var_name": "34604 Is currently smoking?", "type": 1},
-            {"table_name": "General_1_Demographic Questionnaire",
-             "var_name": "34500 Sex", "type": 1}
-        ]
+        categorical_var = [group, "34475 Risk group", "34477 Boston protocol followed",
+                           "34479 Radiotherapy?", "34604 Is currently smoking?"]
 
-        # we initialize the lists that will contain the name of the
-        # categorical and numerical columns for both tables general_1 and general_2
-        categorical_cols_1, categorical_cols_2 = [], []
-        numerical_cols_1, numerical_cols_2 = [], []
+        numerical_var = [group, "34472 Age at diagnosis", "34480 Radiotherapy dose",
+                         "34502 Height", "34503 Weight", "Time of treatment"]
 
-        # we fill the lists with categorical and numerical columns for both tables general_1 and general_2
-        for var in variables:
-            if var["table_name"] == "General_1_Demographic Questionnaire":
-                if var["type"] == 1:
-                    categorical_cols_1.append(var["var_name"])
-                else:
-                    numerical_cols_1.append(var["var_name"])
-            elif var["table_name"] == "General_2_CRF Hematology-Oncology":
-                if var["type"] == 1:
-                    categorical_cols_2.append(var["var_name"])
-                else:
-                    numerical_cols_2.append(var["var_name"])
+        # We retrieve data from the Generale_4_FilteredData table
+        source = "General_4_FilteredData"
+        cat_data = self.get_table(source, categorical_var)
+        num_data = self.get_table(source, numerical_var)
 
-        # we get a dataframe from the table general_1
-        df_general_1 = self.get_table(
-            "General_1_Demographic Questionnaire",  categorical_cols_1 + numerical_cols_1 + ["Participant", "Tag"])
-        # we get a dataframe from the table general_2
-        df_general_2 = self.get_table(
-            "General_2_CRF Hematology-Oncology", categorical_cols_2 + numerical_cols_2 + ["Participant", "Tag"])
+        # We execute the analysis
+        cat_stats = self.get_categorical_var_analysis(source, cat_data, group=group)
+        num_stats = self.get_numerical_var_analysis(source, num_data, group=group)
 
-        # we add a new column to the table general_2 : Time of treatment
-        df_general_2["Time of treatment"] = df_general_2["34474 Date of treatment end"] - \
-                                            df_general_2["34471 Date of diagnosis"]
-        # we transform the time of treatment to months
-        df_general_2["Time of treatment"] = df_general_2["Time of treatment"].apply(
-            Helpers.timeDeltaToMonths)
-
-        # we get only survivors from Phase 1
-        df_general_1 = df_general_1[df_general_1["Tag"] == "Phase 1"]
-        df_general_2 = df_general_2[df_general_2["Tag"] == "Phase 1"]
-
-        # we delete "34474 Date of treatment end", and "34471 Date of diagnosis" from the numerical columns of general_2 and we replace them by time of treatment
-        numerical_cols_2.remove("34474 Date of treatment end")
-        numerical_cols_2.remove("34471 Date of diagnosis")
-        numerical_cols_2.append("Time of treatment")
-
-        # we retrieve only the categorical columns for the table general_1
-        categorical_data_1 = df_general_1[categorical_cols_1]
-        # we retrieve only the numerical columns for the table general_1
-        numerical_data_1 = df_general_1[numerical_cols_1 + ["34500 Sex"]]
-
-        # we retrieve only the categorical columns for the table general_2
-        categorical_data_2 = df_general_2[categorical_cols_2 + ["Participant"]]
-        # we retrieve only the numerical columns for the table general_2
-        numerical_data_2 = df_general_2[numerical_cols_2 + ["Participant"]]
-
-        # we add the column "34500 Sex"to numerical_data_2 and categorical_data_2,  this is useful because we want to get the stats for each value  of this group
-        categorical_data_2 = pd.merge(categorical_data_2, df_general_1,
-                                      on="Participant", how="inner")
-        categorical_data_2 = categorical_data_2[[
-            col for col in categorical_data_2.columns if col in categorical_cols_2 + ["34500 Sex"]]]
-        numerical_data_2 = pd.merge(numerical_data_2, df_general_1,
-                                    on="Participant", how="inner")
-        numerical_data_2 = numerical_data_2[[
-            col for col in numerical_data_2.columns if col in numerical_cols_2 + ["34500 Sex"]]]
-
-        # we make a categorical var analysis for general_1
-        categorical_stats_1 = self.get_categorical_var_analysis("General_1_Demographic Questionnaire",
-                                                                categorical_data_1, group="34500 Sex")
-        # we make a numerical var analysis for general_1
-        numerical_stats_1 = self.get_numerical_var_analysis(
-            "General_1_Demographic Questionnaire", numerical_data_1, group="34500 Sex")
-
-        # we make a categorical var analysis for general_2
-        categorical_stats_2 = self.get_categorical_var_analysis("General_2_CRF Hematology-Oncology",
-                                                                categorical_data_2, group="34500 Sex")
-        # we make a numerical var analysis for general_2
-        numerical_stats_2 = self.get_numerical_var_analysis(
-            "General_2_CRF Hematology-Oncology", numerical_data_2, group="34500 Sex")
-
-        # we concatenate all the results to get the final dataframe
-        final_df = pd.concat(
-            [categorical_stats_1, numerical_stats_1, categorical_stats_2, numerical_stats_2], ignore_index=True)
+        # We concatenate all the results to get the final dataframe
+        general_stats = pd.concat([cat_stats, num_stats], ignore_index=True)
 
         filename = "General"
+
         # we save the dataframe in a csv file
         if save_in_file:
             if not os.path.exists(f"./stats/stats_{filename}"):
@@ -706,10 +623,10 @@ class PetaleDataManager(DataManager):
                     f"./stats/stats_{filename}").mkdir(parents=True, exist_ok=True)
             if os.path.isfile(f"./stats/stats_{filename}/stats_{filename}.csv"):
                 os.remove(f"./stats/stats_{filename}/stats_{filename}.csv")
-            final_df.to_csv(f"./stats/stats_{filename}/stats_{filename}.csv")
+            general_stats.to_csv(f"./stats/stats_{filename}/stats_{filename}.csv")
 
         # we return the dataframe
-        return final_df
+        return general_stats
 
     def get_gender_stats(self):
         """

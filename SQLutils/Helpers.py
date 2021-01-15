@@ -1,6 +1,6 @@
 import os
 import csv
-
+from pathlib import Path
 
 def colsForSql(cols):
     """
@@ -56,6 +56,22 @@ def writeCsvFile(data, filename, foldername):
                 writer.writerow(item)
     except IOError:
         print("I/O error")
+
+
+def save_stats_file(filename, df):
+    """
+    We save stats csv file in the stats directory
+
+    :param filename: name of the file
+    :param df: pandas dataframe with the data
+    """
+    if not os.path.exists(f"./stats/stats_{filename}"):
+        Path(
+            f"./stats/stats_{filename}").mkdir(parents=True, exist_ok=True)
+    if os.path.isfile(f"./stats/stats_{filename}/stats_{filename}.csv"):
+        os.remove(f"./stats/stats_{filename}/stats_{filename}.csv")
+
+    df.to_csv(f"./stats/stats_{filename}/stats_{filename}.csv")
 
 
 def timeDeltaToMonths(timeDelta):

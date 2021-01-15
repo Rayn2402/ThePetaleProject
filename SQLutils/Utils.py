@@ -369,6 +369,7 @@ class DataManager:
 
         # for each column we calculate the mean and the variance
         for col in cols:
+
             # we append the mean and the var for all participants to the results dictionary
             results[var_name].append(col)
             all_mean = round(df[col].astype("float").mean(axis=0), 2)
@@ -424,6 +425,7 @@ class DataManager:
 
         # for each column we calculate the count and the percentage
         for col in cols:
+
             # we initialize an object that will contain data that will be useful to plot this particular variable
             if group is None:
                 single_data_for_chart = {
@@ -431,6 +433,7 @@ class DataManager:
             else:
                 single_data_for_chart = {
                     "col_name": col, "values": [], "all": []}
+
                 for group_val in group_values:
                     single_data_for_chart[group_val] = []
 
@@ -462,13 +465,12 @@ class DataManager:
                     if group is not None:
 
                         for group_val in group_values:
+
                             df_group = df[df[group] == group_val]
-                            sub_category_total = df_group[df_group[col]
-                                                          == category].shape[0]
-                            sub_category_percent = round(
-                                sub_category_total/category_total * 100, 2)
+                            sub_category_total = df_group[df_group[col] == category].shape[0]
+                            sub_category_percent = round(sub_category_total/category_total * 100, 2)
                             results[f"{group} {group_val}"].append(
-                                f"{category_total} ({sub_category_percent}%)")
+                                f"{sub_category_total} ({sub_category_percent}%)")
 
                             single_data_for_chart[group_val].append(
                                 float(sub_category_total))

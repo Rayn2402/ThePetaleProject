@@ -427,53 +427,54 @@ class DataManager:
         for col in cols:
 
             # we initialize an object that will contain data that will be useful to plot this particular variable
-            if group is None:
-                single_data_for_chart = {
-                    "col_name": col, "values": [], "all": []}
-            else:
-                single_data_for_chart = {
-                    "col_name": col, "values": [], "all": []}
+            single_data_for_chart = {"col_name": col, "values": [], "all": []}
+
+            if group is not None:
+
+                group_totals = {}
 
                 for group_val in group_values:
                     single_data_for_chart[group_val] = []
+                    group_totals[group_val] = df.loc[df[group] == group_val, col].dropna().shape[0]
 
             # we get all the categories of this variable
-            categories = df[col].unique()
+            categories = df[col].dropna().unique()
 
             # we get the total count
-            total = df.shape[0]
+            total = df.shape[0] - df[col].isna().sum()
 
             # for each category of this variable we get the counts and the percentage
             for category in categories:
 
-                if category is not None:
+                # we get the total count of this category
+                category_total = df[df[col] == category].shape[0]
 
-                    # we get the total count of this category
-                    category_total = df[df[col] == category].shape[0]
+                # we get the total percentage of this category
+                all_percent = round(category_total/total * 100, 2)
 
-                    # we get the total percentage of this category
-                    all_percent = round(category_total/total * 100, 2)
+                # we save the results
+                results[var_name].append(f"{col} : {category}")
+                results[all_].append(f"{category_total} ({all_percent}%)")
 
-                    # we save the results
-                    results[var_name].append(f"{col} : {category}")
-                    results[all_].append(f"{category_total} ({all_percent}%)")
+                # we save the data that will be useful when plotting
+                single_data_for_chart["values"].append(category)
+                single_data_for_chart["all"].append(float(category_total))
 
-                    # we save the data that will be useful when plotting
-                    single_data_for_chart["values"].append(category)
-                    single_data_for_chart["all"].append(float(category_total))
+                if group is not None:
 
-                    if group is not None:
+                    for group_val in group_values:
 
-                        for group_val in group_values:
+                        # We create a filter to get the number of items in a group that has the correspond category
+                        filter = (df[group] == group_val) & (df[col] == category)
 
-                            df_group = df[df[group] == group_val]
-                            sub_category_total = df_group[df_group[col] == category].shape[0]
-                            sub_category_percent = round(sub_category_total/category_total * 100, 2)
-                            results[f"{group} {group_val}"].append(
-                                f"{sub_category_total} ({sub_category_percent}%)")
+                        # We compute the statistics needed
+                        sub_category_total = df[filter].shape[0]
+                        sub_category_percent = round(sub_category_total/(group_totals[group_val]) * 100, 2)
+                        results[f"{group} {group_val}"].append(f"{sub_category_total} ({sub_category_percent}%)")
 
-                            single_data_for_chart[group_val].append(
-                                float(sub_category_total))
+                        # We save data for the charts
+                        single_data_for_chart[group_val].append(
+                            float(sub_category_total))
 
             data_for_chart.append(single_data_for_chart)
 

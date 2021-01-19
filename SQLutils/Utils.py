@@ -59,7 +59,6 @@ class DataManager:
         return conn, cur
 
     def create_table(self, table_name, types, primary_key=None):
-
         """
         Creates a table named "table_name" that as columns and types indicates in the dict "types".
 
@@ -68,7 +67,8 @@ class DataManager:
         :param primary_key: list of column names to use as primary key (or composite key when more than 1)
         """
 
-        query = f"CREATE TABLE {self.schema}.\"{table_name}\" (" + Helpers.colsAndTypes(types)
+        query = f"CREATE TABLE {self.schema}.\"{table_name}\" (" + Helpers.colsAndTypes(
+            types)
 
         if primary_key is not None:
 
@@ -109,7 +109,8 @@ class DataManager:
 
         # We copy the data to the table
         try:
-            self.cur.copy_from(file, f"{self.schema}.\"{table_name}\"", sep="!", null=" ")
+            self.cur.copy_from(
+                file, f"{self.schema}.\"{table_name}\"", sep="!", null=" ")
             self.conn.commit()
             os.remove("temp")
 
@@ -362,7 +363,8 @@ class DataManager:
         return: a pandas data frame
         """
         # we initialize a python dictionary where we will save the results
-        results, var_name, all_, group_values = DataManager.__initialize_results_dict(df, group)
+        results, var_name, all_, group_values = DataManager.__initialize_results_dict(
+            df, group)
 
         # we get the columns on which we will calculate the stats
         cols = [col for col in df.columns if col != group]
@@ -374,7 +376,10 @@ class DataManager:
             results[var_name].append(col)
             all_mean = round(df[col].astype("float").mean(axis=0), 2)
             all_var = round(df[col].astype("float").var(axis=0), 2)
-            results[all_].append(f"{all_mean} ({all_var})")
+            all_max = df[col].astype("float").max()
+            all_min = df[col].astype("float").min()
+            results[all_].append(
+                f"{all_mean} ({all_var}) [ {all_min} , {all_max} ]")
 
             # if the group is given, we calculate the stats for each possible value of that group
             if group is not None:
@@ -385,8 +390,10 @@ class DataManager:
                         df_group[col].astype("float").mean(axis=0), 2)
                     group_var = round(
                         df_group[col].astype("float").var(axis=0), 2)
+                    group_max = df_group[col].astype("float").max()
+                    group_min = df_group[col].astype("float").min()
                     results[f"{group} {group_val}"].append(
-                        f"{group_mean} ({group_var})")
+                        f"{group_mean} ({group_var}) [ {group_min} , {group_max} ]")
 
         # for each variable of the given dataframe we plot a chart
         for var_name in cols:
@@ -403,7 +410,6 @@ class DataManager:
 
     @staticmethod
     def get_categorical_var_analysis(table_name, df, group=None):
-
         """Function that calculates the counts and percentage of all the categorical variables given in dataframe
          over all rows, and also over groups contained in a specified column "group".
 
@@ -415,7 +421,8 @@ class DataManager:
         """
 
         # we initialize a python dictionary where we will save the results
-        results, var_name, all_, group_values = DataManager.__initialize_results_dict(df, group)
+        results, var_name, all_, group_values = DataManager.__initialize_results_dict(
+            df, group)
 
         # we get the columns on which we will calculate the stats
         cols = [col for col in df.columns if col != group]
@@ -435,7 +442,8 @@ class DataManager:
 
                 for group_val in group_values:
                     single_data_for_chart[group_val] = []
-                    group_totals[group_val] = df.loc[df[group] == group_val, col].dropna().shape[0]
+                    group_totals[group_val] = df.loc[df[group]
+                                                     == group_val, col].dropna().shape[0]
 
             # we get all the categories of this variable
             categories = df[col].dropna().unique()
@@ -465,12 +473,15 @@ class DataManager:
                     for group_val in group_values:
 
                         # We create a filter to get the number of items in a group that has the correspond category
-                        filter = (df[group] == group_val) & (df[col] == category)
+                        filter = (df[group] == group_val) & (
+                            df[col] == category)
 
                         # We compute the statistics needed
                         sub_category_total = df[filter].shape[0]
-                        sub_category_percent = round(sub_category_total/(group_totals[group_val]) * 100, 2)
-                        results[f"{group} {group_val}"].append(f"{sub_category_total} ({sub_category_percent}%)")
+                        sub_category_percent = round(
+                            sub_category_total/(group_totals[group_val]) * 100, 2)
+                        results[f"{group} {group_val}"].append(
+                            f"{sub_category_total} ({sub_category_percent}%)")
 
                         # We save data for the charts
                         single_data_for_chart[group_val].append(
@@ -489,7 +500,8 @@ class DataManager:
                     ".", "").replace(": ", "").replace("?", "").replace("/", "")
                 ChartServices.drawBinaryGroupedBarChart(
                     item["values"], {"label": "Male", "values": item["1.0"]},
-                    {"label": "Female", "values": item["0.0"]}, "Categories", "Count", item["col_name"],
+                    {"label": "Female",
+                        "values": item["0.0"]}, "Categories", "Count", item["col_name"],
                     f"chart_{filename}", f"charts_{folder_name}")
 
         # we return the data frame containing the informations
@@ -553,29 +565,38 @@ class PetaleDataManager(DataManager):
         table_df = table_df.drop(["34500 Sex", "Tag"], axis=1, errors='ignore')
 
         # we retrieve categorical and numerical data
-        categorical_df = Helpers.retrieve_categorical(table_df, ids=["Participant"])
-        numerical_df = Helpers.retrieve_numerical(table_df, ids=["Participant"])
+        categorical_df = Helpers.retrieve_categorical(
+            table_df, ids=["Participant"])
+        numerical_df = Helpers.retrieve_numerical(
+            table_df, ids=["Participant"])
 
         # We get the dataframe from the table the table containing the gender information
-        df_general = self.get_table("General_4_FilteredData", columns=["Participant", "34500 Sex"])
+        df_general = self.get_table("General_4_FilteredData", columns=[
+                                    "Participant", "34500 Sex"])
 
         # we merge the the categorical dataframe with the general dataframe by the column "Participant"
-        categorical_df = pd.merge(df_general, categorical_df, on="Participant", how="inner")
+        categorical_df = pd.merge(
+            df_general, categorical_df, on="Participant", how="inner")
         categorical_df = categorical_df.drop(["Participant"], axis=1)
 
         # we merge the the numerical dataframe with the general dataframe by the column "Participant"
-        numerical_df = pd.merge(df_general, numerical_df, on="Participant", how="inner")
+        numerical_df = pd.merge(df_general, numerical_df,
+                                on="Participant", how="inner")
         numerical_df = numerical_df.drop(["Participant"], axis=1)
 
         # we make a categorical var analysis for this table
-        categorical_stats = self.get_categorical_var_analysis(table_name, categorical_df, group="34500 Sex")
+        categorical_stats = self.get_categorical_var_analysis(
+            table_name, categorical_df, group="34500 Sex")
 
         # we make a numerical var analysis for this table
-        numerical_stats = self.get_numerical_var_analysis(table_name, numerical_df, group="34500 Sex")
+        numerical_stats = self.get_numerical_var_analysis(
+            table_name, numerical_df, group="34500 Sex")
 
         # we concatenate all the results to get the final dataframe
-        final_df = pd.concat([categorical_stats, numerical_stats], ignore_index=True)
-        filename = table_name.replace(".", "").replace(": ", "").replace("?", "").replace("/", "")
+        final_df = pd.concat(
+            [categorical_stats, numerical_stats], ignore_index=True)
+        filename = table_name.replace(".", "").replace(
+            ": ", "").replace("?", "").replace("/", "")
 
         # if saveInFile True we save the dataframe in a csv file
         if save_in_file:
@@ -606,8 +627,10 @@ class PetaleDataManager(DataManager):
         num_data = self.get_table(source, numerical_var)
 
         # We execute the analysis
-        cat_stats = self.get_categorical_var_analysis(source, cat_data, group=group)
-        num_stats = self.get_numerical_var_analysis(source, num_data, group=group)
+        cat_stats = self.get_categorical_var_analysis(
+            source, cat_data, group=group)
+        num_stats = self.get_numerical_var_analysis(
+            source, num_data, group=group)
 
         # We concatenate all the results to get the final dataframe
         general_stats = pd.concat([cat_stats, num_stats], ignore_index=True)

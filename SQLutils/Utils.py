@@ -642,27 +642,6 @@ class PetaleDataManager(DataManager):
         # we return the dataframe
         return general_stats
 
-    def get_gender_stats(self):
-        """
-        Gets the count of all participant, the count of males, and the count of females from phase 01
-
-
-        return: a list  of three numbers [#all, #female, #male]
-        """
-
-        # we create a data frame from the data in the table
-        df = self.get_table("General_1_Demographic Questionnaire", [
-            "Participant", "Tag", "34500 Sex"])
-
-        # we select only male participants from phase 01
-        df_male = df[(df["Tag"] == "Phase 1") & (df["34500 Sex"] == "1.0")]
-
-        # we select only female participants from phase 02
-        df_female = df[(df["Tag"] == "Phase 1") & (df["34500 Sex"] == "0.0")]
-
-        # we return the results
-        return [df_male.shape[0] + df_female.shape[0], df_female.shape[0], df_male.shape[0]]
-
     def get_variable_info(self, var_name):
         """
         Function that returns all the information about a specific variable

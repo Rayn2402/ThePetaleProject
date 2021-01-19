@@ -379,7 +379,7 @@ class DataManager:
             all_max = df[col].astype("float").max()
             all_min = df[col].astype("float").min()
             results[all_].append(
-                f"{all_mean} ({all_var}) [ {all_min} , {all_max} ]")
+                f"{all_mean} ({all_var}) [{all_min}, {all_max}]")
 
             # if the group is given, we calculate the stats for each possible value of that group
             if group is not None:
@@ -393,7 +393,7 @@ class DataManager:
                     group_max = df_group[col].astype("float").max()
                     group_min = df_group[col].astype("float").min()
                     results[f"{group} {group_val}"].append(
-                        f"{group_mean} ({group_var}) [ {group_min} , {group_max} ]")
+                        f"{group_mean} ({group_var}) [{group_min}, {group_max}]")
 
         # for each variable of the given dataframe we plot a chart
         for var_name in cols:

@@ -84,6 +84,18 @@ def timeDeltaToMonths(timeDelta):
     return round(timeDelta.total_seconds() / 2592000, 2)
 
 
+def AbsTimeLapse(df, new_col, first_date, second_date):
+    """
+    Computes a new column that gives the absolute differences (in months) between two column dates
+
+    :param df: pandas dataframe
+    :param new_col: new column name (for the column that will store the results)
+    :param first_date: first date column name
+    :param second_date: second date column name
+    """
+    df[new_col] = abs(df[second_date] - df[first_date])
+    df[new_col] = df[new_col].apply(timeDeltaToMonths)
+
 def extract_var_id(var_name):
     """
     Function that returns the id of the variable of a given variable

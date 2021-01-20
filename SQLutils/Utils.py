@@ -560,37 +560,36 @@ class PetaleDataManager(DataManager):
         cols = [col for col in cols if col not in exclude]
         table_df = table_df[cols]
 
-        # we get only the rows that satisfy the given conditions (
+        # we get only the rows that satisfy the given conditions
         table_df = table_df[table_df["Tag"] == "Phase 1"]
-        table_df = table_df.drop(["34500 Sex", "Tag"], axis=1, errors='ignore')
+        table_df = table_df.drop(["Tag"], axis=1)
+
+        # We get the dataframe from the table the table containing the sex information
+        if "34500 Sex" in cols:
+            sex_df = table_df[["Participant", "34500 Sex"]]
+            table_df = table_df.drop(["34500 Sex"], axis=1)
+        else:
+            sex_df = self.get_table("General_1_Demographic Questionnaire", columns=["Participant", "Tag", "34500 Sex"])
+            sex_df = sex_df[sex_df["Tag"] == "Phase 1"]
+            sex_df = sex_df.drop(["Tag"], axis=1)
 
         # we retrieve categorical and numerical data
-        categorical_df = Helpers.retrieve_categorical(
-            table_df, ids=["Participant"])
-        numerical_df = Helpers.retrieve_numerical(
-            table_df, ids=["Participant"])
-
-        # We get the dataframe from the table the table containing the gender information
-        df_general = self.get_table("General_4_FilteredData", columns=[
-                                    "Participant", "34500 Sex"])
+        categorical_df = Helpers.retrieve_categorical(table_df, ids=["Participant"])
+        numerical_df = Helpers.retrieve_numerical(table_df, ids=["Participant"])
 
         # we merge the the categorical dataframe with the general dataframe by the column "Participant"
-        categorical_df = pd.merge(
-            df_general, categorical_df, on="Participant", how="inner")
+        categorical_df = pd.merge(sex_df, categorical_df, on="Participant", how="inner")
         categorical_df = categorical_df.drop(["Participant"], axis=1)
 
         # we merge the the numerical dataframe with the general dataframe by the column "Participant"
-        numerical_df = pd.merge(df_general, numerical_df,
-                                on="Participant", how="inner")
+        numerical_df = pd.merge(sex_df, numerical_df, on="Participant", how="inner")
         numerical_df = numerical_df.drop(["Participant"], axis=1)
 
         # we make a categorical var analysis for this table
-        categorical_stats = self.get_categorical_var_analysis(
-            table_name, categorical_df, group="34500 Sex")
+        categorical_stats = self.get_categorical_var_analysis(table_name, categorical_df, group="34500 Sex")
 
         # we make a numerical var analysis for this table
-        numerical_stats = self.get_numerical_var_analysis(
-            table_name, numerical_df, group="34500 Sex")
+        numerical_stats = self.get_numerical_var_analysis(table_name, numerical_df, group="34500 Sex")
 
         # we concatenate all the results to get the final dataframe
         final_df = pd.concat(
@@ -679,3 +678,11 @@ class PetaleDataManager(DataManager):
 
         # we return the result
         return var_info
+
+    def __add_sex_columns(self, df):
+        """
+        Add sex column to a dataframe if it is not already there
+
+        :param df: pandas dataframe
+        """
+

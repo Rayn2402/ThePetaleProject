@@ -7,7 +7,7 @@ with information from all variables considered for our models (variables from Le
 """
 from SQLutils.Utils import PetaleDataManager
 
-TABLE = "Learning_1_GeneralsAndCardio0"
+TABLE = "Learning_1_GeneralsAndCardio"
 
 # We build a PetaleDataManager that will help interacting with PETALE database
 user_name = input("Enter your username to access PETALE database : ")

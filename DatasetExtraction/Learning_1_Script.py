@@ -58,6 +58,9 @@ df_general_1 = df_general_1[df_general_1["Tag"] == "Phase 1"]
 df_general_2 = df_general_2[df_general_2["Tag"] == "Phase 1"]
 df_cardio_0 = df_cardio_0[df_cardio_0["Tag"] == "Phase 1"]
 
+# We remove survivors that have missing VO2_max value
+df_cardio_0 = df_cardio_0[~df_cardio_0['35006 EE_VO2_max'].isnull()]
+
 # We add a new column Time of treatment (months) to the table general_2
 AbsTimeLapse(df_general_2, "Time of treatment", "34471 Date of diagnosis", "34474 Date of treatment end")
 
@@ -114,4 +117,4 @@ vars.pop("34501 Date of birth (survivor)")
 complete_df = complete_df[vars.keys()]
 
 # We create the table
-data_manager.create_and_fill_table(complete_df, "Learning_1_GeneralsAndCardio0", types=vars, primary_key=pkey)
+data_manager.create_and_fill_table(complete_df, "Learning_1_GeneralsAndCardio", types=vars, primary_key=pkey)

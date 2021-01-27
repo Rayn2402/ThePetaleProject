@@ -30,6 +30,7 @@ General_2_vars = {"Date": "date",
 General_1_vars = {"Date": "date",
                   "Participant": "text",
                   "Tag": "text",
+                  "34501 Date of birth (survivor)": "date",
                   "34500 Sex": "text",
                   "34502 Height": "numeric",
                   "34503 Weight": "numeric",
@@ -77,6 +78,7 @@ complete_df = pd.merge(complete_df, df_cardio_0, on=pkey, how="inner")
 AbsTimeLapse(complete_df, "Time between G2 and G1", "Date G1", "Date G2")
 AbsTimeLapse(complete_df, "Time between C0 and G1", "Date G1", "Date C0")
 AbsTimeLapse(complete_df, "Time since end of treatment", "34474 Date of treatment end", "Date C0")
+AbsTimeLapse(complete_df, "Age", "34501 Date of birth (survivor)", "Date C0")
 
 # We remove date variables
 complete_df = complete_df.drop(["Date C0", "Date G1", "Date G2", "34474 Date of treatment end"], axis=1)
@@ -100,14 +102,16 @@ complete_df = complete_df.drop(["34479 Radiotherapy?"], axis=1)
 vars = dict(General_2_vars, **General_1_vars)
 vars["Time of treatment"] = "numeric"
 vars["Time since end of treatment"] = "numeric"
+vars["Age"] = "numeric"
 vars = dict(vars, **Cardio_0_vars)
 vars.pop("Date")
 vars.pop("34471 Date of diagnosis")
 vars.pop("34474 Date of treatment end")
 vars.pop("34479 Radiotherapy?")
+vars.pop("34501 Date of birth (survivor)")
 
 # We filter the dataframe created
 complete_df = complete_df[vars.keys()]
 
 # We create the table
-data_manager.create_and_fill_table(complete_df, "Learning_1 General Data", types=vars, primary_key=pkey)
+data_manager.create_and_fill_table(complete_df, "Learning_1_GeneralsAndCardio0", types=vars, primary_key=pkey)

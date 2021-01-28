@@ -641,11 +641,3 @@ class PetaleDataManager(DataManager):
 
         # we return the result
         return var_info
-
-    def __add_sex_columns(self, df):
-        """
-        Add sex column to a dataframe if it is not already there
-
-        :param df: pandas dataframe
-        """
-

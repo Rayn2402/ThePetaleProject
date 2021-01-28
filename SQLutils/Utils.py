@@ -604,43 +604,6 @@ class PetaleDataManager(DataManager):
         # we return the dataframe
         return final_df
 
-    def get_generale_stats(self, save_in_file=True):
-        """
-        Function that returns a dataframe containing statistics from the generale Table.
-        It's just a faster way to get results from get_table_stats("General_4_FilteredData")
-
-        :param save_in_file: Boolean, if true the dataframe will be saved in a csv file in the folder generale_stats
-        :return: pandas DataFrame
-        """
-        group = "34500 Sex"
-
-        categorical_var = [group, "34475 Risk group", "34477 Boston protocol followed",
-                           "34479 Radiotherapy?", "34604 Is currently smoking?"]
-
-        numerical_var = [group, "34472 Age at diagnosis", "34480 Radiotherapy dose",
-                         "34502 Height", "34503 Weight", "Time of treatment"]
-
-        # We retrieve data from the Generale_4_FilteredData table
-        source = "General_4_FilteredData"
-        cat_data = self.get_table(source, categorical_var)
-        num_data = self.get_table(source, numerical_var)
-
-        # We execute the analysis
-        cat_stats = self.get_categorical_var_analysis(
-            source, cat_data, group=group)
-        num_stats = self.get_numerical_var_analysis(
-            source, num_data, group=group)
-
-        # We concatenate all the results to get the final dataframe
-        general_stats = pd.concat([cat_stats, num_stats], ignore_index=True)
-
-        # we save the dataframe in a csv file
-        if save_in_file:
-            Helpers.save_stats_file("General", general_stats)
-
-        # we return the dataframe
-        return general_stats
-
     def get_variable_info(self, var_name):
         """
         Function that returns all the information about a specific variable

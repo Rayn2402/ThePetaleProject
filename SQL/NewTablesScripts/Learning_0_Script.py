@@ -5,8 +5,8 @@ This file contains the procedure to execute in order to obtain "Learning_0_6MWT_
 This table will consist of one of the dataset two reproduce 6MWT experiment with a more complex model.
 """
 
-from SQLutils import PetaleDataManager
-from SQLutils import AbsTimeLapse
+from SQL.DataManager.Utils import PetaleDataManager
+from SQL.DataManager.Helpers import AbsTimeLapse
 import pandas as pd
 
 

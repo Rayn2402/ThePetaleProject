@@ -560,37 +560,36 @@ class PetaleDataManager(DataManager):
         cols = [col for col in cols if col not in exclude]
         table_df = table_df[cols]
 
-        # we get only the rows that satisfy the given conditions (
+        # we get only the rows that satisfy the given conditions
         table_df = table_df[table_df["Tag"] == "Phase 1"]
-        table_df = table_df.drop(["34500 Sex", "Tag"], axis=1, errors='ignore')
+        table_df = table_df.drop(["Tag"], axis=1)
+
+        # We get the dataframe from the table the table containing the sex information
+        if "34500 Sex" in cols:
+            sex_df = table_df[["Participant", "34500 Sex"]]
+            table_df = table_df.drop(["34500 Sex"], axis=1)
+        else:
+            sex_df = self.get_table("General_1_Demographic Questionnaire", columns=["Participant", "Tag", "34500 Sex"])
+            sex_df = sex_df[sex_df["Tag"] == "Phase 1"]
+            sex_df = sex_df.drop(["Tag"], axis=1)
 
         # we retrieve categorical and numerical data
-        categorical_df = Helpers.retrieve_categorical(
-            table_df, ids=["Participant"])
-        numerical_df = Helpers.retrieve_numerical(
-            table_df, ids=["Participant"])
-
-        # We get the dataframe from the table the table containing the gender information
-        df_general = self.get_table("General_4_FilteredData", columns=[
-                                    "Participant", "34500 Sex"])
+        categorical_df = Helpers.retrieve_categorical(table_df, ids=["Participant"])
+        numerical_df = Helpers.retrieve_numerical(table_df, ids=["Participant"])
 
         # we merge the the categorical dataframe with the general dataframe by the column "Participant"
-        categorical_df = pd.merge(
-            df_general, categorical_df, on="Participant", how="inner")
+        categorical_df = pd.merge(sex_df, categorical_df, on="Participant", how="inner")
         categorical_df = categorical_df.drop(["Participant"], axis=1)
 
         # we merge the the numerical dataframe with the general dataframe by the column "Participant"
-        numerical_df = pd.merge(df_general, numerical_df,
-                                on="Participant", how="inner")
+        numerical_df = pd.merge(sex_df, numerical_df, on="Participant", how="inner")
         numerical_df = numerical_df.drop(["Participant"], axis=1)
 
         # we make a categorical var analysis for this table
-        categorical_stats = self.get_categorical_var_analysis(
-            table_name, categorical_df, group="34500 Sex")
+        categorical_stats = self.get_categorical_var_analysis(table_name, categorical_df, group="34500 Sex")
 
         # we make a numerical var analysis for this table
-        numerical_stats = self.get_numerical_var_analysis(
-            table_name, numerical_df, group="34500 Sex")
+        numerical_stats = self.get_numerical_var_analysis(table_name, numerical_df, group="34500 Sex")
 
         # we concatenate all the results to get the final dataframe
         final_df = pd.concat(
@@ -604,43 +603,6 @@ class PetaleDataManager(DataManager):
 
         # we return the dataframe
         return final_df
-
-    def get_generale_stats(self, save_in_file=True):
-        """
-        Function that returns a dataframe containing statistics from the generale Table.
-        It's just a faster way to get results from get_table_stats("General_4_FilteredData")
-
-        :param save_in_file: Boolean, if true the dataframe will be saved in a csv file in the folder generale_stats
-        :return: pandas DataFrame
-        """
-        group = "34500 Sex"
-
-        categorical_var = [group, "34475 Risk group", "34477 Boston protocol followed",
-                           "34479 Radiotherapy?", "34604 Is currently smoking?"]
-
-        numerical_var = [group, "34472 Age at diagnosis", "34480 Radiotherapy dose",
-                         "34502 Height", "34503 Weight", "Time of treatment"]
-
-        # We retrieve data from the Generale_4_FilteredData table
-        source = "General_4_FilteredData"
-        cat_data = self.get_table(source, categorical_var)
-        num_data = self.get_table(source, numerical_var)
-
-        # We execute the analysis
-        cat_stats = self.get_categorical_var_analysis(
-            source, cat_data, group=group)
-        num_stats = self.get_numerical_var_analysis(
-            source, num_data, group=group)
-
-        # We concatenate all the results to get the final dataframe
-        general_stats = pd.concat([cat_stats, num_stats], ignore_index=True)
-
-        # we save the dataframe in a csv file
-        if save_in_file:
-            Helpers.save_stats_file("General", general_stats)
-
-        # we return the dataframe
-        return general_stats
 
     def get_variable_info(self, var_name):
         """

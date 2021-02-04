@@ -2,6 +2,9 @@ import os
 import csv
 from pathlib import Path
 
+SECONDS_IN_YEAR = 31556952
+
+
 def colsForSql(cols):
     """
     Function that transforms a list of strings containing the name of columns to a string
@@ -74,15 +77,27 @@ def save_stats_file(filename, df):
     df.to_csv(f"./stats/stats_{filename}/stats_{filename}.csv")
 
 
-def timeDeltaToMonths(timeDelta):
+def timeDeltaToYears(timeDelta):
     """
     Function that transforms from the type TimeDelta to months
 
     :return: number of month
     """
 
-    return round(timeDelta.total_seconds() / 2592000, 2)
+    return round(timeDelta.total_seconds() / SECONDS_IN_YEAR, 2)
 
+
+def AbsTimeLapse(df, new_col, first_date, second_date):
+    """
+    Computes a new column that gives the absolute differences (in months) between two column dates
+
+    :param df: pandas dataframe
+    :param new_col: new column name (for the column that will store the results)
+    :param first_date: first date column name
+    :param second_date: second date column name
+    """
+    df[new_col] = abs(df[second_date] - df[first_date])
+    df[new_col] = df[new_col].apply(timeDeltaToYears)
 
 def extract_var_id(var_name):
     """

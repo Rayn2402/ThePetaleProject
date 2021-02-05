@@ -1,4 +1,4 @@
-import numpy as np
+import  torch
 
 
 #To be converted to tensors instead of numpy arrays
@@ -57,7 +57,4 @@ class LinearRegressor():
         #we caclulate the root mean square error
         return torch.sqrt(torch.mean(torch.square(y_pred - y))).item()
 
-
-class GDLinearRegressor():
-    def __init__(self):
         

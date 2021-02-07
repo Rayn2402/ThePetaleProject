@@ -75,6 +75,8 @@ class DataManager:
             # We define the primary key
             keys = Helpers.colsForSql(primary_key)
             query += f", PRIMARY KEY ({keys}) );"
+        else:
+            query += ");"
 
         # We execute the query
         try:

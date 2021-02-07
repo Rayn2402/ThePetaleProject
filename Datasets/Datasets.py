@@ -96,6 +96,7 @@ def load_warmup_dataset(dm, split=True, add_biases=False):
 
     :param dm: PetaleDataManager
     :param split: Boolean indicating if we want to split categorical variables from the continuous ones
+    :param add_biases: boolean indicating if a column of ones should be added at the beginning of X_cont
     :return: PetaleDataset
     """
     # We save some important constants

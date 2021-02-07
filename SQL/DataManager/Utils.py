@@ -563,8 +563,9 @@ class PetaleDataManager(DataManager):
         table_df = table_df[cols]
 
         # we get only the rows that satisfy the given conditions
-        table_df = table_df[table_df["Tag"] == "Phase 1"]
-        table_df = table_df.drop(["Tag"], axis=1)
+        if "Tag" in cols:
+            table_df = table_df[table_df["Tag"] == "Phase 1"]
+            table_df = table_df.drop(["Tag"], axis=1)
 
         # We get the dataframe from the table the table containing the sex information
         if "34500 Sex" in cols:

@@ -25,6 +25,8 @@ def compare_predictions(preds, targets, title=None):
     if title is not None:
         plt.title(title)
 
+    plt.xlabel('Ground truth')
+    plt.ylabel('Predictions')
     plt.show()
     plt.close()
 
@@ -48,7 +50,33 @@ def visualize_embeddings(embeddings, category_levels, perplexity=10, title=None)
 
     if title is not None:
         plt.title(title)
+    else:
+        plt.title('Embeddings visualization with TSNE')
 
     plt.show()
     plt.close()
+
+
+def visualize_epoch_losses(train_loss_history, test_loss_history):
+    """
+    Visualizes train and test loss history over training epoch
+
+    :param train_loss_history: (E,) tensor where E is the number of epochs
+    :param test_loss_history: (E,) tensor
+    """
+    nb_epochs = train_loss_history.shape[0]
+    if nb_epochs != test_loss_history.shape[0]:
+        raise Exception("Both train and test tensors must be of the same shape")
+
+    epochs = range(nb_epochs)
+
+    plt.plot(epochs, train_loss_history, label='train loss')
+    plt.plot(epochs, test_loss_history, label='test loss')
+
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.title('Train and test losses over epochs')
+    plt.show()
+    plt.close()
+
 

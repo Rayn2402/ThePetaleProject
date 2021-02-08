@@ -2,6 +2,7 @@ missing_data
 missing_data_charts
 DescriptiveAnalyses/stats
 DescriptiveAnalyses/charts
-DatasetExtraction/Learning_1_Script.py
+SQL/NewTablesScripts/Learning_1_Script.py
 .idea
+VO2_ID.csv
 __pycache__

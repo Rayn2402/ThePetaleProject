@@ -5,6 +5,7 @@ This file contains all transformations related to preprocessing treatment
 """
 
 import pandas as pd
+from sklearn.preprocessing import OrdinalEncoder
 
 
 class ContinuousTransform:
@@ -47,6 +48,18 @@ class CategoricalTransform:
 
     @staticmethod
     def one_hot_encode(df):
-        encoding_sizes = [len(df[col].cat.categories) for col in df.columns]
-        return pd.get_dummies(df), encoding_sizes
+        """
+        One hot encodes all columns of the dataframe
+        """
+        return pd.get_dummies(df)
+
+    @staticmethod
+    def ordinal_encode(df):
+        """
+        Applies ordinal encoding to all columns of the dataframe
+        """
+        for c in df.columns:
+            df[c] = df[c].cat.codes
+
+        return df
 

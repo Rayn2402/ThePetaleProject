@@ -15,9 +15,23 @@ class RegressionMetrics:
 
         :param pred: (N,) tensor
         :param targets: (N,) tensor
-        :return: float
+        :return: (1,) tensor
         """
         p = pred - pred.mean()
         t = targets - targets.mean()
 
         return p.dot(t) / (sqrt((p**2).sum())*sqrt((t**2).sum()))
+
+
+class ClassificationMetrics:
+
+    @staticmethod
+    def accuracy(pred, targets):
+        """
+        Returns the accuracy of predictions
+
+        :param pred: (N,) tensor
+        :param targets: (N,) tensor
+        :return: (1,) tensor
+        """
+        return (pred == targets).float().mean()

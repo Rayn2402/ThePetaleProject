@@ -42,9 +42,9 @@ class GDLinearRegressor(nn.Module):
             #we generate the embedding sizes ( this part will be optimized )
             embedding_sizes = [(cat_size, min(50, (cat_size+1)//2)) for cat_size in cat_sizes]
             #we create the Embeddings layers
-            self.embedding_layers = nn.ModuleList([nn.Embedding(num_embbeding,embedding_dim) for num_embbeding,embedding_dim in embedding_sizes])
-            #we get the number of our categorical data after embedding ( we sum the embeddings dims)
-            num_cat_col = sum((embedding_dim for num_embbeding,embedding_dim in embedding_sizes ))
+            self.embedding_layers = nn.ModuleList([nn.Embedding(num_embedding,embedding_dim) for num_embedding,embedding_dim in embedding_sizes])
+            #we get the number of our categorical data after the embedding ( we sum the embeddings dims)
+            num_cat_col = sum((embedding_dim for num_embedding,embedding_dim in embedding_sizes ))
             
             #the number of enteries to our linear layer
             input_size = num_cat_col + num_cont_col

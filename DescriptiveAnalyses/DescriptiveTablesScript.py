@@ -5,7 +5,7 @@ Authors : Nicolas Raymond
 This file store the procedures that need to be executed in order to extract descriptive tables
 with information from all variables of a table.
 """
-from SQLutils.Utils import PetaleDataManager
+from SQL.DataManager.Utils import PetaleDataManager
 
 
 # We build a PetaleDataManager that will help interacting with PETALE database

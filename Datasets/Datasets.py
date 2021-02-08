@@ -44,18 +44,23 @@ class PetaleDataset(Dataset):
 
         # We preprocess and save categorical features if there are some
         if cat_cols is not None:
-            self.X_cat, self.encoding_sizes = preprocess_categoricals(df[cat_cols])
-            self.X_cat = from_numpy(self.X_cat.values)
+            if split:
+                # We keep ordinal encodings of categorical features separated from continuous features
+                self.X_cat = preprocess_categoricals(df[cat_cols])
+                self.X_cat = from_numpy(self.X_cat.values)
+            else:
+                # We concatenate one-hot encodings of categorical features with continuous features
+                self.X_cat = preprocess_categoricals(df[cat_cols], encoding='one-hot')
+                self.X_cat = from_numpy(self.X_cat.values)
+                self.__concat_dataset()
+        else:
+            self.X_cat = None
 
         # We save the targets
         self.y = from_numpy(ConT.to_float(df[target]).values).flatten()
 
         # We define the getter function according to the presence of absence of categorical features
-        self.getter = self.define_getter(cat_cols)
-
-        # We consider all the dataset as continuous input if split == False
-        if (not split) and cat_cols is not None:
-            self.__concat_dataset()
+        self.getter = self.define_getter(cat_cols, split)
 
     def __len__(self):
         return self.X_cont.shape[0]
@@ -63,14 +68,15 @@ class PetaleDataset(Dataset):
     def __getitem__(self, idx):
         return self.getter(idx)
 
-    def define_getter(self, cat_cols):
+    def define_getter(self, cat_cols, split):
         """
         Builds to right __getitem__ function according to cat_cols value
 
         :param cat_cols: list of categorical columns names
+        :param split: boolean indicating if categorical features must remain separated from continuous features
         :return: function
         """
-        if cat_cols is not None:
+        if (cat_cols is not None) and split:
             def f(idx):
                 return self.X_cont[idx, :], self.X_cat[idx, :], self.y[idx]
 
@@ -86,8 +92,7 @@ class PetaleDataset(Dataset):
         WARNING! : !Categorical and continuous must remain separate if we want to have an embedding layer!
         """
         self.X_cont = cat((self.X_cont, self.X_cat), 1)
-        self.X_cat, self.encoding_sizes = None, None
-        self.getter = self.define_getter(None)
+        self.X_cat = None
 
 
 def load_warmup_dataset(dm, split=True, add_biases=False):

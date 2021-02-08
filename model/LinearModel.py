@@ -10,6 +10,10 @@ import torch.nn as nn
 
 class LinearRegressor():
     def __init__(self, input_size):
+        """
+        Creates a model that give us the analytical solution of the  linear regression 
+        :param input_size: the number of features we have
+        """
         #we intialize the weights with random numbers
         self.W = randn(input_size, 1)
     def train(self, x, y):
@@ -37,10 +41,10 @@ class GDLinearRegressor(nn.Module):
         if cat_sizes is not None :
             #we generate the embedding sizes ( this part will be optimized )
             embedding_sizes = [(cat_size, min(50, (cat_size+1)//2)) for cat_size in cat_sizes]
-            #Embeddings layers
+            #we create the Embeddings layers
             self.embedding_layers = nn.ModuleList([nn.Embedding(num_embbeding,embedding_dim) for num_embbeding,embedding_dim in embedding_sizes])
-            #we get the number of our categorical after embedding ( we sum the embeddings dims)
-            num_cat_col = sum((embedding_dim for num_embedding,embedding_dim in self.embedding_layer))
+            #we get the number of our categorical data after embedding ( we sum the embeddings dims)
+            num_cat_col = sum((embedding_dim for num_embbeding,embedding_dim in embedding_sizes ))
             
             #the number of enteries to our linear layer
             input_size = num_cat_col + num_cont_col
@@ -60,7 +64,7 @@ class GDLinearRegressor(nn.Module):
                 embeddings.append(e(x_cat[:,i]))        
             #we concatenate all the embeddings
             x = cat(embeddings,1)
-            #we concatenate categorical and numerical data after performing the  entity embedding
+            #we concatenate categorical and continuous data after performing the  entity embedding
             x = cat([x,x_cont],1)
         else:
             x= x_cont  

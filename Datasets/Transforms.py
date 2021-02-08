@@ -51,8 +51,7 @@ class CategoricalTransform:
         """
         One hot encodes all columns of the dataframe
         """
-        encoding_sizes = [len(df[col].cat.categories) for col in df.columns]
-        return pd.get_dummies(df), encoding_sizes
+        return pd.get_dummies(df)
 
     @staticmethod
     def ordinal_encode(df):

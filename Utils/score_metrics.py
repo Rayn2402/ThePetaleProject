@@ -12,7 +12,7 @@ class RegressionMetrics:
     def pearson(pred, targets):
         """
         Computes the pearson correlation coefficient between predictions and targets
-        NOTE! : A strong correlation does not implies good accuracy
+        NOTE! : A strong correlation does not imply good accuracy
 
         :param pred: (N,) tensor
         :param targets: (N,) tensor

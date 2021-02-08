@@ -9,6 +9,7 @@ from .Transforms import CategoricalTransform as CaT
 
 ENCODING = ["ordinal", "one-hot"]
 
+
 def preprocess_continuous(df):
     """
     Applies all continuous transforms to a dataframe containing only continuous data

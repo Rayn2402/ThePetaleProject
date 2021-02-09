@@ -2,7 +2,7 @@
 Authors : Mehdi Mitiche
 
 This file stores the two classes of the linear regression models : 
-LinearRegressor which is the class that will represent the analytical solution and GDLinearRegressor which is the class that will represent the model of the linear regression with gradiant decent
+LinearRegressor which is the class that will represent the analytical solution and GDLinearRegressor which is the class that will represent the model of the linear regression with gradient descent
 """
 
 from torch import randn, matmul, cat, inverse, transpose
@@ -33,9 +33,9 @@ class LinearRegressor():
 class GDLinearRegressor(nn.Module):
     def __init__(self, num_cont_col, cat_sizes = None):
         """
-        Creates a model that perform a linear regression with gradiant decent, entity embedding is performed on the data if cat_sizes is not null
+        Creates a model that perform a linear regression with gradient descent, entity embedding is performed on the data if cat_sizes is not null
         :param cat_sizes: list of integer representing the size of each categorical column
-        :param num_cont_col: the number of comtinious columns we have
+        :param num_cont_col: the number of continuous columns we have
         """
         super(GDLinearRegressor, self).__init__()
         if cat_sizes is not None :

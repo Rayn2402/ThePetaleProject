@@ -2,7 +2,7 @@
 Authors : Mehdi Mitiche
 
 This file stores the two classes of the linear regression models : 
-LinearRegressor wich is the class that will represent the analytical solution and GDLinearRegressor wich is the class that represent the model of linear regression yith gradiant decent
+LinearRegressor which is the class that will represent the analytical solution and GDLinearRegressor which is the class that will represent the model of the linear regression with gradiant decent
 """
 
 from torch import randn, matmul, cat, inverse, transpose

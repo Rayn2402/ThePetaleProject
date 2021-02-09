@@ -1,6 +1,8 @@
 missing_data
 missing_data_charts
-stats
-charts
+DescriptiveAnalyses/stats
+DescriptiveAnalyses/charts
+SQL/NewTablesScripts/Learning_1_Script.py
 .idea
+VO2_ID.csv
 __pycache__

@@ -6,8 +6,8 @@ Authors : Nicolas Raymond
 This file contains all functions linked to SQL data management
 
 """
-import SQLutils.ChartServices as ChartServices
-import SQLutils.Helpers as Helpers
+from . import ChartServices as ChartServices
+from . import Helpers as Helpers
 import psycopg2
 import pandas as pd
 import os
@@ -75,6 +75,8 @@ class DataManager:
             # We define the primary key
             keys = Helpers.colsForSql(primary_key)
             query += f", PRIMARY KEY ({keys}) );"
+        else:
+            query += ");"
 
         # We execute the query
         try:
@@ -561,8 +563,9 @@ class PetaleDataManager(DataManager):
         table_df = table_df[cols]
 
         # we get only the rows that satisfy the given conditions
-        table_df = table_df[table_df["Tag"] == "Phase 1"]
-        table_df = table_df.drop(["Tag"], axis=1)
+        if "Tag" in cols:
+            table_df = table_df[table_df["Tag"] == "Phase 1"]
+            table_df = table_df.drop(["Tag"], axis=1)
 
         # We get the dataframe from the table the table containing the sex information
         if "34500 Sex" in cols:

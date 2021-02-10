@@ -6,3 +6,4 @@ SQL/NewTablesScripts/Learning_1_Script.py
 .idea
 VO2_ID.csv
 __pycache__
+*.pt

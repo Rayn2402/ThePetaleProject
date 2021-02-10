@@ -1,3 +1,10 @@
+"""
+Authors : Mitiche
+
+Files that contains class related to the Training of the models
+
+"""
+
 from .EarlyStopping import EarlyStopping
 import torch.nn as nn
 from torch.utils.data import DataLoader, random_split
@@ -9,11 +16,30 @@ optimizers = ["Adam", "RMSprop", "SGD"]
 
 class Trainer():
     def __init__(self, model):
+        """
+        Creates a Trainer that will train and evaluate a given model.
+
+        :param model: the model to be trained
+        """
         if not isinstance(model, nn.Module):
             raise ValueError('model argument must inherit from torch.nn.Module')
         self.model = model
     
     def fit(self, dataset,train_split , batch_size, optimizer_name, lr, epochs, early_stopping_activated = True, patience = 5):
+        """
+        Method that will fit the nodel to the given data
+
+        :param dataset: PyTorch Dataset containing that data
+        :param train_split: fraction that represents the size of the training set
+        :param batch_size: int that represent the size of the batchs to be used in the train data loader
+        :param optimizer_name: string to define the optimizer to be used in the training
+        :param lr: the learning rate
+        :param epochs: number times that the learning algorithm will work through the entire training dataset
+        :param early_stopping_activated: boolean indicating if we want to early stop the training when the validation loss stops decreasing
+        :param patience: int representing how long to wait after last time validation loss improved.
+
+        :return: two lists containing the training losses and the validation losses
+        """
         #we split the data
         train_split = int(train_split * dataset.__len__())
         train_set, val_set = random_split(dataset, [train_split, dataset.__len__() - train_split])
@@ -22,7 +48,7 @@ class Trainer():
         val_loader = DataLoader(val_set,batch_size= val_set.__len__())
         #we create the the validation data loader
         train_loader = DataLoader(dataset,batch_size,shuffle=True)
-        #we create the 
+        #we create the optimizer
         if optimizer_name not in optimizers:
             raise Exception("optimizer not found !")
         optimizer = getattr(torch.optim, optimizer_name)(self.model.parameters(), lr=lr)
@@ -79,7 +105,7 @@ class Trainer():
                 if(early_stopping.early_stop):
                     print("Early stopping ...")
                     break
-        return training_loss,valid_loss
+        return training_loss, valid_loss
     
     def predict(self, x):
         return self.model(x.float())

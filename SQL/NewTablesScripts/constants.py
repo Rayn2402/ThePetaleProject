@@ -14,6 +14,11 @@ CARDIO_3 = "Cardio_3_Questionnaire d'Activité Physique (QAP)"
 CARDIO_4 = "Cardio_4_Test de Marche de 6 Minutes (TDM6)"
 ID_TABLE = "VO2_ID"
 DEX_DOX_TABLE = "DEX_DOX"
+LEARNING_0 = "Learning_0_WARMUP"
+LEARNING_1 = "Learning_1_6MWT"
+LEARNING_2 = "Learning_2_EE"
+LEARNING_3 = "Learning_3_6MWT_AND_GENES"
+LEARNING_4 = "Learning_4_EE_AND_GENES"
 
 # TABLE KEYS AND FILTERS
 PARTICIPANT, TAG, DATE = "Participant", "Tag", "Date"
@@ -57,11 +62,18 @@ TDM6_HR_END = "35149 TDM6_HR_6_2"
 TDM6_TAS_END = "35152 TDM6_TAS_effort_2"
 TDM6_TAD_END = "35153 TDM6_TAD_effort_2"
 
+# DEX_DOX COLUMNS
+DEX = 'DEX (mg/m2)'
+DOX = 'DOX (mg/m2)'
+
 # NEW COLUMNS NAMES
 TSEOT = "Time since end of treatment"
 DT = "Duration of treatment"
 AGE = "Age"
 MVLPA = "MVLPA"
+FITNESS = "Fitness"
+FITNESS_LVL = "Fitness lvl"
+DEX_PRESENCE = "DEX used in treatment"
 
 # TYPE DICT
 TYPES = {PARTICIPANT: CATEGORICAL_TYPE,
@@ -88,10 +100,14 @@ TYPES = {PARTICIPANT: CATEGORICAL_TYPE,
          TDM6_HR_END: NUMERIC_TYPE,
          TDM6_TAS_END: NUMERIC_TYPE,
          TDM6_TAD_END: NUMERIC_TYPE,
+         DEX: NUMERIC_TYPE,
+         DOX: NUMERIC_TYPE,
          TSEOT: NUMERIC_TYPE,
          DT: NUMERIC_TYPE,
          AGE: NUMERIC_TYPE,
-         MVLPA: NUMERIC_TYPE
+         MVLPA: NUMERIC_TYPE,
+         FITNESS_LVL: NUMERIC_TYPE,
+         DEX_PRESENCE: CATEGORICAL_TYPE
          }
 
 

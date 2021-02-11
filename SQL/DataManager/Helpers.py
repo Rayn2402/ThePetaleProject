@@ -232,3 +232,13 @@ def retrieve_numerical(df, ids):
         if col_id not in numerical_cols:
             numerical_cols.append(col_id)
     return df[numerical_cols]
+
+
+def fill_id(id):
+    """
+    Add characters missing to ID
+    :param id: current id (string)
+    """
+    return f"P" + "".join(["0"]*(3-len(id))) + id
+
+

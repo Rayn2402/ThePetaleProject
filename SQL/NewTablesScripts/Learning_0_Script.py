@@ -7,6 +7,7 @@ This table will consist of one of the dataset two reproduce 6MWT experiment with
 
 from SQL.DataManager.Utils import PetaleDataManager
 from SQL.DataManager.Helpers import AbsTimeLapse
+from constants import *
 import pandas as pd
 
 
@@ -27,57 +28,29 @@ if __name__ == '__main__':
     data_manager = PetaleDataManager(user_name)
 
     # We save the variables needed from General_1
-    GEN_1 = "General_1_Demographic Questionnaire"
-    General_1_vars = {"Date": "date",
-                      "Participant": "text",
-                      "Tag": "text",
-                      "34501 Date of birth (survivor)": "date",
-                      "34503 Weight": "numeric"}
+    G1_vars = [DATE] + PKEY + [DATE_OF_BIRTH, WEIGHT]
 
     # We save the variables needed from General_2
-    GEN_2 = "General_2_CRF Hematology-Oncology"
-    General_2_vars = {"Participant": "text",
-                      "Tag": "text",
-                      "34471 Date of diagnosis": "date",
-                      "34474 Date of treatment end": "date"}
+    G2_vars = PKEY + [DATE_OF_DIAGNOSIS, DATE_OF_TREATMENT_END]
 
     # We save the variables needed from Cardio_0
-    CARDIO_0 = "Cardio_0_Évaluation à l'Effort (EE)"
-    Cardio_0_vars = {"Participant": "text",
-                     "Tag": "text",
-                     "35009 EE_VO2r_max": "numeric"}
+    C0_vars = PKEY + [VO2R_MAX]
 
     # We save the variables needed from Cardio_3
-    CARDIO_3 = "Cardio_3_Questionnaire d'Activité Physique (QAP)"
-    Cardio_3_vars = {"Participant": "text",
-                     "Tag": "text",
-                     "35116 QAPL8": "numeric"}
+    C3_vars = PKEY + [QAPL8]
 
     # We save the variables needed from Cardio_4
-    CARDIO_4 = "Cardio_4_Test de Marche de 6 Minutes (TDM6)"
-    Cardio_4_vars = {"Participant": "text",
-                     "Tag": "text",
-                     "35149 TDM6_HR_6_2": "numeric",
-                     "35142 TDM6_Distance_2": "numeric"}
+    C4_vars = PKEY + [TDM6_HR_END, TDM6_DIST]
 
-    # We save some helpful constants
-    KEY1, KEY2 = "Participant", "Tag"
-    TAG, PHASE = "Tag", "Phase 1"
-    DIAGNOSIS = "34471 Date of diagnosis"
-    TREATMENT_END = "34474 Date of treatment end"
-    DT = "Duration of treatment"
-    MVLPA, QAPL8 = "MVLPA", "35116 QAPL8"
-    INNER = "inner"
-    PRESENT, BIRTH, AGE = "Date", "34501 Date of birth (survivor)", "Age"
-    VO2_MAX = '35009 EE_VO2r_max'
-    ID_TABLE = "VO2_ID"
+    # We save a set with all the variables
+    all_vars = set(G1_vars+G2_vars+C3_vars+C4_vars+C0_vars)
 
     # We retrieve the tables with variables and the table with the filtered ID
-    df_general_1 = data_manager.get_table(GEN_1, General_1_vars.keys())
-    df_general_2 = data_manager.get_table(GEN_2, General_2_vars.keys())
-    df_cardio_0 = data_manager.get_table(CARDIO_0, Cardio_0_vars.keys())
-    df_cardio_3 = data_manager.get_table(CARDIO_3, Cardio_3_vars.keys())
-    df_cardio_4 = data_manager.get_table(CARDIO_4, Cardio_4_vars.keys())
+    df_general_1 = data_manager.get_table(GEN_1, G1_vars)
+    df_general_2 = data_manager.get_table(GEN_2, G2_vars)
+    df_cardio_0 = data_manager.get_table(CARDIO_0, C0_vars)
+    df_cardio_3 = data_manager.get_table(CARDIO_3, C3_vars)
+    df_cardio_4 = data_manager.get_table(CARDIO_4, C4_vars)
     IDs = data_manager.get_table(ID_TABLE)
 
     # We only keep survivors from Phase 1
@@ -88,46 +61,56 @@ if __name__ == '__main__':
     df_cardio_4 = df_cardio_4[df_cardio_4[TAG] == PHASE]
 
     # We remove survivors that have missing VO2r_max value
-    df_cardio_0 = df_cardio_0[~df_cardio_0[VO2_MAX].isnull()]
+    df_cardio_0 = df_cardio_0[~df_cardio_0[VO2R_MAX].isnull()]
 
     # We add a new column Duration of treatment (years) to the table general_2
-    AbsTimeLapse(df_general_2, DT, DIAGNOSIS, TREATMENT_END)
+    AbsTimeLapse(df_general_2, DT, DATE_OF_DIAGNOSIS, DATE_OF_TREATMENT_END)
 
-    # We sum the two column QALP3 and QALP4 to get the sum of minutes
+    # We rename QALP8 as MVLPA
     df_cardio_3 = df_cardio_3.rename(columns={QAPL8: MVLPA})
 
     # We concatenate all the dataframes
-    pkey = [KEY1, KEY2]
     complete_df = pd.merge(IDs, df_general_1)
-    complete_df = pd.merge(complete_df, df_general_2, on=pkey, how=INNER)
-    complete_df = pd.merge(complete_df, df_cardio_0, on=pkey, how=INNER)
-    complete_df = pd.merge(complete_df, df_cardio_3, on=pkey, how=INNER)
-    complete_df = pd.merge(complete_df, df_cardio_4, on=pkey, how=INNER)
+    complete_df = pd.merge(complete_df, df_general_2, on=PKEY, how=INNER)
+    complete_df = pd.merge(complete_df, df_cardio_0, on=PKEY, how=INNER)
+    complete_df = pd.merge(complete_df, df_cardio_3, on=PKEY, how=INNER)
+    complete_df = pd.merge(complete_df, df_cardio_4, on=PKEY, how=INNER)
 
     # We add the "Age" column
-    AbsTimeLapse(complete_df, AGE, BIRTH, PRESENT)
+    AbsTimeLapse(complete_df, AGE, DATE_OF_BIRTH, DATE)
 
     # We remove the dates column and the "Tag" column
-    complete_df = complete_df.drop([PRESENT, TREATMENT_END, DIAGNOSIS, BIRTH, KEY2], axis=1)
+    deleted_columns = [DATE, DATE_OF_TREATMENT_END, DATE_OF_DIAGNOSIS, DATE_OF_BIRTH, TAG]
+    complete_df = complete_df.drop(deleted_columns, axis=1)
 
-    # We concatenate dictionaries of variables and delete non needed ones
-    vars = {**General_2_vars, **General_1_vars, **Cardio_3_vars, **Cardio_4_vars}
+    # We delete non needed columns from list of vars
+    deleted_columns.append(QAPL8)
+    for deleted_col in deleted_columns:
+        all_vars.remove(deleted_col)
 
-    for new_col in [DT, AGE, MVLPA]:
-        vars[new_col] = "numeric"
-
-    vars = {**vars, **Cardio_0_vars}
-
-    for deleted_col in [PRESENT, QAPL8, TREATMENT_END, DIAGNOSIS, BIRTH, KEY2]:
-        vars.pop(deleted_col)
+    # We add the new columns to the list of vars
+    for new_col in [DT, MVLPA, AGE]:
+        all_vars.add(new_col)
 
     # We look at the number of rows and the total of missing values per column
     get_missing_update(complete_df)  # 19 continuous values are missing
 
+    # We create a dictionnary with the remaining variables
+
+    types = {PARTICIPANT: TYPES[PARTICIPANT]}  # We want the participant ID as the first column
+
+    all_vars.remove(PARTICIPANT)
+    all_vars.remove(VO2R_MAX)
+
+    for var in all_vars:
+        types[var] = TYPES[var]
+
+    types[VO2R_MAX] = TYPES[VO2R_MAX]  # We want the target as the last column
+
     # We filter the dataframe created
-    complete_df = complete_df[vars.keys()]
+    complete_df = complete_df[types.keys()]
 
     # We create the table
     data_manager.create_and_fill_table(complete_df, "Learning_0_6MWT_and_Generals (WarmUp)",
-                                       types=vars, primary_key=[KEY1])
+                                       types=types, primary_key=[PARTICIPANT])
 

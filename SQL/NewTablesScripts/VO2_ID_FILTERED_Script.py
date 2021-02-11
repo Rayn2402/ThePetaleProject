@@ -15,10 +15,13 @@ Criterias can be found in :
 from SQL.DataManager.Utils import PetaleDataManager
 from SQL.DataManager.Helpers import fill_id
 from pandas import read_csv
-
+import os
 
 TABLE_NAME = "VO2_ID"
 COL = "Participant"
+DIR = "csv_files"
+EXT = "csv"
+PATH = os.path.join(DIR, f"{TABLE_NAME}.{EXT}")
 
 if __name__ == '__main__':
 
@@ -27,7 +30,7 @@ if __name__ == '__main__':
     data_manager = PetaleDataManager(user_name)
 
     # We build the pandas dataframe
-    IDs = read_csv(f"{TABLE_NAME}.csv")
+    IDs = read_csv(PATH)
     IDs[COL] = IDs[COL].astype('string').apply(fill_id)
 
     # We create and fill the table in the database

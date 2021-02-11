@@ -1,7 +1,7 @@
 """
 Authors : Nicolas Raymond
 
-This file contains the procedure to execute in order to obtain "Learning_0_6MWT_and_Generals (WarmUp)" table in the database.
+This file contains the procedure to execute in order to obtain "Learning_0_6MWT_and_Generals (WarmUp)" table.
 This table will consist of one of the dataset two reproduce 6MWT experiment with a more complex model.
 """
 
@@ -95,7 +95,7 @@ if __name__ == '__main__':
     # We look at the number of rows and the total of missing values per column
     get_missing_update(complete_df)  # 19 continuous values are missing
 
-    # We create a dictionnary with the remaining variables
+    # We create a dictionary with the remaining variables
 
     types = {PARTICIPANT: TYPES[PARTICIPANT]}  # We want the participant ID as the first column
 
@@ -113,4 +113,3 @@ if __name__ == '__main__':
     # We create the table
     data_manager.create_and_fill_table(complete_df, "Learning_0_6MWT_and_Generals (WarmUp)",
                                        types=types, primary_key=[PARTICIPANT])
-

@@ -13,15 +13,8 @@ Criterias can be found in :
 
 """
 from SQL.DataManager.Utils import PetaleDataManager
+from SQL.DataManager.Helpers import fill_id
 from pandas import read_csv
-
-
-def fill_id(id):
-    """
-    Add characters missing to ID
-    :param id: current id (string)
-    """
-    return f"P" + "".join(["0"]*(3-len(id))) + id
 
 
 TABLE_NAME = "VO2_ID"

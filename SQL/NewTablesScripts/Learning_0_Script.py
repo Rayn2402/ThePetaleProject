@@ -1,7 +1,7 @@
 """
 Authors : Nicolas Raymond
 
-This file contains the procedure to execute in order to obtain "Learning_0_6MWT_and_Generals (WarmUp)" table.
+This file contains the procedure to execute in order to obtain "Learning_0_WarmUp" table.
 This table will consist of one of the dataset two reproduce 6MWT experiment with a more complex model.
 """
 
@@ -70,7 +70,7 @@ if __name__ == '__main__':
     df_cardio_3 = df_cardio_3.rename(columns={QAPL8: MVLPA})
 
     # We concatenate all the dataframes
-    complete_df = pd.merge(IDs, df_general_1)
+    complete_df = pd.merge(IDs, df_general_1, on=[PARTICIPANT], how=INNER)
     complete_df = pd.merge(complete_df, df_general_2, on=PKEY, how=INNER)
     complete_df = pd.merge(complete_df, df_cardio_0, on=PKEY, how=INNER)
     complete_df = pd.merge(complete_df, df_cardio_3, on=PKEY, how=INNER)
@@ -96,7 +96,6 @@ if __name__ == '__main__':
     get_missing_update(complete_df)  # 19 continuous values are missing
 
     # We create a dictionary with the remaining variables
-
     types = {PARTICIPANT: TYPES[PARTICIPANT]}  # We want the participant ID as the first column
 
     all_vars.remove(PARTICIPANT)
@@ -111,5 +110,4 @@ if __name__ == '__main__':
     complete_df = complete_df[types.keys()]
 
     # We create the table
-    data_manager.create_and_fill_table(complete_df, "Learning_0_6MWT_and_Generals (WarmUp)",
-                                       types=types, primary_key=[PARTICIPANT])
+    data_manager.create_and_fill_table(complete_df, LEARNING_0, types=types, primary_key=[PARTICIPANT])

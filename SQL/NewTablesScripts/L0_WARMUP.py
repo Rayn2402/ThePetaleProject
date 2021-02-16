@@ -6,7 +6,6 @@ This table will consist of one of the dataset two reproduce 6MWT experiment with
 """
 
 from SQL.DataManager.Utils import initialize_petale_data_manager
-from SQL.DataManager.Helpers import AbsTimeLapse
 from constants import *
 import pandas as pd
 

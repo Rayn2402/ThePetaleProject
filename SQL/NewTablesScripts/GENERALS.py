@@ -27,7 +27,7 @@ if __name__ == '__main__':
     C0_vars = PKEY + [VO2R_MAX, VO2_MAX, VO2_MAX_PRED, TAS_REST, TAD_REST]
 
     # We save the variables needed from Cardio_3
-    C3_vars = PKEY + [QAPL8]
+    C3_vars = PKEY + [MVLPA]
 
     # We save variables needed from DEX_DOX
     DEX_DOX_vars = [PARTICIPANT, DEX, DOX]

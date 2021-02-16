@@ -644,3 +644,12 @@ class PetaleDataManager(DataManager):
 
         # we return the result
         return var_info
+
+
+def initialize_petale_data_manager():
+    """
+    Asks petale database user name to initialise a PetaleDataManager object
+    :return: PetaleDataManager
+    """
+    user_name = input("Enter your username to access PETALE database : ")
+    return PetaleDataManager(user_name)

@@ -9,6 +9,7 @@ from torch.utils.data import Dataset
 from torch import from_numpy, cat, ones
 from .Preprocessing import *
 from .Transforms import ContinuousTransform as ConT
+from SQL.NewTablesScripts.constants import *
 
 
 class PetaleDataset(Dataset):
@@ -97,7 +98,7 @@ class PetaleDataset(Dataset):
 
 def load_warmup_dataset(dm, split=True, add_biases=False):
     """
-    Loads 'Learning_0_6MWT_and_Generals (WarmUp)' table and create a PetaleDataset object
+    Loads 'Learning_0' table and create a PetaleDataset object
 
     :param dm: PetaleDataManager
     :param split: Boolean indicating if we want to split categorical variables from the continuous ones
@@ -105,11 +106,7 @@ def load_warmup_dataset(dm, split=True, add_biases=False):
     :return: PetaleDataset
     """
     # We save some important constants
-    CONTINUOUS_COL = ['34503 Weight', '35149 TDM6_HR_6_2', '35142 TDM6_Distance_2',
-                      'Duration of treatment', 'Age', 'MVLPA']
-    ID = "Participant"
-    TARGET = '35009 EE_VO2r_max'
+    continuous_columns = [WEIGHT, TDM6_HR_END, TDM6_DIST, DT, AGE, MVLPA]
+    df = dm.get_table(LEARNING_0)
 
-    df = dm.get_table('Learning_0_6MWT_and_Generals (WarmUp)')
-
-    return PetaleDataset(df, CONTINUOUS_COL, TARGET, ID, split=split, add_biases=add_biases)
+    return PetaleDataset(df, continuous_columns, target=VO2R_MAX, id=PARTICIPANT, split=split, add_biases=add_biases)

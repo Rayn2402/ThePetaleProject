@@ -148,8 +148,5 @@ if __name__ == '__main__':
 
     types[FITNESS_LVL] = TYPES[FITNESS_LVL]  # We want the target as the last column
 
-    # We order the dataframe created
-    complete_df = complete_df[types.keys()]
-
     # We create the table
     data_manager.create_and_fill_table(complete_df, LEARNING_1, types=types, primary_key=[PARTICIPANT])

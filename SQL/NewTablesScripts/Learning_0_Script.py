@@ -105,8 +105,5 @@ if __name__ == '__main__':
 
     types[VO2R_MAX] = TYPES[VO2R_MAX]  # We want the target as the last column
 
-    # We filter the dataframe created
-    complete_df = complete_df[types.keys()]
-
     # We create the table
     data_manager.create_and_fill_table(complete_df, LEARNING_0, types=types, primary_key=[PARTICIPANT])

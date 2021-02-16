@@ -143,8 +143,5 @@ if __name__ == '__main__':
     types[FITNESS_LVL] = TYPES[FITNESS_LVL]
     types[VO2R_MAX] = TYPES[VO2R_MAX]
 
-    # We order the dataframe created
-    complete_df = complete_df[types.keys()]
-
     # We create the table
     data_manager.create_and_fill_table(complete_df, GENERALS, types=types, primary_key=[PARTICIPANT])

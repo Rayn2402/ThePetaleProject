@@ -5,7 +5,7 @@ This file stores the procedure to execute in order to obtain "GENERALS" table in
 
 """
 
-from SQL.DataManager.Utils import PetaleDataManager
+from SQL.DataManager.Utils import initialize_petale_data_manager
 from SQL.DataManager.Helpers import AbsTimeLapse
 from constants import *
 from numpy import select, nan
@@ -15,8 +15,7 @@ import pandas as pd
 if __name__ == '__main__':
 
     # We build a PetaleDataManager that will help interacting with PETALE database
-    user_name = input("Enter your username to access PETALE database : ")
-    data_manager = PetaleDataManager(user_name)
+    data_manager = initialize_petale_data_manager()
 
     # We save the variables needed from General_1
     G1_vars = PKEY + [DATE, DATE_OF_BIRTH, SEX, HEIGHT, WEIGHT, SMOKING]

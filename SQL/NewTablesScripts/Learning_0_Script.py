@@ -5,7 +5,7 @@ This file contains the procedure to execute in order to obtain "Learning_0_WarmU
 This table will consist of one of the dataset two reproduce 6MWT experiment with a more complex model.
 """
 
-from SQL.DataManager.Utils import PetaleDataManager
+from SQL.DataManager.Utils import initialize_petale_data_manager
 from SQL.DataManager.Helpers import AbsTimeLapse
 from constants import *
 import pandas as pd
@@ -24,8 +24,7 @@ def get_missing_update(df):
 if __name__ == '__main__':
 
     # We build a PetaleDataManager that will help interacting with PETALE database
-    user_name = input("Enter your username to access PETALE database : ")
-    data_manager = PetaleDataManager(user_name)
+    data_manager = initialize_petale_data_manager()
 
     # We save the variables needed from General_1
     G1_vars = [DATE] + PKEY + [DATE_OF_BIRTH, WEIGHT]

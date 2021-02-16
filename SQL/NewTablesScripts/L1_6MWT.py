@@ -9,7 +9,7 @@ from SQL.DataManager.Utils import initialize_petale_data_manager
 from SQL.DataManager.Helpers import AbsTimeLapse
 from constants import *
 from numpy import select
-from SQL.NewTablesScripts.Learning_0_Script import get_missing_update
+from SQL.NewTablesScripts.L0_WARMUP import get_missing_update
 import pandas as pd
 
 if __name__ == '__main__':

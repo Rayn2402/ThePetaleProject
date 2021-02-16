@@ -5,7 +5,6 @@ This file contains all transformations related to preprocessing treatment
 """
 
 import pandas as pd
-from sklearn.preprocessing import OrdinalEncoder
 
 
 class ContinuousTransform:
@@ -20,18 +19,24 @@ class ContinuousTransform:
         return df.astype('float')
 
     @staticmethod
-    def normalize(df):
+    def normalize(df, mean=None, std=None):
         """
         Applies normalization to columns of a pandas dataframe
         """
-        return (df-df.mean())/df.std()
+        if mean is not None and std is not None:
+            return (df-mean)/std
+        else:
+            return (df-df.mean())/df.std()
 
     @staticmethod
-    def fill_missing(df):
+    def fill_missing(df, mean=None):
         """
         Fills missing value of continuous data columns with mean
         """
-        return df.fillna(df.mean())
+        if mean is not None:
+            return df.fillna(mean)
+        else:
+            return df.fillna(df.mean())
 
 
 class CategoricalTransform:

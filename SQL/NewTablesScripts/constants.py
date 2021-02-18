@@ -14,6 +14,8 @@ CARDIO_3 = "Cardio_3_Questionnaire d'Activité Physique (QAP)"
 CARDIO_4 = "Cardio_4_Test de Marche de 6 Minutes (TDM6)"
 ID_TABLE = "VO2_ID"
 DEX_DOX_TABLE = "DEX_DOX"
+GENERALS = "GENERALS"
+SIXMWT = "6MWT"
 LEARNING_0 = "Learning_0_WARMUP"
 LEARNING_1 = "Learning_1_6MWT"
 LEARNING_2 = "Learning_2_EE"
@@ -53,7 +55,7 @@ TAS_REST = "35020 EE_TAS_rest"
 TAD_REST = "35021 EE_TAD_rest"
 
 # CARDIO 3 COLUMNS
-QAPL8 = "35116 QAPL8"
+MVLPA = "35116 QAPL8"
 
 # CARDIO 4 COLUMNS
 TDM6_DIST = "35142 TDM6_Distance_2"
@@ -70,7 +72,6 @@ DOX = 'DOX (mg/m2)'
 TSEOT = "Time since end of treatment"
 DT = "Duration of treatment"
 AGE = "Age"
-MVLPA = "MVLPA"
 FITNESS = "Fitness"
 FITNESS_LVL = "Fitness lvl"
 DEX_PRESENCE = "DEX used in treatment"
@@ -94,7 +95,7 @@ TYPES = {PARTICIPANT: CATEGORICAL_TYPE,
          VO2R_MAX: NUMERIC_TYPE,
          TAS_REST: NUMERIC_TYPE,
          TAD_REST: NUMERIC_TYPE,
-         QAPL8: NUMERIC_TYPE,
+         MVLPA: NUMERIC_TYPE,
          TDM6_DIST: NUMERIC_TYPE,
          TDM6_HR_REST: NUMERIC_TYPE,
          TDM6_HR_END: NUMERIC_TYPE,
@@ -105,7 +106,6 @@ TYPES = {PARTICIPANT: CATEGORICAL_TYPE,
          TSEOT: NUMERIC_TYPE,
          DT: NUMERIC_TYPE,
          AGE: NUMERIC_TYPE,
-         MVLPA: NUMERIC_TYPE,
          FITNESS_LVL: NUMERIC_TYPE,
          DEX_PRESENCE: CATEGORICAL_TYPE
          }

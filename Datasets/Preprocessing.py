@@ -10,14 +10,16 @@ from .Transforms import CategoricalTransform as CaT
 ENCODING = ["ordinal", "one-hot"]
 
 
-def preprocess_continuous(df):
+def preprocess_continuous(df, mean=None, std=None):
     """
     Applies all continuous transforms to a dataframe containing only continuous data
 
     :param df: pandas dataframe
+    :param mean: pandas series with mean
+    :param std: pandas series with standard deviations
     :return: pandas dataframe
     """
-    return ConT.normalize(ConT.fill_missing(ConT.to_float(df)))
+    return ConT.normalize(ConT.fill_missing(df, mean), mean, std)
 
 
 def preprocess_categoricals(df, encoding="ordinal"):

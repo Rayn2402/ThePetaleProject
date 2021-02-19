@@ -12,29 +12,24 @@ Criterias can be found in :
  lymphoblastic leukemia survivors exposed to chemotherapy"
 
 """
-from SQL.DataManager.Utils import PetaleDataManager
+from SQL.DataManager.Utils import initialize_petale_data_manager
+from SQL.DataManager.Helpers import fill_id
 from pandas import read_csv
-
-
-def fill_id(id):
-    """
-    Add characters missing to ID
-    :param id: current id (string)
-    """
-    return f"P" + "".join(["0"]*(3-len(id))) + id
-
+import os
 
 TABLE_NAME = "VO2_ID"
 COL = "Participant"
+DIR = "csv_files"
+EXT = "csv"
+PATH = os.path.join(DIR, f"{TABLE_NAME}.{EXT}")
 
 if __name__ == '__main__':
 
     # We build a PetaleDataManager that will help interacting with PETALE database
-    user_name = input("Enter your username to access PETALE database : ")
-    data_manager = PetaleDataManager(user_name)
+    data_manager = initialize_petale_data_manager()
 
     # We build the pandas dataframe
-    IDs = read_csv(f"{TABLE_NAME}.csv")
+    IDs = read_csv(PATH)
     IDs[COL] = IDs[COL].astype('string').apply(fill_id)
 
     # We create and fill the table in the database

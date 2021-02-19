@@ -58,7 +58,7 @@ class DataManager:
 
         return conn, cur
 
-    def create_table(self, table_name, types, primary_key=None):
+    def __create_table(self, table_name, types, primary_key=None):
         """
         Creates a table named "table_name" that as columns and types indicates in the dict "types".
 
@@ -100,7 +100,10 @@ class DataManager:
         :param primary_key: list of column names to use as primary key (or composite key when more than 1)
         """
         # We first create the table
-        self.create_table(table_name, types, primary_key)
+        self.__create_table(table_name, types, primary_key)
+
+        # We order columns of dataframe according to "types" dictionary
+        df = df[types.keys()]
 
         # We save the df in a temporary csv
         df.to_csv("temp", index=False, na_rep=" ", sep="!")
@@ -644,3 +647,12 @@ class PetaleDataManager(DataManager):
 
         # we return the result
         return var_info
+
+
+def initialize_petale_data_manager():
+    """
+    Asks petale database user name to initialise a PetaleDataManager object
+    :return: PetaleDataManager
+    """
+    user_name = input("Enter your username to access PETALE database : ")
+    return PetaleDataManager(user_name)

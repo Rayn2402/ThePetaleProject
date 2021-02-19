@@ -7,7 +7,7 @@ GDLinearRegressor which is the class that will represent the model of the linear
 """
 
 from torch import randn, matmul, cat, inverse, transpose
-import torch.nn as nn
+from torch.nn import Module, ModuleList, Embedding, Linear, MSELoss
 
 
 class LinearRegressor:
@@ -35,10 +35,10 @@ class LinearRegressor:
         """
         function that evaluates the model by returning the error of the prediction of a given data
         """
-        return ((self.predict(x).unsqueeze(dim=0) - target)**2).mean().item()
+        return ((self.predict(x) - target)**2).mean().item()
 
 
-class GDLinearRegressor(nn.Module):
+class GDLinearRegressor(Module):
     def __init__(self, num_cont_col, cat_sizes=None):
         """
         Creates a model that perform a linear regression with gradient descent, entity embedding
@@ -54,7 +54,7 @@ class GDLinearRegressor(nn.Module):
             embedding_sizes = [(cat_size, min(50, (cat_size+1)//2)) for cat_size in cat_sizes]
 
             # we create the Embeddings layers
-            self.embedding_layers = nn.ModuleList([nn.Embedding(num_embedding, embedding_dim) for
+            self.embedding_layers = ModuleList([Embedding(num_embedding, embedding_dim) for
                                                    num_embedding, embedding_dim in embedding_sizes])
 
             # we get the number of our categorical data after the embedding ( we sum the embeddings dims)
@@ -67,7 +67,9 @@ class GDLinearRegressor(nn.Module):
             input_size = num_cont_col
 
         # we define our linear layer
-        self.linear = nn.Linear(input_size, 1)
+        self.linear = Linear(input_size, 1)
+        #we define the criterion for that model
+        self.criterion = MSELoss()
     
     def forward(self, x_cont, x_cat=None):
 
@@ -86,3 +88,5 @@ class GDLinearRegressor(nn.Module):
         else:
             x = x_cont
         return self.linear(x)
+    def loss(self, x_cont, x_cat, target):
+        return ((self(x_cont.float(),x_cat).squeeze() - target)**2).mean().item()

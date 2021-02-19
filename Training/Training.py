@@ -23,14 +23,17 @@ class Trainer():
         """
         if not isinstance(model, nn.Module):
             raise ValueError('model argument must inherit from torch.nn.Module')
+        #we save the model in the attribute model
         self.model = model
+        #we save the criterion of that model in the attribute criterion
+        self.criterion = model.criterion
     
-    def fit(self, dataset,train_split , batch_size, optimizer_name, lr, epochs, early_stopping_activated = True, patience = 5):
+    def fit(self, train_set, val_set, batch_size, optimizer_name, lr, epochs, early_stopping_activated = True, patience = 5):
         """
         Method that will fit the nodel to the given data
 
-        :param dataset: PyTorch Dataset containing that data
-        :param train_split: fraction that represents the size of the training set
+        :param train_set: Petale Dataset containing the training set
+        :param test_set: Petale Dataset containing the test data
         :param batch_size: int that represent the size of the batchs to be used in the train data loader
         :param optimizer_name: string to define the optimizer to be used in the training
         :param lr: the learning rate
@@ -40,27 +43,21 @@ class Trainer():
 
         :return: two lists containing the training losses and the validation losses
         """
-        #we split the data
-        train_split = int(train_split * dataset.__len__())
-        train_set, val_set = random_split(dataset, [train_split, dataset.__len__() - train_split])
         #we create the the train data loader
-        train_loader = DataLoader(train_set,batch_size,shuffle=True)
-        val_loader = DataLoader(val_set,batch_size= val_set.__len__())
+        train_loader = DataLoader(train_set,1,shuffle=True)
         #we create the the validation data loader
-        train_loader = DataLoader(dataset,batch_size,shuffle=True)
+        val_loader = DataLoader(val_set,batch_size=val_set.__len__())
         #we create the optimizer
         if optimizer_name not in optimizers:
             raise Exception("optimizer not found !")
         optimizer = getattr(torch.optim, optimizer_name)(self.model.parameters(), lr=lr)
-        #we create the criterion
-        criterion = nn.MSELoss()
+        #we initialize two empty lists to store the training loss and the validation loss
         training_loss = []
         valid_loss = []
 
-        if early_stopping_activated:
-            #we init the early stopping class
-            early_stopping = EarlyStopping(patience=patience)
-
+        #we init the early stopping class
+        early_stopping = EarlyStopping(patience=patience)
+        
         for epoch in tqdm(range(epochs)):
             ###################
             # train the model #
@@ -74,7 +71,7 @@ class Trainer():
                 # forward pass: compute predicted outputs by passing inputs to the model
                 preds = self.model(x.float()).flatten()
                 # calculate the loss
-                loss = criterion(preds, y.float())
+                loss = self.criterion(preds, y.float())
                 epoch_loss += loss.item()
                 # backward pass: compute gradient of the loss with respect to model parameters
                 loss.backward()
@@ -92,25 +89,18 @@ class Trainer():
             for x, y in val_loader:
                 # forward pass: compute predicted outputs by passing inputs to the model
                 preds = self.model(x.float()).flatten()
-                y = y.type(torch.float32)
                 # calculate the loss
-                loss = criterion(preds, y)
+                loss = self.criterion(preds, y)
                 val_epoch_loss += loss.item()
             # record training loss
             valid_loss.append(val_epoch_loss / len(val_loader))
 
             if early_stopping_activated :
-                #early stopping
                 early_stopping(val_epoch_loss / len(val_loader),self.model)
-                if(early_stopping.early_stop):
-                    print("Early stopping ...")
-                    break
+            if(early_stopping.early_stop):
+                break
         return training_loss, valid_loss
     
-    def predict(self, x):
-        return self.model(x.float())
-    def loss(self,x ,target):
-        return ((self.predict(x).unsqueeze(dim=0) - target)**2).mean().item()
         
 
 

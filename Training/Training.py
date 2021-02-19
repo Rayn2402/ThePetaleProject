@@ -6,9 +6,9 @@ Files that contains class related to the Training of the models
 """
 
 from .EarlyStopping import EarlyStopping
-import torch.nn as nn
-from torch.utils.data import DataLoader, random_split
-import torch
+from torch.nn import Module
+from torch.utils.data import DataLoader
+from torch import optim
 from tqdm import tqdm
 
 # optimizers that can be used (Other optiizers could be added here)
@@ -21,7 +21,7 @@ class Trainer():
 
         :param model: the model to be trained
         """
-        if not isinstance(model, nn.Module):
+        if not isinstance(model, Module):
             raise ValueError('model argument must inherit from torch.nn.Module')
         #we save the model in the attribute model
         self.model = model
@@ -50,7 +50,7 @@ class Trainer():
         #we create the optimizer
         if optimizer_name not in optimizers:
             raise Exception("optimizer not found !")
-        optimizer = getattr(torch.optim, optimizer_name)(self.model.parameters(), lr=lr)
+        optimizer = getattr(optim, optimizer_name)(self.model.parameters(), lr=lr)
         #we initialize two empty lists to store the training loss and the validation loss
         training_loss = []
         valid_loss = []

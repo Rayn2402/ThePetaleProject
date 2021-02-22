@@ -44,7 +44,7 @@ class Trainer():
         :return: two lists containing the training losses and the validation losses
         """
         #we create the the train data loader
-        train_loader = DataLoader(train_set,1,shuffle=True)
+        train_loader = DataLoader(train_set,batch_size=batch_size,shuffle=True)
         #we create the the validation data loader
         val_loader = DataLoader(val_set,batch_size=val_set.__len__())
         #we create the optimizer

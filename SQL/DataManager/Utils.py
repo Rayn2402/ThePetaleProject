@@ -256,13 +256,13 @@ class DataManager:
 
         # Plotting the bar chart
         if drawChart:
-            fileName = "missing_data_" + tableName.replace(".", "").replace(":", "").replace("/", "")
+            fileName = Helpers.reformat_string(tableName)
             folderName = "missing_data_charts"
             figureTitle = f'Count of missing data by columns names for the table {tableName}'
             ChartServices.drawBarhChart(cols, missing_df.values, "Columns",
                                         "Data missing", figureTitle, fileName, folderName)
         if save_csv:
-            tableName = Helpers.get_table_name_string(tableName)
+            tableName = Helpers.reformat_string(tableName)
             Helpers.save_stats_file(tableName, "missing", missing_df, index=True)
 
         # returning a dictionary containing the data needed
@@ -370,8 +370,7 @@ class DataManager:
         return: a pandas data frame
         """
         # we initialize a python dictionary where we will save the results
-        results, var_name, all_, group_values = DataManager.__initialize_results_dict(
-            df, group)
+        results, var_name, all_, group_values = DataManager.__initialize_results_dict(df, group)
 
         # we get the columns on which we will calculate the stats
         cols = [col for col in df.columns if col != group]
@@ -401,14 +400,12 @@ class DataManager:
                         f"{group_mean} ({group_var}) [{group_min}, {group_max}]")
 
         # for each variable of the given dataframe we plot a chart
+        folder_name = Helpers.reformat_string(table_name)
         for var_name in cols:
+
             # we plot and save a chart for a single variable
-            filename = var_name.replace(".", "").replace(
-                ": ", "").replace("?", "").replace("/", "")
-            folder_name = table_name.replace(
-                ".", "").replace(": ", "").replace("?", "").replace("/", "")
-            ChartServices.drawHistogram(
-                df, var_name, f"Count_{var_name}", f"chart_{filename}", f"charts_{folder_name}")
+            file_name = Helpers.reformat_string(var_name)
+            ChartServices.drawHistogram(df, var_name, f"Estimated_density_of_{var_name}", file_name, folder_name)
 
         # we return the results
         return pd.DataFrame(results)
@@ -483,14 +480,11 @@ class DataManager:
 
                         # We compute the statistics needed
                         sub_category_total = df[filter].shape[0]
-                        sub_category_percent = round(
-                            sub_category_total/(group_totals[group_val]) * 100, 2)
-                        results[f"{group} {group_val}"].append(
-                            f"{sub_category_total} ({sub_category_percent}%)")
+                        sub_category_percent = round(sub_category_total/(group_totals[group_val]) * 100, 2)
+                        results[f"{group} {group_val}"].append(f"{sub_category_total} ({sub_category_percent}%)")
 
                         # We save data for the charts
-                        single_data_for_chart[group_val].append(
-                            float(sub_category_total))
+                        single_data_for_chart[group_val].append(float(sub_category_total))
 
             data_for_chart.append(single_data_for_chart)
 
@@ -499,10 +493,8 @@ class DataManager:
             if group is not None:
 
                 # plotting the chart
-                filename = item["col_name"].replace(".", "").replace(
-                    ": ", "").replace("?", "").replace("/", "")
-                folder_name = table_name.replace(
-                    ".", "").replace(": ", "").replace("?", "").replace("/", "")
+                filename = item["col_name"].replace(".", "").replace(": ", "").replace("?", "").replace("/", "")
+                folder_name = table_name.replace(".", "").replace(": ", "").replace("?", "").replace("/", "")
                 ChartServices.drawBinaryGroupedBarChart(
                     item["values"], {"label": "Male", "values": item["1.0"]},
                     {"label": "Female",
@@ -629,7 +621,7 @@ class PetaleDataManager(DataManager):
 
         # we concatenate all the results to get the final stats dataframe
         stats_df = pd.concat([sex_stats, categorical_stats, numerical_stats], ignore_index=True)
-        table_name = Helpers.get_table_name_string(table_name)
+        table_name = Helpers.reformat_string(table_name)
 
         # if saveInFile True we save the dataframe in a csv file
         if save_in_file:

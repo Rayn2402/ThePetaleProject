@@ -7,6 +7,7 @@ NNRegressor which is a model to preform a regression and predict a real value
 
 from torch import  cat, argmax
 from torch.nn import Module, ModuleList, Embedding, Linear, MSELoss, ReLU, BatchNorm1d, Dropout, Sequential, CrossEntropyLoss
+from Utils.score_metrics import ClassificationMetrics
 
 class NNModel(Module):
     def __init__(self, num_cont_col , output_size, layers, dropout = 0.4, cat_sizes=None):
@@ -123,9 +124,6 @@ class NNClassifier(NNModel):
     
     def loss(self, x_cont, x_cat, target): 
         self.eval()
-        true_answers = 0
         predictions =(argmax(self(x_cont.float(),x_cat).float(), dim=1))
-        for index, row in enumerate(predictions):
-            if(row.item() == target[index].item()):
-                true_answers += 1
-        return true_answers / predictions.shape[0]
+        return ClassificationMetrics.accuracy(predictions, target).item()
+        

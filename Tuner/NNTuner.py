@@ -6,13 +6,15 @@ Files that contains the logic related to hyper parameters tuning
 """
 from optuna import create_study
 from Training.Training import Trainer
+from torch import unique
 
 class objective():
-    def __init__(self, model, dataset, hyper_params, metric ):
+    def __init__(self, model, output_size, dataset, hyper_params, metric ):
         """
         Method that will fit the model to the given data
         
         :param model: class of the model we want to use 
+        :param output_size: the number of nodes in the last layer of the neural network
         :param dataset: Petale Dataset containing the training set
         :param hyper_params: dictionary containg information of the hyper parameter we want to tune : min, max, step, values
         :param metric: type of the metric we want to optimize
@@ -22,6 +24,7 @@ class objective():
         """
         # we save the inputs that will be used when calling the class
         self.model = model
+        self.output_size = output_size
         self.dataset = dataset
         self.hyper_params = hyper_params
         self.metric = metric
@@ -46,14 +49,16 @@ class objective():
         if(self.dataset.X_cat is None):
             cat_sizes = None
         else:
-            #this case will be implemented very soon
-            cat_sizes = None
+            # we  the col size (TO BE IMPROVED)
+            cat_sizes = []
+            for i in range(self.dataset.X_cat.shape[1]):
+                cat_sizes.append(len(unique(self.dataset.X_cat[:,i])))
 
         
         # We define the model with the suggested set of hyper parameters
-        model = self.model(self.dataset.X_cont.shape[1],layers = layers, dropout= p, cat_sizes=cat_sizes)
-
-        #we creat the Trainer that will train our model
+        model = self.model(num_cont_col = self.dataset.X_cont.shape[1], cat_sizes=cat_sizes, output_size = self.output_size, layers=layers, dropout =p)
+        
+        # we creat the Trainer that will train our model
         trainer = Trainer(model)
         #we perform a k fold cross validation to evaluate the model
         score = trainer.cross_valid(self.dataset, batch_size=batch_size, optimizer_name=optimizer_name,lr=lr,epochs=200)
@@ -63,11 +68,12 @@ class objective():
 
 
 class NNTuner:
-    def __init__(self, model, dataset, hyper_params, n_trials, metric="loss", direction="minimize"):
+    def __init__(self, model, output_size, dataset, hyper_params, n_trials, metric="loss", direction="minimize"):
         """
         Class that will be responsible of the hyperparameters tuning
         
         :param model: class of the model we want to use 
+        :param output_size: the number of nodes in the last layer of the neural network
         :param dataset: Petale Dataset containing the training set
         :param hyper_params: dictionary containg information of the hyper parameter we want to tune : min, max, step, values
         :param metric: type of the metric we want to optimize
@@ -81,6 +87,7 @@ class NNTuner:
         # we save the inputs that will be used when tuning the hyoer parameters
         self.n_trials = n_trials
         self.model = model
+        self.output_size = output_size
         self.dataset = dataset
         self.hyper_params = hyper_params
         self.metric = metric
@@ -92,5 +99,5 @@ class NNTuner:
         :return: the result of the study containg the best trial and the best values of each hyper parameter
         """
         # we perform the optimization 
-        self.study.optimize(objective(self.model, self.dataset, self.hyper_params, self.metric ),self.n_trials)  
+        self.study.optimize(objective(self.model, self.output_size, self.dataset, self.hyper_params, self.metric ),self.n_trials)  
         return self.study 

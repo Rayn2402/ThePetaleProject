@@ -99,6 +99,7 @@ class NNRegressor(NNModel):
         self.criterion = MSELoss()
     
     def loss(self, x_cont, x_cat, target):
+        self.eval()
         return ((self(x_cont.float(),x_cat).squeeze() - target)**2).mean().item()
     
 
@@ -117,7 +118,8 @@ class NNClassifier(NNModel):
         #we define the criterion for that model
         self.criterion = CrossEntropyLoss()
     
-    def loss(self, x_cont, x_cat, target):  
+    def loss(self, x_cont, x_cat, target): 
+        self.eval()
         true_answers = 0
         predictions =(argmax(self(x_cont.float(),x_cat).float(), dim=1))
         for index, row in enumerate(predictions):

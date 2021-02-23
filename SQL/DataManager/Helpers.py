@@ -61,21 +61,39 @@ def writeCsvFile(data, filename, foldername):
         print("I/O error")
 
 
-def save_stats_file(filename, df):
+def save_stats_file(table_name, file_name, df, index=False):
     """
-    We save stats csv file in the stats directory
+    Saves csv file in the stats directory associated to a table
 
-    :param filename: name of the file
-    :param df: pandas dataframe with the data
+    :param table_name: name of the table for which we save the statistics
+    :param file_name: name of the csv file
+    :param df: pandas dataframe to turn into csv
+    :param index: boolean indicating if we need to add indexes in the csv
+    :return: string
     """
-    if not os.path.exists(f"./stats/stats_{filename}"):
-        Path(
-            f"./stats/stats_{filename}").mkdir(parents=True, exist_ok=True)
-    if os.path.isfile(f"./stats/stats_{filename}/stats_{filename}.csv"):
-        os.remove(f"./stats/stats_{filename}/stats_{filename}.csv")
+    # We save the directory name
+    dir = os.path.join("stats", table_name)
+    file_path = os.path.join(dir, f"{file_name}.csv")
 
-    df.to_csv(f"./stats/stats_{filename}/stats_{filename}.csv", index=False)
+    # We create the directory if it does not exist
+    if not os.path.exists(dir):
+        Path(dir).mkdir(parents=True, exist_ok=True)
 
+    # We remove the current csv if it is already existing
+    if os.path.isfile(file_path):
+        os.remove(file_path)
+
+    df.to_csv(file_path, index=index)
+
+
+def get_table_name_string(table_name):
+    """
+    Changes a table name to an appropriate format to use as filename
+
+    :param table_name: string
+    :return: string
+    """
+    return table_name.replace(".", "").replace(": ", "").replace("?", "").replace("/", "")
 
 def timeDeltaToYears(timeDelta):
     """

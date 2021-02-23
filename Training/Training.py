@@ -8,7 +8,7 @@ Files that contains class related to the Training of the models
 from .EarlyStopping import EarlyStopping
 from torch.nn import Module
 from torch.utils.data import DataLoader, Subset
-from torch import optim
+from torch import optim, manual_seed 
 from tqdm import tqdm
 
 # optimizers that can be used (Other optiizers could be added here)
@@ -26,7 +26,7 @@ class Trainer():
         #we save the model in the attribute model
         self.model = model
         #we save the criterion of that model in the attribute criterion
-        self.criterion = model.criterion
+        self.criterion = model.criterion_function
     
     def fit(self, train_set, val_set, batch_size, optimizer_name, lr, epochs, early_stopping_activated = True, patience = 5):
         """
@@ -43,6 +43,8 @@ class Trainer():
 
         :return: two lists containing the training losses and the validation losses
         """
+        manual_seed(0)
+
         #we create the the train data loader
         train_loader = DataLoader(train_set,batch_size=batch_size,shuffle=True)
         #we create the the validation data loader
@@ -75,9 +77,10 @@ class Trainer():
                 # clear the gradients of all optimized variables
                 optimizer.zero_grad()
                 # forward pass: compute predicted outputs by passing inputs to the model
-                preds = self.model(*x).flatten()
+                preds = self.model(*x)
                 # calculate the loss
-                loss = self.criterion(preds, y.float())
+                loss = self.criterion(preds, y)
+
                 epoch_loss += loss.item()
                 # backward pass: compute gradient of the loss with respect to model parameters
                 loss.backward()
@@ -100,7 +103,7 @@ class Trainer():
                 # we traansform the x data to float : TO BE UPDATED
                 x = map(lambda x: x.float(), x)               
                 # forward pass: compute predicted outputs by passing inputs to the model
-                preds = self.model(*x).flatten()
+                preds = self.model(*x)
                 # calculate the loss
                 loss = self.criterion(preds, y)
                 val_epoch_loss += loss.item()

@@ -263,7 +263,7 @@ class DataManager:
                                         "Data missing", figureTitle, fileName, folderName)
         if save_csv:
             tableName = Helpers.reformat_string(tableName)
-            Helpers.save_stats_file(tableName, "missing", missing_df, index=True)
+            Helpers.save_stats_file(tableName, "missing", missing_df, index=True, header=False)
 
         # returning a dictionary containing the data needed
         return missing_df, {"tableName": tableName, "missingCount": missingCount,
@@ -380,24 +380,16 @@ class DataManager:
 
             # we append the mean and the var for all participants to the results dictionary
             results[var_name].append(col)
-            all_mean = round(df[col].astype("float").mean(axis=0), 2)
-            all_var = round(df[col].astype("float").var(axis=0), 2)
-            all_max = df[col].astype("float").max()
-            all_min = df[col].astype("float").min()
-            results[all_].append(
-                f"{all_mean} ({all_var}) [{all_min}, {all_max}]")
+            all_mean, all_var, all_min, all_max = Helpers.get_column_stats(df, col)
+            results[all_].append(f"{all_mean} ({all_var}) [{all_min}, {all_max}]")
 
             # if the group is given, we calculate the stats for each possible value of that group
             if group is not None:
                 for group_val in group_values:
                     # we append the mean and the var for sub group participants to the results dictionary
                     df_group = df[df[group] == group_val]
-                    group_mean = round(df_group[col].astype("float").mean(axis=0), 2)
-                    group_var = round(df_group[col].astype("float").var(axis=0), 2)
-                    group_max = df_group[col].astype("float").max()
-                    group_min = df_group[col].astype("float").min()
-                    results[f"{group} {group_val}"].append(
-                        f"{group_mean} ({group_var}) [{group_min}, {group_max}]")
+                    group_mean, group_var, group_min, group_max = Helpers.get_column_stats(df_group, col)
+                    results[f"{group} {group_val}"].append(f"{group_mean} ({group_var}) [{group_min}, {group_max}]")
 
         # for each variable of the given dataframe we plot a chart
         folder_name = Helpers.reformat_string(table_name)
@@ -405,7 +397,7 @@ class DataManager:
 
             # we plot and save a chart for a single variable
             file_name = Helpers.reformat_string(var_name)
-            ChartServices.drawHistogram(df, var_name, f"Estimated_density_of_{var_name}", file_name, folder_name)
+            ChartServices.drawHistogram(df, var_name, f"Estimated density of {var_name}", file_name, folder_name)
 
         # we return the results
         return pd.DataFrame(results)
@@ -475,8 +467,7 @@ class DataManager:
                     for group_val in group_values:
 
                         # We create a filter to get the number of items in a group that has the correspond category
-                        filter = (df[group] == group_val) & (
-                            df[col] == category)
+                        filter = (df[group] == group_val) & (df[col] == category)
 
                         # We compute the statistics needed
                         sub_category_total = df[filter].shape[0]
@@ -493,8 +484,8 @@ class DataManager:
             if group is not None:
 
                 # plotting the chart
-                filename = item["col_name"].replace(".", "").replace(": ", "").replace("?", "").replace("/", "")
-                folder_name = table_name.replace(".", "").replace(": ", "").replace("?", "").replace("/", "")
+                filename = Helpers.reformat_string(item["col_name"])
+                folder_name = Helpers.reformat_string(table_name)
                 ChartServices.drawBinaryGroupedBarChart(
                     item["values"], {"label": "Male", "values": item["1.0"]},
                     {"label": "Female",
@@ -529,7 +520,6 @@ class DataManager:
 
         # We return the resulting dataframe
         return pd.DataFrame(results)
-
 
     @staticmethod
     def __initialize_results_dict(df, group):

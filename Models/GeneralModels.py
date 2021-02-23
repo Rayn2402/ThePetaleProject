@@ -86,6 +86,13 @@ class NNModel(Module):
 
 class NNRegressor(NNModel):
     def __init__(self, num_cont_col, layers , dropout = 0.4, cat_sizes=None):
+        """Creates a Neural Network model that perfrom a regression yith predicting real values, entity embedding is performed on the data if cat_sizes is not null
+
+        :param num_cont_col: the number of continuous columns we have
+        :param layers: a list to represent the number of hidden layers and the number of units in each layer
+        :param dropout: a fraction representing the probability of dropout
+        :param cat_sizes: list of integer representing the size of each categorical column
+        """
         super().__init__(num_cont_col= num_cont_col, output_size=1,layers= layers, dropout= dropout,cat_sizes= cat_sizes)
 
         #we define the criterion for that model
@@ -98,6 +105,13 @@ class NNRegressor(NNModel):
 
 class NNClassifier(NNModel):
     def __init__(self, num_cont_col, output_size, layers, dropout = 0.4 ,cat_sizes=None):
+        """ Creates a Neural Network model that perfrom a regression yith predicting real values, entity embedding is performed on the data if cat_sizes is not null
+        :param num_cont_col: the number of continuous columns we have
+        :param output_size: the number of nodes in the last layer of the neural network or the the number of classes
+        :param layers: a list to represent the number of hidden layers and the number of units in each layer
+        :param dropout: a fraction representing the probability of dropout
+        :param cat_sizes: list of integer representing the size of each categorical column
+        """
         super().__init__(num_cont_col= num_cont_col, output_size=output_size,layers= layers, dropout= dropout,cat_sizes= cat_sizes)
 
         #we define the criterion for that model

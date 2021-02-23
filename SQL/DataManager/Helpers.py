@@ -86,14 +86,15 @@ def save_stats_file(table_name, file_name, df, index=False):
     df.to_csv(file_path, index=index)
 
 
-def get_table_name_string(table_name):
+def reformat_string(table_name):
     """
-    Changes a table name to an appropriate format to use as filename
+    Changes a string to an appropriate format to use as filename or directory
 
     :param table_name: string
     :return: string
     """
     return table_name.replace(".", "").replace(": ", "").replace("?", "").replace("/", "")
+
 
 def timeDeltaToYears(timeDelta):
     """

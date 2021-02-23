@@ -5,21 +5,22 @@ This file stores the two classes of Neural Networks models :
 NNRegressor which is a model to preform a regression and predict a real value
 """
 
-from torch import  cat
-from torch.nn import Module, ModuleList, Embedding, Linear, MSELoss, ReLU, BatchNorm1d, Dropout, Sequential
+from torch import  cat, argmax
+from torch.nn import Module, ModuleList, Embedding, Linear, MSELoss, ReLU, BatchNorm1d, Dropout, Sequential, CrossEntropyLoss
 
-class NNRegressor(Module):
-    def __init__(self, num_cont_col, layers, dropout = 0.4, cat_sizes=None):
+class NNModel(Module):
+    def __init__(self, num_cont_col , output_size, layers, dropout = 0.4, cat_sizes=None):
         """
-        Creates a Neural Network model that perfrom a regression yith predicting real values, entity embedding
-        is performed on the data if cat_sizes is not null
+        Creates a Neural Network model, entity embedding
+        is performed on the categorical data if cat_sizes is not null
 
         :param num_cont_col: the number of continuous columns we have
+        :param output_size: the number of nodes in the last layer of the neural network or the the number of classes
         :param layers: a list to represent the number of hidden layers and the number of units in each layer
         :param dropout: a fraction representing the probability of dropout
         :param cat_sizes: list of integer representing the size of each categorical column
         """
-        super(NNRegressor, self).__init__()
+        super(NNModel, self).__init__()
         if cat_sizes is not None:
 
             # we generate the embedding sizes ( this part will be optimized )
@@ -55,22 +56,22 @@ class NNRegressor(Module):
         
         #we define the output layer
         if len(layers) == 0 :
-            all_layers.append(Linear(input_size, 1))
+            all_layers.append(Linear(input_size, output_size))
         else :
-            all_layers.append(Linear(layers[-1], 1))
+            all_layers.append(Linear(layers[-1], output_size))
 
         # we save all our layers in self.layers
         self.layers = Sequential(*all_layers)
 
         #we define the criterion for that model
-        self.criterion = MSELoss()
+        #self.criterion = MSELoss()
     
     def forward(self, x_cont, x_cat=None):
         embeddings = []
         if x_cat is not None:
             # we perform the entity embedding
             for i, e in enumerate(self.embedding_layers):
-                embeddings.append(e(x_cat[:, i]))
+                embeddings.append(e(x_cat[:, i].long()))
             # we concatenate all the embeddings
             x = cat(embeddings, 1)
 
@@ -79,5 +80,33 @@ class NNRegressor(Module):
         else:
             x = x_cont
         return self.layers(x)
+    """def loss(self, x_cont, x_cat, target):
+        return ((self(x_cont.float(),x_cat).squeeze() - target)**2).mean().item()"""
+
+
+class NNRegressor(NNModel):
+    def __init__(self, num_cont_col, layers , dropout = 0.4, cat_sizes=None):
+        super().__init__(num_cont_col= num_cont_col, output_size=1,layers= layers, dropout= dropout,cat_sizes= cat_sizes)
+
+        #we define the criterion for that model
+        self.criterion = MSELoss()
+    
     def loss(self, x_cont, x_cat, target):
         return ((self(x_cont.float(),x_cat).squeeze() - target)**2).mean().item()
+    
+
+
+class NNClassifier(NNModel):
+    def __init__(self, num_cont_col, output_size, layers, dropout = 0.4 ,cat_sizes=None):
+        super().__init__(num_cont_col= num_cont_col, output_size=output_size,layers= layers, dropout= dropout,cat_sizes= cat_sizes)
+
+        #we define the criterion for that model
+        self.criterion = CrossEntropyLoss()
+    
+    def loss(self, x_cont, x_cat, target):  
+        true_answers = 0
+        predictions =(argmax(self(x_cont.float(),x_cat).float(), dim=1))
+        for index, row in enumerate(predictions):
+            if(row.item() == target[index].item()):
+                true_answers += 1
+        return true_answers / predictions.shape[0]

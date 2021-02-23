@@ -512,6 +512,33 @@ class DataManager:
         # we return the data frame containing the informations
         return pd.DataFrame(results)
 
+    def get_group_count(self, df, group):
+        """
+        Count the number of items from each group
+
+        :param df: pandas dataframe
+        :param group: name of a column, we calculate the stats for the overall data and the stats of the data grouped
+        by this column, Ex : group = 34500 Sex will give us the stats for all the data, for Male, and for Female
+        :return: pandas dataframe
+        """
+
+        # we initialize a python dictionary where we will save the results
+        results, var_name, all_, group_values = DataManager.__initialize_results_dict(df, group)
+
+        # We set the variable name as "n"
+        results[var_name].append("n")
+
+        # We count the total number of rows
+        results[all_].append(df.shape[0])
+
+        # We count the number of rows from each group
+        for group_val in group_values:
+            results[f"{group} {group_val}"].append(df[df[group] == group_val].shape[0])
+
+        # We return the resulting dataframe
+        return pd.DataFrame(results)
+
+
     @staticmethod
     def __initialize_results_dict(df, group):
 
@@ -591,6 +618,9 @@ class PetaleDataManager(DataManager):
         numerical_df = pd.merge(sex_df, numerical_df, on="Participant", how="inner")
         numerical_df = numerical_df.drop(["Participant"], axis=1)
 
+        # we retrieve number of individuals from each sex
+        sex_stats = self.get_group_count(sex_df, group="34500 Sex")
+
         # we make a categorical var analysis for this table
         categorical_stats = self.get_categorical_var_analysis(table_name, categorical_df, group="34500 Sex")
 
@@ -599,7 +629,7 @@ class PetaleDataManager(DataManager):
 
         # we concatenate all the results to get the final dataframe
         final_df = pd.concat(
-            [categorical_stats, numerical_stats], ignore_index=True)
+            [sex_stats, categorical_stats, numerical_stats], ignore_index=True)
         filename = table_name.replace(".", "").replace(
             ": ", "").replace("?", "").replace("/", "")
 

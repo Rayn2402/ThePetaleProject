@@ -74,7 +74,7 @@ def save_stats_file(filename, df):
     if os.path.isfile(f"./stats/stats_{filename}/stats_{filename}.csv"):
         os.remove(f"./stats/stats_{filename}/stats_{filename}.csv")
 
-    df.to_csv(f"./stats/stats_{filename}/stats_{filename}.csv")
+    df.to_csv(f"./stats/stats_{filename}/stats_{filename}.csv", index=False)
 
 
 def timeDeltaToYears(timeDelta):

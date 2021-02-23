@@ -61,7 +61,7 @@ def writeCsvFile(data, filename, foldername):
         print("I/O error")
 
 
-def save_stats_file(table_name, file_name, df, index=False):
+def save_stats_file(table_name, file_name, df, index=False, header=True):
     """
     Saves csv file in the stats directory associated to a table
 
@@ -69,6 +69,7 @@ def save_stats_file(table_name, file_name, df, index=False):
     :param file_name: name of the csv file
     :param df: pandas dataframe to turn into csv
     :param index: boolean indicating if we need to add indexes in the csv
+    :param header: boolean indicating if should store the header of the df in the csv
     :return: string
     """
     # We save the directory name
@@ -83,7 +84,7 @@ def save_stats_file(table_name, file_name, df, index=False):
     if os.path.isfile(file_path):
         os.remove(file_path)
 
-    df.to_csv(file_path, index=index)
+    df.to_csv(file_path, index=index, header=header)
 
 
 def reformat_string(table_name):
@@ -117,6 +118,7 @@ def AbsTimeLapse(df, new_col, first_date, second_date):
     """
     df[new_col] = abs(df[second_date] - df[first_date])
     df[new_col] = df[new_col].apply(timeDeltaToYears)
+
 
 def extract_var_id(var_name):
     """
@@ -251,6 +253,23 @@ def retrieve_numerical(df, ids):
         if col_id not in numerical_cols:
             numerical_cols.append(col_id)
     return df[numerical_cols]
+
+
+def get_column_stats(df, col):
+    """
+    Retrieves statistic from a numerical column in a pandas dataframe
+
+    :param df: pandas dataframe
+    :param col: name of the columne
+    :return: mean, var, max, min
+    """
+    numerical_data = df[col].astype("float")
+    mean = round(numerical_data.mean(axis=0), 2)
+    var = round(numerical_data.var(axis=0), 2)
+    min = numerical_data.min()
+    max = numerical_data.max()
+
+    return mean, var, min, max
 
 
 def fill_id(id):

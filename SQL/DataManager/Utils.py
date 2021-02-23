@@ -225,12 +225,13 @@ class DataManager:
         self.reset_cursor()
         return cols
 
-    def get_missing_data_count(self, tableName, drawChart=False, excludedCols=["Remarks"]):
+    def get_missing_data_count(self, tableName, drawChart=False, save_csv=False, excludedCols=["Remarks"]):
         """
         get the count of all the missing data of one given table
 
         :param tableName: name of the table
         :param drawChart: boolean to indicate if a chart should be created to visualize the missing data
+        :param save_csv: boolean to indicate if a csv file should be create to store missing values per column
         :param: excludedCols: list of strings containing the list of columns to exclude
         :return: a python dictionary containing the missing data count and the number of complete rows
 
@@ -245,26 +246,28 @@ class DataManager:
         # We retrieve the table
         df_table = self.get_table(tableName, cols)
 
-        missing_x = df_table.isnull().sum().values
+        # We count the number of missing values per column
+        missing_df = df_table.isnull().sum()
 
         # we get the counts we need from the dataframe
         missingCount = df_table.isnull().sum().sum()
-        completedRowCount = len(
-            [complete for complete in df_table.isnull().sum(axis=1) if complete == 0])
+        completedRowCount = len([complete for complete in df_table.isnull().sum(axis=1) if complete == 0])
         totalRows = df_table.shape[0]
 
         # Plotting the bar chart
         if drawChart:
-            fileName = "missing_data_" + \
-                tableName.replace(".", "").replace(":", "").replace("/", "")
+            fileName = "missing_data_" + tableName.replace(".", "").replace(":", "").replace("/", "")
             folderName = "missing_data_charts"
             figureTitle = f'Count of missing data by columns names for the table {tableName}'
-            ChartServices.drawBarhChart(
-                cols, missing_x, "Columns", "Data missing", figureTitle, fileName, folderName)
+            ChartServices.drawBarhChart(cols, missing_df.values, "Columns",
+                                        "Data missing", figureTitle, fileName, folderName)
+        if save_csv:
+            tableName = Helpers.get_table_name_string(tableName)
+            Helpers.save_stats_file(tableName, "missing", missing_df, index=True)
 
         # returning a dictionary containing the data needed
-        return {"tableName": tableName, "missingCount": missingCount,
-                "completedRowCount": completedRowCount, "totalRows": totalRows}
+        return missing_df, {"tableName": tableName, "missingCount": missingCount,
+                            "completedRowCount": completedRowCount, "totalRows": totalRows}
 
     def get_all_missing_data_count(self, filename="petale_missing_data.csv", drawCharts=True):
         """
@@ -284,8 +287,7 @@ class DataManager:
         with tqdm(total=len(tables)) as pbar:
             for table in tables:
                 pbar.update(1)
-                missingDataCount = self.get_missing_data_count(
-                    table, drawCharts)
+                _, missingDataCount = self.get_missing_data_count(table, drawCharts)
 
                 # we save the missing data count in results
                 results.append(missingDataCount)
@@ -391,10 +393,8 @@ class DataManager:
                 for group_val in group_values:
                     # we append the mean and the var for sub group participants to the results dictionary
                     df_group = df[df[group] == group_val]
-                    group_mean = round(
-                        df_group[col].astype("float").mean(axis=0), 2)
-                    group_var = round(
-                        df_group[col].astype("float").var(axis=0), 2)
+                    group_mean = round(df_group[col].astype("float").mean(axis=0), 2)
+                    group_var = round(df_group[col].astype("float").var(axis=0), 2)
                     group_max = df_group[col].astype("float").max()
                     group_min = df_group[col].astype("float").min()
                     results[f"{group} {group_val}"].append(
@@ -627,18 +627,16 @@ class PetaleDataManager(DataManager):
         # we make a numerical var analysis for this table
         numerical_stats = self.get_numerical_var_analysis(table_name, numerical_df, group="34500 Sex")
 
-        # we concatenate all the results to get the final dataframe
-        final_df = pd.concat(
-            [sex_stats, categorical_stats, numerical_stats], ignore_index=True)
-        filename = table_name.replace(".", "").replace(
-            ": ", "").replace("?", "").replace("/", "")
+        # we concatenate all the results to get the final stats dataframe
+        stats_df = pd.concat([sex_stats, categorical_stats, numerical_stats], ignore_index=True)
+        table_name = Helpers.get_table_name_string(table_name)
 
         # if saveInFile True we save the dataframe in a csv file
         if save_in_file:
-            Helpers.save_stats_file(filename, final_df)
+            Helpers.save_stats_file(table_name, "statistics", stats_df)
 
         # we return the dataframe
-        return final_df
+        return stats_df
 
     def get_variable_info(self, var_name):
         """

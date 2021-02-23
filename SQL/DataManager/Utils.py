@@ -619,7 +619,7 @@ class PetaleDataManager(DataManager):
         numerical_df = numerical_df.drop(["Participant"], axis=1)
 
         # we retrieve number of individuals from each sex
-        sex_stats = self.get_group_count(sex_df, group="34500 Sex")
+        sex_stats = self.get_group_count(numerical_df, group="34500 Sex")
 
         # we make a categorical var analysis for this table
         categorical_stats = self.get_categorical_var_analysis(table_name, categorical_df, group="34500 Sex")

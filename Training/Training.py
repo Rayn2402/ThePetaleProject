@@ -75,15 +75,15 @@ class Trainer():
                 # x will contain both continuous data and categorical data if there is
                 x = item[:-1]
                 # we extract the continuous data x_cont and the categoric data x_cat
-                x_cont = x[0]
-                if len(x) > 2 :
-                    x_cat = x[0]
+                x_cont = x[0].float()
+                if len(item) > 2 :
+                    x_cat = x[1].float()
                 else:
                     x_cat = None
                 # clear the gradients of all optimized variables
                 optimizer.zero_grad()
                 # forward pass: compute predicted outputs by passing inputs to the model
-                preds = self.model(x_cont = x_cont.float(), x_cat =x_cat.float())
+                preds = self.model(x_cont = x_cont, x_cat =x_cat)
                 # calculate the loss
                 loss = self.criterion(preds, y)
 
@@ -149,6 +149,9 @@ class Trainer():
             
             # we extract x_cont, x_cat and target from the subset valid_fold
             x_cont, x_cat, target = get_subset_data(valid_fold)
+            
+
+
             if metric == "ACCURACY":
                 # we calculate the accuracy and we add it to our score
                 score.append(ClassificationMetrics.accuracy(argmax(self.model(x_cont.float(),x_cat).float(), dim=1), target ))

@@ -1,7 +1,7 @@
 """
 Authors : Mehdi Mitiche
 
-File that contain constant data used by our models
+File that contains constant data used by our models
 
 """
 

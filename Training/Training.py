@@ -8,8 +8,10 @@ Files that contains class related to the Training of the models
 from .EarlyStopping import EarlyStopping
 from torch.nn import Module
 from torch.utils.data import DataLoader, Subset
-from torch import optim, manual_seed 
+from torch import optim, manual_seed, argmax
 from tqdm import tqdm
+from Config.Config import METRICS
+from Utils.score_metrics import ClassificationMetrics
 
 # optimizers that can be used (Other optiizers could be added here)
 optimizers = ["Adam", "RMSprop", "SGD"]
@@ -46,7 +48,7 @@ class Trainer():
         manual_seed(0)
 
         #we create the the train data loader
-        train_loader = DataLoader(train_set,batch_size=batch_size,shuffle=True)
+        train_loader = DataLoader(train_set,batch_size=batch_size,shuffle=True, drop_last = True)
         #we create the the validation data loader
         val_loader = DataLoader(val_set,batch_size=val_set.__len__())
         #we create the optimizer
@@ -72,12 +74,16 @@ class Trainer():
                 y = item[-1]
                 # x will contain both continuous data and categorical data if there is
                 x = item[:-1]
-                # we traansform the x data to float : TO BE UPDATED
-                x = map(lambda x: x.float(), x)
+                # we extract the continuous data x_cont and the categoric data x_cat
+                x_cont = x[0]
+                if len(x) > 2 :
+                    x_cat = x[0]
+                else:
+                    x_cat = None
                 # clear the gradients of all optimized variables
                 optimizer.zero_grad()
                 # forward pass: compute predicted outputs by passing inputs to the model
-                preds = self.model(*x)
+                preds = self.model(x_cont = x_cont.float(), x_cat =x_cat.float())
                 # calculate the loss
                 loss = self.criterion(preds, y)
 
@@ -116,7 +122,7 @@ class Trainer():
                 break
         return training_loss, valid_loss
     
-    def cross_valid(self, dataset, batch_size,optimizer_name, lr, epochs,  k=5, early_stopping_activated = True, patience=5):
+    def cross_valid(self, dataset, batch_size,optimizer_name, lr, epochs, metric,  k=5, early_stopping_activated = True, patience=5):
         """
         Method that will perfrom a k-fold cross validation on the model
 
@@ -131,15 +137,24 @@ class Trainer():
 
         :return: returns the score after performing the k-fold cross validation
         """
+        if metric not in METRICS:
+            raise Exception('Metric not supported')
         # we initialize an empty list to store the scores
         score = []
         for i in range(k):
             # we the get the train and the validation datasets of the step we are currently in
-            k_fold_train, k_fold_valid = get_kfold_data(dataset, k, i)
+            train_folds, valid_fold = get_kfold_data(dataset, k, i)
             # we train our model with this train and validation dataset
-            train_loss, valid_loss = self.fit(k_fold_train, k_fold_valid, batch_size, optimizer_name, lr, epochs, early_stopping_activated=early_stopping_activated, patience=patience)
-            # we save the score of this training
-            score.append(valid_loss[-1])
+            train_loss, valid_loss = self.fit(train_folds, valid_fold, batch_size, optimizer_name, lr, epochs, early_stopping_activated=early_stopping_activated, patience=patience)
+            
+            # we extract x_cont, x_cat and target from the subset valid_fold
+            x_cont, x_cat, target = get_subset_data(valid_fold)
+            if metric == "ACCURACY":
+                # we calculate the accuracy and we add it to our score
+                score.append(ClassificationMetrics.accuracy(argmax(self.model(x_cont.float(),x_cat).float(), dim=1), target ))
+            elif metric == "MSE":
+                print("MSE")
+
         # we return the final score of the cross validation
         return sum(score)/len(score)
 
@@ -171,4 +186,21 @@ def get_kfold_data(dataset, k, i):
             train_idx += idx
     # we return two subsets of the dataset, one representing the training set and one representing the validation set
     return Subset(dataset, train_idx), Subset(dataset,list(valid_idx))
+
+def get_subset_data(subset):
+    """
+        Function that will be used to extract the needed data from a pytorch subset of the petale dataset
+
+        :param subset: Pytorch subset of the petale dataset
+        :return: returns all the data of this subset : x_cont, x_cat and target
+    """
+    loader = DataLoader(subset, batch_size=len(subset))
+    data = next(iter(loader))
+    target = data[-1]
+    x_cont = data[0]
+    if(len(data) > 2):
+        x_cat = data[1]
+    else:
+        x_cat = None 
+    return x_cont, x_cat, target
             

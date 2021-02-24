@@ -131,6 +131,7 @@ class Trainer():
         :param optimizer_name: string to define the optimizer to be used in the training
         :param lr: the learning rate
         :param k: number of folds
+        :param metric: type of the metric we want to get the score of
         :param epochs: number times that the learning algorithm will work through the entire training dataset
         :param early_stopping_activated: boolean indicating if we want to early stop the training when the validation loss stops decreasing
         :param patience: int representing how long to wait after last time validation loss improved.

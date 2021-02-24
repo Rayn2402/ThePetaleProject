@@ -81,13 +81,11 @@ class NNModel(Module):
         else:
             x = x_cont
         return self.layers(x)
-    """def loss(self, x_cont, x_cat, target):
-        return ((self(x_cont.float(),x_cat).squeeze() - target)**2).mean().item()"""
 
 
 class NNRegressor(NNModel):
     def __init__(self, num_cont_col, layers , dropout = 0.4, cat_sizes=None):
-        """Creates a Neural Network model that perfrom a regression yith predicting real values, entity embedding is performed on the data if cat_sizes is not null
+        """Creates a Neural Network model that perfrom a regression with predicting real values, entity embedding is performed on the data if cat_sizes is not null
 
         :param num_cont_col: the number of continuous columns we have
         :param layers: a list to represent the number of hidden layers and the number of units in each layer
@@ -98,6 +96,7 @@ class NNRegressor(NNModel):
 
         #we define the criterion for that model
         self.criterion = MSELoss()
+    
     def criterion_function(self, pred, y):
         return self.criterion(pred.flatten(), y.float())
     def loss(self, x_cont, x_cat, target):
@@ -119,6 +118,7 @@ class NNClassifier(NNModel):
 
         #we define the criterion for that model
         self.criterion = CrossEntropyLoss()
+    
     def criterion_function(self, pred, y):
         return self.criterion(pred, y.long())
     

@@ -7,6 +7,7 @@ Files that contains the logic related to hyper parameters tuning
 from optuna import create_study
 from Training.Training import Trainer
 from torch import unique
+from Config.Config import METRICS
 
 class objective():
     def __init__(self, model, output_size, dataset, hyper_params, metric ):
@@ -61,14 +62,13 @@ class objective():
         # we creat the Trainer that will train our model
         trainer = Trainer(model)
         #we perform a k fold cross validation to evaluate the model
-        score = trainer.cross_valid(self.dataset, batch_size=batch_size, optimizer_name=optimizer_name,lr=lr,epochs=200)
+        score = trainer.cross_valid(self.dataset, batch_size=batch_size, optimizer_name=optimizer_name,lr=lr,epochs=200, metric=self.metric)
 
         #we return the score 
         return score
 
-
 class NNTuner:
-    def __init__(self, model, output_size, dataset, hyper_params, n_trials, metric="loss", direction="minimize"):
+    def __init__(self, model, output_size, dataset, hyper_params, n_trials, metric, direction="minimize"):
         """
         Class that will be responsible of the hyperparameters tuning
         
@@ -81,8 +81,10 @@ class NNTuner:
         :param direction: direction to specify if we want to maximize or minimize the value of the metric used
 
         """
+        if metric not in METRICS:
+            raise Exception('Metric not supported')
         # we create the study 
-        self.study = create_study() 
+        self.study = create_study(direction=direction) 
 
         # we save the inputs that will be used when tuning the hyoer parameters
         self.n_trials = n_trials
@@ -91,7 +93,6 @@ class NNTuner:
         self.dataset = dataset
         self.hyper_params = hyper_params
         self.metric = metric
-        self.direction = direction
     def tune(self):
         """
         Method to call when we want to tune the hyperparameters
@@ -99,5 +100,5 @@ class NNTuner:
         :return: the result of the study containg the best trial and the best values of each hyper parameter
         """
         # we perform the optimization 
-        self.study.optimize(objective(self.model, self.output_size, self.dataset, self.hyper_params, self.metric ),self.n_trials)  
+        self.study.optimize(objective(model =self.model, output_size= self.output_size,dataset= self.dataset, hyper_params= self.hyper_params,metric= self.metric ),self.n_trials)  
         return self.study 

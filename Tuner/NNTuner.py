@@ -13,7 +13,7 @@ class objective():
         """
         Method that will fit the model to the given data
         
-        :param model: class of the model we want to use 
+        :param model_generator: instance of the ModelGenerator class that will be responsible of generating the model
         :param output_size: the number of nodes in the last layer of the neural network
         :param dataset: Petale Dataset containing the training set
         :param hyper_params: dictionary containg information of the hyper parameter we want to tune : min, max, step, values
@@ -62,7 +62,7 @@ class NNTuner:
         """
         Class that will be responsible of the hyperparameters tuning
         
-        :param model: class of the model we want to use 
+        :param model_generator: instance of the ModelGenerator class that will be responsible of generating the model
         :param dataset: Petale Dataset containing the training set
         :param hyper_params: dictionary containg information of the hyper parameter we want to tune : min, max, step, values
         :param metric: type of the metric we want to optimize

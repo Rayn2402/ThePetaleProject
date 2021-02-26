@@ -6,7 +6,6 @@ Files that contains the logic related to hyper parameters tuning
 """
 from optuna import create_study
 from Training.Training import Trainer
-from Config.Config import METRICS
 
 class objective():
     def __init__(self, model_generator, dataset, hyper_params, metric ):
@@ -17,7 +16,8 @@ class objective():
         :param output_size: the number of nodes in the last layer of the neural network
         :param dataset: Petale Dataset containing the training set
         :param hyper_params: dictionary containg information of the hyper parameter we want to tune : min, max, step, values
-        :param metric: type of the metric we want to optimize
+        :param metric: a function that takes the output of the model and the target and returns  the metric we want to optimize
+
 
 
         :return: the value of the metric after performing a k fold cross validation on the model with a subset of the given hyper parameter
@@ -65,13 +65,11 @@ class NNTuner:
         :param model_generator: instance of the ModelGenerator class that will be responsible of generating the model
         :param dataset: Petale Dataset containing the training set
         :param hyper_params: dictionary containg information of the hyper parameter we want to tune : min, max, step, values
-        :param metric: type of the metric we want to optimize
+        :param metric: a function that takes the output of the model and the target and returns  the metric we want to optimize
         :param n_trials: number of trials we want to perform
         :param direction: direction to specify if we want to maximize or minimize the value of the metric used
 
         """
-        if metric not in METRICS:
-            raise Exception('Metric not supported')
         # we create the study 
         self.study = create_study(direction=direction) 
 

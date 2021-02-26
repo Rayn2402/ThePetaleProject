@@ -8,10 +8,8 @@ Files that contains class related to the Training of the models
 from .EarlyStopping import EarlyStopping
 from torch.nn import Module
 from torch.utils.data import DataLoader, Subset
-from torch import optim, manual_seed, argmax
+from torch import optim, manual_seed
 from tqdm import tqdm
-from Config.Config import METRICS
-from Utils.score_metrics import ClassificationMetrics
 
 # optimizers that can be used (Other optiizers could be added here)
 optimizers = ["Adam", "RMSprop", "SGD"]
@@ -131,6 +129,7 @@ class Trainer():
         :param optimizer_name: string to define the optimizer to be used in the training
         :param lr: the learning rate
         :param k: number of folds
+        :param metric: a function that takes the output of the model and the target and returns the metric we want to measure
         :param metric: type of the metric we want to get the score of
         :param epochs: number times that the learning algorithm will work through the entire training dataset
         :param early_stopping_activated: boolean indicating if we want to early stop the training when the validation loss stops decreasing
@@ -138,8 +137,7 @@ class Trainer():
 
         :return: returns the score after performing the k-fold cross validation
         """
-        if metric not in METRICS:
-            raise Exception('Metric not supported')
+
         # we initialize an empty list to store the scores
         score = []
         for i in range(k):
@@ -151,13 +149,8 @@ class Trainer():
             # we extract x_cont, x_cat and target from the subset valid_fold
             x_cont, x_cat, target = get_subset_data(valid_fold)
             
-
-
-            if metric == "ACCURACY":
-                # we calculate the accuracy and we add it to our score
-                score.append(ClassificationMetrics.accuracy(argmax(self.model(x_cont.float(),x_cat).float(), dim=1), target ))
-            elif metric == "MSE":
-                print("MSE")
+            # we calculate the score with the help of the metric function
+            score.append(metric(self.model(x_cont.float(),x_cat).float(), target))
 
         # we return the final score of the cross validation
         return sum(score)/len(score)

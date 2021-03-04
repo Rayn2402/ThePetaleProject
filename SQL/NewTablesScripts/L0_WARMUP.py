@@ -46,7 +46,7 @@ if __name__ == '__main__':
     complete_df = pd.merge(gen_df, six_df, on=[PARTICIPANT], how=INNER)
 
     # We extract an holdout set from the complete df
-    learning_df, hold_out_df = split_train_test(complete_df, VO2R_MAX, test_size=0.10)
+    learning_df, hold_out_df = split_train_test(complete_df, VO2R_MAX, test_size=0.10, random_state=SEED)
 
     # We create the dictionary needed to create the table
     types = {}

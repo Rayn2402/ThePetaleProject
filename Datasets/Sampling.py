@@ -44,7 +44,7 @@ def stratified_sample(df, target_col, n, quantiles=4):
     return sample
 
 
-def split_train_test(df, target_col, test_size=0.15):
+def split_train_test(df, target_col, test_size=0.20):
     """
     Split de training and testing data contained within a pandas dataframe
     :param df: pandas dataframe

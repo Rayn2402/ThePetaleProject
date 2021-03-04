@@ -6,6 +6,7 @@ This table will consist of one of the dataset two reproduce 6MWT experiment with
 """
 
 from SQL.DataManager.Utils import initialize_petale_data_manager
+from Datasets.Sampling import split_train_test
 from constants import *
 import pandas as pd
 
@@ -44,6 +45,9 @@ if __name__ == '__main__':
     # We proceed to table concatenation
     complete_df = pd.merge(gen_df, six_df, on=[PARTICIPANT], how=INNER)
 
+    # We extract an holdout set from the complete df
+    learning_df, hold_out_df = split_train_test(complete_df, VO2R_MAX, test_size=0.10)
+
     # We create the dictionary needed to create the table
     types = {}
     for var in all_vars:
@@ -53,7 +57,8 @@ if __name__ == '__main__':
     types.pop(VO2R_MAX)
     types[VO2R_MAX] = TYPES[VO2R_MAX]
 
-    # We create the table
-    data_manager.create_and_fill_table(complete_df, LEARNING_0, types, primary_key=[PARTICIPANT])
+    # We create the tables
+    data_manager.create_and_fill_table(learning_df, LEARNING_0, types, primary_key=[PARTICIPANT])
+    data_manager.create_and_fill_table(hold_out_df, LEARNING_0_HOLDOUT, types, primary_key=[PARTICIPANT])
 
 

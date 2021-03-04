@@ -5,6 +5,8 @@ This file is used to store helpful constants for table extracting
 
 """
 
+# SEED VALUE FOR HOLDOUT SETS
+SEED = 110796
 
 # TABLE NAMES
 GEN_1 = "General_1_Demographic Questionnaire"

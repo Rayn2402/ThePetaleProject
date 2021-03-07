@@ -5,6 +5,9 @@ Files that contains the logic related to hyper parameters tuning
 
 """
 from optuna import create_study
+from optuna.samplers import TPESampler
+from optuna.pruners import SuccessiveHalvingPruner
+
 from Training.Training import Trainer
 
 class objective():
@@ -57,7 +60,6 @@ class objective():
         
         # we creat the Trainer that will train our model
         trainer = Trainer(model)
-        
         #we perform a k fold cross validation to evaluate the model
         score = trainer.cross_valid(self.dataset, batch_size=batch_size, optimizer_name=optimizer_name,lr=lr,epochs=self.max_epochs, metric=self.metric)
 
@@ -78,7 +80,7 @@ class NNTuner:
 
         """
         # we create the study 
-        self.study = create_study(direction=direction) 
+        self.study = create_study(direction=direction, sampler=TPESampler(), pruner=SuccessiveHalvingPruner()) 
 
         # we save the inputs that will be used when tuning the hyoer parameters
         self.n_trials = n_trials

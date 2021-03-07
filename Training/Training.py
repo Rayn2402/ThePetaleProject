@@ -71,16 +71,13 @@ class Trainer():
             self.model.train()
             epoch_loss = 0
             for item in train_loader:
-                # y will contains the correct prediction
-                y = item[-1]
-                # x will contain both continuous data and categorical data if there is
-                x = item[:-1]
-                # we extract the continuous data x_cont and the categoric data x_cat
-                x_cont = x[0].float()
+                # we extract the continuous data x_cont, the categoric data x_cat and the  correct predictions y
                 if len(item) > 2 :
-                    x_cat = x[1].float()
+                    x_cont, x_cat, y = item
                 else:
+                    x_cont, y = item
                     x_cat = None
+                
                 # clear the gradients of all optimized variables
                 optimizer.zero_grad()
                 # forward pass: compute predicted outputs by passing inputs to the model

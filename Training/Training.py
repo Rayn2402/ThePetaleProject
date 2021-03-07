@@ -144,7 +144,7 @@ class Trainer():
             # we the get the train and the validation datasets of the step we are currently in
             train_folds, valid_fold = get_kfold_data(dataset, k, i)
             # we train our model with this train and validation dataset
-            train_loss, valid_loss = self.fit(train_folds, valid_fold, batch_size, optimizer_name, lr, epochs, early_stopping_activated=early_stopping_activated, patience=patience)
+            train_loss, valid_loss = self.fit(train_set =train_folds,val_set= valid_fold,batch_size= batch_size,optimizer_name= optimizer_name,lr= lr,epochs= epochs, early_stopping_activated=early_stopping_activated, patience=patience)
             
             # we extract x_cont, x_cat and target from the subset valid_fold
             x_cont, x_cat, target = get_subset_data(valid_fold)

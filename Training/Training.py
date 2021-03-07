@@ -28,7 +28,7 @@ class Trainer():
         #we save the criterion of that model in the attribute criterion
         self.criterion = model.criterion_function
     
-    def fit(self, train_set, val_set, batch_size, optimizer_name, lr, epochs, early_stopping_activated = True, patience = 5, seed = None):
+    def fit(self, train_set, val_set, batch_size, lr, epochs,optimizer_name = "Adam", early_stopping_activated = True, patience = 5, seed = None):
         """
         Method that will fit the model to the given data
 

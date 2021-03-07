@@ -28,7 +28,7 @@ class Trainer():
         #we save the criterion of that model in the attribute criterion
         self.criterion = model.criterion_function
     
-    def fit(self, train_set, val_set, batch_size, optimizer_name, lr, epochs, early_stopping_activated = True, patience = 5):
+    def fit(self, train_set, val_set, batch_size, optimizer_name, lr, epochs, early_stopping_activated = True, patience = 5, seed = None):
         """
         Method that will fit the model to the given data
 
@@ -40,10 +40,13 @@ class Trainer():
         :param epochs: number times that the learning algorithm will work through the entire training dataset
         :param early_stopping_activated: boolean indicating if we want to early stop the training when the validation loss stops decreasing
         :param patience: int representing how long to wait after last time validation loss improved.
+        :param seed: the starting point in generating random numbers
 
         :return: two lists containing the training losses and the validation losses
         """
-        manual_seed(0)
+        
+        if seed is not None:
+            manual_seed(seed)
 
         #we create the the train data loader
         train_loader = DataLoader(train_set,batch_size=batch_size,shuffle=True, drop_last = True)

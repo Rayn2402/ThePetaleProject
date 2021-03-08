@@ -8,7 +8,8 @@ Files that contains class related to the Training of the models
 from .EarlyStopping import EarlyStopping
 from torch.nn import Module
 from torch.utils.data import DataLoader, Subset
-from torch import optim, manual_seed
+from torch import optim, manual_seed, cuda
+from torch import device as device_
 from tqdm import tqdm
 
 # optimizers that can be used (Other optiizers could be added here)
@@ -28,7 +29,7 @@ class Trainer():
         #we save the criterion of that model in the attribute criterion
         self.criterion = model.criterion_function
     
-    def fit(self, train_set, val_set, batch_size, lr, epochs,optimizer_name = "Adam", early_stopping_activated = True, patience = 5, seed = None):
+    def fit(self, train_set, val_set, batch_size, lr, epochs,optimizer_name = "Adam", early_stopping_activated = True, patience = 5, seed = None, device="cpu"):
         """
         Method that will fit the model to the given data
 
@@ -41,6 +42,7 @@ class Trainer():
         :param early_stopping_activated: boolean indicating if we want to early stop the training when the validation loss stops decreasing
         :param patience: int representing how long to wait after last time validation loss improved.
         :param seed: the starting point in generating random numbers
+        :param device: the device where we want to run our training, this parameter can take two values : "cpu" or "gpu"
 
         :return: two lists containing the training losses and the validation losses
         """
@@ -50,44 +52,58 @@ class Trainer():
 
         #we create the the train data loader
         train_loader = DataLoader(train_set,batch_size=batch_size,shuffle=True, drop_last = True)
+
         #we create the the validation data loader
         val_loader = DataLoader(val_set,batch_size=val_set.__len__())
+
         #we create the optimizer
         if optimizer_name not in optimizers:
             raise Exception("optimizer not found !")
         optimizer = getattr(optim, optimizer_name)(self.model.parameters(), lr=lr)
+
         #we initialize two empty lists to store the training loss and the validation loss
         training_loss = []
         valid_loss = []
 
         #we init the early stopping class
         early_stopping = EarlyStopping(patience=patience)
+        # we declare the variable which will hold the device we’re training on 
+        device = device_("cuda" if cuda.is_available() and device=="gpu" else "cpu")
         
         for epoch in tqdm(range(epochs)):
             ###################
             # train the model #
             ###################
+            
             # prep model for training
             self.model.train()
+
             epoch_loss = 0
             for item in train_loader:
                 # we extract the continuous data x_cont, the categoric data x_cat and the  correct predictions y
                 if len(item) > 2 :
                     x_cont, x_cat, y = item
+                    #we transfer the tensors to our device
+                    x_cont, x_cat, y = x_cont.to(device), x_cat.to(device), y.to(device)
                 else:
                     x_cont, y = item
+                    #we transfer the tensors to our device
+                    x_cont, y = x_cont.to(device), y.to(device)
                     x_cat = None
-                
+
                 # clear the gradients of all optimized variables
                 optimizer.zero_grad()
+                
                 # forward pass: compute predicted outputs by passing inputs to the model
                 preds = self.model(x_cont = x_cont, x_cat =x_cat)
+                
                 # calculate the loss
                 loss = self.criterion(preds, y)
-
                 epoch_loss += loss.item()
+                
                 # backward pass: compute gradient of the loss with respect to model parameters
                 loss.backward()
+                
                 # perform a single optimization step (parameter update)
                 optimizer.step()
             # record training loss
@@ -96,18 +112,24 @@ class Trainer():
             ######################    
             # validate the model #
             ######################
+            
             # prep model for validation
             self.model.eval()
             val_epoch_loss = 0
+            
             for item in val_loader:
                 # y will contains the correct prediction
                 y = item[-1]
+                
                 # x will contain both continuous data and categorical data if there is
                 x = item[:-1]
+                
                 # we traansform the x data to float : TO BE UPDATED
                 x = map(lambda x: x.float(), x)               
+                
                 # forward pass: compute predicted outputs by passing inputs to the model
                 preds = self.model(*x)
+                
                 # calculate the loss
                 loss = self.criterion(preds, y)
                 val_epoch_loss += loss.item()
@@ -143,6 +165,7 @@ class Trainer():
         for i in range(k):
             # we the get the train and the validation datasets of the step we are currently in
             train_folds, valid_fold = get_kfold_data(dataset, k, i)
+            
             # we train our model with this train and validation dataset
             train_loss, valid_loss = self.fit(train_set =train_folds,val_set= valid_fold,batch_size= batch_size,optimizer_name= optimizer_name,lr= lr,epochs= epochs, early_stopping_activated=early_stopping_activated, patience=patience)
             
@@ -151,7 +174,6 @@ class Trainer():
             
             # we calculate the score with the help of the metric function
             score.append(metric(self.model(x_cont.float(),x_cat).float(), target))
-
         # we return the final score of the cross validation
         return sum(score)/len(score)
 
@@ -168,11 +190,14 @@ def get_kfold_data(dataset, k, i):
     # we check some condtions before going further
     assert k>1  
     assert i<k
+    
     # we get the size of one fold
     fold_size = dataset.__len__()//k
+    
     #we initialize a list that will contain the all the indexes of the the items that will be in the training set
     train_idx = []
     for j in range(k):
+        
         # we get all the indexes of the items of the current fold
         idx = range(fold_size*j, fold_size*(j+1))
         if i==j:

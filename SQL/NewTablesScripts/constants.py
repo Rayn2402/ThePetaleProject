@@ -5,6 +5,8 @@ This file is used to store helpful constants for table extracting
 
 """
 
+# SEED VALUE FOR HOLDOUT SETS
+SEED = 110796
 
 # TABLE NAMES
 GEN_1 = "General_1_Demographic Questionnaire"
@@ -17,7 +19,9 @@ DEX_DOX_TABLE = "DEX_DOX"
 GENERALS = "GENERALS"
 SIXMWT = "6MWT"
 LEARNING_0 = "Learning_0_WARMUP"
+LEARNING_0_HOLDOUT = "Learning_0_WARMUP_HOLDOUT"
 LEARNING_1 = "Learning_1_6MWT"
+LEARNING_1_HOLDOUT = "Learning_1_6MWT_HOLDOUT"
 LEARNING_2 = "Learning_2_EE"
 LEARNING_3 = "Learning_3_6MWT_AND_GENES"
 LEARNING_4 = "Learning_4_EE_AND_GENES"

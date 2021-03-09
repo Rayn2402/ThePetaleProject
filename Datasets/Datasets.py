@@ -36,7 +36,7 @@ class PetaleDataset(Dataset):
 
         # We save and preprocess continuous features
         self.X_cont = preprocess_continuous(df[cont_cols], mean, std)
-        self.X_cont = from_numpy(self.X_cont.values)
+        self.X_cont = from_numpy(self.X_cont.values).float()
 
         # We save the number of elements in the datasets
         self.N = self.IDs.shape[0]
@@ -50,17 +50,17 @@ class PetaleDataset(Dataset):
             if split:
                 # We keep ordinal encodings of categorical features separated from continuous features
                 self.X_cat = preprocess_categoricals(df[cat_cols])
-                self.X_cat = from_numpy(self.X_cat.values)
+                self.X_cat = from_numpy(self.X_cat.values).float()
             else:
                 # We concatenate one-hot encodings of categorical features with continuous features
                 self.X_cat = preprocess_categoricals(df[cat_cols], encoding='one-hot')
-                self.X_cat = from_numpy(self.X_cat.values)
+                self.X_cat = from_numpy(self.X_cat.values).float()
                 self.__concat_dataset()
         else:
             self.X_cat = None
 
         # We save the targets
-        self.y = from_numpy(ConT.to_float(df[target]).values).flatten()
+        self.y = from_numpy(ConT.to_float(df[target]).values).float().flatten()
 
         # We define the getter function according to the presence of absence of categorical features
         self.getter = self.define_getter(cat_cols, split)

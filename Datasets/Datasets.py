@@ -93,14 +93,14 @@ class PetaleDataset(Dataset):
     def __concat_dataset(self):
         """
         Concatenates categorical and continuous data
-        WARNING! : !Categorical and continuous must remain separate if we want to have an embedding layer!
+        WARNING! : !Categorical and continuous must remain separated if we want to have an embedding layer!
         """
         self.X_cont = cat((self.X_cont, self.X_cat), 1)
         self.X_cat = None
 
 
-def create_train_and_test_datasets(df, cont_cols, target_col, split_cat=True,
-                                   test_size=0.15, add_biases=False, cat_cols=None):
+def create_train_and_test_datasets(df, cont_cols, target_col, k=5, l=2, split_cat=True,
+                                   test_size=0.20, add_biases=False, cat_cols=None):
     """
     Creates the train and test PetaleDatasets from the df and the specified continuous and categorical columns
 
@@ -108,18 +108,48 @@ def create_train_and_test_datasets(df, cont_cols, target_col, split_cat=True,
     :param cont_cols: list of continuous columns names
     :param cat_cols: list of categorical columns names
     :param target_col: name of target column
+    :param k: number of outter validation loops
+    :param l: number if inner validation loops
     :param split_cat: boolean indicating if we want to split categorical variables from the continuous ones
     :param test_size: number of elements in the test set (if 0 < test_size < 1 we consider the parameter as a %)
     :param add_biases: boolean indicating if a column of ones should be added at the beginning of X_cont
-    :return: 2 PetaleDatasets
+    :return: dictionary with all datasets
     """
 
     # We make sure that continuous variables are considered as continuous
     df[cont_cols] = ConT.to_float(df[cont_cols])
 
-    # We split the training and test data
-    train, test = split_train_test(df, target_col, test_size)
+    # We initialize an empty dictionary to store the outter loops datasets
+    all_datasets = {}
 
+    # We create the datasets for the outter validation loops:
+    for i in range(k):
+
+        # We split the training and test data
+        train, test = split_train_test(df, target_col, test_size)
+        outter_dict = dataframes_to_datasets(train, test, cont_cols, target_col, split_cat, add_biases, cat_cols)
+
+        # We add storage in the outter_dict to save the inner loops datasets
+        outter_dict['inner'] = {}
+
+        # We create the datasets for the inner validation loops
+        for j in range(l):
+
+            inner_train, inner_test = split_train_test(train, target_col, test_size)
+            outter_dict['inner'][j] = dataframes_to_datasets(inner_train, inner_test,
+                                                             cont_cols, target_col, split_cat,
+                                                             add_biases, cat_cols)
+            all_datasets[i] = outter_dict
+
+    return all_datasets
+
+
+def dataframes_to_datasets(train, test, cont_cols, target_col, split_cat=True, add_biases=False, cat_cols=None):
+    """
+    Turns a two pandas dataframe into training and test PetaleDatasets
+
+    :return: dict
+    """
     # We save the mean and the standard deviations of the continuous columns in train
     mean, std = train[cont_cols].mean(), train[cont_cols].std()
 
@@ -130,18 +160,20 @@ def create_train_and_test_datasets(df, cont_cols, target_col, split_cat=True,
     test_ds = PetaleDataset(test, cont_cols, target_col, cat_cols=cat_cols,
                             split=split_cat, mean=mean, std=std, add_biases=add_biases)
 
-    return train_ds, test_ds
+    return {"train": train_ds, "test": test_ds}
 
 
-def load_warmup_datasets(dm, test_size=0.15, split_cat=True, add_biases=False):
+def load_warmup_datasets(dm, test_size=0.20, split_cat=True, add_biases=False, k=5, l=2):
     """
-    Loads 'Learning_0' table and create a PetaleDataset object
+    Loads 'Learning_0' table and create a dictionary with all PetaleDataset objects
 
     :param dm: PetaleDataManager
     :param test_size: number of elements in the test set (if 0 < test_size < 1 we consider the parameter as a %)
     :param split_cat: boolean indicating if we want to split categorical variables from the continuous ones
     :param add_biases: boolean indicating if a column of ones should be added at the beginning of X_cont
-    :return: 2 PetaleDataset
+    :param k: number of outter validation loops
+    :param l: number if inner validation loops
+    :return: dictionary with all datasets
     """
     # We save continuous columns
     cont_cols = [WEIGHT, TDM6_HR_END, TDM6_DIST, DT, AGE, MVLPA]
@@ -149,10 +181,10 @@ def load_warmup_datasets(dm, test_size=0.15, split_cat=True, add_biases=False):
     # We load the data
     df = dm.get_table(LEARNING_0)
 
-    return create_train_and_test_datasets(df, cont_cols, VO2R_MAX, split_cat, test_size, add_biases)
+    return create_train_and_test_datasets(df, cont_cols, VO2R_MAX, k, l, split_cat, test_size, add_biases)
 
 
-def load_learning_one_datasets(dm, test_size=0.15, split_cat=True, add_biases=False):
+def load_learning_one_datasets(dm, test_size=0.20, split_cat=True, add_biases=False, k=5, l=2):
     """
     Loads 'Learning_1' table and create a PetaleDataset object
 
@@ -160,7 +192,9 @@ def load_learning_one_datasets(dm, test_size=0.15, split_cat=True, add_biases=Fa
     :param test_size: number of elements in the test set (if 0 < test_size < 1 we consider the parameter as a %)
     :param split_cat: Boolean indicating if we want to split categorical variables from the continuous ones
     :param add_biases: boolean indicating if a column of ones should be added at the beginning of X_cont
-    :return: 2 PetaleDataset
+    :param k: number of outter validation loops
+    :param l: number if inner validation loops
+    :return: dictionary with all datasets
     """
 
     # We save continuous columns
@@ -173,4 +207,4 @@ def load_learning_one_datasets(dm, test_size=0.15, split_cat=True, add_biases=Fa
     # We load the data
     df = dm.get_table(LEARNING_1)
 
-    return create_train_and_test_datasets(df, cont_cols, FITNESS_LVL, split_cat, test_size, add_biases, cat_cols)
+    return create_train_and_test_datasets(df, cont_cols, FITNESS_LVL, k, l, split_cat, test_size, add_biases, cat_cols)

@@ -225,12 +225,13 @@ class DataManager:
         self.reset_cursor()
         return cols
 
-    def get_missing_data_count(self, tableName, drawChart=False, excludedCols=["Remarks"]):
+    def get_missing_data_count(self, tableName, drawChart=False, save_csv=False, excludedCols=["Remarks"]):
         """
         get the count of all the missing data of one given table
 
         :param tableName: name of the table
         :param drawChart: boolean to indicate if a chart should be created to visualize the missing data
+        :param save_csv: boolean to indicate if a csv file should be create to store missing values per column
         :param: excludedCols: list of strings containing the list of columns to exclude
         :return: a python dictionary containing the missing data count and the number of complete rows
 
@@ -245,26 +246,28 @@ class DataManager:
         # We retrieve the table
         df_table = self.get_table(tableName, cols)
 
-        missing_x = df_table.isnull().sum().values
+        # We count the number of missing values per column
+        missing_df = df_table.isnull().sum()
 
         # we get the counts we need from the dataframe
         missingCount = df_table.isnull().sum().sum()
-        completedRowCount = len(
-            [complete for complete in df_table.isnull().sum(axis=1) if complete == 0])
+        completedRowCount = len([complete for complete in df_table.isnull().sum(axis=1) if complete == 0])
         totalRows = df_table.shape[0]
 
         # Plotting the bar chart
         if drawChart:
-            fileName = "missing_data_" + \
-                tableName.replace(".", "").replace(":", "").replace("/", "")
+            fileName = Helpers.reformat_string(tableName)
             folderName = "missing_data_charts"
             figureTitle = f'Count of missing data by columns names for the table {tableName}'
-            ChartServices.drawBarhChart(
-                cols, missing_x, "Columns", "Data missing", figureTitle, fileName, folderName)
+            ChartServices.drawBarhChart(cols, missing_df.values, "Columns",
+                                        "Data missing", figureTitle, fileName, folderName)
+        if save_csv:
+            tableName = Helpers.reformat_string(tableName)
+            Helpers.save_stats_file(tableName, "missing", missing_df, index=True, header=False)
 
         # returning a dictionary containing the data needed
-        return {"tableName": tableName, "missingCount": missingCount,
-                "completedRowCount": completedRowCount, "totalRows": totalRows}
+        return missing_df, {"tableName": tableName, "missingCount": missingCount,
+                            "completedRowCount": completedRowCount, "totalRows": totalRows}
 
     def get_all_missing_data_count(self, filename="petale_missing_data.csv", drawCharts=True):
         """
@@ -284,8 +287,7 @@ class DataManager:
         with tqdm(total=len(tables)) as pbar:
             for table in tables:
                 pbar.update(1)
-                missingDataCount = self.get_missing_data_count(
-                    table, drawCharts)
+                _, missingDataCount = self.get_missing_data_count(table, drawCharts)
 
                 # we save the missing data count in results
                 results.append(missingDataCount)
@@ -368,8 +370,7 @@ class DataManager:
         return: a pandas data frame
         """
         # we initialize a python dictionary where we will save the results
-        results, var_name, all_, group_values = DataManager.__initialize_results_dict(
-            df, group)
+        results, var_name, all_, group_values = DataManager.__initialize_results_dict(df, group)
 
         # we get the columns on which we will calculate the stats
         cols = [col for col in df.columns if col != group]
@@ -379,36 +380,24 @@ class DataManager:
 
             # we append the mean and the var for all participants to the results dictionary
             results[var_name].append(col)
-            all_mean = round(df[col].astype("float").mean(axis=0), 2)
-            all_var = round(df[col].astype("float").var(axis=0), 2)
-            all_max = df[col].astype("float").max()
-            all_min = df[col].astype("float").min()
-            results[all_].append(
-                f"{all_mean} ({all_var}) [{all_min}, {all_max}]")
+            all_mean, all_var, all_min, all_max = Helpers.get_column_stats(df, col)
+            results[all_].append(f"{all_mean} ({all_var}) [{all_min}, {all_max}]")
 
             # if the group is given, we calculate the stats for each possible value of that group
             if group is not None:
                 for group_val in group_values:
                     # we append the mean and the var for sub group participants to the results dictionary
                     df_group = df[df[group] == group_val]
-                    group_mean = round(
-                        df_group[col].astype("float").mean(axis=0), 2)
-                    group_var = round(
-                        df_group[col].astype("float").var(axis=0), 2)
-                    group_max = df_group[col].astype("float").max()
-                    group_min = df_group[col].astype("float").min()
-                    results[f"{group} {group_val}"].append(
-                        f"{group_mean} ({group_var}) [{group_min}, {group_max}]")
+                    group_mean, group_var, group_min, group_max = Helpers.get_column_stats(df_group, col)
+                    results[f"{group} {group_val}"].append(f"{group_mean} ({group_var}) [{group_min}, {group_max}]")
 
         # for each variable of the given dataframe we plot a chart
+        folder_name = Helpers.reformat_string(table_name)
         for var_name in cols:
+
             # we plot and save a chart for a single variable
-            filename = var_name.replace(".", "").replace(
-                ": ", "").replace("?", "").replace("/", "")
-            folder_name = table_name.replace(
-                ".", "").replace(": ", "").replace("?", "").replace("/", "")
-            ChartServices.drawHistogram(
-                df, var_name, f"Count_{var_name}", f"chart_{filename}", f"charts_{folder_name}")
+            file_name = Helpers.reformat_string(var_name)
+            ChartServices.drawHistogram(df, var_name, f"Estimated density of {var_name}", file_name, folder_name)
 
         # we return the results
         return pd.DataFrame(results)
@@ -478,19 +467,15 @@ class DataManager:
                     for group_val in group_values:
 
                         # We create a filter to get the number of items in a group that has the correspond category
-                        filter = (df[group] == group_val) & (
-                            df[col] == category)
+                        filter = (df[group] == group_val) & (df[col] == category)
 
                         # We compute the statistics needed
                         sub_category_total = df[filter].shape[0]
-                        sub_category_percent = round(
-                            sub_category_total/(group_totals[group_val]) * 100, 2)
-                        results[f"{group} {group_val}"].append(
-                            f"{sub_category_total} ({sub_category_percent}%)")
+                        sub_category_percent = round(sub_category_total/(group_totals[group_val]) * 100, 2)
+                        results[f"{group} {group_val}"].append(f"{sub_category_total} ({sub_category_percent}%)")
 
                         # We save data for the charts
-                        single_data_for_chart[group_val].append(
-                            float(sub_category_total))
+                        single_data_for_chart[group_val].append(float(sub_category_total))
 
             data_for_chart.append(single_data_for_chart)
 
@@ -499,10 +484,8 @@ class DataManager:
             if group is not None:
 
                 # plotting the chart
-                filename = item["col_name"].replace(".", "").replace(
-                    ": ", "").replace("?", "").replace("/", "")
-                folder_name = table_name.replace(
-                    ".", "").replace(": ", "").replace("?", "").replace("/", "")
+                filename = Helpers.reformat_string(item["col_name"])
+                folder_name = Helpers.reformat_string(table_name)
                 ChartServices.drawBinaryGroupedBarChart(
                     item["values"], {"label": "Male", "values": item["1.0"]},
                     {"label": "Female",
@@ -510,6 +493,32 @@ class DataManager:
                     f"chart_{filename}", f"charts_{folder_name}")
 
         # we return the data frame containing the informations
+        return pd.DataFrame(results)
+
+    def get_group_count(self, df, group):
+        """
+        Count the number of items from each group
+
+        :param df: pandas dataframe
+        :param group: name of a column, we calculate the stats for the overall data and the stats of the data grouped
+        by this column, Ex : group = 34500 Sex will give us the stats for all the data, for Male, and for Female
+        :return: pandas dataframe
+        """
+
+        # we initialize a python dictionary where we will save the results
+        results, var_name, all_, group_values = DataManager.__initialize_results_dict(df, group)
+
+        # We set the variable name as "n"
+        results[var_name].append("n")
+
+        # We count the total number of rows
+        results[all_].append(df.shape[0])
+
+        # We count the number of rows from each group
+        for group_val in group_values:
+            results[f"{group} {group_val}"].append(df[df[group] == group_val].shape[0])
+
+        # We return the resulting dataframe
         return pd.DataFrame(results)
 
     @staticmethod
@@ -591,24 +600,25 @@ class PetaleDataManager(DataManager):
         numerical_df = pd.merge(sex_df, numerical_df, on="Participant", how="inner")
         numerical_df = numerical_df.drop(["Participant"], axis=1)
 
+        # we retrieve number of individuals from each sex
+        sex_stats = self.get_group_count(numerical_df, group="34500 Sex")
+
         # we make a categorical var analysis for this table
         categorical_stats = self.get_categorical_var_analysis(table_name, categorical_df, group="34500 Sex")
 
         # we make a numerical var analysis for this table
         numerical_stats = self.get_numerical_var_analysis(table_name, numerical_df, group="34500 Sex")
 
-        # we concatenate all the results to get the final dataframe
-        final_df = pd.concat(
-            [categorical_stats, numerical_stats], ignore_index=True)
-        filename = table_name.replace(".", "").replace(
-            ": ", "").replace("?", "").replace("/", "")
+        # we concatenate all the results to get the final stats dataframe
+        stats_df = pd.concat([sex_stats, categorical_stats, numerical_stats], ignore_index=True)
+        table_name = Helpers.reformat_string(table_name)
 
         # if saveInFile True we save the dataframe in a csv file
         if save_in_file:
-            Helpers.save_stats_file(filename, final_df)
+            Helpers.save_stats_file(table_name, "statistics", stats_df)
 
         # we return the dataframe
-        return final_df
+        return stats_df
 
     def get_variable_info(self, var_name):
         """

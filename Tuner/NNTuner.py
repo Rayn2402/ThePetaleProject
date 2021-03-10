@@ -51,9 +51,6 @@ class objective():
         # We optimize the batch size used in the training
         batch_size = trial.suggest_int("batch_size",hyper_params["batch_size"]["min"], hyper_params["batch_size"]["max"])
         
-        # We optimize the optimizer that will be used in the training
-        optimizer_name = trial.suggest_categorical("optimizer_name", hyper_params["optimizer_name"]["values"])
-        
         # We optimize the value of the learning rate
         lr = trial.suggest_loguniform("lr",hyper_params["lr"]["min"], hyper_params["lr"]["max"])
 
@@ -63,7 +60,7 @@ class objective():
         # we creat the Trainer that will train our model
         trainer = Trainer(model)
         #we perform a k fold cross validation to evaluate the model
-        score = trainer.cross_valid(datasets=self.datasets, batch_size=batch_size, optimizer_name=optimizer_name,lr=lr,epochs=self.max_epochs, metric=self.metric, k=self.k)
+        score = trainer.cross_valid(datasets=self.datasets, batch_size=batch_size, lr=lr, epochs=self.max_epochs, metric=self.metric, k=self.k)
 
         #we return the score 
         return score
@@ -119,6 +116,5 @@ class NNTuner:
             "dropout": best_trial.params["dropout"],
             "lr":best_trial.params["lr"],
             "batch_size":best_trial.params["batch_size"],
-            "optimizer_name":best_trial.params["optimizer_name"],
         }
 

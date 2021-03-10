@@ -218,21 +218,3 @@ def get_kfold_data(dataset, k, i):
             train_idx += idx
     # we return two subsets of the dataset, one representing the training set and one representing the validation set
     return Subset(dataset, train_idx), Subset(dataset, list(valid_idx))
-
-
-def get_subset_data(subset):
-    """
-        Function that will be used to extract the needed data from a pytorch subset of the petale dataset
-
-        :param subset: Pytorch subset of the petale dataset
-        :return: returns all the data of this subset : x_cont, x_cat and target
-    """
-    loader = DataLoader(subset, batch_size=len(subset))
-    data = next(iter(loader))
-    target = data[-1]
-    x_cont = data[0]
-    if (len(data) > 2):
-        x_cat = data[1]
-    else:
-        x_cat = None
-    return x_cont, x_cat, target

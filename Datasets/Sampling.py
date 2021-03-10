@@ -36,16 +36,17 @@ class Sampler:
         # We save the target column name
         self.target_col = target_col
 
-    def __call__(self, k=5, l=2, split_cat=True, test_size=0.20, add_biases=False):
-        return self.create_train_and_test_datasets(k, l, split_cat, test_size, add_biases)
+    def __call__(self, k=5, l=2, split_cat=True, valid_size=0.20, test_size=0.20, add_biases=False):
+        return self.create_train_and_test_datasets(k, l, split_cat, valid_size, test_size, add_biases)
 
-    def create_train_and_test_datasets(self, k=5, l=2, split_cat=True, test_size=0.20, add_biases=False):
+    def create_train_and_test_datasets(self, k=5, l=2, split_cat=True, valid_size=0.20, test_size=0.20, add_biases=False):
         """
         Creates the train and test PetaleDatasets from the df and the specified continuous and categorical columns
 
         :param k: number of outer validation loops
         :param l: number if inner validation loops
         :param split_cat: boolean indicating if we want to split categorical variables from the continuous ones
+        :param valid_size: number of elements in the valid set (if 0 < valid < 1 we consider the parameter as a %)
         :param test_size: number of elements in the test set (if 0 < test_size < 1 we consider the parameter as a %)
         :param add_biases: boolean indicating if a column of ones should be added at the beginning of X_cont
         :return: dictionary with all datasets
@@ -59,7 +60,8 @@ class Sampler:
 
             # We split the training and test data
             train, test = split_train_test(self.learning_set, self.target_col, test_size)
-            outer_dict = self.dataframes_to_datasets(train, test, split_cat, add_biases)
+            train, valid = split_train_test(train, self.target_col, valid_size)
+            outer_dict = self.dataframes_to_datasets(train, valid, test, split_cat, add_biases)
 
             # We add storage in the outer dict to save the inner loops datasets
             outer_dict['inner'] = {}
@@ -67,29 +69,55 @@ class Sampler:
             # We create the datasets for the inner validation loops
             for j in range(l):
 
-                inner_train, inner_test = split_train_test(train, self.target_col, test_size)
-                outer_dict['inner'][j] = self.dataframes_to_datasets(inner_train, inner_test, split_cat, add_biases)
+                in_train, in_test = split_train_test(train, self.target_col, test_size)
+                in_train, in_valid = split_train_test(in_train, self.target_col, valid_size)
+                outer_dict['inner'][j] = self.dataframes_to_datasets(in_train, in_valid, in_test, split_cat, add_biases)
                 all_datasets[i] = outer_dict
 
         return all_datasets
 
-    def dataframes_to_datasets(self, train, test, split_cat=True, add_biases=False):
+    def dataframes_to_datasets(self, train, valid, test, split_cat=True, add_biases=False):
         """
-        Turns two pandas dataframe into training and test PetaleDatasets
+        Turns three pandas dataframe into training, valid and test PetaleDatasets
 
+        :param train: Pandas dataframe with training data
+        :param valid: Pandas dataframe with valid data
+        :param test: Pandas dataframe with test data
+        :param split_cat: boolean indicating if we want to split categorical variables from the continuous ones
+        :param add_biases: boolean indicating if a column of ones should be added at the beginning of X_cont
         :return: dict
         """
         # We save the mean and the standard deviations of the continuous columns in train
         mean, std = train[self.cont_cols].mean(), train[self.cont_cols].std()
 
-        # We create the test and train datasets
+        # We create the train, valid and test datasets
         train_ds = PetaleDataset(train, self.cont_cols, self.target_col, cat_cols=self.cat_cols,
                                  split=split_cat, add_biases=add_biases)
+
+        valid_ds = PetaleDataset(valid, self.cont_cols, self.target_col, cat_cols=self.cat_cols,
+                                 split=split_cat, mean=mean, std=std, add_biases=add_biases)
 
         test_ds = PetaleDataset(test, self.cont_cols, self.target_col, cat_cols=self.cat_cols,
                                 split=split_cat, mean=mean, std=std, add_biases=add_biases)
 
-        return {"train": train_ds, "test": test_ds}
+        return {"train": train_ds, "valid": valid_ds, "test": test_ds}
+
+    @staticmethod
+    def visualize_splits(datasets):
+        """
+        Details the data splits for the experiment
+
+        :param datasets: dict with all datasets obtain from the Sampler
+        """
+        print("#----------------------------------#")
+        for k, v in datasets.items():
+            print(f"Split {k+1} \n")
+            print(f"Outer :")
+            print(f"Train {len(v['train'])} - Valid {len(v['valid'])} - Test {len(v['test'])}")
+            print("Inner")
+            for k1, v1 in v['inner'].items():
+                print(f"{k+1}.{k1} -> Train {len(v1['train'])} - Valid {len(v1['valid'])} - Test {len(v1['test'])}")
+            print("#----------------------------------#")
 
 
 class WarmUpSampler(Sampler):

@@ -142,11 +142,11 @@ class Trainer():
                 break
         return training_loss, valid_loss
     
-    def cross_valid(self, dataset, batch_size,optimizer_name, lr, epochs, metric,  k=5, early_stopping_activated = True, patience=5):
+    def cross_valid(self, datasets, batch_size,optimizer_name, lr, epochs, metric,  k=5, early_stopping_activated = True, patience=5):
         """
         Method that will perfrom a k-fold cross validation on the model
 
-        :param dataset: Petale Dataset containing the data
+        :param datasets: Petale Datasets representing all the train and test sets to be used in the cross validation
         :param batch_size: int that represent the size of the batchs to be used in the train data loader
         :param optimizer_name: string to define the optimizer to be used in the training
         :param lr: the learning rate
@@ -164,16 +164,21 @@ class Trainer():
         score = []
         for i in range(k):
             # we the get the train and the validation datasets of the step we are currently in
-            train_folds, valid_fold = get_kfold_data(dataset, k, i)
+            train_set, test_set = datasets[i]["train"], datasets[i]["test"]
             
             # we train our model with this train and validation dataset
-            train_loss, valid_loss = self.fit(train_set =train_folds,val_set= valid_fold,batch_size= batch_size,optimizer_name= optimizer_name,lr= lr,epochs= epochs, early_stopping_activated=early_stopping_activated, patience=patience)
+            self.fit(train_set =train_set,val_set= test_set,batch_size= batch_size,optimizer_name= optimizer_name,lr= lr,epochs= epochs, early_stopping_activated=early_stopping_activated, patience=patience)
             
             # we extract x_cont, x_cat and target from the subset valid_fold
-            x_cont, x_cat, target = get_subset_data(valid_fold)
-            
+            x_cont = test_set.X_cont
+            target = test_set.y
+            if test_set.X_cat is not None:
+                x_cat = test_set.X_cat
+            else:
+                x_cat = None
+ 
             # we calculate the score with the help of the metric function
-            score.append(metric(self.model(x_cont.float(),x_cat).float(), target))
+            score.append(metric(self.model(x_cont,x_cat).float(), target))
         # we return the final score of the cross validation
         return sum(score)/len(score)
 

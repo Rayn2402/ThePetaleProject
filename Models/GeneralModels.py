@@ -5,12 +5,14 @@ This file stores the two classes of Neural Networks models :
 NNRegressor which is a model to preform a regression and predict a real value
 """
 
-from torch import  cat, argmax
-from torch.nn import Module, ModuleList, Embedding, Linear, MSELoss, ReLU, BatchNorm1d, Dropout, Sequential, CrossEntropyLoss
+from torch import cat, argmax
+from torch.nn import Module, ModuleList, Embedding, Linear, MSELoss, ReLU, BatchNorm1d, Dropout, Sequential, \
+    CrossEntropyLoss
 from Utils.score_metrics import ClassificationMetrics
 
+
 class NNModel(Module):
-    def __init__(self, num_cont_col , output_size, layers, dropout = 0.4, cat_sizes=None):
+    def __init__(self, num_cont_col, output_size, layers, dropout=0.4, cat_sizes=None):
         """
         Creates a Neural Network model, entity embedding
         is performed on the categorical data if cat_sizes is not null
@@ -25,46 +27,45 @@ class NNModel(Module):
         if cat_sizes is not None:
 
             # we generate the embedding sizes ( this part will be optimized )
-            embedding_sizes = [(cat_size, min(50, (cat_size+1)//2)) for cat_size in cat_sizes]
+            embedding_sizes = [(cat_size, min(50, (cat_size + 1) // 2)) for cat_size in cat_sizes]
 
             # we create the Embeddings layers
             self.embedding_layers = ModuleList([Embedding(num_embedding, embedding_dim) for
-                                                   num_embedding, embedding_dim in embedding_sizes])
+                                                num_embedding, embedding_dim in embedding_sizes])
 
             # we get the number of our categorical data after the embedding ( we sum the embeddings dims)
             num_cat_col = sum((embedding_dim for num_embedding, embedding_dim in embedding_sizes))
-            
-            # the number of enteries to our linear layer
+
+            # the number of entries to our linear layer
             input_size = num_cat_col + num_cont_col
         else:
-            # the number of enteries to our linear layer
+            # the number of entries to our linear layer
             input_size = num_cont_col
 
-        # we intialize an empty list that will contin all the layers of our model
+        # we initialize an empty list that will contain all the layers of our model
         all_layers = []
 
-        #we create the diffrent layers of our model : Linear --> ReLU --> Batch Normalization --> Dropout
+        # we create the different layers of our model : Linear --> ReLU --> Batch Normalization --> Dropout
         for i in layers:
             # Linear Layer
             all_layers.append(Linear(input_size, i))
-            # Activatiin function
+            # Activation function
             all_layers.append(ReLU(inplace=True))
             # batch normalization
             all_layers.append(BatchNorm1d(i))
-            # dropour layer
+            # dropout layer
             all_layers.append(Dropout(dropout))
-            input_size = i 
-        
-        #we define the output layer
-        if len(layers) == 0 :
+            input_size = i
+
+            # we define the output layer
+        if len(layers) == 0:
             all_layers.append(Linear(input_size, output_size))
-        else :
+        else:
             all_layers.append(Linear(layers[-1], output_size))
 
         # we save all our layers in self.layers
         self.layers = Sequential(*all_layers)
 
-    
     def forward(self, x_cont, x_cat=None):
         embeddings = []
         if x_cat is not None:
@@ -82,46 +83,47 @@ class NNModel(Module):
 
 
 class NNRegressor(NNModel):
-    def __init__(self, num_cont_col, layers , dropout = 0.4, cat_sizes=None):
-        """Creates a Neural Network model that perfrom a regression with predicting real values, entity embedding is performed on the data if cat_sizes is not null
+    def __init__(self, num_cont_col, layers, dropout=0.4, cat_sizes=None):
+        """Creates a Neural Network model that perform a regression with predicting real values, entity embedding is
+        performed on the data if cat_sizes is not null
 
         :param num_cont_col: the number of continuous columns we have
         :param layers: a list to represent the number of hidden layers and the number of units in each layer
         :param dropout: a fraction representing the probability of dropout
         :param cat_sizes: list of integer representing the size of each categorical column
         """
-        super().__init__(num_cont_col= num_cont_col, output_size=1,layers= layers, dropout= dropout,cat_sizes= cat_sizes)
+        super().__init__(num_cont_col=num_cont_col, output_size=1, layers=layers, dropout=dropout, cat_sizes=cat_sizes)
 
-        #we define the criterion for that model
+        # we define the criterion for that model
         self.criterion = MSELoss()
-    
+
     def criterion_function(self, pred, y):
         return self.criterion(pred.flatten(), y.float())
+
     def loss(self, x_cont, x_cat, target):
         self.eval()
-        return ((self(x_cont.float(),x_cat).squeeze() - target)**2).mean().item()
-    
+        return ((self(x_cont.float(), x_cat).squeeze() - target) ** 2).mean().item()
 
 
 class NNClassifier(NNModel):
-    def __init__(self, num_cont_col, output_size, layers, dropout = 0.4 ,cat_sizes=None):
-        """ Creates a Neural Network model that perfrom a regression yith predicting real values, entity embedding is performed on the data if cat_sizes is not null
-        :param num_cont_col: the number of continuous columns we have
+    def __init__(self, num_cont_col, output_size, layers, dropout=0.4, cat_sizes=None):
+        """ Creates a Neural Network model that perform a regression With predicting real values, entity embedding is
+        performed on the data if cat_sizes is not null :param num_cont_col: the number of continuous columns we have
         :param output_size: the number of nodes in the last layer of the neural network or the the number of classes
-        :param layers: a list to represent the number of hidden layers and the number of units in each layer
-        :param dropout: a fraction representing the probability of dropout
-        :param cat_sizes: list of integer representing the size of each categorical column
+        :param layers: a list to represent the number of hidden layers and the number of units in each layer :param
+        dropout: a fraction representing the probability of dropout :param cat_sizes: list of integer representing
+        the size of each categorical column
         """
-        super().__init__(num_cont_col= num_cont_col, output_size=output_size,layers= layers, dropout= dropout,cat_sizes= cat_sizes)
+        super().__init__(num_cont_col=num_cont_col, output_size=output_size, layers=layers, dropout=dropout,
+                         cat_sizes=cat_sizes)
 
-        #we define the criterion for that model
+        # we define the criterion for that model
         self.criterion = CrossEntropyLoss()
-    
+
     def criterion_function(self, pred, y):
         return self.criterion(pred, y.long())
-    
-    def loss(self, x_cont, x_cat, target): 
+
+    def loss(self, x_cont, x_cat, target):
         self.eval()
-        predictions =(argmax(self(x_cont.float(),x_cat).float(), dim=1))
+        predictions = (argmax(self(x_cont.float(), x_cat).float(), dim=1))
         return ClassificationMetrics.accuracy(predictions, target).item()
-        

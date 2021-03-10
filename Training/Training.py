@@ -13,8 +13,7 @@ from torch import device as device_
 from tqdm import tqdm
 
 
-
-class Trainer():
+class Trainer:
     def __init__(self, model):
         """
         Creates a Trainer that will train and evaluate a given model.
@@ -34,11 +33,12 @@ class Trainer():
         Method that will fit the model to the given data
 
         :param train_set: Petale Dataset containing the training set
-        :param test_set: Petale Dataset containing the test data
-        :param batch_size: int that represent the size of the batchs to be used in the train data loader
+        :param val_set: Petale Dataset containing the valid set
+        :param batch_size: int that represent the size of the batches to be used in the train data loader
         :param lr: the learning rate
         :param epochs: number times that the learning algorithm will work through the entire training dataset
-        :param early_stopping_activated: boolean indicating if we want to early stop the training when the validation loss stops decreasing
+        :param early_stopping_activated: boolean indicating if we want to early stop the training when the validation
+        loss stops decreasing
         :param patience: int representing how long to wait after last time validation loss improved.
         :param seed: the starting point in generating random numbers
         :param device: the device where we want to run our training, this parameter can take two values : "cpu" or "gpu"
@@ -50,8 +50,8 @@ class Trainer():
             manual_seed(seed)
 
         # the maximum value of the batch size is the size of the trainset
-        if (train_set.__len__()<batch_size):
-            batch_size=train_set.__len__()
+        if train_set.__len__() < batch_size:
+            batch_size = train_set.__len__()
 
         # we create the the train data loader
         train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
@@ -81,7 +81,7 @@ class Trainer():
 
             epoch_loss = 0
             for item in train_loader:
-                # we extract the continuous data x_cont, the categoric data x_cat and the  correct predictions y
+                # we extract the continuous data x_cont, the categorical data x_cat and the  correct predictions y
                 if len(item) > 2:
                     x_cont, x_cat, y = item
                     # we transfer the tensors to our device
@@ -110,7 +110,7 @@ class Trainer():
             # record training loss
             training_loss.append(epoch_loss / len(train_loader))
 
-            ######################    
+            ######################
             # validate the model #
             ######################
 
@@ -125,7 +125,7 @@ class Trainer():
                 # x will contain both continuous data and categorical data if there is
                 x = item[:-1]
 
-                # we traansform the x data to float : TO BE UPDATED
+                # we transform the x data to float : TO BE UPDATED
                 x = map(lambda x: x.float(), x)
 
                 # forward pass: compute predicted outputs by passing inputs to the model
@@ -139,23 +139,25 @@ class Trainer():
 
             if early_stopping_activated:
                 early_stopping(val_epoch_loss / len(val_loader), self.model)
-            if (early_stopping.early_stop):
+            if early_stopping.early_stop:
                 break
         return training_loss, valid_loss
 
     def cross_valid(self, datasets, batch_size, lr, epochs, metric, k=5, early_stopping_activated=True,
                     patience=5):
         """
-        Method that will perfrom a k-fold cross validation on the model
+        Method that will perform a k-fold cross validation on the model
 
         :param datasets: Petale Datasets representing all the train and test sets to be used in the cross validation
-        :param batch_size: int that represent the size of the batchs to be used in the train data loader
+        :param batch_size: int that represent the size of the batches to be used in the train data loader
         :param lr: the learning rate
         :param k: number of folds
-        :param metric: a function that takes the output of the model and the target and returns the metric we want to measure
+        :param metric: a function that takes the output of the model and the target and returns the metric we want to
+        measure
         :param metric: type of the metric we want to get the score of
         :param epochs: number times that the learning algorithm will work through the entire training dataset
-        :param early_stopping_activated: boolean indicating if we want to early stop the training when the validation loss stops decreasing
+        :param early_stopping_activated: boolean indicating if we want to early stop the training when the validation
+        loss stops decreasing
         :param patience: int representing how long to wait after last time validation loss improved.
 
         :return: returns the score after performing the k-fold cross validation
@@ -194,7 +196,7 @@ def get_kfold_data(dataset, k, i):
 
         :return: returns two subset of the dataset, one for the training set and one for the validation set
     """
-    # we check some condtions before going further
+    # we check some conditions before going further
     assert k > 1
     assert i < k
 

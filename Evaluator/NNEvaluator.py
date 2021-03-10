@@ -15,9 +15,11 @@ class NNEvaluator:
         Class that will be responsible of the evolution of the model
         
         :param model_generator: instance of the ModelGenerator class that will be responsible of generating the model
-        :param sampler: A sampler object that will be called to perfrom the stratified sampling to get all the train and test set for both the inner and the outer training
-        :param hyper_params: dictionary containg information of the hyper parameter we want to tune : min, max, step, values
-        :param metric: a function that takes the output of the model and the target and returns  the metric we want to optimize
+        :param sampler: A sampler object that will be called to perform the stratified sampling to get all the train
+        and test set for both the inner and the outer training
+        :param hyper_params: dictionary containing information of the hyper parameter we want to tune
+        :param metric: a function that takes the output of the model and the target and returns  the metric we want
+        to optimize
         :param k: Number of folds in the outer cross validation
         :param l: Number of folds in the inner cross validation
         :param n_trials: number of trials we want to perform
@@ -26,7 +28,7 @@ class NNEvaluator:
 
         """
 
-        # we save the inputs that will be used when tuning the hyoer parameters
+        # we save the inputs that will be used when tuning the hyper parameters
         self.n_trials = n_trials
         self.model_generator = model_generator
         self.sampler = sampler
@@ -41,7 +43,7 @@ class NNEvaluator:
         """
         Method to call when we want to perform a nested cross validation and evaluate the model
         
-        :return: the scores of the model after peroforming a nested cross calidation
+        :return: the scores of the model after performing a nested cross validation
         """
 
         # we get all the train, test, inner train, qnd inner test sets with our sampler
@@ -59,7 +61,7 @@ class NNEvaluator:
                             hyper_params=self.hyper_params, n_trials=self.n_trials,
                             metric=self.metric, direction=self.direction, k=self.l)
 
-            # we perfrom the hyper paramters tunning to get the best hyper parameters
+            # we perform the hyper parameters tuning to get the best hyper parameters
             best_hyper_params = tuner.tune()
 
             # we create our model with the best hyper parameters

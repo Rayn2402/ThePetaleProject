@@ -17,11 +17,10 @@ class LinearRegressor:
         Creates a model that give us the analytical solution of the  linear regression 
         :param input_size: the number of features we have
         """
-        # we intialize the weights with random numbers
+        # we initialize the weights with random numbers
         self.W = randn(input_size, 1)
 
     def train(self, x, y):
-
         # we find weights using the analytical solution formula of the linear regression
         self.W = matmul(matmul(inverse(matmul(transpose(x, 0, 1), x)), transpose(x, 0, 1)), y)
 
@@ -35,7 +34,7 @@ class LinearRegressor:
         """
         function that evaluates the model by returning the error of the prediction of a given data
         """
-        return ((self.predict(x) - target)**2).mean().item()
+        return ((self.predict(x) - target) ** 2).mean().item()
 
 
 class GDLinearRegressor(Module):
@@ -51,26 +50,26 @@ class GDLinearRegressor(Module):
         if cat_sizes is not None:
 
             # we generate the embedding sizes ( this part will be optimized )
-            embedding_sizes = [(cat_size, min(50, (cat_size+1)//2)) for cat_size in cat_sizes]
+            embedding_sizes = [(cat_size, min(50, (cat_size + 1) // 2)) for cat_size in cat_sizes]
 
             # we create the Embeddings layers
             self.embedding_layers = ModuleList([Embedding(num_embedding, embedding_dim) for
-                                                   num_embedding, embedding_dim in embedding_sizes])
+                                                num_embedding, embedding_dim in embedding_sizes])
 
             # we get the number of our categorical data after the embedding ( we sum the embeddings dims)
             num_cat_col = sum((embedding_dim for num_embedding, embedding_dim in embedding_sizes))
-            
-            # the number of enteries to our linear layer
+
+            # the number of entries to our linear layer
             input_size = num_cat_col + num_cont_col
         else:
-            # the number of enteries to our linear layer
+            # the number of entries to our linear layer
             input_size = num_cont_col
 
         # we define our linear layer
         self.linear = Linear(input_size, 1)
-        #we define the criterion for that model
+        # we define the criterion for that model
         self.criterion = MSELoss()
-    
+
     def forward(self, x_cont, x_cat=None):
 
         embeddings = []
@@ -88,5 +87,6 @@ class GDLinearRegressor(Module):
         else:
             x = x_cont
         return self.linear(x)
+
     def loss(self, x_cont, x_cat, target):
-        return ((self(x_cont.float(),x_cat).squeeze() - target)**2).mean().item()
+        return ((self(x_cont.float(), x_cat).squeeze() - target) ** 2).mean().item()

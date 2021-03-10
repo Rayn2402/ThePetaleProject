@@ -91,11 +91,30 @@ class NNTuner:
         self.max_epochs = max_epochs
     def tune(self):
         """
-        Method to call when we want to tune the hyperparameters
+        Method to call to tune the hyperparameters of a given model
         
         :return: the result of the study containg the best trial and the best values of each hyper parameter
         """
         
         # we perform the optimization 
         self.study.optimize(objective(model_generator =self.model_generator, dataset= self.dataset, hyper_params= self.hyper_params,metric= self.metric, max_epochs = self.max_epochs ),self.n_trials)  
-        return self.study 
+        
+        # we extract the best trial
+        best_trial = self.study.best_trial
+
+        # we extact the best architecture of the model
+        n_units = [key for key in best_trial.params.keys() if "n_units" in key ]
+        if n_units is not None:
+            layers = list(map(lambda n_unit:best_trial.params[n_unit], n_units))
+        else:
+            layers = []
+        
+        # we return the best hyperparameters
+        return {
+            "layers":layers,
+            "dropout": best_trial.params["dropout"],
+            "lr":best_trial.params["lr"],
+            "batch_size":best_trial.params["batch_size"],
+            "optimizer_name":best_trial.params["optimizer_name"],
+        }
+

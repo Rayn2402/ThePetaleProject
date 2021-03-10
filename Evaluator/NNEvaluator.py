@@ -7,8 +7,10 @@ File that contains the class related to the evaluation of the models
 from Training.Training import Trainer
 from Tuner.NNTuner import NNTuner
 
+
 class NNEvaluator:
-    def __init__(self, model_generator, sampler, hyper_params, n_trials, metric, k, l, max_epochs = 100, direction="minimize"):
+    def __init__(self, model_generator, sampler, hyper_params, n_trials, metric, k, l, max_epochs=100,
+                 direction="minimize"):
         """
         Class that will be responsible of the evolution of the model
         
@@ -34,37 +36,41 @@ class NNEvaluator:
         self.metric = metric
         self.max_epochs = max_epochs
         self.direction = direction
+
     def nested_cross_valid(self):
         """
         Method to call when we want to perform a nested cross validation and evaluate the model
         
         :return: the scores of the model after peroforming a nested cross calidation
         """
-        
+
         # we get all the train, test, inner train, qnd inner test sets with our sampler
         all_datasets = self.sampler(k=self.k, l=self.l)
-        
-        #we init the list that will contains the scores
+
+        # we init the list that will contains the scores
         scores = []
 
         for i in range(self.k):
             # we the get the train and the test datasets
-            train_set, test_set = all_datasets[i]["train"], all_datasets[i]["test"] 
+            train_set, valid_set, test_set = all_datasets[i]["train"], all_datasets[i]["valid"], all_datasets[i]["test"]
 
-            #we create the tuner to perform the hyperparameters optimisation
-            tuner = NNTuner(model_generator= self.model_generator,datasets= all_datasets[i]["inner"],hyper_params= self.hyper_params, n_trials= self.n_trials,
-            metric=self.metric,direction=self.direction, k=self.l)
+            # we create the tuner to perform the hyperparameters optimisation
+            tuner = NNTuner(model_generator=self.model_generator, datasets=all_datasets[i]["inner"],
+                            hyper_params=self.hyper_params, n_trials=self.n_trials,
+                            metric=self.metric, direction=self.direction, k=self.l)
 
             # we perfrom the hyper paramters tunning to get the best hyper parameters
             best_hyper_params = tuner.tune()
 
             # we create our model with the best hyper parameters
-            model = self.model_generator(layers = best_hyper_params["layers"],dropout=best_hyper_params["dropout"])
+            model = self.model_generator(layers=best_hyper_params["layers"], dropout=best_hyper_params["dropout"])
 
             # we create a trainer to train the model
             trainer = Trainer(model)
             # we train our model with the best hyper parameters
-            trainer.fit(train_set =train_set,val_set= test_set,epochs=self.max_epochs,batch_size=best_hyper_params["batch_size"],optimizer_name= best_hyper_params["optimizer_name"],lr= best_hyper_params["lr"])
+            trainer.fit(train_set=train_set, val_set=valid_set, epochs=self.max_epochs,
+                        batch_size=best_hyper_params["batch_size"], optimizer_name=best_hyper_params["optimizer_name"],
+                        lr=best_hyper_params["lr"])
 
             # we extract x_cont, x_cat and target from the validset
             x_cont = test_set.X_cont
@@ -73,8 +79,8 @@ class NNEvaluator:
                 x_cat = test_set.X_cat
             else:
                 x_cat = None
- 
-            # we calculate the score with the help of the metric function
-            scores.append(self.metric(model(x_cont,x_cat).float(), target))
 
-        return sum(scores)/len(scores)
+            # we calculate the score with the help of the metric function
+            scores.append(self.metric(model(x_cont, x_cat).float(), target))
+
+        return sum(scores) / len(scores)

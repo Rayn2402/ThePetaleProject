@@ -38,11 +38,12 @@ class NNEvaluator:
         """
         Method to call when we want to perform a nested cross validation and evaluate the model
         
-        :return: the score of the model after peroforming a nested cross calidation
+        :return: the scores of the model after peroforming a nested cross calidation
         """
+        
+        # we get all the train, test, inner train, qnd inner test sets with our sampler
         all_datasets = self.sampler(k=self.k, l=self.l)
         
-
         #we init the list that will contains the scores
         scores = []
 

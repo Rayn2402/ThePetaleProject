@@ -64,8 +64,6 @@ class NNModel(Module):
         # we save all our layers in self.layers
         self.layers = Sequential(*all_layers)
 
-        #we define the criterion for that model
-        #self.criterion = MSELoss()
     
     def forward(self, x_cont, x_cat=None):
         embeddings = []

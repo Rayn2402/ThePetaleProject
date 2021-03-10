@@ -52,6 +52,10 @@ class Trainer():
         if seed is not None:
             manual_seed(seed)
 
+        # the maximum value of the batch size is the size of the trainset
+        if (train_set.__len__()<batch_size):
+            batch_size=train_set.__len__()
+
         # we create the the train data loader
         train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, drop_last=True)
 
@@ -168,7 +172,6 @@ class Trainer():
         for i in range(k):
             # we the get the train and the validation datasets of the step we are currently in
             train_set, valid_set, test_set = datasets[i]["train"], datasets[i]["valid"], datasets[i]["test"]
-
             # we train our model with this train and validation dataset
             self.fit(train_set=train_set, val_set=valid_set, batch_size=batch_size, optimizer_name=optimizer_name, lr=lr,
                      epochs=epochs, early_stopping_activated=early_stopping_activated, patience=patience)

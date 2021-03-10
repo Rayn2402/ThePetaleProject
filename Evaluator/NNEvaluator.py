@@ -10,7 +10,7 @@ from Tuner.NNTuner import NNTuner
 class NNEvaluator:
     def __init__(self, model_generator, sampler, hyper_params, n_trials, metric, k, l, max_epochs = 100, direction="minimize"):
         """
-        Class that will be responsible of the hyperparameters tuning
+        Class that will be responsible of the evolution of the model
         
         :param model_generator: instance of the ModelGenerator class that will be responsible of generating the model
         :param sampler: A sampler object that will be called to perfrom the stratified sampling to get all the train and test set for both the inner and the outer training

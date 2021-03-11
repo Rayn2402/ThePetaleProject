@@ -22,6 +22,10 @@
     },
     "activation":{
         "values": ["ReLU","PReLU","LeakyReLU"]
+    },
+    "weight_decay": {
+        "min": 1e-10,
+        "max": 1e-1
     }
 
 }

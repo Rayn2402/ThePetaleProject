@@ -27,7 +27,7 @@ class Trainer:
         # we save the criterion of that model in the attribute criterion
         self.criterion = model.criterion_function
 
-    def fit(self, train_set, val_set, batch_size, lr, epochs, early_stopping_activated=True,
+    def fit(self, train_set, val_set, batch_size, lr, weight_decay, epochs, early_stopping_activated=True,
             patience=5, seed=None, device="cpu"):
         """
         Method that will fit the model to the given data
@@ -36,6 +36,7 @@ class Trainer:
         :param val_set: Petale Dataset containing the valid set
         :param batch_size: int that represent the size of the batches to be used in the train data loader
         :param lr: the learning rate
+        :param weight_decay: the L2 penalty
         :param epochs: number times that the learning algorithm will work through the entire training dataset
         :param early_stopping_activated: boolean indicating if we want to early stop the training when the validation
         loss stops decreasing
@@ -60,7 +61,7 @@ class Trainer:
         val_loader = DataLoader(val_set, batch_size=val_set.__len__())
 
         # we create the optimizer
-        optimizer = optim.Adam(params=self.model.parameters(), lr=lr)
+        optimizer = optim.Adam(params=self.model.parameters(), lr=lr, weight_decay=weight_decay)
 
         # we initialize two empty lists to store the training loss and the validation loss
         training_loss = []
@@ -143,7 +144,7 @@ class Trainer:
                 break
         return training_loss, valid_loss
 
-    def cross_valid(self, datasets, batch_size, lr, epochs, metric, k=5, early_stopping_activated=True,
+    def cross_valid(self, datasets, batch_size, lr, weight_decay, epochs, metric, k=5, early_stopping_activated=True,
                     patience=5):
         """
         Method that will perform a k-fold cross validation on the model
@@ -151,6 +152,7 @@ class Trainer:
         :param datasets: Petale Datasets representing all the train and test sets to be used in the cross validation
         :param batch_size: int that represent the size of the batches to be used in the train data loader
         :param lr: the learning rate
+        :param weight_decay: the L2 penalty
         :param k: number of folds
         :param metric: a function that takes the output of the model and the target and returns the metric we want to
         measure
@@ -169,7 +171,7 @@ class Trainer:
             # we the get the train and the validation datasets of the step we are currently in
             train_set, valid_set, test_set = datasets[i]["train"], datasets[i]["valid"], datasets[i]["test"]
             # we train our model with this train and validation dataset
-            self.fit(train_set=train_set, val_set=valid_set, batch_size=batch_size, lr=lr,
+            self.fit(train_set=train_set, val_set=valid_set, batch_size=batch_size, lr=lr, weight_decay=weight_decay,
                      epochs=epochs, early_stopping_activated=early_stopping_activated, patience=patience)
 
             # we extract x_cont, x_cat and target from the subset valid_fold

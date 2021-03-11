@@ -57,6 +57,10 @@ class Objective:
         # We optimize the value of the learning rate
         lr = trial.suggest_loguniform("lr", hyper_params["lr"]["min"], hyper_params["lr"]["max"])
 
+        # We optimize the weight decay used in the training
+        weight_decay = trial.suggest_loguniform("weight_decay", hyper_params["weight_decay"]["min"],
+                                                hyper_params["weight_decay"]["max"])
+
         # We define the model with the suggested set of hyper parameters
         model = self.model_generator(layers=layers, dropout=p)
 
@@ -64,7 +68,7 @@ class Objective:
         trainer = Trainer(model)
         # we perform a k fold cross validation to evaluate the model
         score = trainer.cross_valid(datasets=self.datasets, batch_size=batch_size, lr=lr, epochs=self.max_epochs,
-                                    metric=self.metric, k=self.k)
+                                    metric=self.metric, k=self.k, weight_decay=weight_decay)
 
         # we return the score
         return score
@@ -125,4 +129,5 @@ class NNTuner:
             "dropout": best_trial.params["dropout"],
             "lr": best_trial.params["lr"],
             "batch_size": best_trial.params["batch_size"],
+            "weight_decay": best_trial.params["weight_decay"]
         }

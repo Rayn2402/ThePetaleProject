@@ -90,7 +90,8 @@ class NNTuner:
 
         """
         # we create the study 
-        self.study = create_study(direction=direction, sampler=TPESampler(), pruner=SuccessiveHalvingPruner())
+        self.study = create_study(direction=direction, sampler=TPESampler(n_startup_trials=10, n_ei_candidates=20),
+                                  pruner=SuccessiveHalvingPruner(min_resource=5, reduction_factor=4))
 
         # we save the inputs that will be used when tuning the hyper parameters
         self.n_trials = n_trials

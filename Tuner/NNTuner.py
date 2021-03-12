@@ -68,7 +68,7 @@ class Objective:
         trainer = Trainer(model)
         # we perform a k fold cross validation to evaluate the model
         score = trainer.cross_valid(datasets=self.datasets, batch_size=batch_size, lr=lr, epochs=self.max_epochs,
-                                    metric=self.metric, k=self.k, weight_decay=weight_decay)
+                                    metric=self.metric, k=self.k, weight_decay=weight_decay, trial=trial)
 
         # we return the score
         return score

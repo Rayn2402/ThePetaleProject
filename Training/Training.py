@@ -11,6 +11,7 @@ from torch.utils.data import DataLoader, Subset
 from torch import optim, manual_seed, cuda
 from torch import device as device_
 from tqdm import tqdm
+from optuna import TrialPruned
 
 
 class Trainer:
@@ -145,7 +146,7 @@ class Trainer:
         return training_loss, valid_loss
 
     def cross_valid(self, datasets, batch_size, lr, weight_decay, epochs, metric, k=5, early_stopping_activated=True,
-                    patience=5):
+                    patience=5, trial=None):
         """
         Method that will perform a k-fold cross validation on the model
 
@@ -161,6 +162,7 @@ class Trainer:
         :param early_stopping_activated: boolean indicating if we want to early stop the training when the validation
         loss stops decreasing
         :param patience: int representing how long to wait after last time validation loss improved.
+        :param trial: Optuna Trial to report intermediate value
 
         :return: returns the score after performing the k-fold cross validation
         """
@@ -183,7 +185,17 @@ class Trainer:
                 x_cat = None
 
             # we calculate the score with the help of the metric function
-            score.append(metric(self.model(x_cont, x_cat).float(), target))
+            intermediate_score = metric(self.model(x_cont, x_cat).float(), target)
+
+            if trial is not None:
+                # we report the score to optuna
+                trial.report(intermediate_score, step=i)
+                # we prune the trial if it should be pruned
+                if trial.should_prune():
+                    raise TrialPruned()
+            # we save the score
+            score.append(intermediate_score)
+
         # we return the final score of the cross validation
         return sum(score) / len(score)
 

@@ -129,5 +129,6 @@ class NNTuner:
             "dropout": best_trial.params["dropout"],
             "lr": best_trial.params["lr"],
             "batch_size": best_trial.params["batch_size"],
-            "weight_decay": best_trial.params["weight_decay"]
+            "weight_decay": best_trial.params["weight_decay"],
+            "activation": best_trial.params["activation"]
         }

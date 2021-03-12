@@ -65,7 +65,7 @@ class NNEvaluator:
             best_hyper_params = tuner.tune()
 
             # we create our model with the best hyper parameters
-            model = self.model_generator(layers=best_hyper_params["layers"], dropout=best_hyper_params["dropout"])
+            model = self.model_generator(layers=best_hyper_params["layers"], dropout=best_hyper_params["dropout"], activation=best_hyper_params["activation"])
 
             # we create a trainer to train the model
             trainer = Trainer(model)

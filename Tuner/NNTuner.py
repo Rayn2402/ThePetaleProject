@@ -60,9 +60,9 @@ class Objective:
         # We optimize the weight decay used in the training
         weight_decay = trial.suggest_loguniform("weight_decay", hyper_params["weight_decay"]["min"],
                                                 hyper_params["weight_decay"]["max"])
-
+        activation = trial.suggest_categorical("activation", hyper_params["activation"]["values"])
         # We define the model with the suggested set of hyper parameters
-        model = self.model_generator(layers=layers, dropout=p)
+        model = self.model_generator(layers=layers, dropout=p, activation=activation)
 
         # we create the Trainer that will train our model
         trainer = Trainer(model)
@@ -108,8 +108,7 @@ class NNTuner:
         
         :return: the result of the study containing the best trial and the best values of each hyper parameter
         """
-
-        # we perform the optimization 
+        # we perform the optimization
         self.study.optimize(
             Objective(model_generator=self.model_generator, datasets=self.datasets, hyper_params=self.hyper_params,
                       k=self.k, metric=self.metric, max_epochs=self.max_epochs), self.n_trials)

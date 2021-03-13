@@ -12,15 +12,18 @@ from Training.Training import Trainer
 
 
 class Objective:
-    def __init__(self, model_generator, datasets, hyper_params, k, metric, max_epochs):
+    def __init__(self, model_generator, datasets, hyper_params, k, metric, max_epochs, seed=None):
         """
         Method that will fit the model to the given data
         
         :param model_generator: instance of the ModelGenerator class that will be responsible of generating the model
-        Datasets representing all the train and test sets to be used in the cross validation :param hyper_params:
-        dictionary containing information of the hyper parameter we want to tune : min, max, step, values :param k:
-        number of folds to use in the cross validation :param metric: a function that takes the output of the model
-        and the target and returns  the metric we want to optimize
+        Datasets representing all the train and test sets to be used in the cross validation
+        :param hyper_params:dictionary containing information of the hyper parameter we want to tune
+        :param k:number of folds to use in the cross validation
+        :param metric: a function that takes the output of the model and the target and returns the metric we want
+        to optimize
+        :param seed: the starting point in generating random numbers
+
 
         :return: the value of the metric after performing a k fold cross validation on the model with a subset of the
         given hyper parameter
@@ -33,6 +36,7 @@ class Objective:
         self.k = k
         self.metric = metric
         self.max_epochs = max_epochs
+        self.seed = seed
 
     def __call__(self, trial):
         hyper_params = self.hyper_params
@@ -68,7 +72,7 @@ class Objective:
         trainer = Trainer(model)
         # we perform a k fold cross validation to evaluate the model
         score = trainer.cross_valid(datasets=self.datasets, batch_size=batch_size, lr=lr, epochs=self.max_epochs,
-                                    metric=self.metric, k=self.k, weight_decay=weight_decay, trial=trial)
+                                    metric=self.metric, k=self.k, weight_decay=weight_decay, trial=trial, seed=self.seed)
 
         # we return the score
         return score
@@ -76,17 +80,21 @@ class Objective:
 
 class NNTuner:
     def __init__(self, model_generator, datasets, hyper_params, k, n_trials, metric, max_epochs=100,
-                 direction="minimize"):
+                 direction="minimize", seed=None):
         """
         Class that will be responsible of the hyperparameters tuning
         
         :param model_generator: instance of the ModelGenerator class that will be responsible of generating the model
         :param datasets: Petale Datasets representing all the train and test sets to be used in the cross validation
         :param hyper_params: dictionary containing information of the hyper parameter we want to tune : min, max,
-        step, values :param k: number of folds to use in the cross validation :param metric: a function that takes
-        the output of the model and the target and returns  the metric we want to optimize :param n_trials: number of
-        trials we want to perform :param direction: direction to specify if we want to maximize or minimize the value
-        of the metric used
+        step, values
+        :param k: number of folds to use in the cross validation
+        :param metric: a function that takes the output of the model and the target and returns
+        the metric we want to optimize
+        :param n_trials: number oftrials we want to perform
+        :param direction: direction to specify if we want to maximize or minimize the value of the metric used
+        :param seed: the starting point in generating random numbers
+
 
         """
         # we create the study 
@@ -101,6 +109,7 @@ class NNTuner:
         self.k = k
         self.metric = metric
         self.max_epochs = max_epochs
+        self.seed = seed
 
     def tune(self):
         """
@@ -111,7 +120,7 @@ class NNTuner:
         # we perform the optimization
         self.study.optimize(
             Objective(model_generator=self.model_generator, datasets=self.datasets, hyper_params=self.hyper_params,
-                      k=self.k, metric=self.metric, max_epochs=self.max_epochs), self.n_trials)
+                      k=self.k, metric=self.metric, max_epochs=self.max_epochs, seed=self.seed), self.n_trials)
 
         # we extract the best trial
         best_trial = self.study.best_trial

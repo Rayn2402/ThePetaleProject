@@ -149,7 +149,7 @@ class Trainer:
         return training_loss, valid_loss
 
     def cross_valid(self, datasets, batch_size, lr, weight_decay, epochs, metric, k=5, early_stopping_activated=True,
-                    patience=5, trial=None):
+                    patience=5, trial=None, seed=None):
         """
         Method that will perform a k-fold cross validation on the model
 
@@ -166,6 +166,8 @@ class Trainer:
         loss stops decreasing
         :param patience: int representing how long to wait after last time validation loss improved.
         :param trial: Optuna Trial to report intermediate value
+        :param seed: the starting point in generating random numbers
+
 
         :return: returns the score after performing the k-fold cross validation
         """
@@ -177,7 +179,7 @@ class Trainer:
             train_set, valid_set, test_set = datasets[i]["train"], datasets[i]["valid"], datasets[i]["test"]
             # we train our model with this train and validation dataset
             self.fit(train_set=train_set, val_set=valid_set, batch_size=batch_size, lr=lr, weight_decay=weight_decay,
-                     epochs=epochs, early_stopping_activated=early_stopping_activated, patience=patience)
+                     epochs=epochs, early_stopping_activated=early_stopping_activated, patience=patience, seed=seed)
 
             # we extract x_cont, x_cat and target from the subset valid_fold
             x_cont = test_set.X_cont

@@ -10,7 +10,7 @@ from Tuner.NNTuner import NNTuner
 
 class NNEvaluator:
     def __init__(self, model_generator, sampler, hyper_params, n_trials, metric, k, l, max_epochs=100,
-                 direction="minimize"):
+                 direction="minimize", seed=None):
         """
         Class that will be responsible of the evolution of the model
         
@@ -25,6 +25,8 @@ class NNEvaluator:
         :param n_trials: number of trials we want to perform
         :param max_epochs:the maximal number of epochs to do in the training
         :param direction: direction to specify if we want to maximize or minimize the value of the metric used
+        :param seed: the starting point in generating random numbers
+
 
         """
 
@@ -38,6 +40,7 @@ class NNEvaluator:
         self.metric = metric
         self.max_epochs = max_epochs
         self.direction = direction
+        self.seed = seed
 
     def nested_cross_valid(self):
         """
@@ -59,7 +62,7 @@ class NNEvaluator:
             # we create the tuner to perform the hyperparameters optimisation
             tuner = NNTuner(model_generator=self.model_generator, datasets=all_datasets[i]["inner"],
                             hyper_params=self.hyper_params, n_trials=self.n_trials,
-                            metric=self.metric, direction=self.direction, k=self.l)
+                            metric=self.metric, direction=self.direction, k=self.l, seed=self.seed)
 
             # we perform the hyper parameters tuning to get the best hyper parameters
             best_hyper_params = tuner.tune()
@@ -72,7 +75,7 @@ class NNEvaluator:
             # we train our model with the best hyper parameters
             trainer.fit(train_set=train_set, val_set=valid_set, epochs=self.max_epochs,
                         batch_size=best_hyper_params["batch_size"],
-                        lr=best_hyper_params["lr"], weight_decay=best_hyper_params["weight_decay"])
+                        lr=best_hyper_params["lr"], weight_decay=best_hyper_params["weight_decay"], seed=self.seed)
 
             # we extract x_cont, x_cat and target from the validset
             x_cont = test_set.X_cont

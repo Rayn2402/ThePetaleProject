@@ -15,26 +15,73 @@ from optuna import TrialPruned
 
 
 class Trainer:
-    def __init__(self, model):
+    def __init__(self, model, device="cpu"):
         """
         Creates a Trainer that will train and evaluate a given model.
 
         :param model: the model to be trained
+        :param device: the device where we want to run our training, this parameter can take two values : "cpu" or "gpu"
+
         """
-        if not isinstance(model, Module):
-            raise ValueError('model argument must inherit from torch.nn.Module')
         # we save the model in the attribute model
         self.model = model
-        # we save the criterion of that model in the attribute criterion
-        self.criterion = model.criterion_function
 
-    def fit(self, train_set, val_set, batch_size, lr, weight_decay, epochs, early_stopping_activated=True,
-            patience=5, seed=None, device="cpu"):
+    def cross_valid(self, datasets, metric, k=5, trial=None):
         """
-        Method that will fit the model to the given data
+            Method that will perform a k-fold cross validation on the model
 
-        :param train_set: Petale Dataset containing the training set
-        :param val_set: Petale Dataset containing the valid set
+            :param datasets: Petale Datasets representing all the train and test sets to be used in the cross validation
+            :param k: number of folds
+            :param metric: a function that takes the output of the model and the target and returns the metric we want to
+            measure
+            :param trial: Optuna Trial to report intermediate value
+
+            :return: returns the score after performing the k-fold cross validation
+        """
+
+        # we initialize an empty list to store the scores
+        score = []
+        for i in range(k):
+            # we the get the train and the validation datasets of the step we are currently in
+            if len(datasets[i]) > 2:
+                train_set, valid_set, test_set = datasets[i]["train"], datasets[i]["valid"], datasets[i]["test"]
+            else:
+                train_set, test_set = datasets[i]["train"], datasets[i]["test"]
+                valid_set = None
+
+            # we train our model with this train and validation dataset
+            self.fit(train_set=train_set, val_set=valid_set)
+
+            # we extract x_cont, x_cat and target from the subset valid_fold
+            x_cont = test_set.X_cont
+            target = test_set.y
+            if test_set.X_cat is not None:
+                x_cat = test_set.X_cat
+            else:
+                x_cat = None
+
+            # we calculate the score with the help of the metric function
+            intermediate_score = metric(self.predict(x_cont=x_cont, x_cat=x_cat), target)
+
+            if trial is not None:
+                # we report the score to optuna
+                trial.report(intermediate_score, step=i)
+                # we prune the trial if it should be pruned
+                if trial.should_prune():
+                    raise TrialPruned()
+            # we save the score
+            score.append(intermediate_score)
+
+        # we return the final score of the cross validation
+        return sum(score) / len(score)
+
+
+class NNTrainer(Trainer):
+    def __init__(self, model, lr, batch_size, weight_decay, epochs, early_stopping_activated=True,
+                 patience=5, seed=None, device="cpu"):
+        """
+        Creates a  Trainer that will train and evaluate a Neural Network model.
+
         :param batch_size: int that represent the size of the batches to be used in the train data loader
         :param lr: the learning rate
         :param weight_decay: the L2 penalty
@@ -45,38 +92,63 @@ class Trainer:
         :param seed: the starting point in generating random numbers
         :param device: the device where we want to run our training, this parameter can take two values : "cpu" or "gpu"
 
+        :param model: the model to be trained
+        """
+
+        super().__init__(model, device=device)
+        if not isinstance(self.model, Module):
+            raise ValueError('model argument must inherit from torch.nn.Module')
+
+        # we save the criterion of that model in the attribute criterion
+        self.criterion = model.criterion_function
+        self.batch_size = batch_size
+        self.lr = lr
+        self.weight_decay = weight_decay
+        self.epochs = epochs
+        self.early_stopping_activated = early_stopping_activated
+        self.patience = patience
+        self.seed = seed
+
+    def fit(self, train_set, val_set):
+        """
+        Method that will fit the model to the given data
+
+        :param train_set: Petale Dataset containing the training set
+        :param val_set: Petale Dataset containing the valid set
+
+
         :return: two lists containing the training losses and the validation losses
         """
 
-        if seed is not None:
-            manual_seed(seed)
+        if self.seed is not None:
+            manual_seed(self.seed)
 
         # the maximum value of the batch size is the size of the trainset
-        if train_set.__len__() < batch_size:
+        if train_set.__len__() < self.batch_size:
             batch_size = train_set.__len__()
 
         # we create the the train data loader
-        if len(train_set) % batch_size == 1:
-            train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, drop_last=True)
+        if len(train_set) % self.batch_size == 1:
+            train_loader = DataLoader(train_set, batch_size=self.batch_size, shuffle=True, drop_last=True)
         else:
-            train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
+            train_loader = DataLoader(train_set, batch_size=self.batch_size, shuffle=True)
 
         # we create the the validation data loader
         val_loader = DataLoader(val_set, batch_size=val_set.__len__())
 
         # we create the optimizer
-        optimizer = optim.Adam(params=self.model.parameters(), lr=lr, weight_decay=weight_decay)
+        optimizer = optim.Adam(params=self.model.parameters(), lr=self.lr, weight_decay=self.weight_decay)
 
         # we initialize two empty lists to store the training loss and the validation loss
         training_loss = []
         valid_loss = []
 
         # we init the early stopping class
-        early_stopping = EarlyStopping(patience=patience)
+        early_stopping = EarlyStopping(patience=self.patience)
         # we declare the variable which will hold the device we’re training on 
-        device = device_("cuda" if cuda.is_available() and device == "gpu" else "cpu")
+        device = device_("cuda" if cuda.is_available() and self.device == "gpu" else "cpu")
 
-        for epoch in tqdm(range(epochs)):
+        for epoch in tqdm(range(self.epochs)):
             ###################
             # train the model #
             ###################
@@ -142,67 +214,36 @@ class Trainer:
             # record training loss
             valid_loss.append(val_epoch_loss / len(val_loader))
 
-            if early_stopping_activated:
+            if self.early_stopping_activated:
                 early_stopping(val_epoch_loss / len(val_loader), self.model)
             if early_stopping.early_stop:
                 break
         return training_loss, valid_loss
 
-    def cross_valid(self, datasets, batch_size, lr, weight_decay, epochs, metric, k=5, early_stopping_activated=True,
-                    patience=5, trial=None, seed=None):
+    def predict(self, x_cont, x_cat):
+        return self.model(x_cont, x_cat).float()
+
+
+class RFTrainer(Trainer):
+    def __init__(self, model):
         """
-        Method that will perform a k-fold cross validation on the model
+        Creates a  Trainer that will train and evaluate a Random Forest model.
 
-        :param datasets: Petale Datasets representing all the train and test sets to be used in the cross validation
-        :param batch_size: int that represent the size of the batches to be used in the train data loader
-        :param lr: the learning rate
-        :param weight_decay: the L2 penalty
-        :param k: number of folds
-        :param metric: a function that takes the output of the model and the target and returns the metric we want to
-        measure
-        :param metric: type of the metric we want to get the score of
-        :param epochs: number times that the learning algorithm will work through the entire training dataset
-        :param early_stopping_activated: boolean indicating if we want to early stop the training when the validation
-        loss stops decreasing
-        :param patience: int representing how long to wait after last time validation loss improved.
-        :param trial: Optuna Trial to report intermediate value
-        :param seed: the starting point in generating random numbers
-
-
-        :return: returns the score after performing the k-fold cross validation
+        :param model: the model to be trained
         """
+        super().__init__(model)
 
-        # we initialize an empty list to store the scores
-        score = []
-        for i in range(k):
-            # we the get the train and the validation datasets of the step we are currently in
-            train_set, valid_set, test_set = datasets[i]["train"], datasets[i]["valid"], datasets[i]["test"]
-            # we train our model with this train and validation dataset
-            self.fit(train_set=train_set, val_set=valid_set, batch_size=batch_size, lr=lr, weight_decay=weight_decay,
-                     epochs=epochs, early_stopping_activated=early_stopping_activated, patience=patience, seed=seed)
+    def fit(self, train_set, valid_set=None):
+        """
+        Method that will fit the model to the given data
 
-            # we extract x_cont, x_cat and target from the subset valid_fold
-            x_cont = test_set.X_cont
-            target = test_set.y
-            if test_set.X_cat is not None:
-                x_cat = test_set.X_cat
-            else:
-                x_cat = None
+        :param train_set: Pandas dataframe containing the training set
+        """
+        self.model.fit(train_set.X_cat, train_set.Y)
 
-            # we calculate the score with the help of the metric function
-            intermediate_score = metric(self.model(x_cont, x_cat).float(), target)
+    def predict(self, x_cont, x_cat = None):
+        return self.model.predict(x_cont)
 
-            if trial is not None:
-                # we report the score to optuna
-                trial.report(intermediate_score, step=i)
-                # we prune the trial if it should be pruned
-                if trial.should_prune():
-                    raise TrialPruned()
-            # we save the score
-            score.append(intermediate_score)
-
-        # we return the final score of the cross validation
-        return sum(score) / len(score)
 
 
 def get_kfold_data(dataset, k, i):

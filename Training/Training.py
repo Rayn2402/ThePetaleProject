@@ -241,9 +241,8 @@ class RFTrainer(Trainer):
         """
         self.model.fit(train_set.X_cat, train_set.Y)
 
-    def predict(self, x_cont, x_cat = None):
+    def predict(self, x_cont, x_cat=None):
         return self.model.predict(x_cont)
-
 
 
 def get_kfold_data(dataset, k, i):

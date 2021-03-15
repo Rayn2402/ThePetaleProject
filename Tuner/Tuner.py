@@ -8,10 +8,10 @@ from optuna import create_study
 from optuna.samplers import TPESampler
 from optuna.pruners import SuccessiveHalvingPruner
 
-from Training.Training import Trainer
+from Training.Training import NNTrainer
 
 
-class Objective:
+class NNObjective:
     def __init__(self, model_generator, datasets, hyper_params, k, metric, max_epochs, seed=None):
         """
         Method that will fit the model to the given data
@@ -69,35 +69,33 @@ class Objective:
         model = self.model_generator(layers=layers, dropout=p, activation=activation)
 
         # we create the Trainer that will train our model
-        trainer = Trainer(model)
+        trainer = NNTrainer(model=model, batch_size=batch_size, lr=lr, epochs=self.max_epochs,
+                            weight_decay=weight_decay)
         # we perform a k fold cross validation to evaluate the model
-        score = trainer.cross_valid(datasets=self.datasets, batch_size=batch_size, lr=lr, epochs=self.max_epochs,
-                                    metric=self.metric, k=self.k, weight_decay=weight_decay, trial=trial, seed=self.seed)
+        score = trainer.cross_valid(datasets=self.datasets, metric=self.metric, k=self.k, trial=trial)
 
         # we return the score
         return score
 
 
-class NNTuner:
-    def __init__(self, model_generator, datasets, hyper_params, k, n_trials, metric, max_epochs=100,
-                 direction="minimize", seed=None):
+class Tuner:
+    def __init__(self, model_generator, datasets, hyper_params, k, n_trials, metric, direction="minimize", seed=None):
         """
-        Class that will be responsible of the hyperparameters tuning
-        
-        :param model_generator: instance of the ModelGenerator class that will be responsible of generating the model
-        :param datasets: Petale Datasets representing all the train and test sets to be used in the cross validation
-        :param hyper_params: dictionary containing information of the hyper parameter we want to tune : min, max,
-        step, values
-        :param k: number of folds to use in the cross validation
-        :param metric: a function that takes the output of the model and the target and returns
-        the metric we want to optimize
-        :param n_trials: number oftrials we want to perform
-        :param direction: direction to specify if we want to maximize or minimize the value of the metric used
-        :param seed: the starting point in generating random numbers
+                Class that will be responsible of the hyperparameters tuning
 
+                :param model_generator: instance of the ModelGenerator class that will be responsible of generating the model
+                :param datasets: Petale Datasets representing all the train and test sets to be used in the cross validation
+                :param hyper_params: dictionary containing information of the hyper parameter we want to tune : min, max,
+                step, values
+                :param k: number of folds to use in the cross validation
+                :param metric: a function that takes the output of the model and the target and returns
+                the metric we want to optimize
+                :param n_trials: number of trials we want to perform
+                :param direction: direction to specify if we want to maximize or minimize the value of the metric used
+                :param seed: the starting point in generating random numbers
 
-        """
-        # we create the study 
+                """
+        # we create the study
         self.study = create_study(direction=direction, sampler=TPESampler(n_startup_trials=10, n_ei_candidates=20),
                                   pruner=SuccessiveHalvingPruner(min_resource=5, reduction_factor=4))
 
@@ -108,20 +106,34 @@ class NNTuner:
         self.hyper_params = hyper_params
         self.k = k
         self.metric = metric
-        self.max_epochs = max_epochs
         self.seed = seed
 
     def tune(self):
         """
         Method to call to tune the hyperparameters of a given model
-        
+
         :return: the result of the study containing the best trial and the best values of each hyper parameter
         """
         # we perform the optimization
         self.study.optimize(
-            Objective(model_generator=self.model_generator, datasets=self.datasets, hyper_params=self.hyper_params,
-                      k=self.k, metric=self.metric, max_epochs=self.max_epochs, seed=self.seed), self.n_trials)
+            self.Objective(model_generator=self.model_generator, datasets=self.datasets, hyper_params=self.hyper_params,
+                           k=self.k, metric=self.metric, max_epochs=self.max_epochs, seed=self.seed), self.n_trials)
 
+        return self.get_best_hyperparams()
+
+
+class NNTuner(Tuner):
+    def __init__(self, model_generator, datasets, hyper_params, k, n_trials, metric,
+                 direction="minimize", seed=None, max_epochs=100):
+        """
+        Class that will be responsible of tuning Neural Networks
+
+        """
+        super().__init__(model_generator, datasets, hyper_params, k, n_trials, metric, direction, seed)
+        self.Objective = NNObjective
+        self.max_epochs = max_epochs
+
+    def get_best_hyperparams(self):
         # we extract the best trial
         best_trial = self.study.best_trial
 
@@ -141,3 +153,17 @@ class NNTuner:
             "weight_decay": best_trial.params["weight_decay"],
             "activation": best_trial.params["activation"]
         }
+
+
+class RFTuner(Tuner):
+    def __init__(self, model_generator, datasets, hyper_params, k, n_trials, metric,
+                 direction="minimize", seed=None):
+        """
+        Class that will be responsible of tuning Random Forests
+
+        """
+        super().__init__(model_generator, datasets, hyper_params, k, n_trials, metric, direction, seed)
+        self.Objective = NNObjective
+
+    def get_best_hyperparams(self):
+        return "coming soon !"

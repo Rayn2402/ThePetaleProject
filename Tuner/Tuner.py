@@ -8,13 +8,13 @@ from optuna import create_study
 from optuna.samplers import TPESampler
 from optuna.pruners import SuccessiveHalvingPruner
 
-from Training.Training import NNTrainer
+from Training.Training import NNTrainer, RFTrainer
 
 
 class NNObjective:
     def __init__(self, model_generator, datasets, hyper_params, k, metric, max_epochs, seed=None):
         """
-        Method that will fit the model to the given data
+        Class that will represent the objective function for tuning Neural networks
         
         :param model_generator: instance of the ModelGenerator class that will be responsible of generating the model
         Datasets representing all the train and test sets to be used in the cross validation
@@ -71,6 +71,54 @@ class NNObjective:
         # we create the Trainer that will train our model
         trainer = NNTrainer(model=model, batch_size=batch_size, lr=lr, epochs=self.max_epochs,
                             weight_decay=weight_decay)
+        # we perform a k fold cross validation to evaluate the model
+        score = trainer.cross_valid(datasets=self.datasets, metric=self.metric, k=self.k, trial=trial)
+
+        # we return the score
+        return score
+
+
+class RFObjective:
+    def __init__(self, model_generator, datasets, hyper_params, k, metric, max_epochs, seed=None):
+        """
+        Class that will represent the objective function for tuning Random Forests
+
+
+        :param model_generator: instance of the ModelGenerator class that will be responsible of generating the model
+        Datasets representing all the train and test sets to be used in the cross validation
+        :param hyper_params:dictionary containing information of the hyper parameter we want to tune
+        :param k:number of folds to use in the cross validation
+        :param metric: a function that takes the output of the model and the target and returns the metric we want
+        to optimize
+        :param seed: the starting point in generating random numbers
+
+
+        :return: the value of the metric after performing a k fold cross validation on the model with a subset of the
+        given hyper parameter
+        """
+
+        # we save the inputs that will be used when calling the class
+        self.model_generator = model_generator
+        self.datasets = datasets
+        self.hyper_params = hyper_params
+        self.k = k
+        self.metric = metric
+        self.max_epochs = max_epochs
+        self.seed = seed
+
+    def __call__(self, trial):
+        hyper_params = self.hyper_params
+
+        # We optimize the the number of estimators used un the training
+        n_estimators = trial.suggest_int("n_estimators", hyper_params["n_estimators"]["min"],
+                                         hyper_params["n_estimators"]["max"])
+
+        # We define the model with the suggested set of hyper parameters
+        model = self.model_generator(n_estimators=n_estimators)
+
+        # we create the Trainer that will train our model
+        trainer = RFTrainer(model=model)
+
         # we perform a k fold cross validation to evaluate the model
         score = trainer.cross_valid(datasets=self.datasets, metric=self.metric, k=self.k, trial=trial)
 
@@ -163,7 +211,7 @@ class RFTuner(Tuner):
 
         """
         super().__init__(model_generator, datasets, hyper_params, k, n_trials, metric, direction, seed)
-        self.Objective = NNObjective
+        self.Objective = RFObjective
 
     def get_best_hyperparams(self):
         return "coming soon !"

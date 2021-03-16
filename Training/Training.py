@@ -4,7 +4,6 @@ Authors : Mitiche
 Files that contains class related to the Training of the models
 
 """
-
 from .EarlyStopping import EarlyStopping
 from torch.nn import Module
 from torch.utils.data import DataLoader, Subset
@@ -23,9 +22,11 @@ class Trainer:
         """
         if not isinstance(model, Module):
             raise ValueError('model argument must inherit from torch.nn.Module')
-        # we save the model in the attribute model
+
+        # We save the model in the attribute model
         self.model = model
-        # we save the criterion of that model in the attribute criterion
+
+        # We save the criterion of that model in the attribute criterion
         self.criterion = model.criterion_function
 
     def fit(self, train_set, val_set, batch_size, lr, weight_decay, epochs, early_stopping_activated=True,
@@ -33,119 +34,111 @@ class Trainer:
         """
         Method that will fit the model to the given data
 
-        :param train_set: Petale Dataset containing the training set
-        :param val_set: Petale Dataset containing the valid set
-        :param batch_size: int that represent the size of the batches to be used in the train data loader
-        :param lr: the learning rate
-        :param weight_decay: the L2 penalty
-        :param epochs: number times that the learning algorithm will work through the entire training dataset
-        :param early_stopping_activated: boolean indicating if we want to early stop the training when the validation
-        loss stops decreasing
-        :param patience: int representing how long to wait after last time validation loss improved.
-        :param seed: the starting point in generating random numbers
-        :param device: the device where we want to run our training, this parameter can take two values : "cpu" or "gpu"
+        :param train_set: PetaleDataset containing the training set
+        :param val_set: PetaleDataset containing the valid set
+        :param batch_size: Int representing the size of the batches to be used in the train data loader
+        :param lr: Learning rate
+        :param weight_decay: L2 penalty
+        :param epochs: Number of times that the learning algorithm will work through the entire training dataset
+        :param early_stopping_activated: Boolean indicating if we want to early stop
+                                         the training when the validation loss stops decreasing
+        :param patience: Int representing how long to wait after last time validation loss improved.
+        :param seed: The starting point in generating random numbers
+        :param device: Device where we want to run our training, this parameter can take two values : "cpu" or "gpu"
 
-        :return: two lists containing the training losses and the validation losses
+        :return: Two lists containing the training losses and the validation losses
         """
 
         if seed is not None:
             manual_seed(seed)
 
-        # the maximum value of the batch size is the size of the trainset
-        if train_set.__len__() < batch_size:
-            batch_size = train_set.__len__()
+        # The maximum value of the batch size is the size of the trainset
+        if len(train_set) < batch_size:
+            batch_size = len(train_set)
 
-        # we create the the train data loader
+        # We create the the train data loader
         if len(train_set) % batch_size == 1:
             train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, drop_last=True)
         else:
             train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
 
-        # we create the the validation data loader
-        val_loader = DataLoader(val_set, batch_size=val_set.__len__())
+        # We create the the validation data loader
+        val_loader = DataLoader(val_set, batch_size=len(val_set))
 
-        # we create the optimizer
+        # We create the optimizer
         optimizer = optim.Adam(params=self.model.parameters(), lr=lr, weight_decay=weight_decay)
 
-        # we initialize two empty lists to store the training loss and the validation loss
-        training_loss = []
-        valid_loss = []
+        # We initialize two empty lists to store the training loss and the validation loss
+        training_loss, valid_loss = [], []
 
-        # we init the early stopping class
+        # We init the early stopping object
         early_stopping = EarlyStopping(patience=patience)
+
         # we declare the variable which will hold the device we’re training on 
         device = device_("cuda" if cuda.is_available() and device == "gpu" else "cpu")
 
         for epoch in tqdm(range(epochs)):
+
             ###################
             # train the model #
             ###################
 
-            # prep model for training
+            # Prep model for training
             self.model.train()
-
             epoch_loss = 0
-            for item in train_loader:
-                # we extract the continuous data x_cont, the categorical data x_cat and the  correct predictions y
-                if len(item) > 2:
-                    x_cont, x_cat, y = item
-                    # we transfer the tensors to our device
-                    x_cont, x_cat, y = x_cont.to(device), x_cat.to(device), y.to(device)
-                else:
-                    x_cont, y = item
-                    # we transfer the tensors to our device
-                    x_cont, y = x_cont.to(device), y.to(device)
-                    x_cat = None
 
-                # clear the gradients of all optimized variables
+            for item in train_loader:
+
+                # We extract the continuous data x_cont, the categorical data x_cat
+                # and the correct predictions y
+                x_cont, x_cat, y = self.extract_batch(item, device)
+
+                # Clear the gradients of all optimized variables
                 optimizer.zero_grad()
 
-                # forward pass: compute predicted outputs by passing inputs to the model
+                # Forward pass: compute predicted outputs by passing inputs to the model
                 preds = self.model(x_cont=x_cont, x_cat=x_cat)
 
-                # calculate the loss
+                # Calculate the loss
                 loss = self.criterion(preds, y)
                 epoch_loss += loss.item()
 
-                # backward pass: compute gradient of the loss with respect to model parameters
+                # Backward pass: compute gradient of the loss with respect to model parameters
                 loss.backward()
 
-                # perform a single optimization step (parameter update)
+                # Perform a single optimization step (parameter update)
                 optimizer.step()
-            # record training loss
+
+            # Record training loss
             training_loss.append(epoch_loss / len(train_loader))
 
             ######################
             # validate the model #
             ######################
 
-            # prep model for validation
+            # Prep model for validation
             self.model.eval()
-            val_epoch_loss = 0
 
-            for item in val_loader:
-                # y will contains the correct prediction
-                y = item[-1]
+            # We extract the continuous data x_cont, the categorical data x_cat
+            # and the correct predictions y for the single batch
+            x_cont, x_cat, y = self.extract_batch(next(iter(val_loader)), device)
 
-                # x will contain both continuous data and categorical data if there is
-                x = item[:-1]
+            # Forward pass: compute predicted outputs by passing inputs to the model
+            preds = self.model(x_cont=x_cont, x_cat=x_cat)
 
-                # we transform the x data to float : TO BE UPDATED
-                x = map(lambda x: x.float(), x)
+            # Calculate the loss
+            val_epoch_loss = self.criterion(preds, y).item()
 
-                # forward pass: compute predicted outputs by passing inputs to the model
-                preds = self.model(*x)
+            # Record validation loss
+            valid_loss.append(val_epoch_loss)
 
-                # calculate the loss
-                loss = self.criterion(preds, y)
-                val_epoch_loss += loss.item()
-            # record training loss
-            valid_loss.append(val_epoch_loss / len(val_loader))
-
+            # We look for early stopping
             if early_stopping_activated:
-                early_stopping(val_epoch_loss / len(val_loader), self.model)
+                early_stopping(val_epoch_loss, self.model)
+
             if early_stopping.early_stop:
                 break
+
         return training_loss, valid_loss
 
     def cross_valid(self, datasets, batch_size, lr, weight_decay, epochs, metric, k=5, early_stopping_activated=True,
@@ -203,6 +196,26 @@ class Trainer:
 
         # we return the final score of the cross validation
         return sum(score) / len(score)
+
+    @staticmethod
+    def extract_batch(batch_list, device):
+        """
+        Extracts the continuous data (X_cont), the categorical data (X_cat) and the ground truth (y)
+
+        :param batch_list: list containing a batch from dataloader
+        :param device: "cpu" or "gpu"
+        :return: 3 tensors
+        """
+
+        if len(batch_list) > 2:
+            x_cont, x_cat, y = batch_list
+            x_cont, x_cat, y = x_cont.to(device), x_cat.to(device), y.to(device)
+        else:
+            x_cont, y = batch_list
+            x_cont, y = x_cont.to(device), y.to(device)
+            x_cat = None
+
+        return x_cont, x_cat, y
 
 
 def get_kfold_data(dataset, k, i):

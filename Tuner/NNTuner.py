@@ -9,6 +9,7 @@ from optuna.samplers import TPESampler
 from optuna.pruners import SuccessiveHalvingPruner
 
 from Training.Training import Trainer
+from hyper_params.constants import *
 
 
 class Objective:
@@ -16,17 +17,16 @@ class Objective:
         """
         Method that will fit the model to the given data
         
-        :param model_generator: instance of the ModelGenerator class that will be responsible of generating the model
-        Datasets representing all the train and test sets to be used in the cross validation
-        :param hyper_params:dictionary containing information of the hyper parameter we want to tune
-        :param k:number of folds to use in the cross validation
-        :param metric: a function that takes the output of the model and the target and returns the metric we want
-        to optimize
+        :param model_generator: Instance of the ModelGenerator class that will be responsible of generating the model
+        :param datasets: Datasets representing all the train and test sets to be used in the cross validation
+        :param hyper_params: Dictionary containing information of the hyper parameter we want to tune
+        :param k: Dumber of folds to use in the cross validation
+        :param metric: Function that takes the output of the model and the target
+                       and returns the metric we want to optimize
         :param seed: the starting point in generating random numbers
 
-
-        :return: the value of the metric after performing a k fold cross validation on the model with a subset of the
-        given hyper parameter
+        :return: the value of the metric after performing a k-fold cross validation
+                 on the model with a subset of the given hyper parameter
         """
 
         # we save the inputs that will be used when calling the class
@@ -39,40 +39,52 @@ class Objective:
         self.seed = seed
 
     def __call__(self, trial):
+
         hyper_params = self.hyper_params
 
-        # We optimize the number of hidden layers
-        n_layers = trial.suggest_int("n_layers", hyper_params["n_layers"]["min"], hyper_params["n_layers"]["max"])
-        layers = []
+        # We sample a number of hidden layers
+        n_layers = trial.suggest_int(N_LAYERS,
+                                     hyper_params[N_LAYERS][MIN],
+                                     hyper_params[N_LAYERS][MAX])
 
-        # We optimize the number of node in each hidden layer
-        for i in range(n_layers):
-            out_features = trial.suggest_int(f"n_units{i}", hyper_params["n_units"]["min"],
-                                             hyper_params["n_units"]["max"])
-            layers.append(out_features)
+        # We sample a number of node in each hidden layer
+        layers = [trial.suggest_int(f"{N_UNITS}{i}", hyper_params[N_UNITS][MIN],
+                                    hyper_params[N_UNITS][MAX]) for i in range(n_layers)]
 
-        # We optimize the dropout probability
-        p = trial.suggest_uniform("dropout", hyper_params["dropout"]["min"], hyper_params["dropout"]["max"])
+        # We sample the dropout probability
+        p = trial.suggest_uniform(DROPOUT,
+                                  hyper_params[DROPOUT][MIN],
+                                  hyper_params[DROPOUT][MAX])
 
-        # We optimize the batch size used in the training
-        batch_size = trial.suggest_int("batch_size", hyper_params["batch_size"]["min"],
-                                       hyper_params["batch_size"]["max"])
+        # We sample a value for the batch size used in the training
+        batch_size = trial.suggest_int(BATCH_SIZE,
+                                       hyper_params[BATCH_SIZE][MIN],
+                                       hyper_params[BATCH_SIZE][MAX])
 
-        # We optimize the value of the learning rate
-        lr = trial.suggest_loguniform("lr", hyper_params["lr"]["min"], hyper_params["lr"]["max"])
+        # We sample a value for the learning rate
+        lr = trial.suggest_loguniform(LR,
+                                      hyper_params[LR][MIN],
+                                      hyper_params[LR][MAX])
 
-        # We optimize the weight decay used in the training
-        weight_decay = trial.suggest_loguniform("weight_decay", hyper_params["weight_decay"]["min"],
-                                                hyper_params["weight_decay"]["max"])
-        activation = trial.suggest_categorical("activation", hyper_params["activation"]["values"])
+        # We sample a value for the weight decay used in the training
+        weight_decay = trial.suggest_loguniform(WEIGHT_DECAY,
+                                                hyper_params[WEIGHT_DECAY][MIN],
+                                                hyper_params[WEIGHT_DECAY][MAX])
+
+        # We sample a type of activation function for the network
+        activation = trial.suggest_categorical(ACTIVATION,
+                                               hyper_params[ACTIVATION][VALUES])
+
         # We define the model with the suggested set of hyper parameters
         model = self.model_generator(layers=layers, dropout=p, activation=activation)
 
-        # we create the Trainer that will train our model
+        # We create the Trainer that will train our model
         trainer = Trainer(model)
-        # we perform a k fold cross validation to evaluate the model
-        score = trainer.cross_valid(datasets=self.datasets, batch_size=batch_size, lr=lr, epochs=self.max_epochs,
-                                    metric=self.metric, k=self.k, weight_decay=weight_decay, trial=trial, seed=self.seed)
+
+        # We perform a k fold cross validation to evaluate the model
+        score = trainer.cross_valid(datasets=self.datasets, batch_size=batch_size, lr=lr,
+                                    epochs=self.max_epochs, metric=self.metric, k=self.k,
+                                    weight_decay=weight_decay, trial=trial, seed=self.seed)
 
         # we return the score
         return score
@@ -84,17 +96,16 @@ class NNTuner:
         """
         Class that will be responsible of the hyperparameters tuning
         
-        :param model_generator: instance of the ModelGenerator class that will be responsible of generating the model
-        :param datasets: Petale Datasets representing all the train and test sets to be used in the cross validation
-        :param hyper_params: dictionary containing information of the hyper parameter we want to tune : min, max,
-        step, values
-        :param k: number of folds to use in the cross validation
-        :param metric: a function that takes the output of the model and the target and returns
-        the metric we want to optimize
-        :param n_trials: number oftrials we want to perform
-        :param direction: direction to specify if we want to maximize or minimize the value of the metric used
-        :param seed: the starting point in generating random numbers
-
+        :param model_generator: Instance of the ModelGenerator class that will be responsible of generating the model
+        :param datasets: PetaleDatasets representing all the train and test sets to be used in the cross validation
+        :param hyper_params: Dictionary containing information of the hyper parameter
+                             we want to tune (min, max, step, values)
+        :param k: Number of folds to use in the cross validation
+        :param metric: Function that takes the output of the model and the target and returns
+                       the metric we want to optimize
+        :param n_trials: Number of trials we want to perform
+        :param direction: Direction to specify if we want to maximize or minimize the value of the metric used
+        :param seed: Starting point in generating random numbers
 
         """
         # we create the study 
@@ -117,27 +128,28 @@ class NNTuner:
         
         :return: the result of the study containing the best trial and the best values of each hyper parameter
         """
-        # we perform the optimization
+        # We perform the optimization
         self.study.optimize(
-            Objective(model_generator=self.model_generator, datasets=self.datasets, hyper_params=self.hyper_params,
-                      k=self.k, metric=self.metric, max_epochs=self.max_epochs, seed=self.seed), self.n_trials)
+            Objective(model_generator=self.model_generator, datasets=self.datasets,
+                      hyper_params=self.hyper_params, k=self.k, metric=self.metric,
+                      max_epochs=self.max_epochs, seed=self.seed), self.n_trials)
 
-        # we extract the best trial
+        # We extract the best trial
         best_trial = self.study.best_trial
 
-        # we extract the best architecture of the model
+        # We extract the best architecture of the model
         n_units = [key for key in best_trial.params.keys() if "n_units" in key]
         if n_units is not None:
             layers = list(map(lambda n_unit: best_trial.params[n_unit], n_units))
         else:
             layers = []
 
-        # we return the best hyperparameters
+        # We return the best hyperparameters
         return {
-            "layers": layers,
-            "dropout": best_trial.params["dropout"],
-            "lr": best_trial.params["lr"],
-            "batch_size": best_trial.params["batch_size"],
-            "weight_decay": best_trial.params["weight_decay"],
-            "activation": best_trial.params["activation"]
+            LAYERS: layers,
+            DROPOUT: best_trial.params[DROPOUT],
+            LR: best_trial.params[LR],
+            BATCH_SIZE: best_trial.params[BATCH_SIZE],
+            WEIGHT_DECAY: best_trial.params[WEIGHT_DECAY],
+            ACTIVATION: best_trial.params[ACTIVATION]
         }

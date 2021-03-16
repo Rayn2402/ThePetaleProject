@@ -5,8 +5,10 @@ File that contains the class that will be responsible of generating the model wh
 
 """
 
+from sklearn.ensemble import RandomForestClassifier
 
-class ModelGenerator:
+
+class NNModelGenerator:
     def __init__(self, model_class, num_cont_col, cat_sizes=None, output_size=None):
         """
         Class that will be responsible of generating the model
@@ -39,3 +41,11 @@ class ModelGenerator:
             # the case when the model need the the parameter output size
             return self.modelClass(num_cont_col=self.num_cont_col, cat_sizes=self.cat_sizes,
                                    output_size=self.output_size, layers=layers, dropout=dropout, activation=activation)
+
+
+class RFCModelGenerator:
+    def __call__(self, n_estimators=100):
+        """
+            Class that will be responsible of generating the Random Forest classifier
+        """
+        return RandomForestClassifier(n_estimators=n_estimators)

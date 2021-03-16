@@ -1,0 +1,7 @@
+{
+    "n_estimators":{
+        "min": 5,
+        "max": 200,
+        "step": 5
+    }
+}

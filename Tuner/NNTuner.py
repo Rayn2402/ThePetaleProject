@@ -62,14 +62,14 @@ class Objective:
                                        hyper_params[BATCH_SIZE][MAX])
 
         # We sample a value for the learning rate
-        lr = trial.suggest_loguniform(LR,
-                                      hyper_params[LR][MIN],
-                                      hyper_params[LR][MAX])
+        lr = trial.suggest_uniform(LR,
+                                   hyper_params[LR][MIN],
+                                   hyper_params[LR][MAX])
 
         # We sample a value for the weight decay used in the training
-        weight_decay = trial.suggest_loguniform(WEIGHT_DECAY,
-                                                hyper_params[WEIGHT_DECAY][MIN],
-                                                hyper_params[WEIGHT_DECAY][MAX])
+        weight_decay = trial.suggest_uniform(WEIGHT_DECAY,
+                                             hyper_params[WEIGHT_DECAY][MIN],
+                                             hyper_params[WEIGHT_DECAY][MAX])
 
         # We sample a type of activation function for the network
         activation = trial.suggest_categorical(ACTIVATION,

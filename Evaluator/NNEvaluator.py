@@ -6,6 +6,7 @@ File that contains the class related to the evaluation of the models
 """
 from Training.Training import Trainer
 from Tuner.NNTuner import NNTuner
+from Hyperparameters.constants import *
 
 
 class NNEvaluator:
@@ -70,17 +71,20 @@ class NNEvaluator:
             best_hyper_params = tuner.tune()
 
             # we create our model with the best hyper parameters
-            model = self.model_generator(layers=best_hyper_params["layers"],
-                                         dropout=best_hyper_params["dropout"],
-                                         activation=best_hyper_params["activation"])
+            model = self.model_generator(layers=best_hyper_params[LAYERS],
+                                         dropout=best_hyper_params[DROPOUT],
+                                         activation=best_hyper_params[ACTIVATION])
 
             # we create a trainer to train the model
             trainer = Trainer(model)
 
             # we train our model with the best hyper parameters
-            trainer.fit(train_set=train_set, val_set=valid_set, epochs=self.max_epochs,
-                        batch_size=best_hyper_params["batch_size"],
-                        lr=best_hyper_params["lr"], weight_decay=best_hyper_params["weight_decay"], seed=self.seed)
+            trainer.fit(train_set=train_set, val_set=valid_set,
+                        epochs=self.max_epochs,
+                        batch_size=best_hyper_params[BATCH_SIZE],
+                        lr=best_hyper_params[LR],
+                        weight_decay=best_hyper_params[WEIGHT_DECAY],
+                        seed=self.seed)
 
             # we extract x_cont, x_cat and target from the validset
             x_cont = test_set.X_cont

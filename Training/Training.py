@@ -49,6 +49,7 @@ class Trainer:
                 train_set, test_set = datasets[i]["train"], datasets[i]["test"]
                 valid_set = None
 
+
             # we train our model with this train and validation dataset
             self.fit(train_set=train_set, val_set=valid_set)
 
@@ -233,13 +234,14 @@ class RFTrainer(Trainer):
         """
         super().__init__(model)
 
-    def fit(self, train_set, valid_set=None):
+    def fit(self, train_set, val_set=None):
         """
         Method that will fit the model to the given data
 
         :param train_set: Pandas dataframe containing the training set
         """
-        self.model.fit(train_set.X_cat, train_set.Y)
+
+        self.model.fit(train_set.X_cont, train_set.y)
 
     def predict(self, x_cont, x_cat=None):
         return self.model.predict(x_cont)

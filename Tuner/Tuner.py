@@ -212,6 +212,14 @@ class RFTuner(Tuner):
         """
         super().__init__(model_generator, datasets, hyper_params, k, n_trials, metric, direction, seed)
         self.Objective = RFObjective
+        self.max_epochs = None
 
     def get_best_hyperparams(self):
-        return "coming soon !"
+        # we extract the best trial
+        best_trial = self.study.best_trial
+
+
+        # we return the best hyperparameters
+        return {
+            "n_estimators": best_trial.params["n_estimators"],
+        }

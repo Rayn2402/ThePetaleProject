@@ -12,7 +12,7 @@ class Evaluator:
     def __init__(self, model_generator, sampler, hyper_params, n_trials, metric, k, l,
                  direction="minimize", seed=None):
         """
-        Class that will be responsible of the evolution of the model
+        Class that will be responsible of the evaluation of the model
 
         :param model_generator: instance of the ModelGenerator class that will be responsible of generating the model
         :param sampler: A sampler object that will be called to perform the stratified sampling to get all the train
@@ -23,7 +23,6 @@ class Evaluator:
         :param k: Number of folds in the outer cross validation
         :param l: Number of folds in the inner cross validation
         :param n_trials: number of trials we want to perform
-        :param max_epochs:the maximal number of epochs to do in the training
         :param direction: direction to specify if we want to maximize or minimize the value of the metric used
         :param seed: the starting point in generating random numbers
 
@@ -45,6 +44,12 @@ class Evaluator:
 class NNEvaluator(Evaluator):
     def __init__(self, model_generator, sampler, hyper_params, n_trials, metric, k, l, max_epochs=100,
                  direction="minimize", seed=None):
+        """
+        Class that will be responsible of the evaluation of the Neural Networks models
+
+        :param max_epochs: the maximum number of epochs to do in training
+
+        """
         super().__init__(model_generator=model_generator, sampler=sampler, hyper_params=hyper_params, n_trials=n_trials,
                          metric=metric, k=k, l=l, direction=direction, seed=seed)
 
@@ -105,20 +110,9 @@ class NNEvaluator(Evaluator):
 class RFEvaluator(Evaluator):
     def __init__(self, model_generator, sampler, hyper_params, n_trials, metric, k, l, max_epochs=100,
                  direction="minimize", seed=None):
-        """
-        Class that will be responsible of the evolution of the Random Forest models
 
-        :param model_generator: instance of the ModelGenerator class that will be responsible of generating the model
-        :param sampler: A sampler object that will be called to perform the stratified sampling to get all the train
-        and test set for both the inner and the outer training
-        :param hyper_params: dictionary containing information of the hyper parameter we want to tune
-        :param metric: a function that takes the output of the model and the target and returns  the metric we want
-        to optimize
-        :param k: Number of folds in the outer cross validation
-        :param l: Number of folds in the inner cross validation
-        :param n_trials: number of trials we want to perform
-        :param direction: direction to specify if we want to maximize or minimize the value of the metric used
-        :param seed: the starting point in generating random numbers
+        """
+        Class that will be responsible of the evaluation of the Random Forest models
 
         """
 
@@ -151,7 +145,7 @@ class RFEvaluator(Evaluator):
             best_hyper_params = tuner.tune()
 
             # we create our model with the best hyper parameters
-            model = self.model_generator()
+            model = self.model_generator(n_estimators=best_hyper_params["n_estimators"])
 
             # we create a trainer to train the model
             trainer = RFTrainer(model)
@@ -161,13 +155,9 @@ class RFEvaluator(Evaluator):
 
             # we extract x_cont, x_cat and target from the validset
             x_cont = test_set.X_cont
-            target = test_set.y
-            if test_set.X_cat is not None:
-                x_cat = test_set.X_cat
-            else:
-                x_cat = None
+            target = test_set.Y
 
             # we calculate the score with the help of the metric function
-            scores.append(self.metric(trainer.predict(x_cont, x_cat).float(), target))
+            scores.append(self.metric(trainer.predict(x_cont), target))
 
         return sum(scores) / len(scores)

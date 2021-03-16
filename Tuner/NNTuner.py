@@ -9,7 +9,7 @@ from optuna.samplers import TPESampler
 from optuna.pruners import SuccessiveHalvingPruner
 
 from Training.Training import Trainer
-from hyper_params.constants import *
+from Hyperparameters.constants import *
 
 
 class Objective:

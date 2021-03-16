@@ -14,19 +14,18 @@ class NNEvaluator:
         """
         Class that will be responsible of the evolution of the model
         
-        :param model_generator: instance of the ModelGenerator class that will be responsible of generating the model
-        :param sampler: A sampler object that will be called to perform the stratified sampling to get all the train
-        and test set for both the inner and the outer training
-        :param hyper_params: dictionary containing information of the hyper parameter we want to tune
-        :param metric: a function that takes the output of the model and the target and returns  the metric we want
-        to optimize
+        :param model_generator: Instance of the ModelGenerator class that will be responsible of generating the model
+        :param sampler: Sampler object that will be called to perform the stratified sampling to get all the train
+                        and test set for both the inner and the outer training
+        :param hyper_params: Dictionary containing information of the hyper parameters we want to tune
+        :param metric: Function that takes the output of the model and the target
+                       and returns the metric we want to optimize
         :param k: Number of folds in the outer cross validation
         :param l: Number of folds in the inner cross validation
-        :param n_trials: number of trials we want to perform
-        :param max_epochs:the maximal number of epochs to do in the training
-        :param direction: direction to specify if we want to maximize or minimize the value of the metric used
-        :param seed: the starting point in generating random numbers
-
+        :param n_trials: Number of trials we want to perform
+        :param max_epochs: Maximal number of epochs to do in the training
+        :param direction: Direction to specify if we want to maximize or minimize the value of the metric used
+        :param seed: Starting point in generating random numbers
 
         """
 
@@ -49,15 +48,18 @@ class NNEvaluator:
         :return: the scores of the model after performing a nested cross validation
         """
 
-        # we get all the train, test, inner train, qnd inner test sets with our sampler
+        # we get all the train, test, inner train, and inner test sets with our sampler
         all_datasets = self.sampler(k=self.k, l=self.l)
 
         # we init the list that will contains the scores
         scores = []
 
         for i in range(self.k):
+
             # we the get the train and the test datasets
-            train_set, valid_set, test_set = all_datasets[i]["train"], all_datasets[i]["valid"], all_datasets[i]["test"]
+            train_set, valid_set, test_set = all_datasets[i]["train"],\
+                                             all_datasets[i]["valid"],\
+                                             all_datasets[i]["test"]
 
             # we create the tuner to perform the hyperparameters optimisation
             tuner = NNTuner(model_generator=self.model_generator, datasets=all_datasets[i]["inner"],
@@ -68,10 +70,13 @@ class NNEvaluator:
             best_hyper_params = tuner.tune()
 
             # we create our model with the best hyper parameters
-            model = self.model_generator(layers=best_hyper_params["layers"], dropout=best_hyper_params["dropout"], activation=best_hyper_params["activation"])
+            model = self.model_generator(layers=best_hyper_params["layers"],
+                                         dropout=best_hyper_params["dropout"],
+                                         activation=best_hyper_params["activation"])
 
             # we create a trainer to train the model
             trainer = Trainer(model)
+
             # we train our model with the best hyper parameters
             trainer.fit(train_set=train_set, val_set=valid_set, epochs=self.max_epochs,
                         batch_size=best_hyper_params["batch_size"],

@@ -30,7 +30,7 @@ class Trainer:
         self.criterion = model.criterion_function
 
     def fit(self, train_set, val_set, batch_size, lr, weight_decay, epochs, early_stopping_activated=True,
-            patience=5, seed=None, device="cpu"):
+            patience=5, seed=None, device="cpu", trial=None, metric=None):
         """
         Method that will fit the model to the given data
 
@@ -45,6 +45,9 @@ class Trainer:
         :param patience: Int representing how long to wait after last time validation loss improved.
         :param seed: The starting point in generating random numbers
         :param device: Device where we want to run our training, this parameter can take two values : "cpu" or "gpu"
+        :param trial: Optuna Trial to report intermediate value
+        :param metric: a function that takes the output of the model and the target and returns the metric we want to
+        measure
 
         :return: Two lists containing the training losses and the validation losses
         """
@@ -88,7 +91,6 @@ class Trainer:
             epoch_loss = 0
 
             for item in train_loader:
-
                 # We extract the continuous data x_cont, the categorical data x_cat
                 # and the correct predictions y
                 x_cont, x_cat, y = self.extract_batch(item, device)
@@ -132,6 +134,16 @@ class Trainer:
             # Record validation loss
             valid_loss.append(val_epoch_loss)
 
+            if metric is not None:
+                intermediate_score = metric(preds, y)
+
+            if trial is not None:
+                # we report the score to optuna
+                trial.report(intermediate_score, step=epoch)
+                # we prune the trial if it should be pruned
+                if trial.should_prune():
+                    raise TrialPruned()
+
             # We look for early stopping
             if early_stopping_activated:
                 early_stopping(val_epoch_loss, self.model)
@@ -153,7 +165,6 @@ class Trainer:
         :param k: number of folds
         :param metric: a function that takes the output of the model and the target and returns the metric we want to
         measure
-        :param metric: type of the metric we want to get the score of
         :param epochs: number times that the learning algorithm will work through the entire training dataset
         :param early_stopping_activated: boolean indicating if we want to early stop the training when the validation
         loss stops decreasing
@@ -172,7 +183,8 @@ class Trainer:
             train_set, valid_set, test_set = datasets[i]["train"], datasets[i]["valid"], datasets[i]["test"]
             # we train our model with this train and validation dataset
             self.fit(train_set=train_set, val_set=valid_set, batch_size=batch_size, lr=lr, weight_decay=weight_decay,
-                     epochs=epochs, early_stopping_activated=early_stopping_activated, patience=patience, seed=seed)
+                     epochs=epochs, early_stopping_activated=early_stopping_activated, patience=patience, seed=seed,
+                     trial=trial, metric=metric)
 
             # we extract x_cont, x_cat and target from the subset valid_fold
             x_cont = test_set.X_cont
@@ -185,12 +197,6 @@ class Trainer:
             # we calculate the score with the help of the metric function
             intermediate_score = metric(self.model(x_cont, x_cat).float(), target)
 
-            if trial is not None:
-                # we report the score to optuna
-                trial.report(intermediate_score, step=i)
-                # we prune the trial if it should be pruned
-                if trial.should_prune():
-                    raise TrialPruned()
             # we save the score
             score.append(intermediate_score)
 

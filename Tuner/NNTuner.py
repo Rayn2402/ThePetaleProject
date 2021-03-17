@@ -7,6 +7,7 @@ Files that contains the logic related to hyper parameters tuning
 from optuna import create_study
 from optuna.samplers import TPESampler
 from optuna.pruners import SuccessiveHalvingPruner
+from optuna.visualization import plot_param_importances
 
 from Training.Training import Trainer
 from Hyperparameters.constants import *
@@ -154,3 +155,14 @@ class NNTuner:
             WEIGHT_DECAY: best_trial.params[WEIGHT_DECAY],
             ACTIVATION: best_trial.params[ACTIVATION]
         }
+
+    def get_hyper_params_importance(self):
+        """
+        Method to plot the hyper parameters graph and save it in a ht;l file
+        """
+
+        # We generate the hyper parameters importance graph with optuna
+        fig = plot_param_importances(self.study)
+
+        # We save the graph in a html file to have an interactive graph
+        fig.write_html(f"../FeatureImportance/{self.study.study_name}")

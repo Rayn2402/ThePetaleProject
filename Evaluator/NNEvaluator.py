@@ -10,7 +10,7 @@ from Hyperparameters.constants import *
 
 
 class NNEvaluator:
-    def __init__(self, model_generator, sampler, hyper_params, n_trials, metric, k, l, max_epochs=100,
+    def __init__(self, model_generator, sampler, hyper_params, n_trials, metric, k, l, study_name, max_epochs=100,
                  direction="minimize", seed=None):
         """
         Class that will be responsible of the evolution of the model
@@ -23,6 +23,7 @@ class NNEvaluator:
                        and returns the metric we want to optimize
         :param k: Number of folds in the outer cross validation
         :param l: Number of folds in the inner cross validation
+        :param study_name: String that represents the name of the study
         :param n_trials: Number of trials we want to perform
         :param max_epochs: Maximal number of epochs to do in the training
         :param direction: Direction to specify if we want to maximize or minimize the value of the metric used
@@ -41,6 +42,7 @@ class NNEvaluator:
         self.max_epochs = max_epochs
         self.direction = direction
         self.seed = seed
+        self.study_name = study_name
 
     def nested_cross_valid(self):
         """
@@ -65,7 +67,8 @@ class NNEvaluator:
             # we create the tuner to perform the hyperparameters optimisation
             tuner = NNTuner(model_generator=self.model_generator, datasets=all_datasets[i]["inner"],
                             hyper_params=self.hyper_params, n_trials=self.n_trials,
-                            metric=self.metric, direction=self.direction, k=self.l, seed=self.seed)
+                            metric=self.metric, direction=self.direction, k=self.l, seed=self.seed,
+                            study_name=self.study_name+f"_{i}")
 
             # we perform the hyper parameters tuning to get the best hyper parameters
             best_hyper_params = tuner.tune()

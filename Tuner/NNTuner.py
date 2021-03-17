@@ -39,7 +39,6 @@ class Objective:
         self.seed = seed
 
     def __call__(self, trial):
-
         hyper_params = self.hyper_params
 
         # We sample a number of hidden layers
@@ -91,7 +90,7 @@ class Objective:
 
 
 class NNTuner:
-    def __init__(self, model_generator, datasets, hyper_params, k, n_trials, metric, max_epochs=100,
+    def __init__(self, model_generator, datasets, hyper_params, k, n_trials, metric, study_name, max_epochs=100,
                  direction="minimize", seed=None):
         """
         Class that will be responsible of the hyperparameters tuning
@@ -103,13 +102,15 @@ class NNTuner:
         :param k: Number of folds to use in the cross validation
         :param metric: Function that takes the output of the model and the target and returns
                        the metric we want to optimize
+        :param study_name: String that represents the name of the study
         :param n_trials: Number of trials we want to perform
         :param direction: Direction to specify if we want to maximize or minimize the value of the metric used
         :param seed: Starting point in generating random numbers
 
         """
         # we create the study 
-        self.study = create_study(direction=direction, sampler=TPESampler(n_startup_trials=10, n_ei_candidates=20),
+        self.study = create_study(direction=direction, study_name=study_name, sampler=TPESampler(n_startup_trials=10,
+                                                                                                 n_ei_candidates=20),
                                   pruner=SuccessiveHalvingPruner(min_resource=5, reduction_factor=4))
 
         # we save the inputs that will be used when tuning the hyper parameters

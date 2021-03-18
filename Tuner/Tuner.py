@@ -118,12 +118,26 @@ class RFObjective:
     def __call__(self, trial):
         hyper_params = self.hyper_params
 
-        # We optimize the the number of estimators used un the training
-        n_estimators = trial.suggest_int("n_estimators", hyper_params["n_estimators"]["min"],
-                                         hyper_params["n_estimators"]["max"])
+        # We optimize the number of estimators used un the training
+        n_estimators = trial.suggest_int(N_ESTIMATORS, hyper_params[N_ESTIMATORS][MIN],
+                                         hyper_params[N_ESTIMATORS][MAX])
+
+        # We optimize the maximum depth of the trees
+        max_depth = trial.suggest_int(MAX_DEPTH, hyper_params[MAX_DEPTH][MIN], hyper_params[MAX_DEPTH][MAX])
+
+        # We sample a value for the learning rate
+        max_features = trial.suggest_uniform(MAX_FEATURES,
+                                             hyper_params[MAX_FEATURES][MIN],
+                                             hyper_params[MAX_FEATURES][MAX])
+
+        # We sample a value for the learning rate
+        max_samples = trial.suggest_uniform(MAX_SAMPLES,
+                                            hyper_params[MAX_SAMPLES][MIN],
+                                            hyper_params[MAX_SAMPLES][MAX])
 
         # We define the model with the suggested set of hyper parameters
-        model = self.model_generator(n_estimators=n_estimators)
+        model = self.model_generator(n_estimators=n_estimators, max_features=max_features, max_depth=max_depth,
+                                     max_samples=max_samples)
 
         # we create the Trainer that will train our model
         trainer = RFTrainer(model=model)

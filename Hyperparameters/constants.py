@@ -17,3 +17,10 @@ MIN = "min"
 MAX = "max"
 VALUES = "values"
 
+# RF HYPERPARAMETERS
+N_ESTIMATORS = "n_estimators"
+MAX_depth = "max_depth"
+MAX_FEATURES = "max_features"
+MAX_SAMPLES = "max_samples"
+
+

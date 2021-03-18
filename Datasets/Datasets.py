@@ -99,7 +99,7 @@ class PetaleDataset(Dataset):
 
 class PetaleDataframe:
 
-    def __init__(self, df, cont_cols, target, cat_cols=None, mean=None, std=None):
+    def __init__(self, df, cont_cols, target, cat_cols=None, mean=None, std=None, **kwargs):
 
         """
         Applies transformations to a dataframe and store the result as the dataset for the Random Forest model
@@ -131,7 +131,8 @@ class PetaleDataframe:
         # We save the targets
         self.y = ConT.to_float(df[target]).values.flatten()
 
-
+    def __len__(self):
+        return self.N
 
 
 

@@ -9,7 +9,7 @@ from Tuner.Tuner import NNTuner, RFTuner
 
 
 class Evaluator:
-    def __init__(self, model_generator, sampler, hyper_params, n_trials, metric, k, l,
+    def __init__(self, model_generator, sampler, hyper_params, n_trials, metric, k, l=1,
                  direction="minimize", seed=None):
         """
         Class that will be responsible of the evaluation of the model
@@ -82,13 +82,13 @@ class Evaluator:
                 x_cat = None
 
             # we calculate the score with the help of the metric function
-            scores.append(self.metric(trainer.predict(x_cont, x_cat).float(), target))
+            scores.append(self.metric(trainer.predict(x_cont, x_cat), target))
 
         return sum(scores) / len(scores)
 
 
 class NNEvaluator(Evaluator):
-    def __init__(self, model_generator, sampler, hyper_params, n_trials, metric, k, l, max_epochs=100,
+    def __init__(self, model_generator, sampler, hyper_params, n_trials, metric, k, l=1, max_epochs=100,
                  direction="minimize", seed=None):
         """
         Class that will be responsible of the evaluation of the Neural Networks models
@@ -147,7 +147,7 @@ class NNEvaluator(Evaluator):
 
 
 class RFEvaluator(Evaluator):
-    def __init__(self, model_generator, sampler, hyper_params, n_trials, metric, k, l, max_epochs=100,
+    def __init__(self, model_generator, sampler, hyper_params, n_trials, metric, k, l=1, max_epochs=100,
                  direction="minimize", seed=None):
         """
         Class that will be responsible of the evaluation of the Random Forest models

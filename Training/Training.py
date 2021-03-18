@@ -26,15 +26,18 @@ class Trainer:
         # we save the model in the attribute model
         self.model = model
 
-    def cross_valid(self, datasets, metric, k=5, trial=None):
+        # we save the attribute device
+        self.device = device
+
+    def cross_valid(self, datasets, metric, k=5):
         """
             Method that will perform a k-fold cross validation on the model
 
             :param datasets: Petale Datasets representing all the train and test sets to be used in the cross validation
             :param k: number of folds
-            :param metric: a function that takes the output of the model and the target and returns the metric we want to
-            measure
-            :param trial: Optuna Trial to report intermediate value
+            :param metric: a function that takes the output of the model and the target and returns  the metric we want
+            to optimize
+
 
             :return: returns the score after performing the k-fold cross validation
         """
@@ -63,22 +66,36 @@ class Trainer:
             # we calculate the score with the help of the metric function
             intermediate_score = metric(self.predict(x_cont=x_cont, x_cat=x_cat), target)
 
-            if trial is not None:
-                # we report the score to optuna
-                trial.report(intermediate_score, step=i)
-                # we prune the trial if it should be pruned
-                if trial.should_prune():
-                    raise TrialPruned()
             # we save the score
             score.append(intermediate_score)
 
         # we return the final score of the cross validation
         return sum(score) / len(score)
 
+    @staticmethod
+    def extract_batch(batch_list, device):
+        """
+        Extracts the continuous data (X_cont), the categorical data (X_cat) and the ground truth (y)
+
+        :param batch_list: list containing a batch from dataloader
+        :param device: "cpu" or "gpu"
+        :return: 3 tensors
+        """
+
+        if len(batch_list) > 2:
+            x_cont, x_cat, y = batch_list
+            x_cont, x_cat, y = x_cont.to(device), x_cat.to(device), y.to(device)
+        else:
+            x_cont, y = batch_list
+            x_cont, y = x_cont.to(device), y.to(device)
+            x_cat = None
+
+        return x_cont, x_cat, y
+
 
 class NNTrainer(Trainer):
-    def __init__(self, model, lr, batch_size, weight_decay, epochs, early_stopping_activated=True,
-                 patience=5, seed=None, device="cpu"):
+    def __init__(self, model, lr, batch_size, weight_decay, metric, epochs, early_stopping_activated=True,
+                 patience=5, seed=None, device="cpu", trial=None):
         """
         Creates a  Trainer that will train and evaluate a Neural Network model.
 
@@ -108,6 +125,8 @@ class NNTrainer(Trainer):
         self.early_stopping_activated = early_stopping_activated
         self.patience = patience
         self.seed = seed
+        self.trial = trial
+        self.metric = metric
 
     def fit(self, train_set, val_set):
         """
@@ -245,26 +264,6 @@ class RFTrainer(Trainer):
 
     def predict(self, x_cont, x_cat=None):
         return self.model.predict(x_cont)
-
-    @staticmethod
-    def extract_batch(batch_list, device):
-        """
-        Extracts the continuous data (X_cont), the categorical data (X_cat) and the ground truth (y)
-
-        :param batch_list: list containing a batch from dataloader
-        :param device: "cpu" or "gpu"
-        :return: 3 tensors
-        """
-
-        if len(batch_list) > 2:
-            x_cont, x_cat, y = batch_list
-            x_cont, x_cat, y = x_cont.to(device), x_cat.to(device), y.to(device)
-        else:
-            x_cont, y = batch_list
-            x_cont, y = x_cont.to(device), y.to(device)
-            x_cat = None
-
-        return x_cont, x_cat, y
 
 
 def get_kfold_data(dataset, k, i):

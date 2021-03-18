@@ -80,9 +80,9 @@ class NNObjective:
 
         # we create the Trainer that will train our model
         trainer = NNTrainer(model=model, batch_size=batch_size, lr=lr, epochs=self.max_epochs,
-                            weight_decay=weight_decay)
+                            weight_decay=weight_decay, metric=self.metric, trial=trial)
         # we perform a k fold cross validation to evaluate the model
-        score = trainer.cross_valid(datasets=self.datasets, metric=self.metric, k=self.k, trial=trial)
+        score = trainer.cross_valid(datasets=self.datasets,metric=self.metric, k=self.k)
 
         # we return the score
         return score

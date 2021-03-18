@@ -20,7 +20,7 @@ all_data = sampler(k=1, l=1)
 # TUNNING NN CLASSIFIER LEARNING 01
 
 def metric01(pred, target):
-    return ClassificationMetrics.accuracy(argmax(pred, dim=1), target).item()
+    return ClassificationMetrics.accuracy(argmax(pred, dim=1).float(), target).item()
 
 cat_sizes = []
 for i in range(all_data[0]["train"].X_cat.shape[1]):

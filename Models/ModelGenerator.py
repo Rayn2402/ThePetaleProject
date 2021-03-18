@@ -13,10 +13,10 @@ class NNModelGenerator:
         """
         Class that will be responsible of generating the model
         
-        :param model_class: class of the model we want to use
-        :param num_cont_col: the number of continuous columns we have
-        :param cat_sizes: list of integer representing the size of each categorical column
-        :param output_size: the number of nodes in the last layer of the neural network or the the number of classes
+        :param model_class: Class of the model we want to use
+        :param num_cont_col: Number of continuous columns we have
+        :param cat_sizes: List of integer representing the size of each categorical column
+        :param output_size: Number of nodes in the last layer of the neural network or the the number of classes
         """
         self.modelClass = model_class
         self.num_cont_col = num_cont_col
@@ -27,9 +27,9 @@ class NNModelGenerator:
         """
         The method to call to generate the model
 
-        :param layers: a list to represent the number of hidden layers and the number of units in each layer
-        :param dropout: a fraction representing the probability of dropout
-        :param activation: the activation function to be used by the model
+        :param layers: List to represent the number of hidden layers and the number of units in each layer
+        :param dropout: Probability of dropout (0 < p < 1)
+        :param activation: Activation function to be used by the model
 
         :return: a model
         """

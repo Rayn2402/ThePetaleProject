@@ -4,7 +4,6 @@ Authors : Mitiche
 Files that contains class related to the Training of the models
 
 """
-
 from .EarlyStopping import EarlyStopping
 from torch.nn import Module
 from torch.utils.data import DataLoader, Subset
@@ -23,6 +22,7 @@ class Trainer:
         :param device: the device where we want to run our training, this parameter can take two values : "cpu" or "gpu"
 
         """
+
         # we save the model in the attribute model
         self.model = model
 
@@ -48,7 +48,6 @@ class Trainer:
             else:
                 train_set, test_set = datasets[i]["train"], datasets[i]["test"]
                 valid_set = None
-
 
             # we train our model with this train and validation dataset
             self.fit(train_set=train_set, val_set=valid_set)
@@ -124,101 +123,102 @@ class NNTrainer(Trainer):
         if self.seed is not None:
             manual_seed(self.seed)
 
-        # the maximum value of the batch size is the size of the trainset
-        if train_set.__len__() < self.batch_size:
-            batch_size = train_set.__len__()
+        # The maximum value of the batch size is the size of the trainset
+        if len(train_set) < self.batch_size:
+            self.batch_size = len(train_set)
 
-        # we create the the train data loader
+        # We create the the train data loader
         if len(train_set) % self.batch_size == 1:
             train_loader = DataLoader(train_set, batch_size=self.batch_size, shuffle=True, drop_last=True)
         else:
             train_loader = DataLoader(train_set, batch_size=self.batch_size, shuffle=True)
 
-        # we create the the validation data loader
-        val_loader = DataLoader(val_set, batch_size=val_set.__len__())
+        # We create the the validation data loader
+        val_loader = DataLoader(val_set, batch_size=len(val_set))
 
         # we create the optimizer
         optimizer = optim.Adam(params=self.model.parameters(), lr=self.lr, weight_decay=self.weight_decay)
 
-        # we initialize two empty lists to store the training loss and the validation loss
-        training_loss = []
-        valid_loss = []
+        # We initialize two empty lists to store the training loss and the validation loss
+        training_loss, valid_loss = [], []
 
         # we init the early stopping class
         early_stopping = EarlyStopping(patience=self.patience)
+
         # we declare the variable which will hold the device we’re training on 
         device = device_("cuda" if cuda.is_available() and self.device == "gpu" else "cpu")
 
         for epoch in tqdm(range(self.epochs)):
+
             ###################
             # train the model #
             ###################
 
-            # prep model for training
+            # Prep model for training
             self.model.train()
-
             epoch_loss = 0
-            for item in train_loader:
-                # we extract the continuous data x_cont, the categorical data x_cat and the  correct predictions y
-                if len(item) > 2:
-                    x_cont, x_cat, y = item
-                    # we transfer the tensors to our device
-                    x_cont, x_cat, y = x_cont.to(device), x_cat.to(device), y.to(device)
-                else:
-                    x_cont, y = item
-                    # we transfer the tensors to our device
-                    x_cont, y = x_cont.to(device), y.to(device)
-                    x_cat = None
 
-                # clear the gradients of all optimized variables
+            for item in train_loader:
+                # We extract the continuous data x_cont, the categorical data x_cat
+                # and the correct predictions y
+                x_cont, x_cat, y = self.extract_batch(item, device)
+
+                # Clear the gradients of all optimized variables
                 optimizer.zero_grad()
 
-                # forward pass: compute predicted outputs by passing inputs to the model
+                # Forward pass: compute predicted outputs by passing inputs to the model
                 preds = self.model(x_cont=x_cont, x_cat=x_cat)
 
-                # calculate the loss
+                # Calculate the loss
                 loss = self.criterion(preds, y)
                 epoch_loss += loss.item()
 
-                # backward pass: compute gradient of the loss with respect to model parameters
+                # Backward pass: compute gradient of the loss with respect to model parameters
                 loss.backward()
 
-                # perform a single optimization step (parameter update)
+                # Perform a single optimization step (parameter update)
                 optimizer.step()
-            # record training loss
+
+            # Record training loss
             training_loss.append(epoch_loss / len(train_loader))
 
             ######################
             # validate the model #
             ######################
 
-            # prep model for validation
+            # Prep model for validation
             self.model.eval()
-            val_epoch_loss = 0
 
-            for item in val_loader:
-                # y will contains the correct prediction
-                y = item[-1]
+            # We extract the continuous data x_cont, the categorical data x_cat
+            # and the correct predictions y for the single batch
+            x_cont, x_cat, y = self.extract_batch(next(iter(val_loader)), device)
 
-                # x will contain both continuous data and categorical data if there is
-                x = item[:-1]
+            # Forward pass: compute predicted outputs by passing inputs to the model
+            preds = self.model(x_cont=x_cont, x_cat=x_cat)
 
-                # we transform the x data to float : TO BE UPDATED
-                x = map(lambda x: x.float(), x)
+            # Calculate the loss
+            val_epoch_loss = self.criterion(preds, y).item()
 
-                # forward pass: compute predicted outputs by passing inputs to the model
-                preds = self.model(*x)
+            # Record validation loss
+            valid_loss.append(val_epoch_loss)
 
-                # calculate the loss
-                loss = self.criterion(preds, y)
-                val_epoch_loss += loss.item()
-            # record training loss
-            valid_loss.append(val_epoch_loss / len(val_loader))
+            if self.metric is not None:
+                intermediate_score = self.metric(preds, y)
 
+            if self.trial is not None:
+                # we report the score to optuna
+                self.trial.report(intermediate_score, step=epoch)
+                # we prune the trial if it should be pruned
+                if self.trial.should_prune():
+                    raise TrialPruned()
+
+            # We look for early stopping
             if self.early_stopping_activated:
-                early_stopping(val_epoch_loss / len(val_loader), self.model)
+                early_stopping(val_epoch_loss, self.model)
+
             if early_stopping.early_stop:
                 break
+
         return training_loss, valid_loss
 
     def predict(self, x_cont, x_cat):
@@ -245,6 +245,26 @@ class RFTrainer(Trainer):
 
     def predict(self, x_cont, x_cat=None):
         return self.model.predict(x_cont)
+
+    @staticmethod
+    def extract_batch(batch_list, device):
+        """
+        Extracts the continuous data (X_cont), the categorical data (X_cat) and the ground truth (y)
+
+        :param batch_list: list containing a batch from dataloader
+        :param device: "cpu" or "gpu"
+        :return: 3 tensors
+        """
+
+        if len(batch_list) > 2:
+            x_cont, x_cat, y = batch_list
+            x_cont, x_cat, y = x_cont.to(device), x_cat.to(device), y.to(device)
+        else:
+            x_cont, y = batch_list
+            x_cont, y = x_cont.to(device), y.to(device)
+            x_cat = None
+
+        return x_cont, x_cat, y
 
 
 def get_kfold_data(dataset, k, i):

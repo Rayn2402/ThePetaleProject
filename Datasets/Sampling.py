@@ -4,7 +4,7 @@ Author : Nicolas Raymond
 This file contains the Sampler class used to separate test sets from train sets
 """
 
-from Datasets.Datasets import PetaleDataset
+from Datasets.Datasets import PetaleDataset, PetaleDataframe
 from .Transforms import ContinuousTransform as ConT
 from SQL.NewTablesScripts.constants import *
 import numpy as np
@@ -13,7 +13,7 @@ import pandas as pd
 
 class Sampler:
 
-    def __init__(self, dm, table_name, cont_cols, target_col, cat_cols=None):
+    def __init__(self, dm, table_name, cont_cols, target_col, cat_cols=None, to_dataset=True):
         """
         Object that creates all datasets
         :param dm: PetaleDataManager
@@ -21,6 +21,7 @@ class Sampler:
         :param cont_cols: list with the names of continuous columns of the table
         :param cat_cols: list with the names of the categorical columns of the table
         :param target_col: name of the target column in the table
+        :param to_dataset: bool indicating if we want a PetaleDataset (True) or a PetaleDataframe (False)
         """
 
         # We save the learning set as seen in the Workflow presentation
@@ -36,7 +37,10 @@ class Sampler:
         # We save the target column name
         self.target_col = target_col
 
-    def __call__(self, k=5, l=2, split_cat=True, valid_size=0.20, test_size=0.20, add_biases=False):
+        # We save the dataset class constructor
+        self.dataset_constructor = Sampler.define_container_constructor(to_dataset)
+
+    def __call__(self, k=5, l=1, split_cat=True, valid_size=0.20, test_size=0.20, add_biases=False):
         return self.create_train_and_test_datasets(k, l, split_cat, valid_size, test_size, add_biases)
 
     def create_train_and_test_datasets(self, k=5, l=2, split_cat=True, valid_size=0.20, test_size=0.20, add_biases=False):
@@ -91,14 +95,19 @@ class Sampler:
         mean, std = train[self.cont_cols].mean(), train[self.cont_cols].std()
 
         # We create the train, valid and test datasets
-        train_ds = PetaleDataset(train, self.cont_cols, self.target_col, cat_cols=self.cat_cols,
-                                 split=split_cat, add_biases=add_biases)
+        train_ds = self.dataset_constructor(df=train, cont_cols=self.cont_cols, target=self.target_col,
+                                            cat_cols=self.cat_cols, split=split_cat, add_biases=add_biases)
 
-        valid_ds = PetaleDataset(valid, self.cont_cols, self.target_col, cat_cols=self.cat_cols,
-                                 split=split_cat, mean=mean, std=std, add_biases=add_biases)
+        if valid is not None:
+            valid_ds = self.dataset_constructor(df=valid, cont_cols=self.cont_cols, target=self.target_col,
+                                                cat_cols=self.cat_cols, split=split_cat, mean=mean, std=std,
+                                                add_biases=add_biases)
+        else:
+            valid_ds = None
 
-        test_ds = PetaleDataset(test, self.cont_cols, self.target_col, cat_cols=self.cat_cols,
-                                split=split_cat, mean=mean, std=std, add_biases=add_biases)
+        test_ds = self.dataset_constructor(df=test, cont_cols=self.cont_cols, target=self.target_col,
+                                           cat_cols=self.cat_cols, split=split_cat, mean=mean, std=std,
+                                           add_biases=add_biases)
 
         return {"train": train_ds, "valid": valid_ds, "test": test_ds}
 
@@ -113,30 +122,48 @@ class Sampler:
         for k, v in datasets.items():
             print(f"Split {k+1} \n")
             print(f"Outer :")
-            print(f"Train {len(v['train'])} - Valid {len(v['valid'])} - Test {len(v['test'])}")
+            valid = v['valid'] if v['valid'] is not None else []
+            print(f"Train {len(v['train'])} - Valid {len(valid)} - Test {len(v['test'])}")
             print("Inner")
             for k1, v1 in v['inner'].items():
-                print(f"{k+1}.{k1} -> Train {len(v1['train'])} - Valid {len(v1['valid'])} - Test {len(v1['test'])}")
+                valid = v1['valid'] if v1['valid'] is not None else []
+                print(f"{k+1}.{k1} -> Train {len(v1['train'])} - Valid {len(valid)} -"
+                      f" Test {len(v1['test'])}")
             print("#----------------------------------#")
+
+    @staticmethod
+    def define_container_constructor(to_dataset):
+        """
+        Defines the correct constructor to use to initialise our dataset
+
+        :param to_dataset: bool indicating if we want a PetaleDataset (True) or a PetaleDataframe (False)
+        :return: function
+        """
+        if to_dataset:
+            return PetaleDataset
+        else:
+            return PetaleDataframe
 
 
 class WarmUpSampler(Sampler):
 
-    def __init__(self, dm):
+    def __init__(self, dm, to_dataset=True):
         """
         Creates a Sampler for the WarmUp data table
         :param dm: PetaleDataManager
+        :param to_dataset: bool indicating if we want a PetaleDataset (True) or a PetaleDataframe (False)
         """
         cont_cols = [WEIGHT, TDM6_HR_END, TDM6_DIST, DT, AGE, MVLPA]
-        super().__init__(dm, LEARNING_0, cont_cols, VO2R_MAX)
+        super().__init__(dm, LEARNING_0, cont_cols, VO2R_MAX, to_dataset=to_dataset)
 
 
 class LearningOneSampler(Sampler):
 
-    def __init__(self, dm):
+    def __init__(self, dm, to_dataset=True):
         """
         Creates a Sampler for the Learning One data table
         :param dm: PetaleDataManager
+        :param to_dataset: bool indicating if we want a PetaleDataset (True) or a PetaleDataframe (False)
         """
         # We save continuous columns
         cont_cols = [AGE, HEIGHT, WEIGHT, AGE_AT_DIAGNOSIS, DT, TSEOT, RADIOTHERAPY_DOSE, TDM6_DIST, TDM6_HR_END,
@@ -145,7 +172,7 @@ class LearningOneSampler(Sampler):
         # We save the categorical columns
         cat_cols = [SEX, SMOKING, DEX_PRESENCE]
 
-        super().__init__(dm, LEARNING_1, cont_cols, FITNESS_LVL, cat_cols)
+        super().__init__(dm, LEARNING_1, cont_cols, FITNESS_LVL, cat_cols, to_dataset)
 
 
 def split_train_test(df, target_col, test_size=0.20, random_state=None):
@@ -158,11 +185,15 @@ def split_train_test(df, target_col, test_size=0.20, random_state=None):
     :return: 2 pandas dataframe
     """
 
-    # Test and train split
-    test_data = stratified_sample(df, target_col, test_size, random_state=random_state)
-    train_data = df.drop(test_data.index)
+    if test_size > 0:
 
-    return train_data, test_data
+        # Test and train split
+        test_data = stratified_sample(df, target_col, test_size, random_state=random_state)
+        train_data = df.drop(test_data.index)
+        return train_data, test_data
+
+    else:
+        return df, None
 
 
 def stratified_sample(df, target_col, n, quantiles=4, random_state=None):
@@ -176,13 +207,11 @@ def stratified_sample(df, target_col, n, quantiles=4, random_state=None):
     :param random_state: seed for random number generator (does not overwrite global seed value)
     :return: pandas dataframe
     """
-    if target_col not in df.columns:
-        raise Exception('Target column not part of the dataframe')
-    if n < 0:
-        raise Exception('n must be greater than 0')
+    assert target_col in df.columns, 'Target column not part of the dataframe'
+    assert n > 0, 'n must be greater than 0'
 
     # If n is a percentage we change it to a integer
-    elif 0 < n < 1:
+    if 0 < n < 1:
         n = int(n*df.shape[0])
 
     # We make a deep copy of the current dataframe

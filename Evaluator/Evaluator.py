@@ -58,7 +58,7 @@ class Evaluator:
             # We the get the train and the test datasets
             train_set, test_set, valid_set = self.get_datasets(all_datasets[i])
 
-            # We create the tuner to perform the hyperparameters optimisation
+            # We create the tuner to perform the hyperparameters optimization
             tuner = self.create_tuner(datasets=all_datasets[i]["inner"])
 
             # We perform the hyper parameters tuning to get the best hyper parameters

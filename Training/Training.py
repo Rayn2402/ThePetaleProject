@@ -45,6 +45,7 @@ class Trainer:
         # we initialize an empty list to store the scores
         score = []
         for i in range(k):
+
             # we the get the train and the validation datasets of the step we are currently in
             if len(datasets[i]) > 2:
                 train_set, valid_set, test_set = datasets[i]["train"], datasets[i]["valid"], datasets[i]["test"]
@@ -161,10 +162,10 @@ class NNTrainer(Trainer):
         # We initialize two empty lists to store the training loss and the validation loss
         training_loss, valid_loss = [], []
 
-        # we init the early stopping class
+        # We init the early stopping class
         early_stopping = EarlyStopping(patience=self.patience)
 
-        # we declare the variable which will hold the device we’re training on 
+        # We declare the variable which will hold the device we’re training on
         device = device_("cuda" if cuda.is_available() and self.device == "gpu" else "cpu")
 
         for epoch in tqdm(range(self.epochs)):
@@ -215,19 +216,19 @@ class NNTrainer(Trainer):
             # Forward pass: compute predicted outputs by passing inputs to the model
             preds = self.model(x_cont=x_cont, x_cat=x_cat)
 
-            # Calculate the loss
+            # We calculate the loss
             val_epoch_loss = self.criterion(preds, y).item()
 
-            # Record validation loss
+            # We record the validation loss
             valid_loss.append(val_epoch_loss)
 
             if self.metric is not None:
                 intermediate_score = self.metric(preds, y)
 
             if self.trial is not None:
-                # we report the score to optuna
+                # We report the score to optuna
                 self.trial.report(intermediate_score, step=epoch)
-                # we prune the trial if it should be pruned
+                # We prune the trial if it should be pruned
                 if self.trial.should_prune():
                     raise TrialPruned()
 
@@ -241,6 +242,11 @@ class NNTrainer(Trainer):
         return training_loss, valid_loss
 
     def predict(self, x_cont, x_cat):
+
+        # We set the model on evaluation mode
+        self.model.eval()
+
+        # We return the predictions
         return self.model(x_cont, x_cat).float()
 
 
@@ -263,6 +269,8 @@ class RFTrainer(Trainer):
         self.model.fit(train_set.X_cont, train_set.y)
 
     def predict(self, x_cont, x_cat=None):
+
+        # We return the predictions
         return self.model.predict(x_cont)
 
 

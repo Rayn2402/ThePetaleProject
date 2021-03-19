@@ -21,10 +21,12 @@ class NNObjective:
         :param model_generator: Instance of the ModelGenerator class that will be responsible of generating the model
         :param datasets: Datasets representing all the train and test sets to be used in the cross validation
         :param hyper_params: Dictionary containing information of the hyper parameter we want to tune
-        :param k: Dumber of folds to use in the cross validation
+        :param k: Number of folds to use in the cross validation
         :param metric: Function that takes the output of the model and the target
                        and returns the metric we want to optimize
         :param seed: the starting point in generating random numbers
+        :param max_epochs: the maximum number of epochs to do in training
+
 
         :return: the value of the metric after performing a k-fold cross validation
                  on the model with a subset of the given hyper parameter
@@ -42,36 +44,36 @@ class NNObjective:
     def __call__(self, trial):
         hyper_params = self.hyper_params
 
-        # We sample a number of hidden layers
+        # We choose a number of hidden layers
         n_layers = trial.suggest_int(N_LAYERS,
                                      hyper_params[N_LAYERS][MIN],
                                      hyper_params[N_LAYERS][MAX])
 
-        # We sample a number of node in each hidden layer
+        # We choose a number of node in each hidden layer
         layers = [trial.suggest_int(f"{N_UNITS}{i}", hyper_params[N_UNITS][MIN],
                                     hyper_params[N_UNITS][MAX]) for i in range(n_layers)]
 
-        # We sample the dropout probability
+        # We choose the dropout probability
         p = trial.suggest_uniform(DROPOUT,
                                   hyper_params[DROPOUT][MIN],
                                   hyper_params[DROPOUT][MAX])
 
-        # We sample a value for the batch size used in the training
+        # We choose a value for the batch size used in the training
         batch_size = trial.suggest_int(BATCH_SIZE,
                                        hyper_params[BATCH_SIZE][MIN],
                                        hyper_params[BATCH_SIZE][MAX])
 
-        # We sample a value for the learning rate
+        # We choose a value for the learning rate
         lr = trial.suggest_uniform(LR,
                                    hyper_params[LR][MIN],
                                    hyper_params[LR][MAX])
 
-        # We sample a value for the weight decay used in the training
+        # We choose a value for the weight decay used in the training
         weight_decay = trial.suggest_uniform(WEIGHT_DECAY,
                                              hyper_params[WEIGHT_DECAY][MIN],
                                              hyper_params[WEIGHT_DECAY][MAX])
 
-        # We sample a type of activation function for the network
+        # We choose a type of activation function for the network
         activation = trial.suggest_categorical(ACTIVATION,
                                                hyper_params[ACTIVATION][VALUES])
 
@@ -81,8 +83,9 @@ class NNObjective:
         # we create the Trainer that will train our model
         trainer = NNTrainer(model=model, batch_size=batch_size, lr=lr, epochs=self.max_epochs,
                             weight_decay=weight_decay, metric=self.metric, trial=trial)
+
         # we perform a k fold cross validation to evaluate the model
-        score = trainer.cross_valid(datasets=self.datasets,metric=self.metric, k=self.k)
+        score = trainer.cross_valid(datasets=self.datasets, metric=self.metric, k=self.k)
 
         # we return the score
         return score
@@ -95,7 +98,7 @@ class RFObjective:
 
 
         :param model_generator: instance of the ModelGenerator class that will be responsible of generating the model
-        Datasets representing all the train and test sets to be used in the cross validation
+        :param datasets: Datasets representing all the train and test sets to be used in the cross validation
         :param hyper_params:dictionary containing information of the hyper parameter we want to tune
         :param k:number of folds to use in the cross validation
         :param metric: a function that takes the output of the model and the target and returns the metric we want
@@ -118,19 +121,19 @@ class RFObjective:
     def __call__(self, trial):
         hyper_params = self.hyper_params
 
-        # We optimize the number of estimators used un the training
+        # We choose the number of estimators used un the training
         n_estimators = trial.suggest_int(N_ESTIMATORS, hyper_params[N_ESTIMATORS][MIN],
                                          hyper_params[N_ESTIMATORS][MAX])
 
-        # We optimize the maximum depth of the trees
+        # We choose the maximum depth of the trees
         max_depth = trial.suggest_int(MAX_DEPTH, hyper_params[MAX_DEPTH][MIN], hyper_params[MAX_DEPTH][MAX])
 
-        # We sample a value for the learning rate
+        # We choose a value for the max features
         max_features = trial.suggest_uniform(MAX_FEATURES,
                                              hyper_params[MAX_FEATURES][MIN],
                                              hyper_params[MAX_FEATURES][MAX])
 
-        # We sample a value for the learning rate
+        # We choose a value for the max samples
         max_samples = trial.suggest_uniform(MAX_SAMPLES,
                                             hyper_params[MAX_SAMPLES][MIN],
                                             hyper_params[MAX_SAMPLES][MAX])
@@ -185,6 +188,7 @@ class Tuner:
 
         :return: the result of the study containing the best trial and the best values of each hyper parameter
         """
+
         # We perform the optimization
         self.study.optimize(
             self.Objective(model_generator=self.model_generator, datasets=self.datasets, hyper_params=self.hyper_params,
@@ -194,7 +198,7 @@ class Tuner:
 
     def get_hyper_params_importance(self):
         """
-        Method to plot the hyper parameters graph and save it in a ht;l file
+        Method to plot the hyper parameters graph and save it in a html file
         """
 
         # We generate the hyper parameters importance graph with optuna
@@ -216,8 +220,8 @@ class NNTuner(Tuner):
         self.max_epochs = max_epochs
 
     def get_best_hyperparams(self):
-        # we extract the best trial
 
+        # we extract the best trial
         best_trial = self.study.best_trial
 
         # We extract the best architecture of the model

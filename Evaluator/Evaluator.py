@@ -6,6 +6,8 @@ File that contains the class related to the evaluation of the models
 """
 from Training.Training import NNTrainer, RFTrainer
 from Tuner.Tuner import NNTuner, RFTuner
+from Hyperparameters.constants import *
+
 
 
 class Evaluator:
@@ -130,8 +132,8 @@ class NNEvaluator(Evaluator):
         :param best_hyper_params: Python list that contains a set of hyper parameter used in the creation of the neural
          network model
         """
-        return self.model_generator(layers=best_hyper_params["layers"], dropout=best_hyper_params["dropout"],
-                                    activation=best_hyper_params["activation"])
+        return self.model_generator(layers=best_hyper_params[LAYERS], dropout=best_hyper_params[DROPOUT],
+                                    activation=best_hyper_params[ACTIVATION])
 
     def create_trainer(self, model, best_hyper_params):
         """
@@ -141,8 +143,8 @@ class NNEvaluator(Evaluator):
         :param best_hyper_params: Python list that contains a set of hyper parameter used in the training of the model
 
         """
-        return NNTrainer(model, epochs=self.max_epochs, batch_size=best_hyper_params["batch_size"],
-                         lr=best_hyper_params["lr"], weight_decay=best_hyper_params["weight_decay"],
+        return NNTrainer(model, epochs=self.max_epochs, batch_size=best_hyper_params[BATCH_SIZE],
+                         lr=best_hyper_params[LR], weight_decay=best_hyper_params[WEIGHT_DECAY],
                          seed=self.seed, metric=self.metric)
 
 
@@ -185,7 +187,9 @@ class RFEvaluator(Evaluator):
          Forest model
 
         """
-        return self.model_generator(n_estimators=best_hyper_params["n_estimators"])
+        return self.model_generator(n_estimators=best_hyper_params[N_ESTIMATORS],
+                                    max_features=best_hyper_params[MAX_FEATURES],
+                                    max_depth=best_hyper_params[MAX_DEPTH], max_samples=best_hyper_params[MAX_SAMPLES])
 
     def create_trainer(self, model, best_hyper_params):
         """

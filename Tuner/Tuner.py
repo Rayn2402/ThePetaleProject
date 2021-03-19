@@ -259,5 +259,9 @@ class RFTuner(Tuner):
 
         # we return the best hyperparameters
         return {
-            "n_estimators": best_trial.params["n_estimators"],
+            N_ESTIMATORS: best_trial.params[N_ESTIMATORS],
+            MAX_DEPTH: best_trial.params[MAX_DEPTH],
+            MAX_SAMPLES: best_trial.params[MAX_SAMPLES],
+            MAX_FEATURES: best_trial.params[MAX_FEATURES],
+
         }

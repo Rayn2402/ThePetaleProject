@@ -50,11 +50,8 @@ class Trainer:
         for i in range(k):
 
             # we the get the train and the validation datasets of the step we are currently in
-            if len(datasets[i]) > 2:
-                train_set, valid_set, test_set = datasets[i]["train"], datasets[i]["valid"], datasets[i]["test"]
-            else:
-                train_set, test_set = datasets[i]["train"], datasets[i]["test"]
-                valid_set = None
+            train_set, test_set, valid_set = self.get_datasets(datasets[i])
+
 
             # we train our model with this train and validation dataset
             self.fit(train_set=train_set, val_set=valid_set)
@@ -95,6 +92,17 @@ class Trainer:
             x_cat = None
 
         return x_cont, x_cat, y
+
+
+    def get_datasets(self, dataset_dictionary):
+        """
+        Method to extract the train, test, and valid sets
+
+        :param dataset_dictionary: Python dictionary that contains the three sets
+
+        :return: Python tuple containing the train, test, and valid sets
+        """
+        return dataset_dictionary["train"], dataset_dictionary["test"], dataset_dictionary["valid"]
 
 
 class NNTrainer(Trainer):

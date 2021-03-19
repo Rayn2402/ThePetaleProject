@@ -88,12 +88,31 @@ class Evaluator:
 
         return sum(scores) / len(scores)
 
+    def extract_data(self, dataset):
+        """
+        Method to extract the continuous data, categorical data, and the target
+
+        :param dataset: PetaleDataset or PetaleDataframe containing the data
+
+        :return: Python tuple containing the continuous data, categorical data, and the target
+        """
+        x_cont = dataset.X_cont
+        target = dataset.y
+        if dataset.X_cat is not None:
+            x_cat = dataset.X_cat
+        else:
+            x_cat = None
+
+        return x_cont, x_cat, target
+
+
     def get_datasets(self, dataset_dictionary):
         """
         Method to extract the train, test, and valid sets
 
         :param dataset_dictionary: Python dictionary that contains the three sets
 
+        :return: Python tuple containing the train, test, and valid sets
         """
         return dataset_dictionary["train"], dataset_dictionary["test"], dataset_dictionary["valid"]
 

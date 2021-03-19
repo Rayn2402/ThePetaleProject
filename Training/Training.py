@@ -14,29 +14,32 @@ from optuna import TrialPruned
 
 
 class Trainer:
-    def __init__(self, model, device="cpu"):
+    def __init__(self, model, metric, device="cpu"):
         """
         Creates a Trainer that will train and evaluate a given model.
 
         :param model: the model to be trained
         :param device: the device where we want to run our training, this parameter can take two values : "cpu" or "gpu"
-
+        :param metric: a function that takes the output of the model and the target and returns  the metric we want
+            to optimize
         """
 
-        # we save the model in the attribute model
+        # We save the model in the attribute model
         self.model = model
 
-        # we save the attribute device
+        # We save the attribute device
         self.device = device
 
-    def cross_valid(self, datasets, metric, k=5):
+        # We save the metric
+        self.metric = metric
+
+    def cross_valid(self, datasets, k=5):
         """
             Method that will perform a k-fold cross validation on the model
 
             :param datasets: Petale Datasets representing all the train and test sets to be used in the cross validation
             :param k: number of folds
-            :param metric: a function that takes the output of the model and the target and returns  the metric we want
-            to optimize
+
 
 
             :return: returns the score after performing the k-fold cross validation
@@ -65,7 +68,7 @@ class Trainer:
                 x_cat = None
 
             # we calculate the score with the help of the metric function
-            intermediate_score = metric(self.predict(x_cont=x_cont, x_cat=x_cat), target)
+            intermediate_score = self.metric(self.predict(x_cont=x_cont, x_cat=x_cat), target)
 
             # we save the score
             score.append(intermediate_score)
@@ -95,7 +98,7 @@ class Trainer:
 
 
 class NNTrainer(Trainer):
-    def __init__(self, model, lr, batch_size, weight_decay, metric, epochs, early_stopping_activated=True,
+    def __init__(self, model, lr, batch_size, weight_decay, epochs, early_stopping_activated=True,
                  patience=5, seed=None, device="cpu", trial=None):
         """
         Creates a  Trainer that will train and evaluate a Neural Network model.
@@ -127,7 +130,6 @@ class NNTrainer(Trainer):
         self.patience = patience
         self.seed = seed
         self.trial = trial
-        self.metric = metric
 
     def fit(self, train_set, val_set):
         """

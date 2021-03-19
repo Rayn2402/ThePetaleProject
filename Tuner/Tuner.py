@@ -85,7 +85,7 @@ class NNObjective:
                             weight_decay=weight_decay, metric=self.metric, trial=trial)
 
         # we perform a k fold cross validation to evaluate the model
-        score = trainer.cross_valid(datasets=self.datasets, metric=self.metric, k=self.k)
+        score = trainer.cross_valid(datasets=self.datasets, k=self.k)
 
         # we return the score
         return score
@@ -143,10 +143,10 @@ class RFObjective:
                                      max_samples=max_samples)
 
         # we create the Trainer that will train our model
-        trainer = RFTrainer(model=model)
+        trainer = RFTrainer(model=model, metric=self.metric)
 
         # we perform a k fold cross validation to evaluate the model
-        score = trainer.cross_valid(datasets=self.datasets, metric=self.metric, k=self.k, trial=trial)
+        score = trainer.cross_valid(datasets=self.datasets, k=self.k, trial=trial)
 
         # we return the score
         return score

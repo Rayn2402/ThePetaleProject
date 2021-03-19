@@ -88,6 +88,14 @@ class Evaluator:
 
         return sum(scores) / len(scores)
 
+    def get_datasets(self, dataset_dictionary):
+        """
+        Method to extract the train, test, and valid sets
+
+        :param dataset_dictionary: Python dictionary that contains the three sets
+
+        """
+        return dataset_dictionary["train"], dataset_dictionary["test"], dataset_dictionary["valid"]
 
 class NNEvaluator(Evaluator):
     def __init__(self, model_generator, sampler, hyper_params, n_trials, metric, k, l=1, max_epochs=100,
@@ -103,14 +111,6 @@ class NNEvaluator(Evaluator):
 
         self.max_epochs = max_epochs
 
-    def get_datasets(self, dataset_dictionary):
-        """
-        Method to extract the train, test, and valid sets
-
-        :param dataset_dictionary: Python dictionary that contains the three sets
-
-        """
-        return dataset_dictionary["train"], dataset_dictionary["test"], dataset_dictionary["valid"]
 
     def create_tuner(self, datasets):
         """
@@ -159,14 +159,6 @@ class RFEvaluator(Evaluator):
         super().__init__(model_generator=model_generator, sampler=sampler, hyper_params=hyper_params, n_trials=n_trials,
                          metric=metric, k=k, l=l, direction=direction, seed=seed)
 
-    def get_datasets(self, dataset_dictionary):
-        """
-        Method to extract the train, test, and valid sets
-
-        :param dataset_dictionary: Python dictionary that contains the three sets
-
-        """
-        return dataset_dictionary["train"], dataset_dictionary["test"], None
 
     def create_tuner(self, datasets):
         """

@@ -44,7 +44,7 @@ class NNModelGenerator:
 
 
 class RFCModelGenerator:
-    def __call__(self, n_estimators, max_features="auto", max_depth=None, max_samples=None):
+    def __call__(self, n_estimators=100, max_features="auto", max_depth=None, max_samples=None):
         """
         Class that will be responsible of generating the Random Forest classifier
 

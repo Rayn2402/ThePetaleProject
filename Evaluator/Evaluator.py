@@ -75,15 +75,10 @@ class Evaluator:
             # We train our model with the best hyper parameters
             trainer.fit(train_set=train_set, val_set=valid_set)
 
-            # We extract x_cont, x_cat and target from the validset
-            x_cont = test_set.X_cont
-            target = test_set.y
-            if test_set.X_cat is not None:
-                x_cat = test_set.X_cat
-            else:
-                x_cat = None
+            # We extract x_cont, x_cat and target from the test set
+            x_cont, x_cat, target = self.extract_data(test_set)
 
-            # we calculate the score with the help of the metric function
+            # We calculate the score with the help of the metric function
             scores.append(self.metric(trainer.predict(x_cont, x_cat), target))
 
         return sum(scores) / len(scores)

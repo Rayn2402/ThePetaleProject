@@ -56,7 +56,7 @@ class Trainer:
             # we train our model with the train and valid sets
             self.fit(train_set=train_set, val_set=valid_set)
 
-            # We extract x_cont, x_cat and target from the subset valid_fold
+            # We extract x_cont, x_cat and target from the test set
             x_cont = test_set.X_cont
             target = test_set.y
             if test_set.X_cat is not None:
@@ -93,7 +93,8 @@ class Trainer:
 
         return x_cont, x_cat, y
 
-    def get_datasets(self, dataset_dictionary):
+    @staticmethod
+    def get_datasets(dataset_dictionary):
         """
         Method to extract the train, test, and valid sets
 

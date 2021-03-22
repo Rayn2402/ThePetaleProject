@@ -39,7 +39,7 @@ class Trainer:
 
             :param datasets: Petale Datasets representing all the train, test, and valid sets to be used in the cross
              validation
-            :param k: Number of folds
+            :param k: Number of folds#
 
 
 
@@ -57,12 +57,7 @@ class Trainer:
             self.fit(train_set=train_set, val_set=valid_set)
 
             # We extract x_cont, x_cat and target from the test set
-            x_cont = test_set.X_cont
-            target = test_set.y
-            if test_set.X_cat is not None:
-                x_cat = test_set.X_cat
-            else:
-                x_cat = None
+            x_cont, x_cat, target = self.extract_data(test_set)
 
             # We calculate the score with the help of the metric function
             intermediate_score = self.metric(self.predict(x_cont=x_cont, x_cat=x_cat), target)
@@ -92,6 +87,24 @@ class Trainer:
             x_cat = None
 
         return x_cont, x_cat, y
+
+    @staticmethod
+    def extract_data(dataset):
+        """
+        Method to extract the continuous data, categorical data, and the target
+
+        :param dataset: PetaleDataset or PetaleDataframe containing the data
+
+        :return: Python tuple containing the continuous data, categorical data, and the target
+        """
+        x_cont = dataset.X_cont
+        target = dataset.y
+        if dataset.X_cat is not None:
+            x_cat = dataset.X_cat
+        else:
+            x_cat = None
+
+        return x_cont, x_cat, target
 
     @staticmethod
     def get_datasets(dataset_dictionary):

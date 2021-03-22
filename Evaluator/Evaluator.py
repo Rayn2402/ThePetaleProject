@@ -46,18 +46,18 @@ class Evaluator:
         """
         Method to call when we want to perform a nested cross validation to evaluate a model
 
-        :return: the scores of the model after performing a nested cross validation
+        :return: List containing the scores of the model after performing a nested cross validation
         """
 
         # We get all the train, test, inner train, qnd inner test sets with our sampler
         all_datasets = self.sampler(k=self.k, l=self.l)
 
-        # We init the list that will contains the scores
+        # We init the list that will contain the scores
         scores = []
 
         for i in range(self.k):
 
-            # We the get the train and the test datasets
+            # We get the train, test and valid sets
             train_set, test_set, valid_set = self.get_datasets(all_datasets[i])
 
             # We create the tuner to perform the hyperparameters optimization

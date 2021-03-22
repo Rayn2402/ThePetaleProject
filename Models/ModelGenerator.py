@@ -31,7 +31,7 @@ class NNModelGenerator:
         :param dropout: Probability of dropout (0 < p < 1)
         :param activation: Activation function to be used by the model
 
-        :return: a model
+        :return: Neural network model
         """
         if self.output_size is None:
             # the case when the model doesn't need the the parameter output size like the model NNRegressor
@@ -48,9 +48,9 @@ class RFCModelGenerator:
         """
         Class that will be responsible of generating the Random Forest classifier
 
-        :param n_estimators: The number of trees in the forest
+        :param n_estimators: Number of trees in the forest
         :param max_features: Fraction of features to consider when looking for the best split
-        :param max_depth: The maximum depth of the tree
+        :param max_depth: Maximum depth of the tree
         :param max_samples: Fraction of samples to draw from the dataset to train each tree
 
         """

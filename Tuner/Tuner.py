@@ -80,14 +80,14 @@ class NNObjective:
         # We define the model with the suggested set of hyper parameters
         model = self.model_generator(layers=layers, dropout=p, activation=activation)
 
-        # we create the Trainer that will train our model
+        # We create the Trainer that will train our model
         trainer = NNTrainer(model=model, batch_size=batch_size, lr=lr, epochs=self.max_epochs,
                             weight_decay=weight_decay, metric=self.metric, trial=trial)
 
-        # we perform a k fold cross validation to evaluate the model
+        # We perform a k fold cross validation to evaluate the model
         score = trainer.cross_valid(datasets=self.datasets, k=self.k)
 
-        # we return the score
+        # We return the score
         return score
 
 
@@ -99,17 +99,17 @@ class RFObjective:
 
         :param model_generator: instance of the ModelGenerator class that will be responsible of generating the model
         :param datasets: Datasets representing all the train and test sets to be used in the cross validation
-        :param hyper_params:dictionary containing information of the hyper parameter we want to tune
-        :param k:number of folds to use in the cross validation
-        :param metric: a function that takes the output of the model and the target and returns the metric we want
+        :param hyper_params: Dictionary containing information of the hyper parameter we want to tune
+        :param k: Number of folds to use in the cross validation
+        :param metric: Function that takes the output of the model and the target and returns the metric we want
         to optimize
-        :param seed: the starting point in generating random numbers
+        :param seed: The starting point in generating random numbers
 
-        :return: the value of the metric after performing a k fold cross validation on the model with a subset of the
+        :return: Value of the metric after performing a k fold cross validation on the model with a subset of the
         given hyper parameter
         """
 
-        # we save the inputs that will be used when calling the class
+        # We save the inputs that will be used when calling the class
         self.model_generator = model_generator
         self.datasets = datasets
         self.hyper_params = hyper_params
@@ -128,12 +128,12 @@ class RFObjective:
         # We choose the maximum depth of the trees
         max_depth = trial.suggest_int(MAX_DEPTH, hyper_params[MAX_DEPTH][MIN], hyper_params[MAX_DEPTH][MAX])
 
-        # We choose a value for the max features
+        # We choose a value for the max features to consider in each split
         max_features = trial.suggest_uniform(MAX_FEATURES,
                                              hyper_params[MAX_FEATURES][MIN],
                                              hyper_params[MAX_FEATURES][MAX])
 
-        # We choose a value for the max samples
+        # We choose a value for the max samples to train for each tree
         max_samples = trial.suggest_uniform(MAX_SAMPLES,
                                             hyper_params[MAX_SAMPLES][MIN],
                                             hyper_params[MAX_SAMPLES][MAX])
@@ -142,13 +142,13 @@ class RFObjective:
         model = self.model_generator(n_estimators=n_estimators, max_features=max_features, max_depth=max_depth,
                                      max_samples=max_samples)
 
-        # we create the Trainer that will train our model
+        # We create the trainer that will train our model
         trainer = RFTrainer(model=model, metric=self.metric)
 
-        # we perform a k fold cross validation to evaluate the model
+        # We perform a cross validation to evaluate the model
         score = trainer.cross_valid(datasets=self.datasets, k=self.k, trial=trial)
 
-        # we return the score
+        # We return the score
         return score
 
 
@@ -157,23 +157,24 @@ class Tuner:
         """
                 Class that will be responsible of the hyperparameters tuning
 
-                :param model_generator: instance of the ModelGenerator class that will be responsible of generating the model
-                :param datasets: Petale Datasets representing all the train and test sets to be used in the cross validation
-                :param hyper_params: dictionary containing information of the hyper parameter we want to tune : min, max,
-                step, values
-                :param k: number of folds to use in the cross validation
-                :param metric: a function that takes the output of the model and the target and returns
+                :param model_generator: Instance of the ModelGenerator class that will be responsible of generating
+                 the model
+                :param datasets: Petale Dataset representing all the train and test sets to be used in the cross
+                 validation
+                :param hyper_params: Dictionary containing information of the hyper parameter we want to tune
+                :param k: Number of folds to use in the cross validation
+                :param metric: Function that takes the output of the model and the target and returns
                 the metric we want to optimize
-                :param n_trials: number of trials we want to perform
-                :param direction: direction to specify if we want to maximize or minimize the value of the metric used
-                :param seed: the starting point in generating random numbers
+                :param n_trials: Number of trials we want to perform
+                :param direction: String to specify if we want to maximize or minimize the value of the metric used
+                :param seed: The starting point in generating random numbers
 
                 """
-        # we create the study
+        # We create the study
         self.study = create_study(direction=direction, sampler=TPESampler(n_startup_trials=10, n_ei_candidates=20),
                                   pruner=SuccessiveHalvingPruner(min_resource=5, reduction_factor=4))
 
-        # we save the inputs that will be used when tuning the hyper parameters
+        # We save the inputs that will be used when tuning the hyper parameters
         self.n_trials = n_trials
         self.model_generator = model_generator
         self.datasets = datasets
@@ -220,6 +221,9 @@ class NNTuner(Tuner):
         self.max_epochs = max_epochs
 
     def get_best_hyperparams(self):
+        """
+        Method that returns the values of each hyper parameter
+        """
 
         # we extract the best trial
         best_trial = self.study.best_trial
@@ -254,10 +258,14 @@ class RFTuner(Tuner):
         self.max_epochs = None
 
     def get_best_hyperparams(self):
-        # we extract the best trial
+        """
+            Method that returns the values of each hyper parameter
+        """
+
+        # We extract the best trial
         best_trial = self.study.best_trial
 
-        # we return the best hyperparameters
+        # We return the best hyperparameters
         return {
             N_ESTIMATORS: best_trial.params[N_ESTIMATORS],
             MAX_DEPTH: best_trial.params[MAX_DEPTH],

@@ -35,28 +35,28 @@ class Trainer:
 
     def cross_valid(self, datasets, k=5):
         """
-            Method that will perform a k-fold cross validation on the model
+            Method that will perform a cross validation on the model
 
-            :param datasets: Petale Datasets representing all the train and test sets to be used in the cross validation
-            :param k: number of folds
+            :param datasets: Petale Datasets representing all the train, test, and valid sets to be used in the cross
+             validation
+            :param k: Number of folds
 
 
 
-            :return: returns the score after performing the k-fold cross validation
+            :return: The score after performing the cross validation
         """
 
-        # we initialize an empty list to store the scores
+        # We initialize an empty list to store the scores
         score = []
         for i in range(k):
 
-            # we the get the train and the validation datasets of the step we are currently in
+            # We the get the train, test, valid sets of the step we are currently in
             train_set, test_set, valid_set = self.get_datasets(datasets[i])
 
-
-            # we train our model with this train and validation dataset
+            # we train our model with the train and valid sets
             self.fit(train_set=train_set, val_set=valid_set)
 
-            # we extract x_cont, x_cat and target from the subset valid_fold
+            # We extract x_cont, x_cat and target from the subset valid_fold
             x_cont = test_set.X_cont
             target = test_set.y
             if test_set.X_cat is not None:
@@ -64,13 +64,13 @@ class Trainer:
             else:
                 x_cat = None
 
-            # we calculate the score with the help of the metric function
+            # We calculate the score with the help of the metric function
             intermediate_score = self.metric(self.predict(x_cont=x_cont, x_cat=x_cat), target)
 
-            # we save the score
+            # We save the score
             score.append(intermediate_score)
 
-        # we return the final score of the cross validation
+        # We return the final score of the cross validation
         return sum(score) / len(score)
 
     @staticmethod
@@ -93,7 +93,6 @@ class Trainer:
 
         return x_cont, x_cat, y
 
-
     def get_datasets(self, dataset_dictionary):
         """
         Method to extract the train, test, and valid sets
@@ -111,20 +110,20 @@ class NNTrainer(Trainer):
         """
         Creates a  Trainer that will train and evaluate a Neural Network model.
 
-        :param batch_size: int that represent the size of the batches to be used in the train data loader
+        :param batch_size: Int that represents the size of the batches to be used in the train data loader
         :param lr: the learning rate
-        :param weight_decay: the L2 penalty
-        :param epochs: number times that the learning algorithm will work through the entire training dataset
-        :param early_stopping_activated: boolean indicating if we want to early stop the training when the validation
+        :param weight_decay: The L2 penalty
+        :param epochs: Number of epochs to train the training dataset
+        :param early_stopping_activated: Bool indicating if we want to early stop the training when the validation
         loss stops decreasing
-        :param patience: int representing how long to wait after last time validation loss improved.
-        :param seed: the starting point in generating random numbers
-        :param device: the device where we want to run our training, this parameter can take two values : "cpu" or "gpu"
-
-        :param model: the model to be trained
+        :param patience: Int representing how long to wait after last time validation loss improved.
+        :param seed: The starting point in generating random numbers
+        :param device: The device where we want to run our training, this parameter can take two values : "cpu" or "gpu"
+        :param model: Neural network model to be trained
         """
 
         super().__init__(model, device=device)
+
         if not isinstance(self.model, Module):
             raise ValueError('model argument must inherit from torch.nn.Module')
 
@@ -147,23 +146,23 @@ class NNTrainer(Trainer):
         :param val_set: Petale Dataset containing the valid set
 
 
-        :return: two lists containing the training losses and the validation losses
+        :return: Two python lists containing the training losses and the validation losses
         """
 
         if self.seed is not None:
             manual_seed(self.seed)
 
-        # The maximum value of the batch size is the size of the trainset
+        # The maximum value of the batch size is the size of the train set
         if len(train_set) < self.batch_size:
             self.batch_size = len(train_set)
 
-        # We create the the train data loader
+        # We create the train data loader
         if len(train_set) % self.batch_size == 1:
             train_loader = DataLoader(train_set, batch_size=self.batch_size, shuffle=True, drop_last=True)
         else:
             train_loader = DataLoader(train_set, batch_size=self.batch_size, shuffle=True)
 
-        # We create the the validation data loader
+        # We create the validation data loader
         val_loader = DataLoader(val_set, batch_size=len(val_set))
 
         # we create the optimizer
@@ -193,23 +192,23 @@ class NNTrainer(Trainer):
                 # and the correct predictions y
                 x_cont, x_cat, y = self.extract_batch(item, device)
 
-                # Clear the gradients of all optimized variables
+                # We clear the gradients of all optimized variables
                 optimizer.zero_grad()
 
-                # Forward pass: compute predicted outputs by passing inputs to the model
+                # We perform the forward pass: compute predicted outputs by passing inputs to the model
                 preds = self.model(x_cont=x_cont, x_cat=x_cat)
 
-                # Calculate the loss
+                # We calculate the loss
                 loss = self.criterion(preds, y)
                 epoch_loss += loss.item()
 
-                # Backward pass: compute gradient of the loss with respect to model parameters
+                # We perfrom the backward pass: compute gradient of the loss with respect to model parameters
                 loss.backward()
 
-                # Perform a single optimization step (parameter update)
+                # We perform a single optimization step (parameter update)
                 optimizer.step()
 
-            # Record training loss
+            # We record training loss
             training_loss.append(epoch_loss / len(train_loader))
 
             ######################
@@ -223,7 +222,7 @@ class NNTrainer(Trainer):
             # and the correct predictions y for the single batch
             x_cont, x_cat, y = self.extract_batch(next(iter(val_loader)), device)
 
-            # Forward pass: compute predicted outputs by passing inputs to the model
+            # We perfrom the forward pass: compute predicted outputs by passing inputs to the model
             preds = self.model(x_cont=x_cont, x_cat=x_cat)
 
             # We calculate the loss
@@ -235,6 +234,7 @@ class NNTrainer(Trainer):
             if self.metric is not None:
                 intermediate_score = self.metric(preds, y)
 
+            # Pruning logic
             if self.trial is not None:
                 # We report the score to optuna
                 self.trial.report(intermediate_score, step=epoch)
@@ -279,7 +279,6 @@ class RFTrainer(Trainer):
         self.model.fit(train_set.X_cont, train_set.y)
 
     def predict(self, x_cont, x_cat=None):
-
         # We return the predictions
         return self.model.predict(x_cont)
 
@@ -289,7 +288,7 @@ def get_kfold_data(dataset, k, i):
         Function that will be used to extract the fold needed
 
         :param dataset: Petale Dataset containing the data
-        :param k: number of folds
+        :param k: Number of folds
         :param i: the index of the fold that will  represent the validation set
 
         :return: returns two subset of the dataset, one for the training set and one for the validation set
@@ -298,20 +297,20 @@ def get_kfold_data(dataset, k, i):
     assert k > 1
     assert i < k
 
-    # we get the size of one fold
+    # We get the size of one fold
     fold_size = dataset.__len__() // k
 
-    # we initialize a list that will contain the all the indexes of the the items that will be in the training set
+    # We initialize a list that will contain the all the indexes of the the items that will be in the training set
     train_idx = []
     for j in range(k):
 
-        # we get all the indexes of the items of the current fold
+        # We get all the indexes of the items of the current fold
         idx = range(fold_size * j, fold_size * (j + 1))
         if i == j:
-            # we save the indexes of the items of the validation set
+            # We save the indexes of the items of the validation set
             valid_idx = idx
         else:
-            # we save the indexes of the items of the training set
+            # We save the indexes of the items of the training set
             train_idx += idx
-    # we return two subsets of the dataset, one representing the training set and one representing the validation set
+    # We return two subsets of the dataset, one representing the training set and one representing the validation set
     return Subset(dataset, train_idx), Subset(dataset, list(valid_idx))

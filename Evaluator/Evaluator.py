@@ -9,7 +9,6 @@ from Tuner.Tuner import NNTuner, RFTuner
 from Hyperparameters.constants import *
 
 
-
 class Evaluator:
     def __init__(self, model_generator, sampler, hyper_params, n_trials, metric, k, l=1,
                  direction="minimize", seed=None):
@@ -56,7 +55,6 @@ class Evaluator:
         scores = []
 
         for i in range(self.k):
-
             # We get the train, test and valid sets
             train_set, test_set, valid_set = self.get_datasets(all_datasets[i])
 
@@ -83,7 +81,8 @@ class Evaluator:
 
         return sum(scores) / len(scores)
 
-    def extract_data(self, dataset):
+    @staticmethod
+    def extract_data(dataset):
         """
         Method to extract the continuous data, categorical data, and the target
 
@@ -100,8 +99,8 @@ class Evaluator:
 
         return x_cont, x_cat, target
 
-
-    def get_datasets(self, dataset_dictionary):
+    @staticmethod
+    def get_datasets(dataset_dictionary):
         """
         Method to extract the train, test, and valid sets
 
@@ -110,6 +109,7 @@ class Evaluator:
         :return: Python tuple containing the train, test, and valid sets
         """
         return dataset_dictionary["train"], dataset_dictionary["test"], dataset_dictionary["valid"]
+
 
 class NNEvaluator(Evaluator):
     def __init__(self, model_generator, sampler, hyper_params, n_trials, metric, k, l=1, max_epochs=100,
@@ -124,7 +124,6 @@ class NNEvaluator(Evaluator):
                          metric=metric, k=k, l=l, direction=direction, seed=seed)
 
         self.max_epochs = max_epochs
-
 
     def create_tuner(self, datasets):
         """
@@ -173,7 +172,6 @@ class RFEvaluator(Evaluator):
         super().__init__(model_generator=model_generator, sampler=sampler, hyper_params=hyper_params, n_trials=n_trials,
                          metric=metric, k=k, l=l, direction=direction, seed=seed)
 
-
     def create_tuner(self, datasets):
         """
         Method to create the Tuner object that will be used in the hyper parameters tuning
@@ -197,7 +195,8 @@ class RFEvaluator(Evaluator):
                                     max_features=best_hyper_params[MAX_FEATURES],
                                     max_depth=best_hyper_params[MAX_DEPTH], max_samples=best_hyper_params[MAX_SAMPLES])
 
-    def create_trainer(self, model, best_hyper_params):
+    @staticmethod
+    def create_trainer(model, best_hyper_params):
         """
         Method to create a trainer object that will be used to train of our model
 

@@ -7,10 +7,13 @@ Files that contains the logic related to hyper parameters tuning
 from optuna import create_study
 from optuna.samplers import TPESampler
 from optuna.pruners import SuccessiveHalvingPruner
-from optuna.visualization import plot_param_importances
+from optuna.visualization import plot_param_importances, plot_intermediate_values
 
 from Training.Training import NNTrainer, RFTrainer
 from Hyperparameters.constants import *
+
+import os
+from pathlib import Path
 
 
 class NNObjective:
@@ -153,10 +156,12 @@ class RFObjective:
 
 
 class Tuner:
-    def __init__(self, model_generator, datasets, hyper_params, k, n_trials, metric, direction="minimize", seed=None):
+    def __init__(self, study_name, model_generator, datasets, hyper_params, k, n_trials, metric, direction="minimize",
+                 seed=None, plot_feature_importance=False, plot_intermediate_values=False):
         """
                 Class that will be responsible of the hyperparameters tuning
 
+                :param study_name: String that represents the name of the study
                 :param model_generator: Instance of the ModelGenerator class that will be responsible of generating
                  the model
                 :param datasets: Petale Dataset representing all the train and test sets to be used in the cross
@@ -168,10 +173,13 @@ class Tuner:
                 :param n_trials: Number of trials we want to perform
                 :param direction: String to specify if we want to maximize or minimize the value of the metric used
                 :param seed: The starting point in generating random numbers
+                :param plot_feature_importance: Bool to tell if we want to plot the feature importance graph
+                :param plot_intermediate_values: Bool to tell if we want to plot the intermediate values graph
 
                 """
         # We create the study
-        self.study = create_study(direction=direction, sampler=TPESampler(n_startup_trials=10, n_ei_candidates=20),
+        self.study = create_study(study_name=study_name, direction=direction, sampler=TPESampler(n_startup_trials=10,
+                                                                                                 n_ei_candidates=20),
                                   pruner=SuccessiveHalvingPruner(min_resource=5, reduction_factor=4))
 
         # We save the inputs that will be used when tuning the hyper parameters
@@ -182,6 +190,8 @@ class Tuner:
         self.k = k
         self.metric = metric
         self.seed = seed
+        self.plot_feature_importance = plot_feature_importance
+        self.plot_intermediate_values = plot_intermediate_values
 
     def tune(self):
         """
@@ -195,9 +205,18 @@ class Tuner:
             self.Objective(model_generator=self.model_generator, datasets=self.datasets, hyper_params=self.hyper_params,
                            k=self.k, metric=self.metric, max_epochs=self.max_epochs, seed=self.seed), self.n_trials)
 
+        if self.plot_feature_importance:
+            # We plot the feature importance graph
+            self.plot_feature_importance_graph()
+
+        if self.plot_intermediate_values:
+            # We plot the Intermediate values graph
+            self.plot_intermediate_values_graph()
+
+        # We return the best hyper parameters
         return self.get_best_hyperparams()
 
-    def get_hyper_params_importance(self):
+    def plot_feature_importance_graph(self):
         """
         Method to plot the hyper parameters graph and save it in a html file
         """
@@ -205,18 +224,38 @@ class Tuner:
         # We generate the hyper parameters importance graph with optuna
         fig = plot_param_importances(self.study)
 
+        if not os.path.exists('./FeatureImportance/'):
+            Path('./FeatureImportance/').mkdir(parents=True, exist_ok=True)
+
         # We save the graph in a html file to have an interactive graph
-        fig.write_html(f"../FeatureImportance/{self.study.study_name}")
+        fig.write_html(f"./FeatureImportance/{self.study.study_name}.html")
+
+    def plot_intermediate_values_graph(self):
+        """
+        Method to plot the Intermediate values graph and save it in a html file
+        """
+
+        # We generate the intermediate values graph with optuna
+        fig = plot_intermediate_values(self.study)
+
+        if not os.path.exists('./IntermediateValues/'):
+            Path('./IntermediateValues/').mkdir(parents=True, exist_ok=True)
+        # We save the graph in a html file to have an interactive graph
+        fig.write_html(f"./IntermediateValues/{self.study.study_name}.html")
 
 
 class NNTuner(Tuner):
-    def __init__(self, model_generator, datasets, hyper_params, k, n_trials, metric,
-                 direction="minimize", seed=None, max_epochs=100):
+    def __init__(self, study_name, model_generator, datasets, hyper_params, k, n_trials, metric,
+                 direction="minimize", seed=None, max_epochs=100, plot_feature_importance=False,
+                 plot_intermediate_values=False):
         """
         Class that will be responsible of tuning Neural Networks
 
         """
-        super().__init__(model_generator, datasets, hyper_params, k, n_trials, metric, direction, seed)
+        super().__init__(study_name=study_name, model_generator=model_generator, datasets=datasets,
+                         hyper_params=hyper_params, k=k, n_trials=n_trials, metric=metric, direction=direction,
+                         seed=seed, plot_feature_importance=plot_feature_importance,
+                         plot_intermediate_values=plot_intermediate_values)
         self.Objective = NNObjective
         self.max_epochs = max_epochs
 
@@ -247,13 +286,16 @@ class NNTuner(Tuner):
 
 
 class RFTuner(Tuner):
-    def __init__(self, model_generator, datasets, hyper_params, k, n_trials, metric,
-                 direction="minimize", seed=None):
+    def __init__(self, study_name, model_generator, datasets, hyper_params, k, n_trials, metric,
+                 direction="minimize", seed=None, plot_feature_importance=False, plot_intermediate_values=False):
         """
         Class that will be responsible of tuning Random Forests
 
         """
-        super().__init__(model_generator, datasets, hyper_params, k, n_trials, metric, direction, seed)
+        super().__init__(study_name=study_name, model_generator=model_generator, datasets=datasets,
+                         hyper_params=hyper_params, k=k, n_trials=n_trials, metric=metric, direction=direction,
+                         seed=seed, plot_feature_importance=plot_feature_importance,
+                         plot_intermediate_values=plot_intermediate_values)
         self.Objective = RFObjective
         self.max_epochs = None
 

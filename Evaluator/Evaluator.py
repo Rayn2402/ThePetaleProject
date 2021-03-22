@@ -10,11 +10,12 @@ from Hyperparameters.constants import *
 
 
 class Evaluator:
-    def __init__(self, model_generator, sampler, hyper_params, n_trials, metric, k, l=1,
-                 direction="minimize", seed=None):
+    def __init__(self, evaluation_name, model_generator, sampler, hyper_params, n_trials, metric, k, l=1,
+                 direction="minimize", seed=None, plot_feature_importance=False, plot_intermediate_values=False):
         """
         Class that will be responsible of the evaluation of the model
 
+        :param evaluation_name: String that represents the name of the evaluation
         :param model_generator: instance of the ModelGenerator class that will be responsible of generating the model
         :param sampler: A sampler object that will be called to perform the stratified sampling to get all the train
         and test set for both the inner and the outer training
@@ -26,11 +27,16 @@ class Evaluator:
         :param n_trials: number of trials we want to perform
         :param direction: direction to specify if we want to maximize or minimize the value of the metric used
         :param seed: the starting point in generating random numbers
+        :param plot_feature_importance: Bool to tell if we want to plot the feature importance graph after tuning
+         the hyper parameters
+        :param plot_intermediate_values: Bool to tell if we want to plot the intermediate values graph after tuning
+         the hyper parameters
 
 
         """
 
         # we save the inputs that will be used when tuning the hyper parameters
+        self.evaluation_name = evaluation_name
         self.n_trials = n_trials
         self.model_generator = model_generator
         self.sampler = sampler
@@ -40,6 +46,8 @@ class Evaluator:
         self.metric = metric
         self.direction = direction
         self.seed = seed
+        self.plot_feature_importance = plot_feature_importance
+        self.plot_intermediate_values = plot_intermediate_values
 
     def nested_cross_valid(self):
         """
@@ -59,7 +67,7 @@ class Evaluator:
             train_set, test_set, valid_set = self.get_datasets(all_datasets[i])
 
             # We create the tuner to perform the hyperparameters optimization
-            tuner = self.create_tuner(datasets=all_datasets[i]["inner"])
+            tuner = self.create_tuner(datasets=all_datasets[i]["inner"], study_name=f"{self.evaluation_name}_{i}")
 
             # We perform the hyper parameters tuning to get the best hyper parameters
             best_hyper_params = tuner.tune()
@@ -113,8 +121,8 @@ class Evaluator:
 
 
 class NNEvaluator(Evaluator):
-    def __init__(self, model_generator, sampler, hyper_params, n_trials, metric, k, l=1, max_epochs=100,
-                 direction="minimize", seed=None):
+    def __init__(self, evaluation_name, model_generator, sampler, hyper_params, n_trials, metric, k, l=1, max_epochs=100,
+                 direction="minimize", seed=None, plot_feature_importance=False, plot_intermediate_values=False):
         """ sets
  that con
         Class that will be responsible of the evaluation of the Neural Networks models
@@ -123,22 +131,27 @@ class NNEvaluator(Evaluator):
 
         """
         super().__init__(model_generator=model_generator, sampler=sampler, hyper_params=hyper_params, n_trials=n_trials,
-                         metric=metric, k=k, l=l, direction=direction, seed=seed)
+                         metric=metric, k=k, l=l, direction=direction, seed=seed,
+                         plot_feature_importance=plot_feature_importance,
+                         plot_intermediate_values=plot_intermediate_values, evaluation_name=evaluation_name)
 
         self.max_epochs = max_epochs
 
-    def create_tuner(self, datasets):
+    def create_tuner(self, datasets, study_name):
         """
         Method to create the Tuner object that will be used in the hyper parameters tuning
 
         :param datasets: Python list that contains all the inner train, inner test, amd inner valid sets
+        :param study_name: String that represents the name of the study
 
         """
 
         return NNTuner(model_generator=self.model_generator, datasets=datasets,
                        hyper_params=self.hyper_params, n_trials=self.n_trials,
                        metric=self.metric, direction=self.direction, k=self.l, seed=self.seed,
-                       max_epochs=self.max_epochs)
+                       max_epochs=self.max_epochs, study_name=study_name,
+                       plot_intermediate_values=self.plot_intermediate_values,
+                       plot_feature_importance=self.plot_feature_importance)
 
     def create_model(self, best_hyper_params):
         """
@@ -164,26 +177,33 @@ class NNEvaluator(Evaluator):
 
 
 class RFEvaluator(Evaluator):
-    def __init__(self, model_generator, sampler, hyper_params, n_trials, metric, k, l=1, max_epochs=100,
-                 direction="minimize", seed=None):
+    def __init__(self, evaluation_name, model_generator, sampler, hyper_params, n_trials, metric, k, l=1, max_epochs=100,
+                 direction="minimize", seed=None, plot_feature_importance=False, plot_intermediate_values=False):
         """
         Class that will be responsible of the evaluation of the Random Forest models
 
         """
 
         super().__init__(model_generator=model_generator, sampler=sampler, hyper_params=hyper_params, n_trials=n_trials,
-                         metric=metric, k=k, l=l, direction=direction, seed=seed)
+                         metric=metric, k=k, l=l, direction=direction, seed=seed,
+                         plot_intermediate_values=self.plot_intermediate_values,
+                         plot_feature_importance=self.plot_feature_importance, evaluation_name=evaluation_name)
 
-    def create_tuner(self, datasets):
+    def create_tuner(self, datasets, study_name):
         """
         Method to create the Tuner object that will be used in the hyper parameters tuning
 
         :param datasets: Python list that contains all the inner train, inner test, amd inner valid sets
+        :param study_name: String that represents the name of the study
+
 
         """
-        return RFTuner(model_generator=self.model_generator, datasets=datasets,
+        return RFTuner(study_name=study_name, model_generator=self.model_generator, datasets=datasets,
                        hyper_params=self.hyper_params, n_trials=self.n_trials,
-                       metric=self.metric, direction=self.direction, k=self.l, seed=self.seed)
+                       metric=self.metric, direction=self.direction, k=self.l, seed=self.seed,
+                       plot_feature_importance=self.plot_feature_importance,
+                       plot_intermediate_values=self.plot_intermediate_values
+                       )
 
     def create_model(self, best_hyper_params):
         """

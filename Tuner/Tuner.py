@@ -146,7 +146,7 @@ class RFObjective:
         trainer = RFTrainer(model=model, metric=self.metric)
 
         # We perform a cross validation to evaluate the model
-        score = trainer.cross_valid(datasets=self.datasets, k=self.k, trial=trial)
+        score = trainer.cross_valid(datasets=self.datasets, k=self.k)
 
         # We return the score
         return score

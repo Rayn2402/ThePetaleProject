@@ -119,7 +119,7 @@ class Trainer:
 
 
 class NNTrainer(Trainer):
-    def __init__(self, model, lr, batch_size, weight_decay, epochs, early_stopping_activated=True,
+    def __init__(self, model, metric, lr, batch_size, weight_decay, epochs, early_stopping_activated=True,
                  patience=5, seed=None, device="cpu", trial=None):
         """
         Creates a  Trainer that will train and evaluate a Neural Network model.
@@ -130,13 +130,14 @@ class NNTrainer(Trainer):
         :param epochs: Number of epochs to train the training dataset
         :param early_stopping_activated: Bool indicating if we want to early stop the training when the validation
         loss stops decreasing
-        :param patience: Int representing how long to wait after last time validation loss improved.
+        :param patien
+        ce: Int representing how long to wait after last time validation loss improved.
         :param seed: The starting point in generating random numbers
         :param device: The device where we want to run our training, this parameter can take two values : "cpu" or "gpu"
         :param model: Neural network model to be trained
         """
 
-        super().__init__(model, device=device)
+        super().__init__(model=model, metric=metric, device=device)
 
         if not isinstance(self.model, Module):
             raise ValueError('model argument must inherit from torch.nn.Module')
@@ -275,13 +276,13 @@ class NNTrainer(Trainer):
 
 
 class RFTrainer(Trainer):
-    def __init__(self, model):
+    def __init__(self, model, metric):
         """
         Creates a  Trainer that will train and evaluate a Random Forest model.
 
         :param model: the model to be trained
         """
-        super().__init__(model)
+        super().__init__(model=model, metric=metric)
 
     def fit(self, train_set, val_set=None):
         """

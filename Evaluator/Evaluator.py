@@ -106,6 +106,7 @@ class Evaluator:
 
         :param dataset_dictionary: Python dictionary that contains the three sets
 
+
         :return: Python tuple containing the train, test, and valid sets
         """
         return dataset_dictionary["train"], dataset_dictionary["test"], dataset_dictionary["valid"]
@@ -114,7 +115,8 @@ class Evaluator:
 class NNEvaluator(Evaluator):
     def __init__(self, model_generator, sampler, hyper_params, n_trials, metric, k, l=1, max_epochs=100,
                  direction="minimize", seed=None):
-        """
+        """ sets
+ that con
         Class that will be responsible of the evaluation of the Neural Networks models
 
         :param max_epochs: the maximum number of epochs to do in training
@@ -195,8 +197,7 @@ class RFEvaluator(Evaluator):
                                     max_features=best_hyper_params[MAX_FEATURES],
                                     max_depth=best_hyper_params[MAX_DEPTH], max_samples=best_hyper_params[MAX_SAMPLES])
 
-    @staticmethod
-    def create_trainer(model, best_hyper_params):
+    def create_trainer(self, model, best_hyper_params):
         """
         Method to create a trainer object that will be used to train of our model
 
@@ -205,4 +206,4 @@ class RFEvaluator(Evaluator):
 
         """
 
-        return RFTrainer(model)
+        return RFTrainer(model=model, metric=self.metric)

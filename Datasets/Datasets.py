@@ -100,7 +100,6 @@ class PetaleDataset(Dataset):
 class PetaleDataframe:
 
     def __init__(self, df, cont_cols, target, cat_cols=None, mean=None, std=None, **kwargs):
-
         """
         Applies transformations to a dataframe and store the result as the dataset for the Random Forest model
 
@@ -121,18 +120,18 @@ class PetaleDataframe:
         self.N = self.IDs.shape[0]
 
         # We save and preprocess continuous features
-        self.X = df[cat_cols + cont_cols].copy()
-        self.X[cont_cols] = preprocess_continuous(self.X[cont_cols], mean, std)
+        self.X_cont = df[cat_cols + cont_cols].copy()
+        self.X_cont[cont_cols] = preprocess_continuous(self.X_cont[cont_cols], mean, std)
 
         # We save and preprocess categorical features
         if cat_cols is not None:
-            self.X[cat_cols] = preprocess_categoricals(self.X[cat_cols])
+            self.X_cont[cat_cols] = preprocess_categoricals(self.X_cont[cat_cols])
 
         # We save the targets
         self.y = ConT.to_float(df[target]).values.flatten()
 
+        # We set the categorical data to none
+        self.X_cat = None
+
     def __len__(self):
         return self.N
-
-
-

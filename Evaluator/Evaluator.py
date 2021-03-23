@@ -6,6 +6,8 @@ File that contains the class related to the evaluation of the models
 """
 from Training.Training import NNTrainer, RFTrainer
 from Tuner.Tuner import NNTuner, RFTuner
+from torch import manual_seed
+from numpy.random import seed as np_seed
 from Hyperparameters.constants import *
 
 
@@ -49,15 +51,23 @@ class Evaluator:
         self.plot_feature_importance = plot_feature_importance
         self.plot_intermediate_values = plot_intermediate_values
 
-    def nested_cross_valid(self):
+    def nested_cross_valid(self, **kwargs):
         """
         Method to call when we want to perform a nested cross validation to evaluate a model
 
         :return: List containing the scores of the model after performing a nested cross validation
         """
 
+        # we set the seed for the sampling
+        if self.seed is not None:
+            np_seed(self.seed)
+
         # We get all the train, test, inner train, qnd inner test sets with our sampler
         all_datasets = self.sampler(k=self.k, l=self.l)
+
+        # we set the seed for the complete nested cross valid operation
+        if self.seed is not None:
+            manual_seed(self.seed)
 
         # We init the list that will contain the scores
         scores = []
@@ -67,7 +77,7 @@ class Evaluator:
             train_set, test_set, valid_set = self.get_datasets(all_datasets[i])
 
             # We create the tuner to perform the hyperparameters optimization
-            tuner = self.create_tuner(datasets=all_datasets[i]["inner"], study_name=f"{self.evaluation_name}_{i}")
+            tuner = self.create_tuner(datasets=all_datasets[i]["inner"], study_name=f"{self.evaluation_name}_{i}", **kwargs)
 
             # We perform the hyper parameters tuning to get the best hyper parameters
             best_hyper_params = tuner.tune()
@@ -87,7 +97,7 @@ class Evaluator:
             # We calculate the score with the help of the metric function
             scores.append(self.metric(trainer.predict(x_cont, x_cat), target))
 
-        return sum(scores) / len(scores)
+        return scores
 
     @staticmethod
     def extract_data(dataset):
@@ -137,7 +147,7 @@ class NNEvaluator(Evaluator):
 
         self.max_epochs = max_epochs
 
-    def create_tuner(self, datasets, study_name):
+    def create_tuner(self, datasets, study_name, **kwargs):
         """
         Method to create the Tuner object that will be used in the hyper parameters tuning
 
@@ -148,10 +158,10 @@ class NNEvaluator(Evaluator):
 
         return NNTuner(model_generator=self.model_generator, datasets=datasets,
                        hyper_params=self.hyper_params, n_trials=self.n_trials,
-                       metric=self.metric, direction=self.direction, k=self.l, seed=self.seed,
+                       metric=self.metric, direction=self.direction, k=self.l,
                        max_epochs=self.max_epochs, study_name=study_name,
                        plot_intermediate_values=self.plot_intermediate_values,
-                       plot_feature_importance=self.plot_feature_importance)
+                       plot_feature_importance=self.plot_feature_importance, **kwargs)
 
     def create_model(self, best_hyper_params):
         """
@@ -173,7 +183,7 @@ class NNEvaluator(Evaluator):
         """
         return NNTrainer(model, epochs=self.max_epochs, batch_size=best_hyper_params[BATCH_SIZE],
                          lr=best_hyper_params[LR], weight_decay=best_hyper_params[WEIGHT_DECAY],
-                         seed=self.seed, metric=self.metric)
+                         metric=self.metric)
 
 
 class RFEvaluator(Evaluator):
@@ -189,7 +199,7 @@ class RFEvaluator(Evaluator):
                          plot_intermediate_values=self.plot_intermediate_values,
                          plot_feature_importance=self.plot_feature_importance, evaluation_name=evaluation_name)
 
-    def create_tuner(self, datasets, study_name):
+    def create_tuner(self, datasets, study_name, **kwargs):
         """
         Method to create the Tuner object that will be used in the hyper parameters tuning
 
@@ -200,9 +210,9 @@ class RFEvaluator(Evaluator):
         """
         return RFTuner(study_name=study_name, model_generator=self.model_generator, datasets=datasets,
                        hyper_params=self.hyper_params, n_trials=self.n_trials,
-                       metric=self.metric, direction=self.direction, k=self.l, seed=self.seed,
+                       metric=self.metric, direction=self.direction, k=self.l,
                        plot_feature_importance=self.plot_feature_importance,
-                       plot_intermediate_values=self.plot_intermediate_values
+                       plot_intermediate_values=self.plot_intermediate_values, **kwargs
                        )
 
     def create_model(self, best_hyper_params):

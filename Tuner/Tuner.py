@@ -17,7 +17,7 @@ from pathlib import Path
 
 
 class NNObjective:
-    def __init__(self, model_generator, datasets, hyper_params, k, metric, max_epochs, seed=None):
+    def __init__(self, model_generator, datasets, hyper_params, k, metric, max_epochs):
         """
         Class that will represent the objective function for tuning Neural networks
         
@@ -27,7 +27,6 @@ class NNObjective:
         :param k: Number of folds to use in the cross validation
         :param metric: Function that takes the output of the model and the target
                        and returns the metric we want to optimize
-        :param seed: the starting point in generating random numbers
         :param max_epochs: the maximum number of epochs to do in training
 
 
@@ -42,7 +41,6 @@ class NNObjective:
         self.k = k
         self.metric = metric
         self.max_epochs = max_epochs
-        self.seed = seed
 
     def __call__(self, trial):
         hyper_params = self.hyper_params
@@ -95,7 +93,7 @@ class NNObjective:
 
 
 class RFObjective:
-    def __init__(self, model_generator, datasets, hyper_params, k, metric, max_epochs, seed=None):
+    def __init__(self, model_generator, datasets, hyper_params, k, metric, max_epochs):
         """
         Class that will represent the objective function for tuning Random Forests
 
@@ -106,7 +104,6 @@ class RFObjective:
         :param k: Number of folds to use in the cross validation
         :param metric: Function that takes the output of the model and the target and returns the metric we want
         to optimize
-        :param seed: The starting point in generating random numbers
 
         :return: Value of the metric after performing a k fold cross validation on the model with a subset of the
         given hyper parameter
@@ -119,7 +116,6 @@ class RFObjective:
         self.k = k
         self.metric = metric
         self.max_epochs = max_epochs
-        self.seed = seed
 
     def __call__(self, trial):
         hyper_params = self.hyper_params
@@ -157,7 +153,7 @@ class RFObjective:
 
 class Tuner:
     def __init__(self, study_name, model_generator, datasets, hyper_params, k, n_trials, metric, direction="minimize",
-                 seed=None, plot_feature_importance=False, plot_intermediate_values=False):
+                plot_feature_importance=False, plot_intermediate_values=False, **kwargs):
         """
                 Class that will be responsible of the hyperparameters tuning
 
@@ -172,15 +168,21 @@ class Tuner:
                 the metric we want to optimize
                 :param n_trials: Number of trials we want to perform
                 :param direction: String to specify if we want to maximize or minimize the value of the metric used
-                :param seed: The starting point in generating random numbers
                 :param plot_feature_importance: Bool to tell if we want to plot the feature importance graph
                 :param plot_intermediate_values: Bool to tell if we want to plot the intermediate values graph
 
                 """
-        # We create the study
-        self.study = create_study(study_name=study_name, direction=direction, sampler=TPESampler(n_startup_trials=10,
-                                                                                                 n_ei_candidates=20),
-                                  pruner=SuccessiveHalvingPruner(min_resource=5, reduction_factor=4))
+        
+        # We look for keyword args
+        n_startup = kwargs.get('n_startup_trial', 10)
+        n_ei_candidates = kwargs.get('n_ei_candidates', 20)
+        min_resource = kwargs.get('min_resource', 10)
+        eta = kwargs.get('eta', 4)
+
+        # we create the study 
+        self.study = create_study(direction=direction, study_name=study_name,
+                                  sampler=TPESampler(n_startup_trials=n_startup, n_ei_candidates=n_ei_candidates),
+                                  pruner=SuccessiveHalvingPruner(min_resource=min_resource, reduction_factor=eta))
 
         # We save the inputs that will be used when tuning the hyper parameters
         self.n_trials = n_trials
@@ -189,7 +191,6 @@ class Tuner:
         self.hyper_params = hyper_params
         self.k = k
         self.metric = metric
-        self.seed = seed
         self.plot_feature_importance = plot_feature_importance
         self.plot_intermediate_values = plot_intermediate_values
 
@@ -203,7 +204,7 @@ class Tuner:
         # We perform the optimization
         self.study.optimize(
             self.Objective(model_generator=self.model_generator, datasets=self.datasets, hyper_params=self.hyper_params,
-                           k=self.k, metric=self.metric, max_epochs=self.max_epochs, seed=self.seed), self.n_trials)
+                           k=self.k, metric=self.metric, max_epochs=self.max_epochs), self.n_trials)
 
         if self.plot_feature_importance:
             # We plot the feature importance graph
@@ -246,15 +247,15 @@ class Tuner:
 
 class NNTuner(Tuner):
     def __init__(self, study_name, model_generator, datasets, hyper_params, k, n_trials, metric,
-                 direction="minimize", seed=None, max_epochs=100, plot_feature_importance=False,
-                 plot_intermediate_values=False):
+                 direction="minimize", max_epochs=100, plot_feature_importance=False,
+                 plot_intermediate_values=False, **kwargs ):
         """
         Class that will be responsible of tuning Neural Networks
 
         """
         super().__init__(study_name=study_name, model_generator=model_generator, datasets=datasets,
                          hyper_params=hyper_params, k=k, n_trials=n_trials, metric=metric, direction=direction,
-                         seed=seed, plot_feature_importance=plot_feature_importance,
+                         plot_feature_importance=plot_feature_importance,
                          plot_intermediate_values=plot_intermediate_values)
         self.Objective = NNObjective
         self.max_epochs = max_epochs
@@ -287,14 +288,14 @@ class NNTuner(Tuner):
 
 class RFTuner(Tuner):
     def __init__(self, study_name, model_generator, datasets, hyper_params, k, n_trials, metric,
-                 direction="minimize", seed=None, plot_feature_importance=False, plot_intermediate_values=False):
+                 direction="minimize", plot_feature_importance=False, plot_intermediate_values=False, **kwargs):
         """
         Class that will be responsible of tuning Random Forests
 
         """
         super().__init__(study_name=study_name, model_generator=model_generator, datasets=datasets,
                          hyper_params=hyper_params, k=k, n_trials=n_trials, metric=metric, direction=direction,
-                         seed=seed, plot_feature_importance=plot_feature_importance,
+                         plot_feature_importance=plot_feature_importance,
                          plot_intermediate_values=plot_intermediate_values)
         self.Objective = RFObjective
         self.max_epochs = None

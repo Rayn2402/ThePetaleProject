@@ -14,14 +14,14 @@ from optuna import TrialPruned
 
 
 class Trainer:
+
     def __init__(self, model):
         """
         Creates a Trainer that will train and evaluate a given model.
 
         :param model: the model to be trained
         """
-        if not isinstance(model, Module):
-            raise ValueError('model argument must inherit from torch.nn.Module')
+        assert isinstance(model, Module), 'model argument must inherit from torch.nn.Module'
 
         # We save the model in the attribute model
         self.model = model
@@ -51,6 +51,9 @@ class Trainer:
 
         :return: Two lists containing the training losses and the validation losses
         """
+
+        assert (trial is None and metric is None) or (trial is not None and metric is not None)
+
         # Seed is left to None if fit his called by NNEvaluator
         if seed is not None:
             manual_seed(seed)
@@ -116,7 +119,6 @@ class Trainer:
                 # Perform a single optimization step (parameter update)
                 optimizer.step()
 
-            # print(f"Epoch : {epoch} - loss {epoch_loss/len(train_loader)}")
             mean_epoch_loss = epoch_loss / len(train_loader)
             bar.set_description(f'Epoch {epoch}')
             bar.set_postfix_str(s=f"Loss : {mean_epoch_loss}")

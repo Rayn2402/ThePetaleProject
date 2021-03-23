@@ -6,6 +6,8 @@ File that contains the class related to the evaluation of the models
 """
 from Training.Training import Trainer
 from Tuner.NNTuner import NNTuner
+from torch import manual_seed
+from numpy.random import seed as np_seed
 from Hyperparameters.constants import *
 
 
@@ -44,15 +46,23 @@ class NNEvaluator:
         self.seed = seed
         self.study_name = study_name
 
-    def nested_cross_valid(self):
+    def nested_cross_valid(self, **kwargs):
         """
         Method to call when we want to perform a nested cross validation and evaluate the model
         
         :return: the scores of the model after performing a nested cross validation
         """
 
+        # we set the seed for the sampling
+        if self.seed is not None:
+            np_seed(self.seed)
+
         # we get all the train, test, inner train, and inner test sets with our sampler
         all_datasets = self.sampler(k=self.k, l=self.l)
+
+        # we set the seed for the complete nested cross valid operation
+        if self.seed is not None:
+            manual_seed(self.seed)
 
         # we init the list that will contains the scores
         scores = []
@@ -67,8 +77,8 @@ class NNEvaluator:
             # we create the tuner to perform the hyperparameters optimisation
             tuner = NNTuner(model_generator=self.model_generator, datasets=all_datasets[i]["inner"],
                             hyper_params=self.hyper_params, n_trials=self.n_trials,
-                            metric=self.metric, direction=self.direction, k=self.l, seed=self.seed,
-                            study_name=self.study_name+f"_{i}")
+                            metric=self.metric, direction=self.direction, k=self.l,
+                            study_name=self.study_name+f"_{i}", **kwargs)
 
             # we perform the hyper parameters tuning to get the best hyper parameters
             best_hyper_params = tuner.tune()
@@ -86,8 +96,7 @@ class NNEvaluator:
                         epochs=self.max_epochs,
                         batch_size=best_hyper_params[BATCH_SIZE],
                         lr=best_hyper_params[LR],
-                        weight_decay=best_hyper_params[WEIGHT_DECAY],
-                        seed=self.seed)
+                        weight_decay=best_hyper_params[WEIGHT_DECAY])
 
             # we extract x_cont, x_cat and target from the validset
             x_cont = test_set.X_cont

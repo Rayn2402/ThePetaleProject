@@ -7,7 +7,7 @@ Files that contains class related to the Training of the models
 from .EarlyStopping import EarlyStopping
 from torch.nn import Module
 from torch.utils.data import DataLoader, Subset
-from torch import optim, manual_seed, cuda
+from torch import optim, manual_seed, cuda, tensor
 from torch import device as device_
 from tqdm import tqdm
 from optuna import TrialPruned
@@ -18,11 +18,12 @@ class Trainer:
         """
         Creates a Trainer that will train and evaluate a given model.
 
-        :param model: the model to be trained
-        :param device: the device where we want to run our training, this parameter can take two values : "cpu" or "gpu"
-        :param metric: a function that takes the output of the model and the target and returns  the metric we want
-            to optimize
+        :param model: The model to be trained
+        :param device: The device where we want to run our training, this parameter can take two values : "cpu" or "gpu"
+        :param metric: Function that takes the output of the model and the target and returns  the metric we want
+                       to optimize
         """
+        assert isinstance(model, Module), 'model argument must inherit from torch.nn.Module'
 
         # We save the model in the attribute model
         self.model = model
@@ -33,18 +34,21 @@ class Trainer:
         # We save the metric
         self.metric = metric
 
-    def cross_valid(self, datasets, k=5):
+    def cross_valid(self, datasets, k=5, seed=None):
         """
             Method that will perform a cross validation on the model
 
             :param datasets: Petale Datasets representing all the train, test, and valid sets to be used in the cross
              validation
-            :param k: Number of folds#
-
-
+            :param k: Number of folds
+            :param seed: the starting point in generating random numbers
 
             :return: The score after performing the cross validation
         """
+
+        # Seed is left to None if fit is called by NNTuner
+        if seed is not None:
+            manual_seed(seed)
 
         # We initialize an empty list to store the scores
         score = []
@@ -119,8 +123,8 @@ class Trainer:
 
 
 class NNTrainer(Trainer):
-    def __init__(self, model, metric, lr, batch_size, weight_decay, epochs, early_stopping_activated=True,
-                 patience=5, seed=None, device="cpu", trial=None):
+    def __init__(self, model, metric, lr, batch_size, weight_decay, epochs, early_stopping_activated=False,
+                 patience=10, device="cpu", trial=None, seed=None):
         """
         Creates a  Trainer that will train and evaluate a Neural Network model.
 
@@ -132,15 +136,13 @@ class NNTrainer(Trainer):
         loss stops decreasing
         :param patien
         ce: Int representing how long to wait after last time validation loss improved.
-        :param seed: The starting point in generating random numbers
         :param device: The device where we want to run our training, this parameter can take two values : "cpu" or "gpu"
         :param model: Neural network model to be trained
+        :param seed: The starting point in generating random numbers
         """
-
         super().__init__(model=model, metric=metric, device=device)
 
-        if not isinstance(self.model, Module):
-            raise ValueError('model argument must inherit from torch.nn.Module')
+        assert isinstance(model, Module), 'model argument must inherit from torch.nn.Module'
 
         # we save the criterion of that model in the attribute criterion
         self.criterion = model.criterion_function
@@ -163,6 +165,8 @@ class NNTrainer(Trainer):
 
         :return: Two python lists containing the training losses and the validation losses
         """
+        assert (self.trial is None and self.metric is None) or (self.trial is not None and self.metric is not None)
+
 
         if self.seed is not None:
             manual_seed(self.seed)
@@ -192,8 +196,13 @@ class NNTrainer(Trainer):
         # We declare the variable which will hold the device we’re training on
         device = device_("cuda" if cuda.is_available() and self.device == "gpu" else "cpu")
 
-        for epoch in tqdm(range(self.epochs)):
+        # We declare a tqdm loading bar
+        bar = tqdm(range(self.epochs), position=0, leave=True)
+        bar.set_description(f'Epoch 0')
+        bar.set_postfix_str(s=f"Loss : NaN")
 
+        for epoch in range(self.epochs):
+            
             ###################
             # train the model #
             ###################
@@ -223,8 +232,13 @@ class NNTrainer(Trainer):
                 # We perform a single optimization step (parameter update)
                 optimizer.step()
 
+            mean_epoch_loss = epoch_loss / len(train_loader)
+            bar.set_description(f'Epoch {epoch}')
+            bar.set_postfix_str(s=f"Loss : {round(mean_epoch_loss, 4)}")
+            bar.update()
+
             # We record training loss
-            training_loss.append(epoch_loss / len(train_loader))
+            training_loss.append(mean_epoch_loss)
 
             ######################
             # validate the model #
@@ -264,7 +278,7 @@ class NNTrainer(Trainer):
             if early_stopping.early_stop:
                 break
 
-        return training_loss, valid_loss
+        return tensor(training_loss), tensor(valid_loss)
 
     def predict(self, x_cont, x_cat):
 

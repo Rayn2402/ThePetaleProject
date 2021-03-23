@@ -4,11 +4,13 @@ Author : Nicolas Raymond
 This file contains all function related to data visualization
 
 """
+from typing import Union
+from torch import tensor
 from matplotlib import pyplot as plt
 from sklearn.manifold import TSNE
 
 
-def compare_predictions(preds, targets, title=None):
+def compare_predictions(preds: tensor, targets: tensor, title: Union[str, None] = None) -> None:
     """
     Compares predictions to targets in a 2D scatter plot
 
@@ -31,7 +33,8 @@ def compare_predictions(preds, targets, title=None):
     plt.close()
 
 
-def visualize_embeddings(embeddings, category_levels, perplexity=10, title=None):
+def visualize_embeddings(embeddings: tensor, category_levels: tensor,
+                         perplexity: int = 10, title: Union[str, None] = None) -> None:
     """
     Visualizes embeddings in a 2D space
 
@@ -57,7 +60,7 @@ def visualize_embeddings(embeddings, category_levels, perplexity=10, title=None)
     plt.close()
 
 
-def visualize_epoch_losses(train_loss_history, test_loss_history):
+def visualize_epoch_losses(train_loss_history: tensor, test_loss_history: tensor) -> None:
     """
     Visualizes train and test loss history over training epoch
 

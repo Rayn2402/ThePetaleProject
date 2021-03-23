@@ -30,7 +30,7 @@ class Trainer:
         self.criterion = model.criterion_function
 
     def fit(self, train_set, val_set, batch_size, lr, weight_decay, epochs, early_stopping_activated=True,
-            patience=5, device="cpu", trial=None, metric=None, seed=None):
+            patience=10, device="cpu", trial=None, metric=None, seed=None):
         """
         Method that will fit the model to the given data
 
@@ -121,7 +121,7 @@ class Trainer:
 
             mean_epoch_loss = epoch_loss / len(train_loader)
             bar.set_description(f'Epoch {epoch}')
-            bar.set_postfix_str(s=f"Loss : {mean_epoch_loss}")
+            bar.set_postfix_str(s=f"Loss : {round(mean_epoch_loss, 4)}")
             bar.update()
 
             # Record training loss
@@ -168,7 +168,7 @@ class Trainer:
 
         return tensor(training_loss), tensor(valid_loss)
 
-    def cross_valid(self, datasets, batch_size, lr, weight_decay, epochs, metric, k=5, early_stopping_activated=True,
+    def cross_valid(self, datasets, batch_size, lr, weight_decay, epochs, metric, k=5, early_stopping_activated=False,
                     patience=5, trial=None, seed=None):
         """
         Method that will perform a k-fold cross validation on the model

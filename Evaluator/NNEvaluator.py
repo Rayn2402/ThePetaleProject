@@ -107,6 +107,7 @@ class NNEvaluator:
                 x_cat = None
 
             # we calculate the score with the help of the metric function
+            model.eval()
             scores.append(self.metric(model(x_cont, x_cat).float(), target))
 
-        return sum(scores) / len(scores)
+        return scores

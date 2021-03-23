@@ -14,7 +14,7 @@ from Hyperparameters.constants import *
 
 
 class Objective:
-    def __init__(self, model_generator, datasets, hyper_params, k, metric, max_epochs, seed=None):
+    def __init__(self, model_generator, datasets, hyper_params, k, metric, max_epochs):
         """
         Method that will fit the model to the given data
         
@@ -24,7 +24,6 @@ class Objective:
         :param k: Dumber of folds to use in the cross validation
         :param metric: Function that takes the output of the model and the target
                        and returns the metric we want to optimize
-        :param seed: the starting point in generating random numbers
 
         :return: the value of the metric after performing a k-fold cross validation
                  on the model with a subset of the given hyper parameter
@@ -37,7 +36,6 @@ class Objective:
         self.k = k
         self.metric = metric
         self.max_epochs = max_epochs
-        self.seed = seed
 
     def __call__(self, trial):
         hyper_params = self.hyper_params
@@ -84,7 +82,7 @@ class Objective:
         # We perform a k fold cross validation to evaluate the model
         score = trainer.cross_valid(datasets=self.datasets, batch_size=batch_size, lr=lr,
                                     epochs=self.max_epochs, metric=self.metric, k=self.k,
-                                    weight_decay=weight_decay, trial=trial, seed=self.seed)
+                                    weight_decay=weight_decay, trial=trial)
 
         # we return the score
         return score
@@ -92,7 +90,7 @@ class Objective:
 
 class NNTuner:
     def __init__(self, model_generator, datasets, hyper_params, k, n_trials, metric, study_name, max_epochs=100,
-                 direction="minimize", seed=None):
+                 direction="minimize", **kwargs):
         """
         Class that will be responsible of the hyperparameters tuning
         
@@ -106,13 +104,18 @@ class NNTuner:
         :param study_name: String that represents the name of the study
         :param n_trials: Number of trials we want to perform
         :param direction: Direction to specify if we want to maximize or minimize the value of the metric used
-        :param seed: Starting point in generating random numbers
 
         """
+        # We look for keyword args
+        n_startup = kwargs.get('n_startup_trial', 10)
+        n_ei_candidates = kwargs.get('n_ei_candidates', 20)
+        min_resource = kwargs.get('min_resource', 10)
+        eta = kwargs.get('eta', 4)
+
         # we create the study 
-        self.study = create_study(direction=direction, study_name=study_name, sampler=TPESampler(n_startup_trials=10,
-                                                                                                 n_ei_candidates=20),
-                                  pruner=SuccessiveHalvingPruner(min_resource=5, reduction_factor=4))
+        self.study = create_study(direction=direction, study_name=study_name,
+                                  sampler=TPESampler(n_startup_trials=n_startup, n_ei_candidates=n_ei_candidates),
+                                  pruner=SuccessiveHalvingPruner(min_resource=min_resource, reduction_factor=eta))
 
         # we save the inputs that will be used when tuning the hyper parameters
         self.n_trials = n_trials
@@ -122,7 +125,6 @@ class NNTuner:
         self.k = k
         self.metric = metric
         self.max_epochs = max_epochs
-        self.seed = seed
 
     def tune(self):
         """
@@ -134,7 +136,7 @@ class NNTuner:
         self.study.optimize(
             Objective(model_generator=self.model_generator, datasets=self.datasets,
                       hyper_params=self.hyper_params, k=self.k, metric=self.metric,
-                      max_epochs=self.max_epochs, seed=self.seed), self.n_trials)
+                      max_epochs=self.max_epochs), self.n_trials)
 
         # We extract the best trial
         best_trial = self.study.best_trial
@@ -158,7 +160,7 @@ class NNTuner:
 
     def get_hyper_params_importance(self):
         """
-        Method to plot the hyper parameters graph and save it in a ht;l file
+        Method to plot the hyper parameters graph and save it in a html file
         """
 
         # We generate the hyper parameters importance graph with optuna

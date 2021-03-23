@@ -28,8 +28,7 @@ class PetaleDataset(Dataset):
         :param mean: means to use for data normalization (pandas series)
         :param std : stds to use for data normalization (pandas series)
         """
-        if PARTICIPANT not in df.columns:
-            raise Exception('IDs missing from the dataframe')
+        assert PARTICIPANT in df.columns, 'IDs missing from the dataframe'
 
         # We save the survivors ID
         self.IDs = df[PARTICIPANT]
@@ -66,7 +65,7 @@ class PetaleDataset(Dataset):
         self.getter = self.define_getter(cat_cols, split)
 
     def __len__(self):
-        return self.X_cont.shape[0]
+        return self.N
 
     def __getitem__(self, idx):
         return self.getter(idx)
@@ -96,3 +95,43 @@ class PetaleDataset(Dataset):
         """
         self.X_cont = cat((self.X_cont, self.X_cat), 1)
         self.X_cat = None
+
+
+class PetaleDataframe:
+
+    def __init__(self, df, cont_cols, target, cat_cols=None, mean=None, std=None, **kwargs):
+        """
+        Applies transformations to a dataframe and store the result as the dataset for the Random Forest model
+
+        :param df: pandas dataframe
+        :param cont_cols: list with names of continuous columns
+        :param target: string with target column name
+        :param cat_cols: list with names of categorical columns
+        :param mean: means to use for data normalization (pandas series)
+        :param std : stds to use for data normalization (pandas series)
+        """
+
+        assert PARTICIPANT in df.columns, 'IDs missing from the dataframe'
+
+        # We save the survivors ID
+        self.IDs = df[PARTICIPANT]
+
+        # We save the number of elements in the datasets
+        self.N = self.IDs.shape[0]
+
+        # We save and preprocess continuous features
+        self.X_cont = df[cat_cols + cont_cols].copy()
+        self.X_cont[cont_cols] = preprocess_continuous(self.X_cont[cont_cols], mean, std)
+
+        # We save and preprocess categorical features
+        if cat_cols is not None:
+            self.X_cont[cat_cols] = preprocess_categoricals(self.X_cont[cat_cols])
+
+        # We save the targets
+        self.y = ConT.to_float(df[target]).values.flatten()
+
+        # We set the categorical data to none
+        self.X_cat = None
+
+    def __len__(self):
+        return self.N

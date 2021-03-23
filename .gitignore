@@ -7,3 +7,4 @@ SQL/NewTablesScripts/csv_files/VO2_ID.csv
 SQL/NewTablesScripts/csv_files/DEX_DOX.csv
 SQL/NewTablesScripts/csv_files
 __pycache__
+*.pt

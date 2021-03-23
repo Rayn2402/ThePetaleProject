@@ -30,8 +30,7 @@ def preprocess_categoricals(df, encoding="ordinal"):
     :param encoding: one option in ("ordinal", "one-hot")
     :return: pandas dataframe, list of encoding sizes
     """
-    if encoding not in ENCODING:
-        raise Exception('Encoding option not available')
+    assert encoding in ENCODING, 'Encoding option not available'
 
     # We ensure that all columns are considered as categories
     df = CaT.to_category(df)

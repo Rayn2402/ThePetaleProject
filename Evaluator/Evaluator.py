@@ -11,7 +11,6 @@ from numpy.random import seed as np_seed
 from Hyperparameters.constants import *
 from Recorder.Recorder import Recorder
 from torch.nn import Softmax
-from torch import unique, argmax
 
 
 
@@ -111,15 +110,12 @@ class Evaluator:
 
             # We get the predictions
             predictions = trainer.predict(x_cont, x_cat)
-            print(argmax(predictions, dim=1))
 
             # We initialize the Softmax object
             softmax = Softmax(dim=1)
 
             # We save the predictions
             recorder.record_predictions(softmax(predictions))
-
-
 
             # We get the score
             score = self.metric(predictions, target)

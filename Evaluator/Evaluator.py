@@ -183,7 +183,7 @@ class NNEvaluator(Evaluator):
         """
         return NNTrainer(model, epochs=self.max_epochs, batch_size=best_hyper_params[BATCH_SIZE],
                          lr=best_hyper_params[LR], weight_decay=best_hyper_params[WEIGHT_DECAY],
-                         metric=self.metric)
+                         metric=None)
 
 
 class RFEvaluator(Evaluator):

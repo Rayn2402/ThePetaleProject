@@ -1,17 +1,18 @@
 from SQL.DataManager.Utils import PetaleDataManager
 from Models.GeneralModels import NNRegressor, NNClassifier
-from Models.ModelGenerator import ModelGenerator
-from Training.Training import Trainer
+from Models.ModelGenerator import NNModelGenerator
+from Training.Training import NNTrainer
 from Utils.score_metrics import ClassificationMetrics
 from Utils.visualization import visualize_epoch_losses
 from Datasets.Sampling import LearningOneSampler
 from torch import unique, argmax, manual_seed
 import numpy as np
 import os
-from Evaluator.NNEvaluator import NNEvaluator
+from Evaluator.Evaluator import NNEvaluator
 
 import json
 
+TEST_SEED = 110796
 
 if __name__ == '__main__':
 
@@ -22,7 +23,7 @@ if __name__ == '__main__':
     loss should decrease at first and then increase
     """
     # We set the seed for the sampling part
-    np.random.seed(2021)
+    np.random.seed(TEST_SEED)
 
     # Initialization of DataManager and sampler
     manager = PetaleDataManager("rayn2402")
@@ -39,18 +40,18 @@ if __name__ == '__main__':
     print(f"\nOverfitting test...\n")
 
     # We set the seed for the model
-    manual_seed(2021)
+    manual_seed(TEST_SEED)
 
     # Creation of a simple model
     Model = NNClassifier(num_cont_col=cont, output_size=3, layers=[10, 20, 20],
                          activation='ReLU', cat_sizes=cat_sizes)
 
     # Creation of a Trainer
-    trainer = Trainer(Model)
+    trainer = NNTrainer(Model, metric=None, lr=0.001, batch_size=20, weight_decay=0,
+                        epochs=1000, early_stopping_activated=False)
 
     # Training for 50 epochs
-    t_loss, v_loss = trainer.fit(train, valid, batch_size=20, lr=0.001,
-                                 weight_decay=0, epochs=1000, early_stopping_activated=False)
+    t_loss, v_loss = trainer.fit(train, valid)
 
     # Visualization of the losses
     visualize_epoch_losses(t_loss, v_loss)
@@ -64,18 +65,18 @@ if __name__ == '__main__':
     for decay in [0, 1, 2]:
 
         # We set the seed for the model
-        manual_seed(2021)
+        manual_seed(TEST_SEED)
 
         # Creation of a simple model
         Model = NNClassifier(num_cont_col=cont, output_size=3, layers=[10, 20, 20],
                              activation='ReLU', cat_sizes=cat_sizes)
 
         # Creation of a Trainer
-        trainer = Trainer(Model)
+        trainer = NNTrainer(Model, metric=None, lr=0.001, batch_size=20, weight_decay=decay,
+                            epochs=100, early_stopping_activated=False)
 
         # Training for 100 epochs
-        t_loss, v_loss = trainer.fit(train, valid, batch_size=20, lr=0.001,
-                                     weight_decay=decay, epochs=100, early_stopping_activated=False)
+        t_loss, v_loss = trainer.fit(train, valid)
 
         # Visualization of the losses
         visualize_epoch_losses(t_loss, v_loss)
@@ -83,18 +84,18 @@ if __name__ == '__main__':
     # EARLY STOPPING TEST #
     print(f"\nEarly stopping test...\n")
     # We set the seed for the model
-    manual_seed(2021)
+    manual_seed(TEST_SEED)
 
     # Creation of a simple model
     Model = NNClassifier(num_cont_col=cont, output_size=3, layers=[10, 20, 20],
                          activation='ReLU', cat_sizes=cat_sizes)
 
     # Creation of a Trainer
-    trainer = Trainer(Model)
+    trainer = NNTrainer(Model, metric=None, lr=0.001, batch_size=20, weight_decay=0,
+                        epochs=1000, early_stopping_activated=True)
 
     # Training for 1000 epochs
-    t_loss, v_loss = trainer.fit(train, valid, batch_size=20, lr=0.001,
-                                 weight_decay=decay, epochs=1000, early_stopping_activated=True, patience=15)
+    t_loss, v_loss = trainer.fit(train, valid)
 
     # Visualization of the losses
     visualize_epoch_losses(t_loss, v_loss)
@@ -108,12 +109,11 @@ if __name__ == '__main__':
     def metric01(pred, target):
         return ClassificationMetrics.accuracy(argmax(pred, dim=1).float(), target).item()
 
-    generator = ModelGenerator(NNClassifier, num_cont_col=cont, cat_sizes=cat_sizes, output_size=3)
+    generator = NNModelGenerator(NNClassifier, num_cont_col=cont, cat_sizes=cat_sizes, output_size=3)
 
-    evaluator = NNEvaluator(model_generator=generator, sampler=sampler, k=1, l=1,
-                            hyper_params=HYPER_PARAMS, n_trials=100, metric=metric01,
-                            direction="maximize", seed=2021, study_name='bob', max_epochs=1000)
+    evaluator = NNEvaluator('bob', generator, sampler, HYPER_PARAMS, n_trials=200, seed=TEST_SEED,
+                            metric=metric01, k=1, max_epochs=200, direction="maximize")
 
-    scores = evaluator.nested_cross_valid(min_resource=50)
+    scores = evaluator.nested_cross_valid(min_resource=50, eta=2)
     print(scores)
 

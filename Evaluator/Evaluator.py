@@ -9,6 +9,11 @@ from Tuner.Tuner import NNTuner, RFTuner
 from torch import manual_seed
 from numpy.random import seed as np_seed
 from Hyperparameters.constants import *
+from Recorder.Recorder import Recorder
+from torch.nn import Softmax
+from torch import unique, argmax
+
+
 
 
 class Evaluator:
@@ -76,11 +81,18 @@ class Evaluator:
             # We get the train, test and valid sets
             train_set, test_set, valid_set = self.get_datasets(all_datasets[i])
 
+            # We create the Recorder object to save the result of this experience
+            recorder = Recorder(evaluation_name=self.evaluation_name, index=i)
+
             # We create the tuner to perform the hyperparameters optimization
-            tuner = self.create_tuner(datasets=all_datasets[i]["inner"], study_name=f"{self.evaluation_name}_{i}", **kwargs)
+            tuner = self.create_tuner(datasets=all_datasets[i]["inner"], study_name=f"{self.evaluation_name}_{i}",
+                                      **kwargs)
 
             # We perform the hyper parameters tuning to get the best hyper parameters
             best_hyper_params = tuner.tune()
+
+            # We save the hyperparameters
+            recorder.record_hyperparameters(best_hyper_params)
 
             # We create our model with the best hyper parameters
             model = self.create_model(best_hyper_params=best_hyper_params)
@@ -91,11 +103,35 @@ class Evaluator:
             # We train our model with the best hyper parameters
             trainer.fit(train_set=train_set, val_set=valid_set)
 
+            # We save the trained model
+            recorder.record_model(model=model)
+
             # We extract x_cont, x_cat and target from the test set
             x_cont, x_cat, target = self.extract_data(test_set)
 
+            # We get the predictions
+            predictions = trainer.predict(x_cont, x_cat)
+            print(argmax(predictions, dim=1))
+
+            # We initialize the Softmax object
+            softmax = Softmax(dim=1)
+
+            # We save the predictions
+            recorder.record_predictions(softmax(predictions))
+
+
+
+            # We get the score
+            score = self.metric(predictions, target)
+
+            # We save the scores, (TO BE UPDATED)
+            recorder.record_scores(score=score, metric="ACCURACY")
+
             # We calculate the score with the help of the metric function
             scores.append(self.metric(trainer.predict(x_cont, x_cat), target))
+
+            # We save all the data collected in a file
+            recorder.generate_file()
 
         return scores
 

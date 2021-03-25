@@ -134,7 +134,7 @@ class NNTrainer(Trainer):
         :param epochs: Number of epochs to train the training dataset
         :param early_stopping_activated: Bool indicating if we want to early stop the training when the validation
         loss stops decreasing
-        :param patien
+        :param patience: Number of epochs without improvement allowed before early stopping
         ce: Int representing how long to wait after last time validation loss improved.
         :param device: The device where we want to run our training, this parameter can take two values : "cpu" or "gpu"
         :param model: Neural network model to be trained
@@ -165,8 +165,7 @@ class NNTrainer(Trainer):
 
         :return: Two python lists containing the training losses and the validation losses
         """
-        assert (self.trial is None and self.metric is None) or (self.trial is not None and self.metric is not None)
-
+        assert not (self.trial is not None and self.metric is None)
 
         if self.seed is not None:
             manual_seed(self.seed)

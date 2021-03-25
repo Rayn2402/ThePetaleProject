@@ -154,6 +154,33 @@ class NNTrainer(Trainer):
         self.patience = patience
         self.seed = seed
         self.trial = trial
+        self.set_bar = self.set_progress_bar_func(trial, epochs)
+        self.update_bar = self.update_progress_bar_func(trial)
+
+    @staticmethod
+    def set_progress_bar_func(trial, epochs):
+        if trial is None:
+            def set_bar():
+                bar = tqdm(range(epochs), position=0, leave=True)
+                bar.set_description(f'Epoch 0')
+                bar.set_postfix_str(s=f"Loss : NaN")
+                return bar
+        else:
+            def set_bar(): pass
+
+        return set_bar
+
+    @staticmethod
+    def update_progress_bar_func(trial):
+        if trial is None:
+            def update_bar(bar, epoch, mean_epoch_loss):
+                bar.set_description(f'Epoch {epoch}')
+                bar.set_postfix_str(s=f"Loss : {round(mean_epoch_loss, 4)}")
+                bar.update()
+        else:
+            def update_bar(**kwargs): pass
+
+        return update_bar
 
     def fit(self, train_set, val_set):
         """
@@ -196,9 +223,7 @@ class NNTrainer(Trainer):
         device = device_("cuda" if cuda.is_available() and self.device == "gpu" else "cpu")
 
         # We declare a tqdm loading bar
-        bar = tqdm(range(self.epochs), position=0, leave=True)
-        bar.set_description(f'Epoch 0')
-        bar.set_postfix_str(s=f"Loss : NaN")
+        bar = self.set_bar()
 
         for epoch in range(self.epochs):
             
@@ -232,9 +257,7 @@ class NNTrainer(Trainer):
                 optimizer.step()
 
             mean_epoch_loss = epoch_loss / len(train_loader)
-            bar.set_description(f'Epoch {epoch}')
-            bar.set_postfix_str(s=f"Loss : {round(mean_epoch_loss, 4)}")
-            bar.update()
+            self.update_bar(bar=bar, epoch=epoch, mean_epoch_loss=mean_epoch_loss)
 
             # We record training loss
             training_loss.append(mean_epoch_loss)

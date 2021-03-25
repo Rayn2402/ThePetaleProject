@@ -9,6 +9,7 @@ from Tuner.Tuner import NNTuner, RFTuner
 from torch import manual_seed
 from numpy.random import seed as np_seed
 from Hyperparameters.constants import *
+from concurrent.futures import ProcessPoolExecutor
 
 
 class Evaluator:
@@ -75,33 +76,44 @@ class Evaluator:
         # We init the list that will contain the scores
         scores = []
 
-        for i in range(self.k):
-            # We get the train, test and valid sets
-            train_set, test_set, valid_set = self.get_datasets(all_datasets[i])
-
-            # We create the tuner to perform the hyperparameters optimization
-            tuner = self.create_tuner(datasets=all_datasets[i]["inner"],
-                                      study_name=f"{self.evaluation_name}_{i}", **kwargs)
-
-            # We perform the hyper parameters tuning to get the best hyper parameters
-            best_hyper_params = tuner.tune()
-
-            # We create our model with the best hyper parameters
-            model = self.create_model(best_hyper_params=best_hyper_params)
-
-            # We create a trainer to train the model
-            trainer = self.create_trainer(model=model, best_hyper_params=best_hyper_params, device=self.device)
-
-            # We train our model with the best hyper parameters
-            trainer.fit(train_set=train_set, val_set=valid_set)
-
-            # We extract x_cont, x_cat and target from the test set
-            x_cont, x_cat, target = self.extract_data(test_set)
-
-            # We calculate the score with the help of the metric function
-            scores.append(self.metric(trainer.predict(x_cont, x_cat), target))
+        with ProcessPoolExecutor() as executor:
+            inputs = list(zip(list(range(self.k)), [all_datasets]*self.k, [kwargs]*self.k))
+            executor.map(self.subprocess, inputs)
 
         return scores
+
+    def subprocess(self, k, all_datasets, **kwargs):
+        """
+        Executes one fold of the outter cross valid
+        :param k: fold iteration
+        :param all_datasets: dictionary with all datasets
+        :return: score
+        """
+        # We get the train, test and valid sets
+        train_set, test_set, valid_set = self.get_datasets(all_datasets[k])
+
+        # We create the tuner to perform the hyperparameters optimization
+        tuner = self.create_tuner(datasets=all_datasets[k]["inner"],
+                                  study_name=f"{self.evaluation_name}_{k}", **kwargs)
+
+        # We perform the hyper parameters tuning to get the best hyper parameters
+        best_hyper_params = tuner.tune()
+
+        # We create our model with the best hyper parameters
+        model = self.create_model(best_hyper_params=best_hyper_params)
+
+        # We create a trainer to train the model
+        trainer = self.create_trainer(model=model, best_hyper_params=best_hyper_params, device=self.device)
+
+        # We train our model with the best hyper parameters
+        trainer.fit(train_set=train_set, val_set=valid_set)
+
+        # We extract x_cont, x_cat and target from the test set
+        x_cont, x_cat, target = self.extract_data(test_set)
+
+        # We calculate the score with the help of the metric function
+        return self.metric(trainer.predict(x_cont, x_cat), target)
+
 
     @staticmethod
     def extract_data(dataset):

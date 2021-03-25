@@ -37,6 +37,7 @@ if __name__ == '__main__':
     cat, cont = train.X_cat.shape[1], train.X_cont.shape[1]
     cat_sizes = [len(unique(train.X_cat[:, i])) for i in range(cat)]
 
+    """
     print(f"\nOverfitting test...\n")
 
     # We set the seed for the model
@@ -55,12 +56,13 @@ if __name__ == '__main__':
 
     # Visualization of the losses
     visualize_epoch_losses(t_loss, v_loss)
-
+    """
     # WEIGHT DECAY TEST #
 
     """
     The training loss should be higher since we are increasing the L2 Penalty
     """
+
     print(f"\nWeight decay test...\n")
     for decay in [0, 1, 2]:
 
@@ -112,8 +114,9 @@ if __name__ == '__main__':
     generator = NNModelGenerator(NNClassifier, num_cont_col=cont, cat_sizes=cat_sizes, output_size=3)
 
     evaluator = NNEvaluator('bob', generator, sampler, HYPER_PARAMS, n_trials=200, seed=TEST_SEED,
-                            metric=metric01, k=1, max_epochs=200, direction="maximize")
+                            metric=metric01, k=1, max_epochs=400, direction="maximize")
 
-    scores = evaluator.nested_cross_valid(min_resource=50, eta=2)
+    scores = evaluator.nested_cross_valid(n_startup_trials=10, min_resource=25, eta=4)
+
     print(scores)
 

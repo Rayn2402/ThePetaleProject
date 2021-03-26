@@ -66,4 +66,4 @@ class Recorder:
         # We save all the data collected in a json file
         filepath = os.path.join(self.path, "records.json")
         with open(filepath, "w") as file:
-            json.dump(self.data, file)
+            json.dump(self.data, file, indent=True)

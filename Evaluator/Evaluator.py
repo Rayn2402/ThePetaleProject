@@ -17,7 +17,7 @@ from torch.nn import Softmax
 
 class Evaluator:
     def __init__(self, evaluation_name, model_generator, sampler, hyper_params, n_trials, metric, k, l=1,
-                 direction="minimize", seed=None, plot_feature_importance=False, plot_intermediate_values=False):
+                 direction="minimize", seed=None, plot_hyperparameters_importance=False, plot_intermediate_values=False):
         """
         Class that will be responsible of the evaluation of the model
 
@@ -33,8 +33,8 @@ class Evaluator:
         :param n_trials: number of trials we want to perform
         :param direction: direction to specify if we want to maximize or minimize the value of the metric used
         :param seed: the starting point in generating random numbers
-        :param plot_feature_importance: Bool to tell if we want to plot the feature importance graph after tuning
-         the hyper parameters
+        :param plot_hyperparameters_importance: Bool to tell if we want to plot the hyperparameters importance graph
+                                                after tuning the hyper parameters
         :param plot_intermediate_values: Bool to tell if we want to plot the intermediate values graph after tuning
          the hyper parameters
 
@@ -52,7 +52,7 @@ class Evaluator:
         self.metric = metric
         self.direction = direction
         self.seed = seed
-        self.plot_feature_importance = plot_feature_importance
+        self.plot_hyperparameters_importance = plot_hyperparameters_importance
         self.plot_intermediate_values = plot_intermediate_values
 
     def nested_cross_valid(self, **kwargs):
@@ -164,7 +164,7 @@ class Evaluator:
 
 class NNEvaluator(Evaluator):
     def __init__(self, evaluation_name, model_generator, sampler, hyper_params, n_trials, metric, k, l=1, max_epochs=100,
-                 direction="minimize", seed=None, plot_feature_importance=False, plot_intermediate_values=False):
+                 direction="minimize", seed=None, plot_hyperparameters_importance=False, plot_intermediate_values=False):
         """ sets
  that con
         Class that will be responsible of the evaluation of the Neural Networks models
@@ -174,7 +174,7 @@ class NNEvaluator(Evaluator):
         """
         super().__init__(model_generator=model_generator, sampler=sampler, hyper_params=hyper_params, n_trials=n_trials,
                          metric=metric, k=k, l=l, direction=direction, seed=seed,
-                         plot_feature_importance=plot_feature_importance,
+                         plot_hyperparameters_importance=plot_hyperparameters_importance,
                          plot_intermediate_values=plot_intermediate_values, evaluation_name=evaluation_name)
 
         self.max_epochs = max_epochs
@@ -193,7 +193,7 @@ class NNEvaluator(Evaluator):
                        metric=self.metric, direction=self.direction, k=self.l,
                        max_epochs=self.max_epochs, study_name=study_name,
                        plot_intermediate_values=self.plot_intermediate_values,
-                       plot_feature_importance=self.plot_feature_importance, **kwargs)
+                       plot_hyperparameters_importance=self.plot_hyperparameters_importance, **kwargs)
 
     def create_model(self, best_hyper_params):
         """
@@ -220,7 +220,7 @@ class NNEvaluator(Evaluator):
 
 class RFEvaluator(Evaluator):
     def __init__(self, evaluation_name, model_generator, sampler, hyper_params, n_trials, metric, k, l=1, max_epochs=100,
-                 direction="minimize", seed=None, plot_feature_importance=False, plot_intermediate_values=False):
+                 direction="minimize", seed=None, plot_hyperparameters_importance=False, plot_intermediate_values=False):
         """
         Class that will be responsible of the evaluation of the Random Forest models
 
@@ -228,8 +228,8 @@ class RFEvaluator(Evaluator):
 
         super().__init__(model_generator=model_generator, sampler=sampler, hyper_params=hyper_params, n_trials=n_trials,
                          metric=metric, k=k, l=l, direction=direction, seed=seed,
-                         plot_intermediate_values=self.plot_intermediate_values,
-                         plot_feature_importance=self.plot_feature_importance, evaluation_name=evaluation_name)
+                         plot_intermediate_values=plot_intermediate_values,
+                         plot_hyperparameters_importance=plot_hyperparameters_importance, evaluation_name=evaluation_name)
 
     def create_tuner(self, datasets, study_name, **kwargs):
         """
@@ -243,7 +243,7 @@ class RFEvaluator(Evaluator):
         return RFTuner(study_name=study_name, model_generator=self.model_generator, datasets=datasets,
                        hyper_params=self.hyper_params, n_trials=self.n_trials,
                        metric=self.metric, direction=self.direction, k=self.l,
-                       plot_feature_importance=self.plot_feature_importance,
+                       plot_hyperparameters_importance=self.plot_hyperparameters_importance,
                        plot_intermediate_values=self.plot_intermediate_values, **kwargs
                        )
 

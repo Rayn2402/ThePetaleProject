@@ -197,7 +197,7 @@ class Tuner:
         self.plot_feature_importance = plot_feature_importance
         self.plot_intermediate_values = plot_intermediate_values
 
-    def tune(self):
+    def tune(self, verbose=True):
         """
         Method to call to tune the hyperparameters of a given model
 
@@ -211,7 +211,7 @@ class Tuner:
                            datasets=self.datasets,
                            hyper_params=self.hyper_params,
                            k=self.k, metric=self.metric, max_epochs=self.max_epochs),
-            self.n_trials, n_jobs=1, show_progress_bar=True)
+            self.n_trials, n_jobs=1, show_progress_bar=verbose)
 
         if self.plot_feature_importance:
             # We plot the feature importance graph
@@ -221,8 +221,7 @@ class Tuner:
             # We plot the Intermediate values graph
             self.plot_intermediate_values_graph()
 
-        # print(len(self.study.get_trials(deepcopy=False, states=(TrialState.COMPLETE,))))
-        self.plot_optimization_history()
+        # self.plot_optimization_history()
 
         # We return the best hyper parameters
         return self.get_best_hyperparams()

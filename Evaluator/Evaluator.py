@@ -9,15 +9,14 @@ from Tuner.Tuner import NNTuner, RFTuner
 from torch import manual_seed
 from numpy.random import seed as np_seed
 from Hyperparameters.constants import *
-from pathos.multiprocessing import ProcessingPool
-from pathos.pp import ParallelPool
-from multiprocessing import current_process
-import os
+import ray
+import time
+
 
 class Evaluator:
     def __init__(self, evaluation_name, model_generator, sampler, hyper_params, n_trials, metric, k, l=1,
                  direction="minimize", seed=None, plot_feature_importance=False, plot_intermediate_values=False,
-                 device="cpu"):
+                 device="cpu", parallelism=True):
         """
         Class that will be responsible of the evaluation of the model
 
@@ -55,7 +54,11 @@ class Evaluator:
         self.seed = seed
         self.plot_feature_importance = plot_feature_importance
         self.plot_intermediate_values = plot_intermediate_values
+
+        assert not (device == 'gpu' and parallelism), "Parallel optimization with gpu is not enabled"
+
         self.device = device
+        self.parallel = parallelism
 
     def nested_cross_valid(self, **kwargs):
         """
@@ -75,25 +78,25 @@ class Evaluator:
         if self.seed is not None:
             manual_seed(self.seed)
 
-        # We init the list that will contain the scores
-        scores = []
-
+        # We execute the outter loop in a parallel if we do not train of GPU
+        start = time.time()
         subprocess = self.define_subprocess(all_datasets, **kwargs)
-        pool = ProcessingPool()
-        scores = pool.map(subprocess, range(self.k))
-        pool.close()
-
-        # with ProcessPoolExecutor() as executor:
-        #     #inputs = list(zip(list(range(self.k)), [all_datasets]*self.k, [kwargs]*self.k))
-        #     future = [executor.submit(self.subprocess(i, all_datasets, **kwargs)) for i in range(self.k)]
-        #     for fut in as_completed(future):
-        #         print(f"The outcome is {fut.result()}")
-        #     #scores = executor.map(self.subprocess, inputs)
+        futures = [subprocess.remote(i) for i in range(self.k)]
+        scores = ray.get(futures)
+        execution_time = time.time() - start
+        print(f"Execution time : {execution_time}")
 
         return scores
 
     def define_subprocess(self, all_datasets, **kwargs):
+        if self.device == "cpu" and self.parallel:
+            ray.init()
+            verbose = False
+        else:
+            ray.init(num_cpus=1)
+            verbose = True
 
+        @ray.remote(num_cpus=1)
         def subprocess(k):
             """
             Executes one fold of the outter cross valid
@@ -104,13 +107,13 @@ class Evaluator:
             train_set, test_set, valid_set = self.get_datasets(all_datasets[k])
 
             # We create the tuner to perform the hyperparameters optimization
-            print(f"{k}-th outter loop hyperparameter tuning started - Process ID {current_process().name}")
+            print(f"Hyperparameter tuning started - K = {k}")
             tuner = self.create_tuner(datasets=all_datasets[k]["inner"],
                                       study_name=f"{self.evaluation_name}_{k}", **kwargs)
 
             # We perform the hyper parameters tuning to get the best hyper parameters
-            best_hyper_params = tuner.tune()
-            print(f"{k}-th outter loop hyperparameter tuning done - Process ID {current_process().name}")
+            best_hyper_params = tuner.tune(verbose=False)
+            print(f"Hyperparameter tuning done - K = {k}")
 
             # We create our model with the best hyper parameters
             model = self.create_model(best_hyper_params=best_hyper_params)
@@ -119,8 +122,8 @@ class Evaluator:
             trainer = self.create_trainer(model=model, best_hyper_params=best_hyper_params, device=self.device)
 
             # We train our model with the best hyper parameters
-            print(f"{k}-th outter loop final model training - Process ID {current_process().name}")
-            trainer.fit(train_set=train_set, val_set=valid_set)
+            print(f"Final model training - K = {k}")
+            trainer.fit(train_set=train_set, val_set=valid_set, verbose=verbose)
 
             # We extract x_cont, x_cat and target from the test set
             x_cont, x_cat, target = self.extract_data(test_set)
@@ -174,7 +177,7 @@ class NNEvaluator(Evaluator):
 
     def __init__(self, evaluation_name, model_generator, sampler, hyper_params, n_trials, metric, k, l=1, max_epochs=100,
                  direction="minimize", seed=None, plot_feature_importance=False, plot_intermediate_values=False,
-                 device="cpu"):
+                 device="cpu", parallelism=True):
         """ sets
  that con
         Class that will be responsible of the evaluation of the Neural Networks models
@@ -186,7 +189,7 @@ class NNEvaluator(Evaluator):
                          metric=metric, k=k, l=l, direction=direction, seed=seed,
                          plot_feature_importance=plot_feature_importance,
                          plot_intermediate_values=plot_intermediate_values,
-                         evaluation_name=evaluation_name, device=device)
+                         evaluation_name=evaluation_name, device=device, parallelism=parallelism)
 
         self.max_epochs = max_epochs
 
@@ -244,7 +247,7 @@ class RFEvaluator(Evaluator):
                          metric=metric, k=k, l=l, direction=direction, seed=seed,
                          plot_intermediate_values=plot_intermediate_values,
                          plot_feature_importance=plot_feature_importance,
-                         evaluation_name=evaluation_name, device="cpu")
+                         evaluation_name=evaluation_name, device="cpu", parallelism=True)
 
     def create_tuner(self, datasets, study_name, **kwargs):
         """

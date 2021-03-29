@@ -7,8 +7,8 @@ Files that contains the logic related to hyper parameters tuning
 from optuna import create_study
 from optuna.samplers import TPESampler
 from optuna.pruners import SuccessiveHalvingPruner
-from optuna.visualization import plot_param_importances, plot_intermediate_values
-
+from optuna.visualization import plot_param_importances, plot_intermediate_values, plot_optimization_history
+from optuna.logging import FATAL, set_verbosity
 from Training.Training import NNTrainer, RFTrainer
 from Hyperparameters.constants import *
 
@@ -153,7 +153,7 @@ class RFObjective:
 
 class Tuner:
     def __init__(self, study_name, model_generator, datasets, hyper_params, k, n_trials, metric, direction="minimize",
-                plot_feature_importance=False, plot_intermediate_values=False, **kwargs):
+                 plot_feature_importance=False, plot_intermediate_values=False, **kwargs):
         """
                 Class that will be responsible of the hyperparameters tuning
 
@@ -174,15 +174,18 @@ class Tuner:
                 """
         
         # We look for keyword args
-        n_startup = kwargs.get('n_startup_trial', 10)
+        n_startup = kwargs.get('n_startup_trials', 10)
         n_ei_candidates = kwargs.get('n_ei_candidates', 20)
         min_resource = kwargs.get('min_resource', 10)
         eta = kwargs.get('eta', 4)
 
         # we create the study 
         self.study = create_study(direction=direction, study_name=study_name,
-                                  sampler=TPESampler(n_startup_trials=n_startup, n_ei_candidates=n_ei_candidates),
-                                  pruner=SuccessiveHalvingPruner(min_resource=min_resource, reduction_factor=eta))
+                                  sampler=TPESampler(n_startup_trials=n_startup,
+                                                     n_ei_candidates=n_ei_candidates,
+                                                     multivariate=True),
+                                  pruner=SuccessiveHalvingPruner(min_resource=min_resource,
+                                                                 reduction_factor=eta, bootstrap_count=10))
 
         # We save the inputs that will be used when tuning the hyper parameters
         self.n_trials = n_trials
@@ -194,7 +197,7 @@ class Tuner:
         self.plot_feature_importance = plot_feature_importance
         self.plot_intermediate_values = plot_intermediate_values
 
-    def tune(self):
+    def tune(self, verbose=True):
         """
         Method to call to tune the hyperparameters of a given model
 
@@ -202,9 +205,13 @@ class Tuner:
         """
 
         # We perform the optimization
+        set_verbosity(FATAL)  # We remove verbosity from loading bar
         self.study.optimize(
-            self.Objective(model_generator=self.model_generator, datasets=self.datasets, hyper_params=self.hyper_params,
-                           k=self.k, metric=self.metric, max_epochs=self.max_epochs), self.n_trials)
+            self.Objective(model_generator=self.model_generator,
+                           datasets=self.datasets,
+                           hyper_params=self.hyper_params,
+                           k=self.k, metric=self.metric, max_epochs=self.max_epochs),
+            self.n_trials, n_jobs=1, show_progress_bar=verbose)
 
         if self.plot_feature_importance:
             # We plot the feature importance graph
@@ -213,6 +220,8 @@ class Tuner:
         if self.plot_intermediate_values:
             # We plot the Intermediate values graph
             self.plot_intermediate_values_graph()
+
+        # self.plot_optimization_history()
 
         # We return the best hyper parameters
         return self.get_best_hyperparams()
@@ -241,14 +250,26 @@ class Tuner:
 
         if not os.path.exists('./IntermediateValues/'):
             Path('./IntermediateValues/').mkdir(parents=True, exist_ok=True)
+
         # We save the graph in a html file to have an interactive graph
         fig.write_html(f"./IntermediateValues/{self.study.study_name}.html")
+
+    def plot_optimization_history(self):
+
+        # We generate the intermediate values graph with optuna
+        fig = plot_optimization_history(self.study)
+
+        if not os.path.exists('./OptHist/'):
+            Path('./OptHist/').mkdir(parents=True, exist_ok=True)
+
+        # We save the graph in a html file to have an interactive graph
+        fig.write_html(f"./OptHist/{self.study.study_name}.html")
 
 
 class NNTuner(Tuner):
     def __init__(self, study_name, model_generator, datasets, hyper_params, k, n_trials, metric,
                  direction="minimize", max_epochs=100, plot_feature_importance=False,
-                 plot_intermediate_values=False, **kwargs ):
+                 plot_intermediate_values=False, **kwargs):
         """
         Class that will be responsible of tuning Neural Networks
 
@@ -256,7 +277,8 @@ class NNTuner(Tuner):
         super().__init__(study_name=study_name, model_generator=model_generator, datasets=datasets,
                          hyper_params=hyper_params, k=k, n_trials=n_trials, metric=metric, direction=direction,
                          plot_feature_importance=plot_feature_importance,
-                         plot_intermediate_values=plot_intermediate_values)
+                         plot_intermediate_values=plot_intermediate_values, **kwargs)
+
         self.Objective = NNObjective
         self.max_epochs = max_epochs
 
@@ -288,7 +310,8 @@ class NNTuner(Tuner):
 
 class RFTuner(Tuner):
     def __init__(self, study_name, model_generator, datasets, hyper_params, k, n_trials, metric,
-                 direction="minimize", plot_feature_importance=False, plot_intermediate_values=False, **kwargs):
+                 direction="minimize", plot_feature_importance=False,
+                 plot_intermediate_values=False, **kwargs):
         """
         Class that will be responsible of tuning Random Forests
 
@@ -296,7 +319,7 @@ class RFTuner(Tuner):
         super().__init__(study_name=study_name, model_generator=model_generator, datasets=datasets,
                          hyper_params=hyper_params, k=k, n_trials=n_trials, metric=metric, direction=direction,
                          plot_feature_importance=plot_feature_importance,
-                         plot_intermediate_values=plot_intermediate_values)
+                         plot_intermediate_values=plot_intermediate_values, **kwargs)
         self.Objective = RFObjective
         self.max_epochs = None
 

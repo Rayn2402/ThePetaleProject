@@ -9,7 +9,6 @@ from torch.nn import Module
 from torch.utils.data import DataLoader, Subset
 from torch import optim, manual_seed, cuda, tensor
 from torch import device as device_
-from tqdm import tqdm
 from optuna import TrialPruned
 
 
@@ -134,7 +133,7 @@ class NNTrainer(Trainer):
         :param epochs: Number of epochs to train the training dataset
         :param early_stopping_activated: Bool indicating if we want to early stop the training when the validation
         loss stops decreasing
-        :param patien
+        :param patience: Number of epochs without improvement allowed before early stopping
         ce: Int representing how long to wait after last time validation loss improved.
         :param device: The device where we want to run our training, this parameter can take two values : "cpu" or "gpu"
         :param model: Neural network model to be trained
@@ -155,18 +154,28 @@ class NNTrainer(Trainer):
         self.seed = seed
         self.trial = trial
 
-    def fit(self, train_set, val_set):
+    def update_progress_func(self, trial, verbose):
+        if trial is None and verbose:
+            def update_progress(epoch, mean_epoch_loss):
+                if epoch % 10 == 0 or (epoch+1) == self.epochs:
+                    print(f"Epoch {epoch+1} - Loss : {round(mean_epoch_loss, 4)}")
+        else:
+            def update_progress(**kwargs): pass
+
+        return update_progress
+
+    def fit(self, train_set, val_set, verbose=True):
         """
         Method that will fit the model to the given data
 
         :param train_set: Petale Dataset containing the training set
         :param val_set: Petale Dataset containing the valid set
+        :param verbose: Determines if we want to print progress or not
 
 
         :return: Two python lists containing the training losses and the validation losses
         """
-        assert (self.trial is None and self.metric is None) or (self.trial is not None and self.metric is not None)
-
+        assert not (self.trial is not None and self.metric is None)
 
         if self.seed is not None:
             manual_seed(self.seed)
@@ -193,13 +202,11 @@ class NNTrainer(Trainer):
         # We init the early stopping class
         early_stopping = EarlyStopping(patience=self.patience)
 
+        # We init the update function
+        update_progress = self.update_progress_func(self.trial, verbose)
+
         # We declare the variable which will hold the device we’re training on
         device = device_("cuda" if cuda.is_available() and self.device == "gpu" else "cpu")
-
-        # We declare a tqdm loading bar
-        bar = tqdm(range(self.epochs), position=0, leave=True)
-        bar.set_description(f'Epoch 0')
-        bar.set_postfix_str(s=f"Loss : NaN")
 
         for epoch in range(self.epochs):
             
@@ -233,9 +240,7 @@ class NNTrainer(Trainer):
                 optimizer.step()
 
             mean_epoch_loss = epoch_loss / len(train_loader)
-            bar.set_description(f'Epoch {epoch}')
-            bar.set_postfix_str(s=f"Loss : {round(mean_epoch_loss, 4)}")
-            bar.update()
+            update_progress(epoch=epoch, mean_epoch_loss=mean_epoch_loss)
 
             # We record training loss
             training_loss.append(mean_epoch_loss)

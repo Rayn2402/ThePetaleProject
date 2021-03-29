@@ -9,11 +9,14 @@ from Tuner.Tuner import NNTuner, RFTuner
 from torch import manual_seed
 from numpy.random import seed as np_seed
 from Hyperparameters.constants import *
+import ray
+import time
 
 
 class Evaluator:
     def __init__(self, evaluation_name, model_generator, sampler, hyper_params, n_trials, metric, k, l=1,
-                 direction="minimize", seed=None, plot_feature_importance=False, plot_intermediate_values=False):
+                 direction="minimize", seed=None, plot_feature_importance=False, plot_intermediate_values=False,
+                 device="cpu", parallelism=True):
         """
         Class that will be responsible of the evaluation of the model
 
@@ -33,6 +36,7 @@ class Evaluator:
          the hyper parameters
         :param plot_intermediate_values: Bool to tell if we want to plot the intermediate values graph after tuning
          the hyper parameters
+        :param device: "cpu" or "gpu"
 
 
         """
@@ -50,6 +54,11 @@ class Evaluator:
         self.seed = seed
         self.plot_feature_importance = plot_feature_importance
         self.plot_intermediate_values = plot_intermediate_values
+
+        assert not (device == 'gpu' and parallelism), "Parallel optimization with gpu is not enabled"
+
+        self.device = device
+        self.parallel = parallelism
 
     def nested_cross_valid(self, **kwargs):
         """
@@ -69,35 +78,60 @@ class Evaluator:
         if self.seed is not None:
             manual_seed(self.seed)
 
-        # We init the list that will contain the scores
-        scores = []
+        # We execute the outter loop in a parallel if we do not train of GPU
+        start = time.time()
+        subprocess = self.define_subprocess(all_datasets, **kwargs)
+        futures = [subprocess.remote(i) for i in range(self.k)]
+        scores = ray.get(futures)
+        execution_time = time.time() - start
+        print(f"Execution time : {execution_time}")
 
-        for i in range(self.k):
+        return scores
+
+    def define_subprocess(self, all_datasets, **kwargs):
+        if self.device == "cpu" and self.parallel:
+            ray.init()
+            verbose = False
+        else:
+            ray.init(num_cpus=1)
+            verbose = True
+
+        @ray.remote(num_cpus=1)
+        def subprocess(k):
+            """
+            Executes one fold of the outter cross valid
+            :param k: fold iteration
+            :return: score
+            """
             # We get the train, test and valid sets
-            train_set, test_set, valid_set = self.get_datasets(all_datasets[i])
+            train_set, test_set, valid_set = self.get_datasets(all_datasets[k])
 
             # We create the tuner to perform the hyperparameters optimization
-            tuner = self.create_tuner(datasets=all_datasets[i]["inner"], study_name=f"{self.evaluation_name}_{i}", **kwargs)
+            print(f"Hyperparameter tuning started - K = {k}")
+            tuner = self.create_tuner(datasets=all_datasets[k]["inner"],
+                                      study_name=f"{self.evaluation_name}_{k}", **kwargs)
 
             # We perform the hyper parameters tuning to get the best hyper parameters
-            best_hyper_params = tuner.tune()
+            best_hyper_params = tuner.tune(verbose=False)
+            print(f"Hyperparameter tuning done - K = {k}")
 
             # We create our model with the best hyper parameters
             model = self.create_model(best_hyper_params=best_hyper_params)
 
             # We create a trainer to train the model
-            trainer = self.create_trainer(model=model, best_hyper_params=best_hyper_params)
+            trainer = self.create_trainer(model=model, best_hyper_params=best_hyper_params, device=self.device)
 
             # We train our model with the best hyper parameters
-            trainer.fit(train_set=train_set, val_set=valid_set)
+            print(f"Final model training - K = {k}")
+            trainer.fit(train_set=train_set, val_set=valid_set, verbose=verbose)
 
             # We extract x_cont, x_cat and target from the test set
             x_cont, x_cat, target = self.extract_data(test_set)
 
             # We calculate the score with the help of the metric function
-            scores.append(self.metric(trainer.predict(x_cont, x_cat), target))
+            return self.metric(trainer.predict(x_cont, x_cat), target)
 
-        return scores
+        return subprocess
 
     @staticmethod
     def extract_data(dataset):
@@ -129,10 +163,21 @@ class Evaluator:
         """
         return dataset_dictionary["train"], dataset_dictionary["test"], dataset_dictionary["valid"]
 
+    def create_tuner(self, datasets, study_name, **kwargs):
+        raise NotImplementedError
+
+    def create_model(self, best_hyper_params):
+        raise NotImplementedError
+
+    def create_trainer(self, model, **kwargs):
+        raise NotImplementedError
+
 
 class NNEvaluator(Evaluator):
+
     def __init__(self, evaluation_name, model_generator, sampler, hyper_params, n_trials, metric, k, l=1, max_epochs=100,
-                 direction="minimize", seed=None, plot_feature_importance=False, plot_intermediate_values=False):
+                 direction="minimize", seed=None, plot_feature_importance=False, plot_intermediate_values=False,
+                 device="cpu", parallelism=True):
         """ sets
  that con
         Class that will be responsible of the evaluation of the Neural Networks models
@@ -143,7 +188,8 @@ class NNEvaluator(Evaluator):
         super().__init__(model_generator=model_generator, sampler=sampler, hyper_params=hyper_params, n_trials=n_trials,
                          metric=metric, k=k, l=l, direction=direction, seed=seed,
                          plot_feature_importance=plot_feature_importance,
-                         plot_intermediate_values=plot_intermediate_values, evaluation_name=evaluation_name)
+                         plot_intermediate_values=plot_intermediate_values,
+                         evaluation_name=evaluation_name, device=device, parallelism=parallelism)
 
         self.max_epochs = max_epochs
 
@@ -173,21 +219,24 @@ class NNEvaluator(Evaluator):
         return self.model_generator(layers=best_hyper_params[LAYERS], dropout=best_hyper_params[DROPOUT],
                                     activation=best_hyper_params[ACTIVATION])
 
-    def create_trainer(self, model, best_hyper_params):
+    def create_trainer(self, model, **kwargs):
         """
         Method to create a trainer object that will be used to train of our model
 
         :param model: The Neural Network model we want to train
-        :param best_hyper_params: Python list that contains a set of hyper parameter used in the training of the model
-
         """
+        assert 'best_hyper_params' in kwargs.keys(), 'best_hyper_params argument missing'
+
+        best_hyper_params = kwargs['best_hyper_params']
+
         return NNTrainer(model, epochs=self.max_epochs, batch_size=best_hyper_params[BATCH_SIZE],
                          lr=best_hyper_params[LR], weight_decay=best_hyper_params[WEIGHT_DECAY],
-                         metric=self.metric)
+                         metric=self.metric, device=kwargs.get('device', 'cpu'))
 
 
 class RFEvaluator(Evaluator):
-    def __init__(self, evaluation_name, model_generator, sampler, hyper_params, n_trials, metric, k, l=1, max_epochs=100,
+
+    def __init__(self, evaluation_name, model_generator, sampler, hyper_params, n_trials, metric, k, l=1,
                  direction="minimize", seed=None, plot_feature_importance=False, plot_intermediate_values=False):
         """
         Class that will be responsible of the evaluation of the Random Forest models
@@ -196,8 +245,9 @@ class RFEvaluator(Evaluator):
 
         super().__init__(model_generator=model_generator, sampler=sampler, hyper_params=hyper_params, n_trials=n_trials,
                          metric=metric, k=k, l=l, direction=direction, seed=seed,
-                         plot_intermediate_values=self.plot_intermediate_values,
-                         plot_feature_importance=self.plot_feature_importance, evaluation_name=evaluation_name)
+                         plot_intermediate_values=plot_intermediate_values,
+                         plot_feature_importance=plot_feature_importance,
+                         evaluation_name=evaluation_name, device="cpu", parallelism=True)
 
     def create_tuner(self, datasets, study_name, **kwargs):
         """
@@ -227,12 +277,11 @@ class RFEvaluator(Evaluator):
                                     max_features=best_hyper_params[MAX_FEATURES],
                                     max_depth=best_hyper_params[MAX_DEPTH], max_samples=best_hyper_params[MAX_SAMPLES])
 
-    def create_trainer(self, model, best_hyper_params):
+    def create_trainer(self, model, **kwargs):
         """
         Method to create a trainer object that will be used to train of our model
 
         :param model: The Random Forest model we want to train
-        :param best_hyper_params: Python list that contains a set of hyper parameter used in the training of the model
 
         """
 

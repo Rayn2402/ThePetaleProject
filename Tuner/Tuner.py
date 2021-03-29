@@ -7,7 +7,7 @@ Files that contains the logic related to hyper parameters tuning
 from optuna import create_study
 from optuna.samplers import TPESampler
 from optuna.pruners import SuccessiveHalvingPruner
-from optuna.visualization import plot_param_importances, plot_intermediate_values
+from optuna.visualization import plot_param_importances, plot_intermediate_values, plot_parallel_coordinate
 
 from Training.Training import NNTrainer, RFTrainer
 from Hyperparameters.constants import *
@@ -153,7 +153,8 @@ class RFObjective:
 
 class Tuner:
     def __init__(self, study_name, model_generator, datasets, hyper_params, k, n_trials, metric, direction="minimize",
-                plot_hyperparameters_importance=False, plot_intermediate_values=False, **kwargs):
+                plot_hyperparameters_importance=False, plot_intermediate_values=False, plot_parallel_coordinate=False,
+                 **kwargs):
         """
                 Class that will be responsible of the hyperparameters tuning
 
@@ -171,6 +172,8 @@ class Tuner:
                 :param plot_hyperparameters_importance: Bool to tell if we want to plot the hyperparameters importance
                                                         graph
                 :param plot_intermediate_values: Bool to tell if we want to plot the intermediate values graph
+                :param plot_parallel_coordinate: Bool to tell if we want to plot the parallel coordinate graph
+
 
                 """
         
@@ -194,6 +197,7 @@ class Tuner:
         self.metric = metric
         self.plot_hyperparameters_importance = plot_hyperparameters_importance
         self.plot_intermediate_values = plot_intermediate_values
+        self.plot_parallel_coordinate = plot_parallel_coordinate
 
     def tune(self):
         """
@@ -214,6 +218,10 @@ class Tuner:
         if self.plot_intermediate_values:
             # We plot the Intermediate values graph
             self.plot_intermediate_values_graph()
+
+        if self.plot_parallel_coordinate:
+            # We plot the Intermediate values graph
+            self.plot_parallel_coordinate_graph()
 
         # We return the best hyper parameters
         return self.get_best_hyperparams()
@@ -240,11 +248,22 @@ class Tuner:
         # We save the graph in a html file to have an interactive graph
         fig.write_html(os.path.join(f"./Recordings/{self.study.study_name}", "intermediate_values.html"))
 
+    def plot_parallel_coordinate_graph(self):
+        """
+        Method to plot the parallel coordinate graph and save it in a html file
+        """
+
+        # We generate the intermediate values graph with optuna
+        fig = plot_parallel_coordinate(self.study)
+
+        # We save the graph in a html file to have an interactive graph
+        fig.write_html(os.path.join(f"./Recordings/{self.study.study_name}", "parallel_coordinate.html"))
+
 
 class NNTuner(Tuner):
     def __init__(self, study_name, model_generator, datasets, hyper_params, k, n_trials, metric,
                  direction="minimize", max_epochs=100, plot_hyperparameters_importance=False,
-                 plot_intermediate_values=False, **kwargs ):
+                 plot_intermediate_values=False, plot_parallel_coordinate=False, **kwargs ):
         """
         Class that will be responsible of tuning Neural Networks
 
@@ -252,7 +271,8 @@ class NNTuner(Tuner):
         super().__init__(study_name=study_name, model_generator=model_generator, datasets=datasets,
                          hyper_params=hyper_params, k=k, n_trials=n_trials, metric=metric, direction=direction,
                          plot_hyperparameters_importance=plot_hyperparameters_importance,
-                         plot_intermediate_values=plot_intermediate_values)
+                         plot_intermediate_values=plot_intermediate_values,
+                         plot_parallel_coordinate=plot_parallel_coordinate)
         self.Objective = NNObjective
         self.max_epochs = max_epochs
 
@@ -284,7 +304,8 @@ class NNTuner(Tuner):
 
 class RFTuner(Tuner):
     def __init__(self, study_name, model_generator, datasets, hyper_params, k, n_trials, metric,
-                 direction="minimize", plot_hyperparameters_importance=False, plot_intermediate_values=False, **kwargs):
+                 direction="minimize", plot_hyperparameters_importance=False, plot_intermediate_values=False,
+                 plot_parallel_coordinate=False, **kwargs):
         """
         Class that will be responsible of tuning Random Forests
 
@@ -292,7 +313,8 @@ class RFTuner(Tuner):
         super().__init__(study_name=study_name, model_generator=model_generator, datasets=datasets,
                          hyper_params=hyper_params, k=k, n_trials=n_trials, metric=metric, direction=direction,
                          plot_hyperparameters_importance=plot_hyperparameters_importance,
-                         plot_intermediate_values=plot_intermediate_values)
+                         plot_intermediate_values=plot_intermediate_values,
+                         plot_parallel_coordinate=plot_parallel_coordinate)
         self.Objective = RFObjective
         self.max_epochs = None
 

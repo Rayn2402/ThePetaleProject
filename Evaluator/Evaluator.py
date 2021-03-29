@@ -9,8 +9,10 @@ from Tuner.Tuner import NNTuner, RFTuner
 from torch import manual_seed
 from numpy.random import seed as np_seed
 from Hyperparameters.constants import *
-from concurrent.futures import ProcessPoolExecutor
-
+from pathos.multiprocessing import ProcessingPool
+from pathos.pp import ParallelPool
+from multiprocessing import current_process
+import os
 
 class Evaluator:
     def __init__(self, evaluation_name, model_generator, sampler, hyper_params, n_trials, metric, k, l=1,
@@ -76,44 +78,57 @@ class Evaluator:
         # We init the list that will contain the scores
         scores = []
 
-        with ProcessPoolExecutor() as executor:
-            inputs = list(zip(list(range(self.k)), [all_datasets]*self.k, [kwargs]*self.k))
-            executor.map(self.subprocess, inputs)
+        subprocess = self.define_subprocess(all_datasets, **kwargs)
+        pool = ProcessingPool()
+        scores = pool.map(subprocess, range(self.k))
+        pool.close()
+
+        # with ProcessPoolExecutor() as executor:
+        #     #inputs = list(zip(list(range(self.k)), [all_datasets]*self.k, [kwargs]*self.k))
+        #     future = [executor.submit(self.subprocess(i, all_datasets, **kwargs)) for i in range(self.k)]
+        #     for fut in as_completed(future):
+        #         print(f"The outcome is {fut.result()}")
+        #     #scores = executor.map(self.subprocess, inputs)
 
         return scores
 
-    def subprocess(self, k, all_datasets, **kwargs):
-        """
-        Executes one fold of the outter cross valid
-        :param k: fold iteration
-        :param all_datasets: dictionary with all datasets
-        :return: score
-        """
-        # We get the train, test and valid sets
-        train_set, test_set, valid_set = self.get_datasets(all_datasets[k])
+    def define_subprocess(self, all_datasets, **kwargs):
 
-        # We create the tuner to perform the hyperparameters optimization
-        tuner = self.create_tuner(datasets=all_datasets[k]["inner"],
-                                  study_name=f"{self.evaluation_name}_{k}", **kwargs)
+        def subprocess(k):
+            """
+            Executes one fold of the outter cross valid
+            :param k: fold iteration
+            :return: score
+            """
+            # We get the train, test and valid sets
+            train_set, test_set, valid_set = self.get_datasets(all_datasets[k])
 
-        # We perform the hyper parameters tuning to get the best hyper parameters
-        best_hyper_params = tuner.tune()
+            # We create the tuner to perform the hyperparameters optimization
+            print(f"{k}-th outter loop hyperparameter tuning started - Process ID {current_process().name}")
+            tuner = self.create_tuner(datasets=all_datasets[k]["inner"],
+                                      study_name=f"{self.evaluation_name}_{k}", **kwargs)
 
-        # We create our model with the best hyper parameters
-        model = self.create_model(best_hyper_params=best_hyper_params)
+            # We perform the hyper parameters tuning to get the best hyper parameters
+            best_hyper_params = tuner.tune()
+            print(f"{k}-th outter loop hyperparameter tuning done - Process ID {current_process().name}")
 
-        # We create a trainer to train the model
-        trainer = self.create_trainer(model=model, best_hyper_params=best_hyper_params, device=self.device)
+            # We create our model with the best hyper parameters
+            model = self.create_model(best_hyper_params=best_hyper_params)
 
-        # We train our model with the best hyper parameters
-        trainer.fit(train_set=train_set, val_set=valid_set)
+            # We create a trainer to train the model
+            trainer = self.create_trainer(model=model, best_hyper_params=best_hyper_params, device=self.device)
 
-        # We extract x_cont, x_cat and target from the test set
-        x_cont, x_cat, target = self.extract_data(test_set)
+            # We train our model with the best hyper parameters
+            print(f"{k}-th outter loop final model training - Process ID {current_process().name}")
+            trainer.fit(train_set=train_set, val_set=valid_set)
 
-        # We calculate the score with the help of the metric function
-        return self.metric(trainer.predict(x_cont, x_cat), target)
+            # We extract x_cont, x_cat and target from the test set
+            x_cont, x_cat, target = self.extract_data(test_set)
 
+            # We calculate the score with the help of the metric function
+            return self.metric(trainer.predict(x_cont, x_cat), target)
+
+        return subprocess
 
     @staticmethod
     def extract_data(dataset):

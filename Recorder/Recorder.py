@@ -23,7 +23,7 @@ class Recorder:
         os.makedirs(os.path.join("Recordings/", folder_name), exist_ok=True)
 
         self.path = os.path.join("Recordings/", folder_name)
-        self.data = {"name": evaluation_name, "index": index}
+        self.data = {"name": evaluation_name, "index": index, "metrics": []}
 
     def record_model(self, model):
         """
@@ -40,7 +40,10 @@ class Recorder:
         """
 
         # We save all the hyperparameters
-        self.data["hyperparameters"] = [{key: hyperparameters[key]} for key in hyperparameters.keys()]
+
+        self.data["hyperparameters"] = [
+            {key: round(hyperparameters[key], 6) if isinstance(hyperparameters[key], float) else hyperparameters[key]}
+            for key in hyperparameters.keys()]
 
     def record_predictions(self, predictions):
         """
@@ -56,7 +59,7 @@ class Recorder:
         """
 
         # We save the score of the given metric
-        self.data[metric] = score
+        self.data["metrics"].append({metric: round(score, 6)})
 
     def generate_file(self):
         """

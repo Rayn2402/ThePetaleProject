@@ -158,7 +158,7 @@ class NNTrainer(Trainer):
         if trial is None and verbose:
             def update_progress(epoch, mean_epoch_loss):
                 if epoch % 10 == 0 or (epoch+1) == self.epochs:
-                    print(f"Epoch {epoch} - Loss : {round(mean_epoch_loss, 4)}")
+                    print(f"Epoch {epoch+1} - Loss : {round(mean_epoch_loss, 4)}")
         else:
             def update_progress(**kwargs): pass
 

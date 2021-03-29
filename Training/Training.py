@@ -154,11 +154,10 @@ class NNTrainer(Trainer):
         self.seed = seed
         self.trial = trial
 
-    @staticmethod
-    def update_progress_func(trial, verbose):
+    def update_progress_func(self, trial, verbose):
         if trial is None and verbose:
             def update_progress(epoch, mean_epoch_loss):
-                if epoch % 5 == 0:
+                if epoch % 10 == 0 or (epoch+1) == self.epochs:
                     print(f"Epoch {epoch} - Loss : {round(mean_epoch_loss, 4)}")
         else:
             def update_progress(**kwargs): pass

@@ -37,7 +37,6 @@ if __name__ == '__main__':
     cat, cont = train.X_cat.shape[1], train.X_cont.shape[1]
     cat_sizes = [len(unique(train.X_cat[:, i])) for i in range(cat)]
 
-    """
     print(f"\nOverfitting test...\n")
 
     # We set the seed for the model
@@ -51,12 +50,12 @@ if __name__ == '__main__':
     trainer = NNTrainer(Model, metric=None, lr=0.001, batch_size=20, weight_decay=0,
                         epochs=1000, early_stopping_activated=False)
 
-    # Training for 50 epochs
-    t_loss, v_loss = trainer.fit(train, valid)
+    # Training for 1000 epochs
+    t_loss, v_loss = trainer.fit(train, valid, verbose=False)
 
     # Visualization of the losses
     visualize_epoch_losses(t_loss, v_loss)
-    """
+
     # WEIGHT DECAY TEST #
 
     """
@@ -78,7 +77,8 @@ if __name__ == '__main__':
                             epochs=100, early_stopping_activated=False)
 
         # Training for 100 epochs
-        t_loss, v_loss = trainer.fit(train, valid)
+        t_loss, v_loss = trainer.fit(train, valid, verbose=True)
+        print("\n")
 
         # Visualization of the losses
         visualize_epoch_losses(t_loss, v_loss)
@@ -97,7 +97,7 @@ if __name__ == '__main__':
                         epochs=1000, early_stopping_activated=True)
 
     # Training for 1000 epochs
-    t_loss, v_loss = trainer.fit(train, valid)
+    t_loss, v_loss = trainer.fit(train, valid, verbose=True)
 
     # Visualization of the losses
     visualize_epoch_losses(t_loss, v_loss)
@@ -113,10 +113,10 @@ if __name__ == '__main__':
 
     generator = NNModelGenerator(NNClassifier, num_cont_col=cont, cat_sizes=cat_sizes, output_size=3)
 
-    evaluator = NNEvaluator('bob', generator, sampler, HYPER_PARAMS, n_trials=200, seed=TEST_SEED,
-                            metric=metric01, k=1, max_epochs=400, direction="maximize")
+    evaluator = NNEvaluator('test', generator, sampler, HYPER_PARAMS, n_trials=50, seed=TEST_SEED,
+                            metric=metric01, k=3, max_epochs=50, direction="maximize")
 
-    scores = evaluator.nested_cross_valid(n_startup_trials=10, min_resource=25, eta=4)
+    scores = evaluator.nested_cross_valid(n_startup_trials=10, min_resource=25, eta=2)
 
     print(scores)
 

@@ -7,9 +7,9 @@ Files that contains the logic related to hyper parameters tuning
 from optuna import create_study
 from optuna.samplers import TPESampler
 from optuna.pruners import SuccessiveHalvingPruner
-from optuna.visualization import plot_param_importances, plot_intermediate_values, plot_parallel_coordinate
 
-from optuna.visualization import plot_param_importances, plot_intermediate_values, plot_optimization_history
+from optuna.visualization import plot_param_importances, plot_intermediate_values, plot_optimization_history, \
+    plot_parallel_coordinate
 from optuna.logging import FATAL, set_verbosity
 from Training.Training import NNTrainer, RFTrainer
 from Hyperparameters.constants import *
@@ -155,7 +155,7 @@ class RFObjective:
 
 class Tuner:
     def __init__(self, study_name, model_generator, datasets, hyper_params, k, n_trials, metric, direction="minimize",
-                plot_hyperparameters_importance=False, plot_intermediate_values=False, plot_parallel_coordinate=False,
+                 get_hyperparameters_importance=False, get_intermediate_values=False, get_parallel_coordinate=False,
                  **kwargs):
         """
                 Class that will be responsible of the hyperparameters tuning
@@ -171,14 +171,14 @@ class Tuner:
                 the metric we want to optimize
                 :param n_trials: Number of trials we want to perform
                 :param direction: String to specify if we want to maximize or minimize the value of the metric used
-                :param plot_hyperparameters_importance: Bool to tell if we want to plot the hyperparameters importance
+                :param get_hyperparameters_importance: Bool to tell if we want to plot the hyperparameters importance
                                                         graph
-                :param plot_intermediate_values: Bool to tell if we want to plot the intermediate values graph
-                :param plot_parallel_coordinate: Bool to tell if we want to plot the parallel coordinate graph
+                :param get_intermediate_values: Bool to tell if we want to plot the intermediate values graph
+                :param get_parallel_coordinate: Bool to tell if we want to plot the parallel coordinate graph
 
 
                 """
-        
+
         # We look for keyword args
         n_startup = kwargs.get('n_startup_trials', 10)
         n_ei_candidates = kwargs.get('n_ei_candidates', 20)
@@ -200,9 +200,9 @@ class Tuner:
         self.hyper_params = hyper_params
         self.k = k
         self.metric = metric
-        self.plot_hyperparameters_importance = plot_hyperparameters_importance
-        self.plot_intermediate_values = plot_intermediate_values
-        self.plot_parallel_coordinate = plot_parallel_coordinate
+        self.get_hyperparameters_importance = get_hyperparameters_importance
+        self.get_intermediate_values = get_intermediate_values
+        self.get_parallel_coordinate = get_parallel_coordinate
 
     def tune(self, verbose=True):
         """
@@ -220,15 +220,15 @@ class Tuner:
                            k=self.k, metric=self.metric, max_epochs=self.max_epochs),
             self.n_trials, n_jobs=1, show_progress_bar=verbose)
 
-        if self.plot_hyperparameters_importance:
+        if self.get_hyperparameters_importance:
             # We plot the hyperparameters importance graph
             self.plot_hyperparameters_importance_graph()
 
-        if self.plot_intermediate_values:
+        if self.get_intermediate_values:
             # We plot the Intermediate values graph
             self.plot_intermediate_values_graph()
 
-        if self.plot_parallel_coordinate:
+        if self.get_parallel_coordinate:
             # We plot the Intermediate values graph
             self.plot_parallel_coordinate_graph()
         # self.plot_optimization_history()
@@ -284,7 +284,7 @@ class Tuner:
 class NNTuner(Tuner):
     def __init__(self, study_name, model_generator, datasets, hyper_params, k, n_trials, metric,
                  direction="minimize", max_epochs=100, plot_hyperparameters_importance=False,
-                 plot_intermediate_values=False, plot_parallel_coordinate=False, **kwargs ):
+                 plot_intermediate_values=False, plot_parallel_coordinate=False, **kwargs):
         """
         Class that will be responsible of tuning Neural Networks
 

@@ -8,8 +8,7 @@ from optuna import create_study
 from optuna.samplers import TPESampler
 from optuna.pruners import SuccessiveHalvingPruner
 
-from optuna.visualization import plot_param_importances, plot_intermediate_values, plot_optimization_history, \
-    plot_parallel_coordinate
+from optuna.visualization import plot_param_importances, plot_intermediate_values, plot_optimization_history
 from optuna.logging import FATAL, set_verbosity
 from Training.Training import NNTrainer, RFTrainer
 from Hyperparameters.constants import *
@@ -155,7 +154,7 @@ class RFObjective:
 
 class Tuner:
     def __init__(self, study_name, model_generator, datasets, hyper_params, k, n_trials, metric, direction="minimize",
-                 get_hyperparameters_importance=False, get_intermediate_values=False, get_parallel_coordinate=False,
+                 get_hyperparameters_importance=False, get_intermediate_values=False, get_optimization_history=False,
                  **kwargs):
         """
                 Class that will be responsible of the hyperparameters tuning
@@ -174,7 +173,7 @@ class Tuner:
                 :param get_hyperparameters_importance: Bool to tell if we want to plot the hyperparameters importance
                                                         graph
                 :param get_intermediate_values: Bool to tell if we want to plot the intermediate values graph
-                :param get_parallel_coordinate: Bool to tell if we want to plot the parallel coordinate graph
+                :param get_optimization_history: Bool to tell if we want to plot the optimization history graph
 
 
                 """
@@ -202,7 +201,7 @@ class Tuner:
         self.metric = metric
         self.get_hyperparameters_importance = get_hyperparameters_importance
         self.get_intermediate_values = get_intermediate_values
-        self.get_parallel_coordinate = get_parallel_coordinate
+        self.get_optimization_history = get_optimization_history
 
     def tune(self, verbose=True):
         """
@@ -228,10 +227,9 @@ class Tuner:
             # We plot the Intermediate values graph
             self.plot_intermediate_values_graph()
 
-        if self.get_parallel_coordinate:
-            # We plot the Intermediate values graph
-            self.plot_parallel_coordinate_graph()
-        # self.plot_optimization_history()
+        if self.get_optimization_history:
+            # We plot the optimization history graph
+            self.plot_optimization_history_graph()
 
         # We return the best hyper parameters
         return self.get_best_hyperparams()
@@ -258,33 +256,23 @@ class Tuner:
         # We save the graph in a html file to have an interactive graph
         fig.write_html(os.path.join(f"./Recordings/{self.study.study_name}", "intermediate_values.html"))
 
-    def plot_parallel_coordinate_graph(self):
+    def plot_optimization_history_graph(self):
         """
-        Method to plot the parallel coordinate graph and save it in a html file
+        Method to plot the optimization history graph and save it in a html file
         """
-
-        # We generate the intermediate values graph with optuna
-        fig = plot_parallel_coordinate(self.study)
-
-        # We save the graph in a html file to have an interactive graph
-        fig.write_html(os.path.join(f"./Recordings/{self.study.study_name}", "parallel_coordinate.html"))
-
-    def plot_optimization_history(self):
 
         # We generate the intermediate values graph with optuna
         fig = plot_optimization_history(self.study)
 
-        if not os.path.exists('./OptHist/'):
-            Path('./OptHist/').mkdir(parents=True, exist_ok=True)
-
         # We save the graph in a html file to have an interactive graph
-        fig.write_html(f"./OptHist/{self.study.study_name}.html")
+        fig.write_html(os.path.join(f"./Recordings/{self.study.study_name}", "optimization_history.html"))
+
 
 
 class NNTuner(Tuner):
     def __init__(self, study_name, model_generator, datasets, hyper_params, k, n_trials, metric,
                  direction="minimize", max_epochs=100, get_hyperparameters_importance=False,
-                 get_intermediate_values=False, get_parallel_coordinate=False, **kwargs):
+                 get_intermediate_values=False, get_optimization_history=False, **kwargs):
         """
         Class that will be responsible of tuning Neural Networks
 
@@ -293,7 +281,7 @@ class NNTuner(Tuner):
                          hyper_params=hyper_params, k=k, n_trials=n_trials, metric=metric, direction=direction,
                          get_hyperparameters_importance=get_hyperparameters_importance,
                          get_intermediate_values=get_intermediate_values,
-                         get_parallel_coordinate=get_parallel_coordinate, **kwargs)
+                         get_optimization_history=get_optimization_history, **kwargs)
         self.Objective = NNObjective
         self.max_epochs = max_epochs
 
@@ -326,7 +314,7 @@ class NNTuner(Tuner):
 class RFTuner(Tuner):
     def __init__(self, study_name, model_generator, datasets, hyper_params, k, n_trials, metric,
                  direction="minimize", get_hyperparameters_importance=False, get_intermediate_values=False,
-                 get_parallel_coordinate=False, **kwargs):
+                 get_optimization_history=False, **kwargs):
         """
         Class that will be responsible of tuning Random Forests
 
@@ -335,7 +323,7 @@ class RFTuner(Tuner):
                          hyper_params=hyper_params, k=k, n_trials=n_trials, metric=metric, direction=direction,
                          get_hyperparameters_importance=get_hyperparameters_importance,
                          get_intermediate_values=get_intermediate_values,
-                         get_parallel_coordinate=get_parallel_coordinate, **kwargs)
+                         get_optimization_history=get_optimization_history, **kwargs)
         self.Objective = RFObjective
         self.max_epochs = None
 

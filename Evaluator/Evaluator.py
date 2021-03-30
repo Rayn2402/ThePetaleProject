@@ -12,15 +12,14 @@ from Hyperparameters.constants import *
 from Recorder.Recorder import Recorder
 from torch.nn import Softmax
 
-
 import ray
 import time
 
 
 class Evaluator:
     def __init__(self, evaluation_name, model_generator, sampler, hyper_params, n_trials, metric, k, l=1,
-                 direction="minimize", seed=None, plot_hyperparameters_importance=False, plot_intermediate_values=False,
-                 plot_parallel_coordinate=False, device="cpu", parallelism=True):
+                 direction="minimize", seed=None, get_hyperparameters_importance=False, get_intermediate_values=False,
+                 get_parallel_coordinate=False, device="cpu", parallelism=True):
         """
         Class that will be responsible of the evaluation of the model
 
@@ -36,11 +35,11 @@ class Evaluator:
         :param n_trials: number of trials we want to perform
         :param direction: direction to specify if we want to maximize or minimize the value of the metric used
         :param seed: the starting point in generating random numbers
-        :param plot_hyperparameters_importance: Bool to tell if we want to plot the hyperparameters importance graph
+        :param get_hyperparameters_importance: Bool to tell if we want to plot the hyperparameters importance graph
                                                 after tuning the hyper parameters
-        :param plot_intermediate_values: Bool to tell if we want to plot the intermediate values graph after tuning
+        :param get_intermediate_values: Bool to tell if we want to plot the intermediate values graph after tuning
         the hyper parameters
-        :param plot_parallel_coordinate: Bool to tell if we want to plot the parallel coordinate graph
+        :param get_parallel_coordinate: Bool to tell if we want to plot the parallel coordinate graph
          the hyper parameters
         :param device: "cpu" or "gpu"
 
@@ -58,9 +57,9 @@ class Evaluator:
         self.metric = metric
         self.direction = direction
         self.seed = seed
-        self.plot_hyperparameters_importance = plot_hyperparameters_importance
-        self.plot_intermediate_values = plot_intermediate_values
-        self.plot_parallel_coordinate = plot_parallel_coordinate
+        self.get_hyperparameters_importance = get_hyperparameters_importance
+        self.get_intermediate_values = get_intermediate_values
+        self.get_parallel_coordinate = get_parallel_coordinate
 
         assert not (device == 'gpu' and parallelism), "Parallel optimization with gpu is not enabled"
 
@@ -165,7 +164,6 @@ class Evaluator:
             # We calculate the score with the help of the metric function
             return self.metric(predictions, target)
 
-
         return subprocess
 
     @staticmethod
@@ -210,9 +208,10 @@ class Evaluator:
 
 class NNEvaluator(Evaluator):
 
-    def __init__(self, evaluation_name, model_generator, sampler, hyper_params, n_trials, metric, k, l=1, max_epochs=100,
-                 direction="minimize", seed=None, plot_hyperparameters_importance=False, plot_intermediate_values=False,
-                 plot_parallel_coordinate=False, device="cpu", parallelism=True):
+    def __init__(self, evaluation_name, model_generator, sampler, hyper_params, n_trials, metric, k, l=1,
+                 max_epochs=100,
+                 direction="minimize", seed=None, get_hyperparameters_importance=False, get_intermediate_values=False,
+                 get_parallel_coordinate=False, device="cpu", parallelism=True):
         """
         Class that will be responsible of the evaluation of the Neural Networks models
 
@@ -221,9 +220,9 @@ class NNEvaluator(Evaluator):
         """
         super().__init__(model_generator=model_generator, sampler=sampler, hyper_params=hyper_params, n_trials=n_trials,
                          metric=metric, k=k, l=l, direction=direction, seed=seed,
-                         plot_hyperparameters_importance=plot_hyperparameters_importance,
-                         plot_intermediate_values=plot_intermediate_values,
-                         plot_parallel_coordinate=plot_parallel_coordinate,
+                         get_hyperparameters_importance=get_hyperparameters_importance,
+                         get_intermediate_values=get_intermediate_values,
+                         get_parallel_coordinate=get_parallel_coordinate,
                          evaluation_name=evaluation_name, device=device, parallelism=parallelism)
 
         self.max_epochs = max_epochs
@@ -241,9 +240,9 @@ class NNEvaluator(Evaluator):
                        hyper_params=self.hyper_params, n_trials=self.n_trials,
                        metric=self.metric, direction=self.direction, k=self.l,
                        max_epochs=self.max_epochs, study_name=study_name,
-                       plot_intermediate_values=self.plot_intermediate_values,
-                       plot_hyperparameters_importance=self.plot_hyperparameters_importance,
-                       plot_parallel_coordinate=self.plot_parallel_coordinate, **kwargs)
+                       get_intermediate_values=self.get_intermediate_values,
+                       get_hyperparameters_importance=self.get_hyperparameters_importance,
+                       get_parallel_coordinate=self.get_parallel_coordinate, **kwargs)
 
     def create_model(self, best_hyper_params):
         """
@@ -273,7 +272,8 @@ class NNEvaluator(Evaluator):
 class RFEvaluator(Evaluator):
 
     def __init__(self, evaluation_name, model_generator, sampler, hyper_params, n_trials, metric, k, l=1,
-                 direction="minimize", seed=None, plot_hyperparameters_importance=False, plot_intermediate_values=False, plot_parallel_coordinate=False):
+                 direction="minimize", seed=None, get_hyperparameters_importance=False, get_intermediate_values=False,
+                 get_parallel_coordinate=False):
         """
         Class that will be responsible of the evaluation of the Random Forest models
 
@@ -281,9 +281,9 @@ class RFEvaluator(Evaluator):
 
         super().__init__(model_generator=model_generator, sampler=sampler, hyper_params=hyper_params, n_trials=n_trials,
                          metric=metric, k=k, l=l, direction=direction, seed=seed,
-                         plot_intermediate_values=plot_intermediate_values,
-                         plot_hyperparameters_importance=plot_hyperparameters_importance,
-                         plot_parallel_coordinate=plot_parallel_coordinate,
+                         get_intermediate_values=get_intermediate_values,
+                         get_hyperparameters_importance=get_hyperparameters_importance,
+                         get_parallel_coordinate=get_parallel_coordinate,
                          evaluation_name=evaluation_name, device="cpu", parallelism=True)
 
     def create_tuner(self, datasets, study_name, **kwargs):
@@ -298,9 +298,9 @@ class RFEvaluator(Evaluator):
         return RFTuner(study_name=study_name, model_generator=self.model_generator, datasets=datasets,
                        hyper_params=self.hyper_params, n_trials=self.n_trials,
                        metric=self.metric, direction=self.direction, k=self.l,
-                       plot_hyperparameters_importance=self.plot_hyperparameters_importance,
-                       plot_intermediate_values=self.plot_intermediate_values,
-                       plot_parallel_coordinate=self.plot_parallel_coordinate, **kwargs
+                       get_hyperparameters_importance=self.get_hyperparameters_importance,
+                       get_intermediate_values=self.get_intermediate_values,
+                       get_parallel_coordinate=self.get_parallel_coordinate, **kwargs
                        )
 
     def create_model(self, best_hyper_params):

@@ -283,17 +283,17 @@ class Tuner:
 
 class NNTuner(Tuner):
     def __init__(self, study_name, model_generator, datasets, hyper_params, k, n_trials, metric,
-                 direction="minimize", max_epochs=100, plot_hyperparameters_importance=False,
-                 plot_intermediate_values=False, plot_parallel_coordinate=False, **kwargs):
+                 direction="minimize", max_epochs=100, get_hyperparameters_importance=False,
+                 get_intermediate_values=False, get_parallel_coordinate=False, **kwargs):
         """
         Class that will be responsible of tuning Neural Networks
 
         """
         super().__init__(study_name=study_name, model_generator=model_generator, datasets=datasets,
                          hyper_params=hyper_params, k=k, n_trials=n_trials, metric=metric, direction=direction,
-                         plot_hyperparameters_importance=plot_hyperparameters_importance,
-                         plot_intermediate_values=plot_intermediate_values,
-                         plot_parallel_coordinate=plot_parallel_coordinate, **kwargs)
+                         get_hyperparameters_importance=get_hyperparameters_importance,
+                         get_intermediate_values=get_intermediate_values,
+                         get_parallel_coordinate=get_parallel_coordinate, **kwargs)
         self.Objective = NNObjective
         self.max_epochs = max_epochs
 
@@ -325,17 +325,17 @@ class NNTuner(Tuner):
 
 class RFTuner(Tuner):
     def __init__(self, study_name, model_generator, datasets, hyper_params, k, n_trials, metric,
-                 direction="minimize", plot_hyperparameters_importance=False, plot_intermediate_values=False,
-                 plot_parallel_coordinate=False, **kwargs):
+                 direction="minimize", get_hyperparameters_importance=False, get_intermediate_values=False,
+                 get_parallel_coordinate=False, **kwargs):
         """
         Class that will be responsible of tuning Random Forests
 
         """
         super().__init__(study_name=study_name, model_generator=model_generator, datasets=datasets,
                          hyper_params=hyper_params, k=k, n_trials=n_trials, metric=metric, direction=direction,
-                         plot_hyperparameters_importance=plot_hyperparameters_importance,
-                         plot_intermediate_values=plot_intermediate_values,
-                         plot_parallel_coordinate=plot_parallel_coordinate, **kwargs)
+                         get_hyperparameters_importance=get_hyperparameters_importance,
+                         get_intermediate_values=get_intermediate_values,
+                         get_parallel_coordinate=get_parallel_coordinate, **kwargs)
         self.Objective = RFObjective
         self.max_epochs = None
 

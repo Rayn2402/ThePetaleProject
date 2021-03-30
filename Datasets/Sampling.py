@@ -4,6 +4,8 @@ Author : Nicolas Raymond
 This file contains the Sampler class used to separate test sets from train sets
 """
 
+from typing import Sequence, Union, Callable, Tuple
+from SQL.DataManager.Utils import PetaleDataManager
 from Datasets.Datasets import PetaleDataset, PetaleDataframe
 from .Transforms import ContinuousTransform as ConT
 from SQL.NewTablesScripts.constants import *
@@ -13,7 +15,8 @@ import pandas as pd
 
 class Sampler:
 
-    def __init__(self, dm, table_name, cont_cols, target_col, cat_cols=None, to_dataset=True):
+    def __init__(self, dm: PetaleDataManager, table_name: str, cont_cols: Sequence[str],
+                 target_col: str, cat_cols: Union[None, Sequence[str]] = None, to_dataset: bool = True):
         """
         Object that creates all datasets
         :param dm: PetaleDataManager
@@ -40,10 +43,15 @@ class Sampler:
         # We save the dataset class constructor
         self.dataset_constructor = Sampler.define_container_constructor(to_dataset)
 
-    def __call__(self, k=5, l=1, split_cat=True, valid_size=0.20, test_size=0.20, add_biases=False):
+    def __call__(self, k: int = 10, l: int = 1, split_cat: bool = True,
+                 valid_size: Union[int, float] = 0.11, test_size: Union[int, float] = 0.10,
+                 add_biases: bool = False) -> dict:
+
         return self.create_train_and_test_datasets(k, l, split_cat, valid_size, test_size, add_biases)
 
-    def create_train_and_test_datasets(self, k=5, l=2, split_cat=True, valid_size=0.20, test_size=0.20, add_biases=False):
+    def create_train_and_test_datasets(self, k: int = 10, l: int = 1, split_cat: bool = True,
+                                       valid_size: Union[int, float] = 0.11, test_size: Union[int, float] = 0.10,
+                                       add_biases: bool = False) -> dict:
         """
         Creates the train and test PetaleDatasets from the df and the specified continuous and categorical columns
 
@@ -80,7 +88,8 @@ class Sampler:
 
         return all_datasets
 
-    def dataframes_to_datasets(self, train, valid, test, split_cat=True, add_biases=False):
+    def dataframes_to_datasets(self, train: pd.DataFrame, valid: pd.DataFrame, test: pd.DataFrame,
+                               split_cat: bool = True, add_biases: bool = False) -> dict:
         """
         Turns three pandas dataframe into training, valid and test PetaleDatasets
 
@@ -112,7 +121,7 @@ class Sampler:
         return {"train": train_ds, "valid": valid_ds, "test": test_ds}
 
     @staticmethod
-    def visualize_splits(datasets):
+    def visualize_splits(datasets: dict) -> None:
         """
         Details the data splits for the experiment
 
@@ -132,7 +141,7 @@ class Sampler:
             print("#----------------------------------#")
 
     @staticmethod
-    def define_container_constructor(to_dataset):
+    def define_container_constructor(to_dataset: bool) -> Callable:
         """
         Defines the correct constructor to use to initialise our dataset
 
@@ -147,7 +156,7 @@ class Sampler:
 
 class WarmUpSampler(Sampler):
 
-    def __init__(self, dm, to_dataset=True):
+    def __init__(self, dm: PetaleDataManager, to_dataset: bool = True):
         """
         Creates a Sampler for the WarmUp data table
         :param dm: PetaleDataManager
@@ -159,7 +168,7 @@ class WarmUpSampler(Sampler):
 
 class LearningOneSampler(Sampler):
 
-    def __init__(self, dm, to_dataset=True):
+    def __init__(self, dm: PetaleDataManager, to_dataset: bool = True):
         """
         Creates a Sampler for the Learning One data table
         :param dm: PetaleDataManager
@@ -175,7 +184,9 @@ class LearningOneSampler(Sampler):
         super().__init__(dm, LEARNING_1, cont_cols, FITNESS_LVL, cat_cols, to_dataset)
 
 
-def split_train_test(df, target_col, test_size=0.20, random_state=None):
+def split_train_test(df: pd.DataFrame, target_col: str,
+                     test_size: Union[int, float] = 0.10,
+                     random_state: bool = None) -> Tuple[pd.DataFrame, Union[pd.DataFrame, None]]:
     """
     Split de training and testing data contained within a pandas dataframe
     :param df: pandas dataframe
@@ -196,7 +207,8 @@ def split_train_test(df, target_col, test_size=0.20, random_state=None):
         return df, None
 
 
-def stratified_sample(df, target_col, n, quantiles=4, random_state=None):
+def stratified_sample(df: pd.DataFrame, target_col: str, n: Union[int, float],
+                      quantiles: int = 4, random_state: Union[int, None] = None) -> pd.DataFrame:
     """
     Proceeds to a stratified sampling of the original dataset based on the target variable
 

@@ -6,7 +6,7 @@ File that contains class related to the Early Stopping
 """
 
 import numpy as np
-import torch
+from torch import save
 
 
 class EarlyStopping:
@@ -27,6 +27,9 @@ class EarlyStopping:
         Method to be called to perform the early stopping logic
         """
         score = -val_loss
+
+
+
 
         # if there is not best score yet we save the score and the model
         if self.best_score is None:
@@ -54,5 +57,5 @@ class EarlyStopping:
         :param val_loss: the valid loss of the model to save.
         :param model: the model to save.
         """
-        torch.save(model.state_dict(), "checkpoint.pt")
+        save(model.state_dict(), "checkpoint.pt")
         self.val_loss_min = val_loss

@@ -6,7 +6,7 @@ File that contains class related to the Early Stopping
 """
 
 import numpy as np
-from torch import save
+from torch import save, load
 
 
 class EarlyStopping:
@@ -28,9 +28,6 @@ class EarlyStopping:
         """
         score = -val_loss
 
-
-
-
         # if there is not best score yet we save the score and the model
         if self.best_score is None:
             self.best_score = score
@@ -50,6 +47,10 @@ class EarlyStopping:
             self.save_checkpoint(val_loss, model)
             self.counter = 0
 
+        # We return the best saved model
+        best_model = load("checkpoint.pt")
+        return best_model
+
     def save_checkpoint(self, val_loss, model):
         """
         method that will save the best model and store the validation loss of that model
@@ -57,5 +58,5 @@ class EarlyStopping:
         :param val_loss: the valid loss of the model to save.
         :param model: the model to save.
         """
-        save(model.state_dict(), "checkpoint.pt")
+        save(model, "checkpoint.pt")
         self.val_loss_min = val_loss

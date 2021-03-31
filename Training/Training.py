@@ -52,7 +52,6 @@ class Trainer:
         # We initialize an empty list to store the scores
         score = []
         for i in range(k):
-
             # We the get the train, test, valid sets of the step we are currently in
             train_set, test_set, valid_set = self.get_datasets(datasets[i])
 
@@ -153,14 +152,16 @@ class NNTrainer(Trainer):
         self.patience = patience
         self.seed = seed
         self.trial = trial
+        self.best_model = None
 
     def update_progress_func(self, trial, verbose):
         if trial is None and verbose:
             def update_progress(epoch, mean_epoch_loss):
-                if epoch % 10 == 0 or (epoch+1) == self.epochs:
-                    print(f"Epoch {epoch+1} - Loss : {round(mean_epoch_loss, 4)}")
+                if epoch % 10 == 0 or (epoch + 1) == self.epochs:
+                    print(f"Epoch {epoch + 1} - Loss : {round(mean_epoch_loss, 4)}")
         else:
-            def update_progress(**kwargs): pass
+            def update_progress(**kwargs):
+                pass
 
         return update_progress
 
@@ -209,7 +210,7 @@ class NNTrainer(Trainer):
         device = device_("cuda" if cuda.is_available() and self.device == "gpu" else "cpu")
 
         for epoch in range(self.epochs):
-            
+
             ###################
             # train the model #
             ###################
@@ -256,7 +257,7 @@ class NNTrainer(Trainer):
             # and the correct predictions y for the single batch
             x_cont, x_cat, y = self.extract_batch(next(iter(val_loader)), device)
 
-            # We perfrom the forward pass: compute predicted outputs by passing inputs to the model
+            # We perform the forward pass: compute predicted outputs by passing inputs to the model
             preds = self.model(x_cont=x_cont, x_cat=x_cat)
 
             # We calculate the loss
@@ -265,8 +266,17 @@ class NNTrainer(Trainer):
             # We record the validation loss
             valid_loss.append(val_epoch_loss)
 
+            # We look for early stopping
+            if self.early_stopping_activated:
+                self.best_model = early_stopping(val_epoch_loss, self.model)
+
+            if early_stopping.early_stop:
+                self.model = self.best_model
+
             if self.metric is not None:
-                intermediate_score = self.metric(preds, y)
+                intermediate_score = self.metric(self.model(x_cont=x_cont, x_cat=x_cat), y) if \
+                    self.early_stopping_activated is False else \
+                    self.metric(self.best_model(x_cont=x_cont, x_cat=x_cat), y)
 
             # Pruning logic
             if self.trial is not None:
@@ -275,13 +285,6 @@ class NNTrainer(Trainer):
                 # We prune the trial if it should be pruned
                 if self.trial.should_prune():
                     raise TrialPruned()
-
-            # We look for early stopping
-            if self.early_stopping_activated:
-                early_stopping(val_epoch_loss, self.model)
-
-            if early_stopping.early_stop:
-                break
 
         return tensor(training_loss), tensor(valid_loss)
 

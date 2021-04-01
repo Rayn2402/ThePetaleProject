@@ -7,7 +7,8 @@ Files that contains the logic related to hyper parameters tuning
 from optuna import create_study
 from optuna.samplers import TPESampler
 from optuna.pruners import SuccessiveHalvingPruner
-from optuna.visualization import plot_param_importances, plot_intermediate_values, plot_optimization_history
+
+from optuna.visualization import plot_param_importances, plot_parallel_coordinate, plot_optimization_history
 from optuna.logging import FATAL, set_verbosity
 from Training.Training import NNTrainer, RFTrainer
 from Hyperparameters.constants import *
@@ -153,7 +154,8 @@ class RFObjective:
 
 class Tuner:
     def __init__(self, study_name, model_generator, datasets, hyper_params, k, n_trials, metric, direction="minimize",
-                 plot_feature_importance=False, plot_intermediate_values=False, **kwargs):
+                 get_hyperparameters_importance=False, get_parallel_coordinate=False, get_optimization_history=False,
+                 **kwargs):
         """
                 Class that will be responsible of the hyperparameters tuning
 
@@ -168,11 +170,14 @@ class Tuner:
                 the metric we want to optimize
                 :param n_trials: Number of trials we want to perform
                 :param direction: String to specify if we want to maximize or minimize the value of the metric used
-                :param plot_feature_importance: Bool to tell if we want to plot the feature importance graph
-                :param plot_intermediate_values: Bool to tell if we want to plot the intermediate values graph
+                :param get_hyperparameters_importance: Bool to tell if we want to plot the hyperparameters importance
+                                                        graph
+                :param get_parallel_coordinate: Bool to tell if we want to plot the parallel_coordinate graph
+                :param get_optimization_history: Bool to tell if we want to plot the optimization history graph
+
 
                 """
-        
+
         # We look for keyword args
         n_startup = kwargs.get('n_startup_trials', 10)
         n_ei_candidates = kwargs.get('n_ei_candidates', 20)
@@ -194,8 +199,9 @@ class Tuner:
         self.hyper_params = hyper_params
         self.k = k
         self.metric = metric
-        self.plot_feature_importance = plot_feature_importance
-        self.plot_intermediate_values = plot_intermediate_values
+        self.get_hyperparameters_importance = get_hyperparameters_importance
+        self.get_parallel_coordinate = get_parallel_coordinate
+        self.get_optimization_history = get_optimization_history
 
     def tune(self, verbose=True):
         """
@@ -213,20 +219,22 @@ class Tuner:
                            k=self.k, metric=self.metric, max_epochs=self.max_epochs),
             self.n_trials, n_jobs=1, show_progress_bar=verbose)
 
-        if self.plot_feature_importance:
-            # We plot the feature importance graph
-            self.plot_feature_importance_graph()
+        if self.get_hyperparameters_importance:
+            # We plot the hyperparameters importance graph
+            self.plot_hyperparameters_importance_graph()
 
-        if self.plot_intermediate_values:
-            # We plot the Intermediate values graph
-            self.plot_intermediate_values_graph()
+        if self.get_parallel_coordinate:
+            # We plot the parallel coordinate graph
+            self.plot_parallel_coordinate_graph()
 
-        # self.plot_optimization_history()
+        if self.get_optimization_history:
+            # We plot the optimization history graph
+            self.plot_optimization_history_graph()
 
         # We return the best hyper parameters
         return self.get_best_hyperparams()
 
-    def plot_feature_importance_graph(self):
+    def plot_hyperparameters_importance_graph(self):
         """
         Method to plot the hyper parameters graph and save it in a html file
         """
@@ -234,51 +242,46 @@ class Tuner:
         # We generate the hyper parameters importance graph with optuna
         fig = plot_param_importances(self.study)
 
-        if not os.path.exists('./FeatureImportance/'):
-            Path('./FeatureImportance/').mkdir(parents=True, exist_ok=True)
-
         # We save the graph in a html file to have an interactive graph
-        fig.write_html(f"./FeatureImportance/{self.study.study_name}.html")
+        fig.write_html(os.path.join(f"./Recordings/{self.study.study_name}", "hyperparameters_importance.html"))
 
-    def plot_intermediate_values_graph(self):
+    def plot_parallel_coordinate_graph(self):
         """
-        Method to plot the Intermediate values graph and save it in a html file
+        Method to plot the parallel coordinate graph and save it in a html file
         """
 
-        # We generate the intermediate values graph with optuna
-        fig = plot_intermediate_values(self.study)
-
-        if not os.path.exists('./IntermediateValues/'):
-            Path('./IntermediateValues/').mkdir(parents=True, exist_ok=True)
+        # We generate the parallel coordinate graph with optuna
+        fig = plot_parallel_coordinate(self.study)
 
         # We save the graph in a html file to have an interactive graph
-        fig.write_html(f"./IntermediateValues/{self.study.study_name}.html")
+        fig.write_html(os.path.join(f"./Recordings/{self.study.study_name}", "parallel_coordinate.html"))
 
-    def plot_optimization_history(self):
+    def plot_optimization_history_graph(self):
+        """
+        Method to plot the optimization history graph and save it in a html file
+        """
 
-        # We generate the intermediate values graph with optuna
+        # We generate the optimization history graph with optuna
         fig = plot_optimization_history(self.study)
 
-        if not os.path.exists('./OptHist/'):
-            Path('./OptHist/').mkdir(parents=True, exist_ok=True)
-
         # We save the graph in a html file to have an interactive graph
-        fig.write_html(f"./OptHist/{self.study.study_name}.html")
+        fig.write_html(os.path.join(f"./Recordings/{self.study.study_name}", "optimization_history.html"))
+
 
 
 class NNTuner(Tuner):
     def __init__(self, study_name, model_generator, datasets, hyper_params, k, n_trials, metric,
-                 direction="minimize", max_epochs=100, plot_feature_importance=False,
-                 plot_intermediate_values=False, **kwargs):
+                 direction="minimize", max_epochs=100, get_hyperparameters_importance=False,
+                 get_parallel_coordinate=False, get_optimization_history=False, **kwargs):
         """
         Class that will be responsible of tuning Neural Networks
 
         """
         super().__init__(study_name=study_name, model_generator=model_generator, datasets=datasets,
                          hyper_params=hyper_params, k=k, n_trials=n_trials, metric=metric, direction=direction,
-                         plot_feature_importance=plot_feature_importance,
-                         plot_intermediate_values=plot_intermediate_values, **kwargs)
-
+                         get_hyperparameters_importance=get_hyperparameters_importance,
+                         get_parallel_coordinate=get_parallel_coordinate,
+                         get_optimization_history=get_optimization_history, **kwargs)
         self.Objective = NNObjective
         self.max_epochs = max_epochs
 
@@ -310,16 +313,17 @@ class NNTuner(Tuner):
 
 class RFTuner(Tuner):
     def __init__(self, study_name, model_generator, datasets, hyper_params, k, n_trials, metric,
-                 direction="minimize", plot_feature_importance=False,
-                 plot_intermediate_values=False, **kwargs):
+                 direction="minimize", get_hyperparameters_importance=False, get_parallel_coordinate=False,
+                 get_optimization_history=False, **kwargs):
         """
         Class that will be responsible of tuning Random Forests
 
         """
         super().__init__(study_name=study_name, model_generator=model_generator, datasets=datasets,
                          hyper_params=hyper_params, k=k, n_trials=n_trials, metric=metric, direction=direction,
-                         plot_feature_importance=plot_feature_importance,
-                         plot_intermediate_values=plot_intermediate_values, **kwargs)
+                         get_hyperparameters_importance=get_hyperparameters_importance,
+                         get_intermediate_values=get_parallel_coordinate,
+                         get_optimization_history=get_optimization_history, **kwargs)
         self.Objective = RFObjective
         self.max_epochs = None
 

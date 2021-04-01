@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader, Subset
 from torch import optim, manual_seed, cuda, tensor
 from torch import device as device_
 from optuna import TrialPruned
-
+from torchcontrib.optim import SWA
 
 class Trainer:
     def __init__(self, model, metric, device="cpu"):
@@ -193,8 +193,11 @@ class NNTrainer(Trainer):
         # We create the validation data loader
         val_loader = DataLoader(val_set, batch_size=len(val_set))
 
-        # we create the optimizer
-        optimizer = optim.Adam(params=self.model.parameters(), lr=self.lr, weight_decay=self.weight_decay)
+        # Ee create the optimizer
+        base_optimizer = optim.Adam(params=self.model.parameters(), lr=self.lr, weight_decay=self.weight_decay)
+
+        # We implement ASWA
+        optimizer = SWA(base_optimizer, swa_start=10, swa_freq=5)
 
         # We initialize two empty lists to store the training loss and the validation loss
         training_loss, valid_loss = [], []

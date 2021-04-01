@@ -7,6 +7,7 @@ Files that contains the logic to save the results of the experiments
 import os
 import pickle
 import json
+from torch.nn import Softmax
 
 
 class Recorder:
@@ -70,3 +71,40 @@ class Recorder:
         filepath = os.path.join(self.path, "records.json")
         with open(filepath, "w") as file:
             json.dump(self.data, file, indent=True)
+
+
+class NNRecorder(Recorder):
+    """
+        Class that will be responsible of saving all the data about our experiments with Neural networks
+    """
+    def __init__(self, evaluation_name, index):
+        super().__init__(evaluation_name=evaluation_name, index=index)
+
+    def record_predictions(self, predictions):
+        """
+        Method to call to save the predictions of a neural network after an experiments
+        """
+
+        # We initialize the Softmax object
+        softmax = Softmax(dim=1)
+        predictions = softmax(predictions)
+
+        # We save the predictions
+        self.data["predictions"] = [{i: predictions[i].tolist()} for i in range(len(predictions))]
+
+
+class RFRecorder(Recorder):
+    """
+        Class that will be responsible of saving all the data about our experiments with Random Forest
+    """
+
+    def __init__(self, evaluation_name, index):
+        super().__init__(evaluation_name=evaluation_name, index=index)
+
+    def record_predictions(self, predictions):
+        """
+        Method to call to save the predictions of a Random forestafter an experiments
+        """
+
+        # We save the predictions
+        self.data["predictions"] = [{i: predictions[i]} for i in range(len(predictions))]

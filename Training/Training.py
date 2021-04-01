@@ -22,7 +22,6 @@ class Trainer:
         :param metric: Function that takes the output of the model and the target and returns  the metric we want
                        to optimize
         """
-        assert isinstance(model, Module), 'model argument must inherit from torch.nn.Module'
 
         # We save the model in the attribute model
         self.model = model
@@ -306,7 +305,7 @@ class RFTrainer(Trainer):
         """
         super().__init__(model=model, metric=metric)
 
-    def fit(self, train_set, val_set=None):
+    def fit(self, train_set, **kwargs):
         """
         Method that will fit the model to the given data
 

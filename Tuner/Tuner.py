@@ -18,7 +18,7 @@ from pathlib import Path
 
 
 class NNObjective:
-    def __init__(self, model_generator, datasets, hyper_params, k, metric, max_epochs):
+    def __init__(self, model_generator, datasets, hyper_params, k, metric, max_epochs, early_stopping_activated=False):
         """
         Class that will represent the objective function for tuning Neural networks
         
@@ -42,6 +42,7 @@ class NNObjective:
         self.k = k
         self.metric = metric
         self.max_epochs = max_epochs
+        self.early_stopping_activated = early_stopping_activated
 
     def __call__(self, trial):
         hyper_params = self.hyper_params
@@ -84,7 +85,8 @@ class NNObjective:
 
         # We create the Trainer that will train our model
         trainer = NNTrainer(model=model, batch_size=batch_size, lr=lr, epochs=self.max_epochs,
-                            weight_decay=weight_decay, metric=self.metric, trial=trial)
+                            weight_decay=weight_decay, metric=self.metric, trial=trial,
+                            early_stopping_activated=self.early_stopping_activated)
 
         # We perform a k fold cross validation to evaluate the model
         score = trainer.cross_valid(datasets=self.datasets, k=self.k)
@@ -94,7 +96,7 @@ class NNObjective:
 
 
 class RFObjective:
-    def __init__(self, model_generator, datasets, hyper_params, k, metric, max_epochs):
+    def __init__(self, model_generator, datasets, hyper_params, k, metric, **kwargs):
         """
         Class that will represent the objective function for tuning Random Forests
 
@@ -116,7 +118,6 @@ class RFObjective:
         self.hyper_params = hyper_params
         self.k = k
         self.metric = metric
-        self.max_epochs = max_epochs
 
     def __call__(self, trial):
         hyper_params = self.hyper_params
@@ -216,7 +217,9 @@ class Tuner:
             self.Objective(model_generator=self.model_generator,
                            datasets=self.datasets,
                            hyper_params=self.hyper_params,
-                           k=self.k, metric=self.metric, max_epochs=self.max_epochs),
+                           k=self.k, metric=self.metric, max_epochs=self.max_epochs,
+                           early_stopping_activated=self.early_stopping_activated
+),
             self.n_trials, n_jobs=1, show_progress_bar=verbose)
 
         if self.get_hyperparameters_importance:
@@ -268,11 +271,11 @@ class Tuner:
         fig.write_html(os.path.join(f"./Recordings/{self.study.study_name}", "optimization_history.html"))
 
 
-
 class NNTuner(Tuner):
     def __init__(self, study_name, model_generator, datasets, hyper_params, k, n_trials, metric,
                  direction="minimize", max_epochs=100, get_hyperparameters_importance=False,
-                 get_parallel_coordinate=False, get_optimization_history=False, **kwargs):
+                 get_parallel_coordinate=False, get_optimization_history=False,
+                 early_stopping_activated=False, **kwargs):
         """
         Class that will be responsible of tuning Neural Networks
 
@@ -284,9 +287,10 @@ class NNTuner(Tuner):
                          get_optimization_history=get_optimization_history, **kwargs)
         self.Objective = NNObjective
         self.max_epochs = max_epochs
+        self.early_stopping_activated = early_stopping_activated
 
     def get_best_hyperparams(self):
-        """
+        """q
         Method that returns the values of each hyper parameter
         """
 
@@ -326,6 +330,8 @@ class RFTuner(Tuner):
                          get_optimization_history=get_optimization_history, **kwargs)
         self.Objective = RFObjective
         self.max_epochs = None
+        self.early_stopping_activated = None
+
 
     def get_best_hyperparams(self):
         """

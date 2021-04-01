@@ -11,6 +11,8 @@ from numpy.random import seed as np_seed
 from Hyperparameters.constants import *
 import ray
 import time
+from os import path, mkdir
+from shutil import rmtree
 
 
 class Evaluator:
@@ -175,7 +177,8 @@ class Evaluator:
 
 class NNEvaluator(Evaluator):
 
-    def __init__(self, evaluation_name, model_generator, sampler, hyper_params, n_trials, metric, k, l=1, max_epochs=100,
+    def __init__(self, evaluation_name, model_generator, sampler, hyper_params, n_trials, metric, k, l=1,
+                 max_epochs=100,
                  direction="minimize", seed=None, plot_feature_importance=False, plot_intermediate_values=False,
                  device="cpu", parallelism=True):
         """ sets
@@ -192,6 +195,20 @@ class NNEvaluator(Evaluator):
                          evaluation_name=evaluation_name, device=device, parallelism=parallelism)
 
         self.max_epochs = max_epochs
+
+    def nested_cross_valid(self, **kwargs):
+
+        # We create the checkpoints folder where the early stopper will save the models
+        if not path.exists(path.join("./checkpoints")):
+            mkdir(path.join("./checkpoints"))
+
+        scores = super().nested_cross_valid()
+
+        # We delete the files created to save the checkpoints of our model by the early stopper
+        if path.exists(path.join("./checkpoints")):
+            rmtree(path.join("./checkpoints"))
+
+        return scores
 
     def create_tuner(self, datasets, study_name, **kwargs):
         """

@@ -229,7 +229,7 @@ class NNEvaluator(Evaluator):
     def nested_cross_valid(self, **kwargs):
 
         # We create the checkpoints folder where the early stopper will save the models
-        if self.early_stopping_activated is True and not path.exists(path.join("./checkpoints")):
+        if self.early_stopping_activated and not path.exists(path.join("./checkpoints")):
             mkdir(path.join("./checkpoints"))
 
         scores = super().nested_cross_valid()

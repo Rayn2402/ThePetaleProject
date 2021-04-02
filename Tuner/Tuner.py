@@ -290,7 +290,7 @@ class NNTuner(Tuner):
         self.early_stopping_activated = early_stopping_activated
 
     def get_best_hyperparams(self):
-        """q
+        """
         Method that returns the values of each hyper parameter
         """
 

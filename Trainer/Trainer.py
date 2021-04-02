@@ -12,6 +12,7 @@ from torch import device as device_
 from optuna import TrialPruned
 from torchcontrib.optim import SWA
 
+
 class Trainer:
     def __init__(self, model, metric, device="cpu"):
         """
@@ -277,7 +278,7 @@ class NNTrainer(Trainer):
 
             if self.metric is not None:
                 intermediate_score = self.metric(self.model(x_cont=x_cont, x_cat=x_cat), y) if \
-                    self.early_stopping_activated is False else \
+                    not self.early_stopping_activated else \
                     self.metric(self.best_model(x_cont=x_cont, x_cat=x_cat), y)
 
             # Pruning logic

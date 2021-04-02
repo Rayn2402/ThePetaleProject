@@ -1,7 +1,7 @@
 """
 Authors : Mitiche
 
-Files that contains class related to the Training of the models
+Files that contains class related to the Trainer of the models
 
 """
 from .EarlyStopping import EarlyStopping

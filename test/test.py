@@ -1,7 +1,7 @@
 from SQL.DataManager.Utils import PetaleDataManager
 from Models.GeneralModels import NNRegressor, NNClassifier
 from Models.ModelGenerator import NNModelGenerator
-from Training.Training import NNTrainer
+from Trainer.Trainer import NNTrainer
 from Utils.score_metrics import ClassificationMetrics
 from Utils.visualization import visualize_epoch_losses
 from Datasets.Sampling import LearningOneSampler

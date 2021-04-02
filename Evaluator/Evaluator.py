@@ -4,7 +4,7 @@ Authors : Mehdi Mitiche
 File that contains the class related to the evaluation of the models
 
 """
-from Training.Training import NNTrainer, RFTrainer
+from Trainer.Trainer import NNTrainer, RFTrainer
 from Tuner.Tuner import NNTuner, RFTuner
 from torch import manual_seed
 from numpy.random import seed as np_seed

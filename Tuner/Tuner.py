@@ -10,7 +10,7 @@ from optuna.pruners import SuccessiveHalvingPruner
 
 from optuna.visualization import plot_param_importances, plot_parallel_coordinate, plot_optimization_history
 from optuna.logging import FATAL, set_verbosity
-from Training.Training import NNTrainer, RFTrainer
+from Trainer.Trainer import NNTrainer, RFTrainer
 from Hyperparameters.constants import *
 
 import os

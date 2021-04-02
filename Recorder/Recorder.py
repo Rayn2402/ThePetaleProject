@@ -46,14 +46,6 @@ class Recorder:
             {key: round(hyperparameters[key], 6) if isinstance(hyperparameters[key], float) else hyperparameters[key]}
             for key in hyperparameters.keys()]
 
-    def record_predictions(self, predictions):
-        """
-        Method to call to save the predictions of a model after an experiments
-        """
-
-        # We save the predictions
-        self.data["predictions"] = [{i: predictions[i].tolist()} for i in range(len(predictions))]
-
     def record_scores(self, score, metric):
         """
         Method to call to save the scores of an experiments

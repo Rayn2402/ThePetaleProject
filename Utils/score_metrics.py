@@ -3,7 +3,8 @@ Author : Nicolas Raymond
 
 This file contains metric used to measure models' performances
 """
-from torch import sqrt, abs, tensor
+from torch import sqrt, abs, tensor, argmax
+from torch.nn.functional import cross_entropy
 
 
 class RegressionMetrics:
@@ -21,7 +22,7 @@ class RegressionMetrics:
         p = pred - pred.mean()
         t = targets - targets.mean()
 
-        return p.dot(t) / (sqrt((p**2).sum())*sqrt((t**2).sum()))
+        return (p.dot(t) / (sqrt((p**2).sum())*sqrt((t**2).sum()))).item()
 
     @staticmethod
     def mean_absolute_error(pred: tensor, targets: tensor) -> tensor:
@@ -32,7 +33,7 @@ class RegressionMetrics:
         :param targets: (N,) tensor
         :return: (1,) tensor
         """
-        return abs(pred - targets).mean()
+        return abs(pred - targets).mean().item()
 
 
 class ClassificationMetrics:
@@ -46,4 +47,16 @@ class ClassificationMetrics:
         :param targets: (N,) tensor
         :return: (1,) tensor
         """
-        return (pred == targets).float().mean()
+        return (argmax(pred, dim=1).float() == targets).float().mean().item()
+
+    @staticmethod
+    def cross_entropy_loss(pred, target):
+        """
+        Returns the cross entropy related to predictions
+
+        :param pred: (N,) tensor
+        :param target: (N,) tensor
+        :return: (1,) tensor
+        """
+
+        return cross_entropy(pred, target.long()).item()

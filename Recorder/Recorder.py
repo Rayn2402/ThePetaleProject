@@ -18,12 +18,12 @@ class Recorder:
         :param evaluation_name: String that represents the name of the evaluation
         :param index: The number of the split
         """
-        folder_name = f"{evaluation_name}_{index}"
+        folder_name = f"Split_{index}"
 
         # We create the folder where the information will be saved
-        os.makedirs(os.path.join("Recordings/", folder_name), exist_ok=True)
+        os.makedirs(os.path.join("Recordings/", evaluation_name, folder_name), exist_ok=True)
 
-        self.path = os.path.join("Recordings/", folder_name)
+        self.path = os.path.join("Recordings/", evaluation_name, folder_name)
         self.data = {"name": evaluation_name, "index": index, "metrics": []}
 
     def record_model(self, model):

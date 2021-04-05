@@ -232,7 +232,7 @@ class NNEvaluator(Evaluator):
         if self.early_stopping_activated and not path.exists(path.join("./checkpoints")):
             mkdir(path.join("./checkpoints"))
 
-        scores = super().nested_cross_valid()
+        scores = super().nested_cross_valid(**kwargs)
 
         # We delete the files created to save the checkpoints of our model by the early stopper
         if path.exists(path.join("./checkpoints")):

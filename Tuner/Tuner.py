@@ -156,7 +156,7 @@ class RFObjective:
 class Tuner:
     def __init__(self, study_name, model_generator, datasets, hyper_params, k, n_trials, metric, direction="minimize",
                  get_hyperparameters_importance=False, get_parallel_coordinate=False, get_optimization_history=False,
-                 **kwargs):
+                 path=None, **kwargs):
         """
                 Class that will be responsible of the hyperparameters tuning
 
@@ -175,6 +175,7 @@ class Tuner:
                                                         graph
                 :param get_parallel_coordinate: Bool to tell if we want to plot the parallel_coordinate graph
                 :param get_optimization_history: Bool to tell if we want to plot the optimization history graph
+                :param path: String that represents the path to the folder where we want to save our graphs
 
 
                 """
@@ -193,6 +194,9 @@ class Tuner:
                                   pruner=SuccessiveHalvingPruner(min_resource=min_resource,
                                                                  reduction_factor=eta, bootstrap_count=10))
 
+        assert not((get_optimization_history or get_parallel_coordinate or get_hyperparameters_importance) and (
+                    path is None)), "Path to the folder where save graphs must be specified "
+
         # We save the inputs that will be used when tuning the hyper parameters
         self.n_trials = n_trials
         self.model_generator = model_generator
@@ -203,6 +207,7 @@ class Tuner:
         self.get_hyperparameters_importance = get_hyperparameters_importance
         self.get_parallel_coordinate = get_parallel_coordinate
         self.get_optimization_history = get_optimization_history
+        self.path = path
 
     def tune(self, verbose=True):
         """
@@ -219,7 +224,7 @@ class Tuner:
                            hyper_params=self.hyper_params,
                            k=self.k, metric=self.metric, max_epochs=self.max_epochs,
                            early_stopping_activated=self.early_stopping_activated
-),
+                           ),
             self.n_trials, n_jobs=1, show_progress_bar=verbose)
 
         if self.get_hyperparameters_importance:
@@ -246,7 +251,7 @@ class Tuner:
         fig = plot_param_importances(self.study)
 
         # We save the graph in a html file to have an interactive graph
-        fig.write_html(os.path.join(f"./Recordings/{self.study.study_name}", "hyperparameters_importance.html"))
+        fig.write_html(os.path.join(self.path, "hyperparameters_importance.html"))
 
     def plot_parallel_coordinate_graph(self):
         """
@@ -257,7 +262,7 @@ class Tuner:
         fig = plot_parallel_coordinate(self.study)
 
         # We save the graph in a html file to have an interactive graph
-        fig.write_html(os.path.join(f"./Recordings/{self.study.study_name}", "parallel_coordinate.html"))
+        fig.write_html(os.path.join(self.path, "parallel_coordinate.html"))
 
     def plot_optimization_history_graph(self):
         """
@@ -268,7 +273,7 @@ class Tuner:
         fig = plot_optimization_history(self.study)
 
         # We save the graph in a html file to have an interactive graph
-        fig.write_html(os.path.join(f"./Recordings/{self.study.study_name}", "optimization_history.html"))
+        fig.write_html(os.path.join(self.path, "optimization_history.html"))
 
 
 class NNTuner(Tuner):
@@ -331,7 +336,6 @@ class RFTuner(Tuner):
         self.Objective = RFObjective
         self.max_epochs = None
         self.early_stopping_activated = None
-
 
     def get_best_hyperparams(self):
         """

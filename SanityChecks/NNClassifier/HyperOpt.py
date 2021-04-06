@@ -34,8 +34,8 @@ if __name__ == '__main__':
                                  cat_sizes=cat_sizes, output_size=3)
 
     evaluator = NNEvaluator('test', generator, sampler, HYPER_PARAMS,
-                            n_trials=100, seed=SEED,  metric=CM.sensitivity_cross,
-                            k=3, max_epochs=100, direction="maximize",
+                            n_trials=200, seed=SEED,  metric=CM.sensitivity_cross,
+                            k=3, max_epochs=50, direction="maximize",
                             get_hyperparameters_importance=True,
                             get_parallel_coordinate=True,
                             get_optimization_history=True)

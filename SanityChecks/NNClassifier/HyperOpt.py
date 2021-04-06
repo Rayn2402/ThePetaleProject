@@ -35,7 +35,10 @@ if __name__ == '__main__':
 
     evaluator = NNEvaluator('test', generator, sampler, HYPER_PARAMS,
                             n_trials=100, seed=SEED,  metric=CM.sensitivity_cross,
-                            k=3, max_epochs=100, direction="maximize")
+                            k=3, max_epochs=100, direction="maximize",
+                            get_hyperparameters_importance=True,
+                            get_parallel_coordinate=True,
+                            get_optimization_history=True)
 
     scores = evaluator.nested_cross_valid(n_startup_trials=10, min_resource=25, eta=2)
 

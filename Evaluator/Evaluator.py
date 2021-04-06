@@ -64,6 +64,9 @@ class Evaluator:
 
         assert not (device == 'gpu' and parallelism), "Parallel optimization with gpu is not enabled"
 
+        assert not(path.exists(path.join("Recordings/", self.evaluation_name))),\
+            "Evaluation with this name already exists"
+
         self.device = device
         self.parallel = parallelism
 
@@ -86,7 +89,7 @@ class Evaluator:
             manual_seed(self.seed)
 
         # We create the recording folder and the folder where the recordings of this evaluation will be stored
-            makedirs(path.join("Recordings/", self.evaluation_name), exist_ok=True)
+        makedirs(path.join("Recordings/", self.evaluation_name), exist_ok=True)
 
         # We execute the outter loop in a parallel if we do not train of GPU
         start = time.time()

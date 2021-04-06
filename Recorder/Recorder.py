@@ -8,6 +8,7 @@ import os
 import pickle
 import json
 from torch.nn import Softmax
+from numpy import std, min, max, mean, median
 
 
 class Recorder:
@@ -24,7 +25,7 @@ class Recorder:
         os.makedirs(os.path.join("Recordings/", evaluation_name, folder_name), exist_ok=True)
 
         self.path = os.path.join("Recordings/", evaluation_name, folder_name)
-        self.data = {"name": evaluation_name, "index": index, "metrics": []}
+        self.data = {"name": evaluation_name, "index": index, "metrics": {}}
 
     def record_model(self, model):
         """
@@ -54,7 +55,7 @@ class Recorder:
         # We save all the hyperparameter importance
 
         self.data["hyperparameter_importance"] = [
-            {key:  round(hyperparameter_importance[key], 6)} for key in hyperparameter_importance.keys()
+            {key: round(hyperparameter_importance[key], 6)} for key in hyperparameter_importance.keys()
         ]
 
     def record_scores(self, score, metric):
@@ -63,7 +64,7 @@ class Recorder:
         """
 
         # We save the score of the given metric
-        self.data["metrics"].append({metric: round(score, 6)})
+        self.data["metrics"][metric] = round(score, 6)
 
     def generate_file(self):
         """
@@ -80,6 +81,7 @@ class NNRecorder(Recorder):
     """
         Class that will be responsible of saving all the data about our experiments with Neural networks
     """
+
     def __init__(self, evaluation_name, index):
         super().__init__(evaluation_name=evaluation_name, index=index)
 
@@ -111,3 +113,30 @@ class RFRecorder(Recorder):
 
         # We save the predictions
         self.data["predictions"] = [{i: predictions[i]} for i in range(len(predictions))]
+
+
+def get_evaluation_recap(evaluation_name):
+    """
+    Function that will create a JSON file containing the evaluation recap
+    """
+    assert os.path.exists(os.path.join("Recordings/", evaluation_name)), "Evaluation not found"
+    path = os.path.join("Recordings/", evaluation_name)
+    json_file = "records.json"
+    folders = os.listdir(os.path.join(path))
+
+    data = {"accuracy": {
+        "values": [],
+        "info":""
+    },
+    }
+
+    for folder in folders:
+        with open(os.path.join(f"{path}/{folder}/{json_file}"), "r") as read_file:
+            split_data = json.load(read_file)
+            data["accuracy"]["values"].append(split_data["metrics"]["ACCURACY"])
+
+    values = data["accuracy"]["values"]
+    data["accuracy"]["info"] = f"{mean(values)} +- {std(values)} [{median(values)},{min(values)}-{max(values)}]"
+
+    with open(os.path.join(path, "general.json"), "w") as file:
+        json.dump(data, file, indent=True)

@@ -76,7 +76,7 @@ class ClassificationMetrics:
         return acc/cross
 
     @staticmethod
-    def sensitivity_cross(pred: tensor, targets: tensor, reduction: str = 'geometric_mean') -> float:
+    def sensitivity_cross(pred: tensor, targets: tensor, reduction: str = 'mean') -> float:
         """
         Returns the ratio (mean class sensitivity / cross entropy)
 
@@ -90,7 +90,7 @@ class ClassificationMetrics:
         return sensitivity/cross
 
     @staticmethod
-    def class_sensitivity(pred: tensor, targets: tensor, reduction: str = 'geometric_mean') -> float:
+    def class_sensitivity(pred: tensor, targets: tensor, reduction: str = 'mean') -> float:
         """
         Returns the mean classes sensitivity
 

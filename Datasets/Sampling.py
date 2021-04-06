@@ -44,13 +44,13 @@ class Sampler:
         self.dataset_constructor = Sampler.define_container_constructor(to_dataset)
 
     def __call__(self, k: int = 10, l: int = 1, split_cat: bool = True,
-                 valid_size: Union[int, float] = 0.11, test_size: Union[int, float] = 0.10,
+                 valid_size: Union[int, float] = 0.20, test_size: Union[int, float] = 0.20,
                  add_biases: bool = False) -> dict:
 
         return self.create_train_and_test_datasets(k, l, split_cat, valid_size, test_size, add_biases)
 
     def create_train_and_test_datasets(self, k: int = 10, l: int = 1, split_cat: bool = True,
-                                       valid_size: Union[int, float] = 0.11, test_size: Union[int, float] = 0.10,
+                                       valid_size: Union[int, float] = 0.20, test_size: Union[int, float] = 0.20,
                                        add_biases: bool = False) -> dict:
         """
         Creates the train and test PetaleDatasets from the df and the specified continuous and categorical columns
@@ -185,7 +185,7 @@ class LearningOneSampler(Sampler):
 
 
 def split_train_test(df: pd.DataFrame, target_col: str,
-                     test_size: Union[int, float] = 0.10,
+                     test_size: Union[int, float] = 0.20,
                      random_state: bool = None) -> Tuple[pd.DataFrame, Union[pd.DataFrame, None]]:
     """
     Split de training and testing data contained within a pandas dataframe

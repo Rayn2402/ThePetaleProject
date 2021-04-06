@@ -46,6 +46,17 @@ class Recorder:
             {key: round(hyperparameters[key], 6) if isinstance(hyperparameters[key], float) else hyperparameters[key]}
             for key in hyperparameters.keys()]
 
+    def record_hyperparameters_importance(self, hyperparameter_importance):
+        """
+                Method to call to save the hyperparameter importance
+                """
+
+        # We save all the hyperparameter importance
+
+        self.data["hyperparameter_importance"] = [
+            {key:  round(hyperparameter_importance[key], 6)} for key in hyperparameter_importance.keys()
+        ]
+
     def record_scores(self, score, metric):
         """
         Method to call to save the scores of an experiments

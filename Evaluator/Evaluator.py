@@ -125,11 +125,14 @@ class Evaluator:
                                       index=k, **kwargs)
 
             # We perform the hyper parameters tuning to get the best hyper parameters
-            best_hyper_params = tuner.tune(verbose=False)
+            best_hyper_params, hyper_params_importance = tuner.tune(verbose=False)
             print(f"Hyperparameter tuning done - K = {k}")
 
             # We save the hyperparameters
             recorder.record_hyperparameters(best_hyper_params)
+
+            # We save the hyperparameters importance
+            recorder.record_hyperparameters_importance(hyper_params_importance)
 
             # We create our model with the best hyper parameters
             model = self.create_model(best_hyper_params=best_hyper_params)

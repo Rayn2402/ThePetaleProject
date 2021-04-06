@@ -3,9 +3,10 @@ Author : Nicolas Raymond
 
 This file contains metric used to measure models' performances
 """
-from torch import sqrt, abs, tensor, argmax, zeros, unique
+from torch import sqrt, abs, tensor, argmax, zeros, unique, ones, eye, mean, prod
 from torch.nn.functional import cross_entropy
 REDUCTIONS = ["mean", "geometric_mean"]
+
 
 class RegressionMetrics:
 
@@ -43,7 +44,7 @@ class ClassificationMetrics:
         """
         Returns the accuracy of predictions
 
-        :param pred: (N,) tensor
+        :param pred: (N,C) tensor
         :param targets: (N,) tensor
         :return: float
         """
@@ -54,7 +55,7 @@ class ClassificationMetrics:
         """
         Returns the cross entropy related to predictions
 
-        :param pred: (N,) tensor
+        :param pred: (N,C) tensor
         :param targets: (N,) tensor
         :return: float
         """
@@ -66,18 +67,67 @@ class ClassificationMetrics:
         """
         Returns the ratio accuracy/cross-entropy related to predictions
 
-        :param pred: (N,) tensor
+        :param pred: (N,C) tensor
         :param targets: (N,) tensor
         :return: float
         """
-        return ClassificationMetrics.accuracy(pred, targets)/ClassificationMetrics.cross_entropy_loss(pred, targets)
+        acc = ClassificationMetrics.accuracy(pred, targets)
+        cross = ClassificationMetrics.cross_entropy_loss(pred, targets)
+        return acc/cross
+
+    @staticmethod
+    def sensitivity_cross(pred: tensor, targets: tensor, reduction: str = 'geometric_mean') -> float:
+        """
+        Returns the ratio (mean class sensitivity / cross entropy)
+
+        :param pred: (N,C) tensor
+        :param targets: (N,) tensor
+        :param reduction: str
+        :return: float
+        """
+        sensitivity = ClassificationMetrics.class_sensitivity(pred, targets, reduction)
+        cross = ClassificationMetrics.cross_entropy_loss(pred, targets)
+        return sensitivity/cross
+
+    @staticmethod
+    def class_sensitivity(pred: tensor, targets: tensor, reduction: str = 'geometric_mean') -> float:
+        """
+        Returns the mean classes sensitivity
+
+        :param pred: (N,C) tensor
+        :param targets: (N,) tensor
+        :param reduction: str
+        :return: float
+        """
+
+        assert reduction in REDUCTIONS, "Reduction selected not available"
+
+        # We get confusion matrix
+        confusion_mat = ClassificationMetrics.get_confusion_matrix(pred, targets)
+
+        # We first get true positives
+        TP = confusion_mat.diag()
+
+        # We then get false negatives (row sums of items of diagonal)
+        FN = (confusion_mat * (ones(confusion_mat.shape)-eye(confusion_mat.shape[0]))).sum(axis=1)
+
+        # We compute class sensitivity
+        sensitivity = TP / (TP+FN)
+
+        # We return the mean of classes' sensitivity
+        if reduction == 'mean':
+            return mean(sensitivity).item()
+
+        # We return the geometric mean of classes' sensitivity
+        else:
+            return (prod(sensitivity).item())**(1/sensitivity.shape[0])
 
     @staticmethod
     def get_confusion_matrix(pred: tensor, targets: tensor) -> tensor:
         """
         Returns the confusion matrix
 
-        :param pred: (N,) tensor
+        :param pred: (N,C) tensor
         :param targets: (N,) tensor
         :return: (C,C) tensor
         """

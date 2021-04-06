@@ -9,7 +9,7 @@
 │   └── Transforms.py                   <- Custom transforms for preprocessing
 │
 ├── DescriptiveAnalyses
-│   └── DescriptiveTablesScript.py      <- Script to get statitics out of SQL tables
+│   └── DescriptiveTablesScript.py      <- Script to get descriptive analyses out of SQL tables
 │
 ├── Evaluator
 │   └── Evaluator.py                    <- Class that manages nested cross validation

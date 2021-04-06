@@ -9,7 +9,7 @@ from Tuner.Tuner import NNTuner, RFTuner
 from torch import manual_seed
 from numpy.random import seed as np_seed
 from Hyperparameters.constants import *
-from Recorder.Recorder import NNRecorder, RFRecorder
+from Recorder.Recorder import NNRecorder, RFRecorder, get_evaluation_recap, plot_hyperparameter_importance_chart
 
 import ray
 import time
@@ -98,6 +98,12 @@ class Evaluator:
         scores = ray.get(futures)
         execution_time = time.time() - start
         print(f"Execution time : {execution_time}")
+
+        # We save the evaluation recap
+        get_evaluation_recap(evaluation_name=self.evaluation_name)
+
+        # We save the hyperparameters plot
+        plot_hyperparameter_importance_chart(evaluation_name=self.evaluation_name)
 
         return scores
 

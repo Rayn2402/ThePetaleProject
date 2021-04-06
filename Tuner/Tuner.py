@@ -7,7 +7,7 @@ Files that contains the logic related to hyper parameters tuning
 from optuna import create_study
 from optuna.samplers import TPESampler
 from optuna.pruners import SuccessiveHalvingPruner
-
+from optuna.importance import get_param_importances
 from optuna.visualization import plot_param_importances, plot_parallel_coordinate, plot_optimization_history
 from optuna.logging import FATAL, set_verbosity
 from Trainer.Trainer import NNTrainer, RFTrainer
@@ -239,8 +239,8 @@ class Tuner:
             # We plot the optimization history graph
             self.plot_optimization_history_graph()
 
-        # We return the best hyper parameters
-        return self.get_best_hyperparams()
+        # We return the best hyper parameters and the hyperparameters importance
+        return self.get_best_hyperparams(), get_param_importances(study=self.study)
 
     def plot_hyperparameters_importance_graph(self):
         """

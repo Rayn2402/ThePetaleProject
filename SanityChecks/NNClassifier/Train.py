@@ -1,6 +1,6 @@
 from SQL.DataManager.Utils import PetaleDataManager
 from Models.GeneralModels import NNClassifier
-from Training.Training import NNTrainer
+from Trainer.Trainer import NNTrainer
 from Utils.visualization import visualize_epoch_losses
 from Datasets.Sampling import LearningOneSampler
 from torch import unique, manual_seed

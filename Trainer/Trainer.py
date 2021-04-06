@@ -1,7 +1,7 @@
 """
 Authors : Mitiche
 
-Files that contains class related to the Training of the models
+Files that contains class related to the Trainer of the models
 
 """
 from .EarlyStopping import EarlyStopping
@@ -10,6 +10,7 @@ from torch.utils.data import DataLoader, Subset
 from torch import optim, manual_seed, cuda, tensor
 from torch import device as device_
 from optuna import TrialPruned
+from torchcontrib.optim import SWA
 
 
 class Trainer:
@@ -22,7 +23,6 @@ class Trainer:
         :param metric: Function that takes the output of the model and the target and returns  the metric we want
                        to optimize
         """
-        assert isinstance(model, Module), 'model argument must inherit from torch.nn.Module'
 
         # We save the model in the attribute model
         self.model = model
@@ -52,7 +52,6 @@ class Trainer:
         # We initialize an empty list to store the scores
         score = []
         for i in range(k):
-
             # We the get the train, test, valid sets of the step we are currently in
             train_set, test_set, valid_set = self.get_datasets(datasets[i])
 
@@ -153,14 +152,16 @@ class NNTrainer(Trainer):
         self.patience = patience
         self.seed = seed
         self.trial = trial
+        self.best_model = None
 
     def update_progress_func(self, trial, verbose):
         if trial is None and verbose:
             def update_progress(epoch, mean_epoch_loss):
-                if epoch % 10 == 0 or (epoch+1) == self.epochs:
-                    print(f"Epoch {epoch+1} - Loss : {round(mean_epoch_loss, 4)}")
+                if epoch % 10 == 0 or (epoch + 1) == self.epochs:
+                    print(f"Epoch {epoch + 1} - Loss : {round(mean_epoch_loss, 4)}")
         else:
-            def update_progress(**kwargs): pass
+            def update_progress(**kwargs):
+                pass
 
         return update_progress
 
@@ -193,8 +194,11 @@ class NNTrainer(Trainer):
         # We create the validation data loader
         val_loader = DataLoader(val_set, batch_size=len(val_set))
 
-        # we create the optimizer
-        optimizer = optim.Adam(params=self.model.parameters(), lr=self.lr, weight_decay=self.weight_decay)
+        # Ee create the optimizer
+        base_optimizer = optim.Adam(params=self.model.parameters(), lr=self.lr, weight_decay=self.weight_decay)
+
+        # We implement ASWA
+        optimizer = SWA(base_optimizer, swa_start=10, swa_freq=5)
 
         # We initialize two empty lists to store the training loss and the validation loss
         training_loss, valid_loss = [], []
@@ -209,7 +213,7 @@ class NNTrainer(Trainer):
         device = device_("cuda" if cuda.is_available() and self.device == "gpu" else "cpu")
 
         for epoch in range(self.epochs):
-            
+
             ###################
             # train the model #
             ###################
@@ -256,7 +260,7 @@ class NNTrainer(Trainer):
             # and the correct predictions y for the single batch
             x_cont, x_cat, y = self.extract_batch(next(iter(val_loader)), device)
 
-            # We perfrom the forward pass: compute predicted outputs by passing inputs to the model
+            # We perform the forward pass: compute predicted outputs by passing inputs to the model
             preds = self.model(x_cont=x_cont, x_cat=x_cat)
 
             # We calculate the loss
@@ -265,8 +269,17 @@ class NNTrainer(Trainer):
             # We record the validation loss
             valid_loss.append(val_epoch_loss)
 
+            # We look for early stopping
+            if self.early_stopping_activated:
+                self.best_model = early_stopping(val_epoch_loss, self.model)
+
+            if early_stopping.early_stop:
+                self.model = self.best_model
+
             if self.metric is not None:
-                intermediate_score = self.metric(preds, y)
+                intermediate_score = self.metric(self.model(x_cont=x_cont, x_cat=x_cat), y) if \
+                    not self.early_stopping_activated else \
+                    self.metric(self.best_model(x_cont=x_cont, x_cat=x_cat), y)
 
             # Pruning logic
             if self.trial is not None:
@@ -275,13 +288,6 @@ class NNTrainer(Trainer):
                 # We prune the trial if it should be pruned
                 if self.trial.should_prune():
                     raise TrialPruned()
-
-            # We look for early stopping
-            if self.early_stopping_activated:
-                early_stopping(val_epoch_loss, self.model)
-
-            if early_stopping.early_stop:
-                break
 
         return tensor(training_loss), tensor(valid_loss)
 
@@ -303,7 +309,7 @@ class RFTrainer(Trainer):
         """
         super().__init__(model=model, metric=metric)
 
-    def fit(self, train_set, val_set=None):
+    def fit(self, train_set, **kwargs):
         """
         Method that will fit the model to the given data
 

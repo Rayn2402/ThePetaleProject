@@ -4,16 +4,17 @@ Authors : Mehdi Mitiche
 File that contains the class related to the evaluation of the models
 
 """
-from Training.Training import NNTrainer, RFTrainer
+from Trainer.Trainer import NNTrainer, RFTrainer
 from Tuner.Tuner import NNTuner, RFTuner
 from torch import manual_seed
 from numpy.random import seed as np_seed
 from Hyperparameters.constants import *
-from Recorder.Recorder import Recorder
-from torch.nn import Softmax
+from Recorder.Recorder import NNRecorder, RFRecorder
 
 import ray
 import time
+from os import path, mkdir
+from shutil import rmtree
 
 
 class Evaluator:
@@ -113,7 +114,7 @@ class Evaluator:
             train_set, test_set, valid_set = self.get_datasets(all_datasets[k])
 
             # We create the Recorder object to save the result of this experience
-            recorder = Recorder(evaluation_name=self.evaluation_name, index=k)
+            recorder = self.create_recorder(index=k)
 
             # We create the tuner to perform the hyperparameters optimization
             print(f"Hyperparameter tuning started - K = {k}")
@@ -146,11 +147,8 @@ class Evaluator:
             # We get the predictions
             predictions = trainer.predict(x_cont, x_cat)
 
-            # We initialize the Softmax object
-            softmax = Softmax(dim=1)
-
             # We save the predictions
-            recorder.record_predictions(softmax(predictions))
+            recorder.record_predictions(predictions)
 
             # We get the score
             score = self.metric(predictions, target)
@@ -211,7 +209,7 @@ class NNEvaluator(Evaluator):
     def __init__(self, evaluation_name, model_generator, sampler, hyper_params, n_trials, metric, k, l=1,
                  max_epochs=100,
                  direction="minimize", seed=None, get_hyperparameters_importance=False, get_parallel_coordinate=False,
-                 get_optimization_history=False, device="cpu", parallelism=True):
+                 get_optimization_history=False, device="cpu", parallelism=True, early_stopping_activated=False):
         """
         Class that will be responsible of the evaluation of the Neural Networks models
 
@@ -226,6 +224,21 @@ class NNEvaluator(Evaluator):
                          evaluation_name=evaluation_name, device=device, parallelism=parallelism)
 
         self.max_epochs = max_epochs
+        self.early_stopping_activated = early_stopping_activated
+
+    def nested_cross_valid(self, **kwargs):
+
+        # We create the checkpoints folder where the early stopper will save the models
+        if self.early_stopping_activated and not path.exists(path.join("./checkpoints")):
+            mkdir(path.join("./checkpoints"))
+
+        scores = super().nested_cross_valid(**kwargs)
+
+        # We delete the files created to save the checkpoints of our model by the early stopper
+        if path.exists(path.join("./checkpoints")):
+            rmtree(path.join("./checkpoints"))
+
+        return scores
 
     def create_tuner(self, datasets, study_name, **kwargs):
         """
@@ -242,7 +255,8 @@ class NNEvaluator(Evaluator):
                        max_epochs=self.max_epochs, study_name=study_name,
                        get_parallel_coordinate=self.get_parallel_coordinate,
                        get_hyperparameters_importance=self.get_hyperparameters_importance,
-                       get_optimization_history=self.get_optimization_history, **kwargs)
+                       get_optimization_history=self.get_optimization_history,
+                       early_stopping_activated=self.early_stopping_activated, **kwargs)
 
     def create_model(self, best_hyper_params):
         """
@@ -266,7 +280,16 @@ class NNEvaluator(Evaluator):
 
         return NNTrainer(model, epochs=self.max_epochs, batch_size=best_hyper_params[BATCH_SIZE],
                          lr=best_hyper_params[LR], weight_decay=best_hyper_params[WEIGHT_DECAY],
-                         metric=self.metric, device=kwargs.get('device', 'cpu'))
+                         metric=self.metric, device=kwargs.get('device', 'cpu'),
+                         early_stopping_activated=self.early_stopping_activated)
+
+    def create_recorder(self, index):
+        """
+        Method to create a Recorder to save data about experiments
+
+        :param index: The index of the split
+        """
+        return NNRecorder(evaluation_name=self.evaluation_name, index=index)
 
 
 class RFEvaluator(Evaluator):
@@ -324,3 +347,11 @@ class RFEvaluator(Evaluator):
         """
 
         return RFTrainer(model=model, metric=self.metric)
+
+    def create_recorder(self, index):
+        """
+        Method to create a Recorder to save data about experiments
+
+        :param index: The index of the split
+        """
+        return RFRecorder(evaluation_name=self.evaluation_name, index=index)

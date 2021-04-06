@@ -8,7 +8,8 @@ import os
 import pickle
 import json
 from torch.nn import Softmax
-from numpy import std, min, max, mean, median
+from numpy import std, min, max, mean, median, arange
+import matplotlib.pyplot as plt
 
 
 class Recorder:
@@ -25,7 +26,8 @@ class Recorder:
         os.makedirs(os.path.join("Recordings/", evaluation_name, folder_name), exist_ok=True)
 
         self.path = os.path.join("Recordings/", evaluation_name, folder_name)
-        self.data = {"name": evaluation_name, "index": index, "metrics": {}}
+        self.data = {"name": evaluation_name, "index": index, "metrics": {}, "hyperparameters": {},
+                     "hyperparameter_importance": {}}
 
     def record_model(self, model):
         """
@@ -42,10 +44,9 @@ class Recorder:
         """
 
         # We save all the hyperparameters
-
-        self.data["hyperparameters"] = [
-            {key: round(hyperparameters[key], 6) if isinstance(hyperparameters[key], float) else hyperparameters[key]}
-            for key in hyperparameters.keys()]
+        for key in hyperparameters.keys():
+            self.data["hyperparameters"][key] = round(hyperparameters[key], 6) if \
+                isinstance(hyperparameters[key], float) else hyperparameters[key]
 
     def record_hyperparameters_importance(self, hyperparameter_importance):
         """
@@ -53,10 +54,9 @@ class Recorder:
                 """
 
         # We save all the hyperparameter importance
-
-        self.data["hyperparameter_importance"] = [
-            {key: round(hyperparameter_importance[key], 6)} for key in hyperparameter_importance.keys()
-        ]
+        for key in hyperparameter_importance.keys():
+            self.data["hyperparameter_importance"][key] = round(hyperparameter_importance[key], 4) if \
+                isinstance(hyperparameter_importance[key], float) else hyperparameter_importance[key]
 
     def record_scores(self, score, metric):
         """
@@ -124,19 +124,83 @@ def get_evaluation_recap(evaluation_name):
     json_file = "records.json"
     folders = os.listdir(os.path.join(path))
 
-    data = {"accuracy": {
-        "values": [],
-        "info":""
-    },
+    data = {
+        "metrics": {
+            "accuracy": {
+                "values": [],
+                "info": ""
+            },
+        },
+        "hyperparameter_importance": {
+
+        }
     }
 
+    keys = None
     for folder in folders:
         with open(os.path.join(f"{path}/{folder}/{json_file}"), "r") as read_file:
             split_data = json.load(read_file)
-            data["accuracy"]["values"].append(split_data["metrics"]["ACCURACY"])
-
-    values = data["accuracy"]["values"]
-    data["accuracy"]["info"] = f"{mean(values)} +- {std(values)} [{median(values)},{min(values)}-{max(values)}]"
-
+        data["metrics"]["accuracy"]["values"].append(split_data["metrics"]["ACCURACY"])
+        if keys is None:
+            keys = split_data["hyperparameter_importance"].keys()
+        for key in keys:
+            data["hyperparameter_importance"][key] = {
+                "values": [],
+                "info": ""
+            }
+        for key in keys:
+            data["hyperparameter_importance"][key]["values"].append(split_data["hyperparameter_importance"][key])
+    set_info(data)
     with open(os.path.join(path, "general.json"), "w") as file:
         json.dump(data, file, indent=True)
+
+
+def set_info(data):
+    for section in data.keys():
+        for key in data[section].keys():
+            data[section][key]["info"] = f"{mean(data[section][key]['values'])} +- {std(data[section][key]['values'])} " \
+                                         f"[{median(data[section][key]['values'])},{min(data[section][key]['values'])}" \
+                                         f"-{max(data[section][key]['values'])}]"
+            data[section][key]["mean"] = mean(data[section][key]['values'])
+            data[section][key]["std"] = std(data[section][key]['values'])
+
+
+def plot_hyperparameter_importance_chart(evaluation_name):
+    """
+    Function that will create a bar plot containing information about the mean and the standard deviation of each
+    hyperparameter importance
+    """
+    path = os.path.join("Recordings/", evaluation_name)
+    json_file = "general.json"
+
+    # We get the content of thte json file
+    with open(os.path.join(f"{path}/{json_file}"), "r") as read_file:
+        data = json.load(read_file)["hyperparameter_importance"]
+
+    # We initialize three lists for the values, the errors, and the labels
+    values, errors, labels = [], [], []
+
+    # We collect the data of each hyperparameter importance
+    for key in data.keys():
+        values.append(data[key]["mean"])
+        errors.append(data[key]["std"])
+        labels.append(key)
+
+    x_pos = arange(len(labels))
+
+    # We sort the values
+    sorted_values = sorted(values)
+    sorted_labels = sorted(labels, key=lambda x: values[labels.index(x)])
+    sorted_errors = sorted(errors, key=lambda x: values[errors.index(x)])
+
+    # We build the plot
+    fig, ax = plt.subplots(figsize=(10, 7))
+    ax.bar(x_pos, sorted_values,
+           yerr=sorted_errors,
+           capsize=5)
+    ax.set_xticks(x_pos)
+    ax.set_xticklabels(sorted_labels)
+    ax.set_title('Hyperparameters importance ')
+
+    # We save the plot
+    plt.savefig(os.path.join(path, 'hyperparameters_importance_recap.png'))

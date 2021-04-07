@@ -123,7 +123,6 @@ def get_evaluation_recap(evaluation_name):
     path = os.path.join("Recordings/", evaluation_name)
     json_file = "records.json"
     folders = os.listdir(os.path.join(path))
-
     data = {
         "metrics": {
             "accuracy": {
@@ -143,11 +142,11 @@ def get_evaluation_recap(evaluation_name):
         data["metrics"]["accuracy"]["values"].append(split_data["metrics"]["ACCURACY"])
         if keys is None:
             keys = split_data["hyperparameter_importance"].keys()
-        for key in keys:
-            data["hyperparameter_importance"][key] = {
-                "values": [],
-                "info": ""
-            }
+            for key in keys:
+                data["hyperparameter_importance"][key] = {
+                    "values": [],
+                    "info": ""
+                }
         for key in keys:
             data["hyperparameter_importance"][key]["values"].append(split_data["hyperparameter_importance"][key])
     set_info(data)

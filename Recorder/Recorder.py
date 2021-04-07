@@ -52,7 +52,6 @@ class Recorder:
         """
                 Method to call to save the hyperparameter importance
                 """
-
         # We save all the hyperparameter importance
         for key in hyperparameter_importance.keys():
             self.data["hyperparameter_importance"][key] = round(hyperparameter_importance[key], 4) if \
@@ -142,6 +141,8 @@ def get_evaluation_recap(evaluation_name):
         data["metrics"]["accuracy"]["values"].append(split_data["metrics"]["ACCURACY"])
         if keys is None:
             keys = split_data["hyperparameter_importance"].keys()
+            # We exclude the number of nodes from the hyperparameters importance (to be reviewed)
+            keys = [key for key in keys if "n_units" not in key]
             for key in keys:
                 data["hyperparameter_importance"][key] = {
                     "values": [],

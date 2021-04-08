@@ -7,7 +7,7 @@ Files that contains the logic related to hyper parameters tuning
 from optuna import create_study
 from optuna.samplers import TPESampler
 from optuna.pruners import SuccessiveHalvingPruner
-from optuna.importance import get_param_importances
+from optuna.importance import get_param_importances, FanovaImportanceEvaluator
 from optuna.visualization import plot_param_importances, plot_parallel_coordinate, plot_optimization_history
 from optuna.logging import FATAL, set_verbosity
 from Trainer.Trainer import NNTrainer, RFTrainer
@@ -153,6 +153,9 @@ class RFObjective:
         return score
 
 
+HYPER_PARAMS_SEED = 2021
+
+
 class Tuner:
     def __init__(self, study_name, model_generator, datasets, hyper_params, k, n_trials, metric, direction="minimize",
                  get_hyperparameters_importance=False, get_parallel_coordinate=False, get_optimization_history=False,
@@ -194,8 +197,8 @@ class Tuner:
                                   pruner=SuccessiveHalvingPruner(min_resource=min_resource,
                                                                  reduction_factor=eta, bootstrap_count=10))
 
-        assert not((get_optimization_history or get_parallel_coordinate or get_hyperparameters_importance) and (
-                    path is None)), "Path to the folder where save graphs must be specified "
+        assert not ((get_optimization_history or get_parallel_coordinate or get_hyperparameters_importance) and (
+                path is None)), "Path to the folder where save graphs must be specified "
 
         # We save the inputs that will be used when tuning the hyper parameters
         self.n_trials = n_trials
@@ -240,7 +243,9 @@ class Tuner:
             self.plot_optimization_history_graph()
 
         # We return the best hyper parameters and the hyperparameters importance
-        return self.get_best_hyperparams(), get_param_importances(study=self.study)
+        return self.get_best_hyperparams(), get_param_importances(study=self.study,
+                                                                  evaluator=FanovaImportanceEvaluator(
+                                                                      seed=HYPER_PARAMS_SEED))
 
     def plot_hyperparameters_importance_graph(self):
         """
@@ -248,7 +253,8 @@ class Tuner:
         """
 
         # We generate the hyper parameters importance graph with optuna
-        fig = plot_param_importances(self.study)
+        fig = plot_param_importances(self.study, evaluator=FanovaImportanceEvaluator(
+            seed=HYPER_PARAMS_SEED))
 
         # We save the graph in a html file to have an interactive graph
         fig.write_html(os.path.join(self.path, "hyperparameters_importance.html"))

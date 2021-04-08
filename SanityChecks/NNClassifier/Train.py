@@ -1,18 +1,11 @@
 from SQL.DataManager.Utils import PetaleDataManager
-from Models.GeneralModels import NNRegressor, NNClassifier
-from Models.ModelGenerator import NNModelGenerator
+from Models.GeneralModels import NNClassifier
 from Trainer.Trainer import NNTrainer
-from Utils.score_metrics import ClassificationMetrics
 from Utils.visualization import visualize_epoch_losses
 from Datasets.Sampling import LearningOneSampler
-from torch import unique, argmax, manual_seed
+from torch import unique, manual_seed
+from SQL.NewTablesScripts.constants import SEED
 import numpy as np
-import os
-from Evaluator.Evaluator import NNEvaluator
-
-import json
-
-TEST_SEED = 110796
 
 if __name__ == '__main__':
 
@@ -23,7 +16,7 @@ if __name__ == '__main__':
     loss should decrease at first and then increase
     """
     # We set the seed for the sampling part
-    np.random.seed(TEST_SEED)
+    np.random.seed(SEED)
 
     # Initialization of DataManager and sampler
     manager = PetaleDataManager("rayn2402")
@@ -40,7 +33,7 @@ if __name__ == '__main__':
     print(f"\nOverfitting test...\n")
 
     # We set the seed for the model
-    manual_seed(TEST_SEED)
+    manual_seed(SEED)
 
     # Creation of a simple model
     Model = NNClassifier(num_cont_col=cont, output_size=3, layers=[10, 20, 20],
@@ -66,7 +59,7 @@ if __name__ == '__main__':
     for decay in [0, 1, 2]:
 
         # We set the seed for the model
-        manual_seed(TEST_SEED)
+        manual_seed(SEED)
 
         # Creation of a simple model
         Model = NNClassifier(num_cont_col=cont, output_size=3, layers=[10, 20, 20],
@@ -86,7 +79,7 @@ if __name__ == '__main__':
     # EARLY STOPPING TEST #
     print(f"\nEarly stopping test...\n")
     # We set the seed for the model
-    manual_seed(TEST_SEED)
+    manual_seed(SEED)
 
     # Creation of a simple model
     Model = NNClassifier(num_cont_col=cont, output_size=3, layers=[10, 20, 20],
@@ -101,22 +94,4 @@ if __name__ == '__main__':
 
     # Visualization of the losses
     visualize_epoch_losses(t_loss, v_loss)
-
-    # HYPERPARAMETER OPTIMIZATION TEST WITH LEARNING 01
-    print(f"\nHyperparameter Optimization test...\n")
-
-    with open(os.path.join("..", "Hyperparameters", "hyper_params.json"), "r") as read_file:
-        HYPER_PARAMS = json.load(read_file)
-
-    def metric01(pred, target):
-        return ClassificationMetrics.accuracy(argmax(pred, dim=1).float(), target).item()
-
-    generator = NNModelGenerator(NNClassifier, num_cont_col=cont, cat_sizes=cat_sizes, output_size=3)
-
-    evaluator = NNEvaluator('test', generator, sampler, HYPER_PARAMS, n_trials=50, seed=TEST_SEED,
-                            metric=metric01, k=3, max_epochs=50, direction="maximize")
-
-    scores = evaluator.nested_cross_valid(n_startup_trials=10, min_resource=25, eta=2)
-
-    print(scores)
 

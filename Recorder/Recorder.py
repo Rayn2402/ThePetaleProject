@@ -32,6 +32,8 @@ class Recorder:
     def record_model(self, model):
         """
         Method to call to save a model with pickle
+
+        :param model: The model to save
         """
 
         # We save the model with pickle
@@ -41,6 +43,8 @@ class Recorder:
     def record_hyperparameters(self, hyperparameters):
         """
         Method to call to save the hyperparameters
+
+        :param hyperparameters: Python dictionary containing the hyperparameters to save
         """
 
         # We save all the hyperparameters
@@ -50,8 +54,10 @@ class Recorder:
 
     def record_hyperparameters_importance(self, hyperparameter_importance):
         """
-                Method to call to save the hyperparameter importance
-                """
+        Method to call to save the hyperparameter importance
+
+        :param hyperparameter_importance: Python dictionary containing the hyperparameters importance to save
+        """
         # We save all the hyperparameter importance
         for key in hyperparameter_importance.keys():
             self.data["hyperparameter_importance"][key] = round(hyperparameter_importance[key], 4) if \
@@ -60,6 +66,9 @@ class Recorder:
     def record_scores(self, score, metric):
         """
         Method to call to save the scores of an experiments
+
+        :param score: The calculated score of a specific metric
+        :param metric: The name of the metric to save
         """
 
         # We save the score of the given metric
@@ -87,6 +96,8 @@ class NNRecorder(Recorder):
     def record_predictions(self, predictions):
         """
         Method to call to save the predictions of a neural network after an experiments
+
+        :param predictions: The calculated predictions to save
         """
 
         # We initialize the Softmax object
@@ -107,7 +118,9 @@ class RFRecorder(Recorder):
 
     def record_predictions(self, predictions):
         """
-        Method to call to save the predictions of a Random forestafter an experiments
+        Method to call to save the predictions of a Random forest after an experiments
+
+        :param predictions: The calculated predictions to save
         """
 
         # We save the predictions
@@ -117,6 +130,8 @@ class RFRecorder(Recorder):
 def get_evaluation_recap(evaluation_name):
     """
     Function that will create a JSON file containing the evaluation recap
+
+    :param evaluation_name: The name of the evaluation
     """
     assert os.path.exists(os.path.join("Recordings/", evaluation_name)), "Evaluation not found"
     path = os.path.join("Recordings/", evaluation_name)
@@ -156,6 +171,9 @@ def get_evaluation_recap(evaluation_name):
 
 
 def set_info(data):
+    """
+    Helper function that transforms the data to a specefic format
+    """
     for section in data.keys():
         for key in data[section].keys():
             data[section][key]["info"] = f"{mean(data[section][key]['values'])} +- {std(data[section][key]['values'])} " \
@@ -169,6 +187,9 @@ def plot_hyperparameter_importance_chart(evaluation_name):
     """
     Function that will create a bar plot containing information about the mean and the standard deviation of each
     hyperparameter importance
+
+    :param evaluation_name: String that represents the name of the evaluation
+
     """
     path = os.path.join("Recordings/", evaluation_name)
     json_file = "general.json"

@@ -17,6 +17,8 @@ def create_experiments_recap(path):
 
     """
 
+    assert os.path.exists(path), "Recordings Folder not found"
+
     hyperparams_importance_file = "hyperparameters_importance.html"
     parallel_coordinate_file = "parallel_coordinate.html"
     optimization_history_file = "optimization_history.html"

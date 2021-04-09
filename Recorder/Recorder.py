@@ -10,6 +10,7 @@ import json
 from torch.nn import Softmax
 from numpy import std, min, max, mean, median, arange
 import matplotlib.pyplot as plt
+from Recorder.constants import *
 
 
 class Recorder:
@@ -26,8 +27,8 @@ class Recorder:
         os.makedirs(os.path.join("Recordings/", evaluation_name, folder_name), exist_ok=True)
 
         self.path = os.path.join("Recordings/", evaluation_name, folder_name)
-        self.data = {"name": evaluation_name, "index": index, "metrics": {}, "hyperparameters": {},
-                     "hyperparameter_importance": {}}
+        self.data = {NAME: evaluation_name, INDEX: index, METRICS: {}, HYPERPARAMETERS: {},
+                     HYPERPARAMETER_IMPORTANCE: {}}
 
     def record_model(self, model):
         """
@@ -49,7 +50,7 @@ class Recorder:
 
         # We save all the hyperparameters
         for key in hyperparameters.keys():
-            self.data["hyperparameters"][key] = round(hyperparameters[key], 6) if \
+            self.data[HYPERPARAMETERS][key] = round(hyperparameters[key], 6) if \
                 isinstance(hyperparameters[key], float) else hyperparameters[key]
 
     def record_hyperparameters_importance(self, hyperparameter_importance):
@@ -60,7 +61,7 @@ class Recorder:
         """
         # We save all the hyperparameter importance
         for key in hyperparameter_importance.keys():
-            self.data["hyperparameter_importance"][key] = round(hyperparameter_importance[key], 4) if \
+            self.data[HYPERPARAMETER_IMPORTANCE][key] = round(hyperparameter_importance[key], 4) if \
                 isinstance(hyperparameter_importance[key], float) else hyperparameter_importance[key]
 
     def record_scores(self, score, metric):
@@ -72,7 +73,7 @@ class Recorder:
         """
 
         # We save the score of the given metric
-        self.data["metrics"][metric] = round(score, 6)
+        self.data[METRICS][metric] = round(score, 6)
 
     def generate_file(self):
         """
@@ -105,7 +106,7 @@ class NNRecorder(Recorder):
         predictions = softmax(predictions)
 
         # We save the predictions
-        self.data["predictions"] = [{i: predictions[i].tolist()} for i in range(len(predictions))]
+        self.data[PREDICTIONS] = [{i: predictions[i].tolist()} for i in range(len(predictions))]
 
 
 class RFRecorder(Recorder):
@@ -124,7 +125,7 @@ class RFRecorder(Recorder):
         """
 
         # We save the predictions
-        self.data["predictions"] = [{i: predictions[i]} for i in range(len(predictions))]
+        self.data[PREDICTIONS] = [{i: predictions[i]} for i in range(len(predictions))]
 
 
 def get_evaluation_recap(evaluation_name):
@@ -138,13 +139,13 @@ def get_evaluation_recap(evaluation_name):
     json_file = "records.json"
     folders = os.listdir(os.path.join(path))
     data = {
-        "metrics": {
+        METRICS: {
             "accuracy": {
-                "values": [],
-                "info": ""
+                VALUES: [],
+                INFO: ""
             },
         },
-        "hyperparameter_importance": {
+        HYPERPARAMETER_IMPORTANCE: {
 
         }
     }
@@ -153,18 +154,18 @@ def get_evaluation_recap(evaluation_name):
     for folder in folders:
         with open(os.path.join(f"{path}/{folder}/{json_file}"), "r") as read_file:
             split_data = json.load(read_file)
-        data["metrics"]["accuracy"]["values"].append(split_data["metrics"]["ACCURACY"])
+        data[METRICS][ACCURACY][VALUES].append(split_data[METRICS]["ACCURACY"])
         if keys is None:
-            keys = split_data["hyperparameter_importance"].keys()
+            keys = split_data[HYPERPARAMETER_IMPORTANCE].keys()
             # We exclude the number of nodes from the hyperparameters importance (to be reviewed)
             keys = [key for key in keys if "n_units" not in key]
             for key in keys:
-                data["hyperparameter_importance"][key] = {
-                    "values": [],
-                    "info": ""
+                data[HYPERPARAMETER_IMPORTANCE][key] = {
+                    VALUES: [],
+                    INFO: ""
                 }
         for key in keys:
-            data["hyperparameter_importance"][key]["values"].append(split_data["hyperparameter_importance"][key])
+            data[HYPERPARAMETER_IMPORTANCE][key][VALUES].append(split_data[HYPERPARAMETER_IMPORTANCE][key])
     set_info(data)
     with open(os.path.join(path, "general.json"), "w") as file:
         json.dump(data, file, indent=True)
@@ -176,11 +177,11 @@ def set_info(data):
     """
     for section in data.keys():
         for key in data[section].keys():
-            data[section][key]["info"] = f"{mean(data[section][key]['values'])} +- {std(data[section][key]['values'])} " \
-                                         f"[{median(data[section][key]['values'])},{min(data[section][key]['values'])}" \
-                                         f"-{max(data[section][key]['values'])}]"
-            data[section][key]["mean"] = mean(data[section][key]['values'])
-            data[section][key]["std"] = std(data[section][key]['values'])
+            data[section][key][INFO] = f"{mean(data[section][key][VALUES])} +- {std(data[section][key][VALUES])} " \
+                                       f"[{median(data[section][key][VALUES])},{min(data[section][key][VALUES])}" \
+                                       f"-{max(data[section][key][VALUES])}]"
+            data[section][key][MEAN] = mean(data[section][key][VALUES])
+            data[section][key][STD] = std(data[section][key][VALUES])
 
 
 def plot_hyperparameter_importance_chart(evaluation_name):
@@ -196,15 +197,15 @@ def plot_hyperparameter_importance_chart(evaluation_name):
 
     # We get the content of thte json file
     with open(os.path.join(f"{path}/{json_file}"), "r") as read_file:
-        data = json.load(read_file)["hyperparameter_importance"]
+        data = json.load(read_file)[HYPERPARAMETER_IMPORTANCE]
 
     # We initialize three lists for the values, the errors, and the labels
     values, errors, labels = [], [], []
 
     # We collect the data of each hyperparameter importance
     for key in data.keys():
-        values.append(data[key]["mean"])
-        errors.append(data[key]["std"])
+        values.append(data[key][MEAN])
+        errors.append(data[key][STD])
         labels.append(key)
 
     x_pos = arange(len(labels))

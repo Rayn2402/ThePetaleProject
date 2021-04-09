@@ -1,0 +1,15 @@
+"""
+This file is used to store useful constants related to the Recorder class
+"""
+
+NAME = "name"
+INDEX = "index"
+METRICS = "metrics"
+HYPERPARAMETERS = "hyperparameters"
+HYPERPARAMETER_IMPORTANCE = "hyperparameter_importance"
+PREDICTIONS = "predictions"
+INFO = "info"
+VALUES = "values"
+MEAN = "mean"
+STD = "std"
+ACCURACY = "accuracy"

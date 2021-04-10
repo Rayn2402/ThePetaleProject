@@ -9,11 +9,11 @@ from Tuner.Tuner import NNTuner, RFTuner
 from torch import manual_seed
 from numpy.random import seed as np_seed
 from Hyperparameters.constants import *
-from Recorder.Recorder import NNRecorder, RFRecorder
+from Recorder.Recorder import NNRecorder, RFRecorder, get_evaluation_recap, plot_hyperparameter_importance_chart
 
 import ray
 import time
-from os import path, mkdir
+from os import path, mkdir, makedirs
 from shutil import rmtree
 
 
@@ -64,6 +64,9 @@ class Evaluator:
 
         assert not (device == 'gpu' and parallelism), "Parallel optimization with gpu is not enabled"
 
+        assert not(path.exists(path.join("Recordings", self.evaluation_name))),\
+            "Evaluation with this name already exists"
+
         self.device = device
         self.parallel = parallelism
 
@@ -85,6 +88,9 @@ class Evaluator:
         if self.seed is not None:
             manual_seed(self.seed)
 
+        # We create the recording folder and the folder where the recordings of this evaluation will be stored
+        makedirs(path.join("Recordings", self.evaluation_name), exist_ok=True)
+
         # We execute the outter loop in a parallel if we do not train of GPU
         start = time.time()
         subprocess = self.define_subprocess(all_datasets, **kwargs)
@@ -92,6 +98,12 @@ class Evaluator:
         scores = ray.get(futures)
         execution_time = time.time() - start
         print(f"Execution time : {execution_time}")
+
+        # We save the evaluation recap
+        get_evaluation_recap(evaluation_name=self.evaluation_name)
+
+        # We save the hyperparameters plot
+        plot_hyperparameter_importance_chart(evaluation_name=self.evaluation_name)
 
         return scores
 
@@ -119,14 +131,17 @@ class Evaluator:
             # We create the tuner to perform the hyperparameters optimization
             print(f"Hyperparameter tuning started - K = {k}")
             tuner = self.create_tuner(datasets=all_datasets[k]["inner"],
-                                      study_name=f"{self.evaluation_name}_{k}", **kwargs)
+                                      index=k, **kwargs)
 
             # We perform the hyper parameters tuning to get the best hyper parameters
-            best_hyper_params = tuner.tune(verbose=False)
+            best_hyper_params, hyper_params_importance = tuner.tune(verbose=False)
             print(f"Hyperparameter tuning done - K = {k}")
 
             # We save the hyperparameters
             recorder.record_hyperparameters(best_hyper_params)
+
+            # We save the hyperparameters importance
+            recorder.record_hyperparameters_importance(hyper_params_importance)
 
             # We create our model with the best hyper parameters
             model = self.create_model(best_hyper_params=best_hyper_params)
@@ -194,7 +209,7 @@ class Evaluator:
         """
         return dataset_dictionary["train"], dataset_dictionary["test"], dataset_dictionary["valid"]
 
-    def create_tuner(self, datasets, study_name, **kwargs):
+    def create_tuner(self, datasets, index, **kwargs):
         raise NotImplementedError
 
     def create_model(self, best_hyper_params):
@@ -229,34 +244,35 @@ class NNEvaluator(Evaluator):
     def nested_cross_valid(self, **kwargs):
 
         # We create the checkpoints folder where the early stopper will save the models
-        if self.early_stopping_activated and not path.exists(path.join("./checkpoints")):
-            mkdir(path.join("./checkpoints"))
+        if self.early_stopping_activated and not path.exists(path.join("checkpoints")):
+            mkdir(path.join("checkpoints"))
 
         scores = super().nested_cross_valid(**kwargs)
 
         # We delete the files created to save the checkpoints of our model by the early stopper
-        if path.exists(path.join("./checkpoints")):
-            rmtree(path.join("./checkpoints"))
+        if path.exists(path.join("checkpoints")):
+            rmtree(path.join("checkpoints"))
 
         return scores
 
-    def create_tuner(self, datasets, study_name, **kwargs):
+    def create_tuner(self, datasets, index, **kwargs):
         """
         Method to create the Tuner object that will be used in the hyper parameters tuning
 
         :param datasets: Python list that contains all the inner train, inner test, amd inner valid sets
-        :param study_name: String that represents the name of the study
+        :param index: The index of the split
 
         """
 
         return NNTuner(model_generator=self.model_generator, datasets=datasets,
                        hyper_params=self.hyper_params, n_trials=self.n_trials,
                        metric=self.metric, direction=self.direction, k=self.l,
-                       max_epochs=self.max_epochs, study_name=study_name,
+                       max_epochs=self.max_epochs, study_name=f"{self.evaluation_name}_{index}",
                        get_parallel_coordinate=self.get_parallel_coordinate,
                        get_hyperparameters_importance=self.get_hyperparameters_importance,
                        get_optimization_history=self.get_optimization_history,
-                       early_stopping_activated=self.early_stopping_activated, **kwargs)
+                       early_stopping_activated=self.early_stopping_activated,
+                       path=path.join("Recordings", self.evaluation_name, f"Split_{index}"), **kwargs)
 
     def create_model(self, best_hyper_params):
         """
@@ -309,21 +325,23 @@ class RFEvaluator(Evaluator):
                          get_optimization_history=get_optimization_history,
                          evaluation_name=evaluation_name, device="cpu", parallelism=True)
 
-    def create_tuner(self, datasets, study_name, **kwargs):
+    def create_tuner(self, datasets, index, **kwargs):
         """
         Method to create the Tuner object that will be used in the hyper parameters tuning
 
         :param datasets: Python list that contains all the inner train, inner test, amd inner valid sets
-        :param study_name: String that represents the name of the study
+        :param index: The index of the split
+
 
 
         """
-        return RFTuner(study_name=study_name, model_generator=self.model_generator, datasets=datasets,
-                       hyper_params=self.hyper_params, n_trials=self.n_trials,
+        return RFTuner(study_name=f"{self.evaluation_name}_{index}", model_generator=self.model_generator,
+                       datasets=datasets,hyper_params=self.hyper_params, n_trials=self.n_trials,
                        metric=self.metric, direction=self.direction, k=self.l,
                        get_hyperparameters_importance=self.get_hyperparameters_importance,
                        get_parallel_coordinate=self.get_parallel_coordinate,
-                       get_optimization_history=self.get_optimization_history, **kwargs
+                       get_optimization_history=self.get_optimization_history,
+                       path=path.join("Recordings", self.evaluation_name, f"Split_{index}"), **kwargs
                        )
 
     def create_model(self, best_hyper_params):

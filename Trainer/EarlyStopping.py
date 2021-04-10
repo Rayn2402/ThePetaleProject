@@ -51,7 +51,7 @@ class EarlyStopping:
             self.counter = 0
 
         # We return the best saved model
-        best_model = load(path.join(f"./checkpoints/{self.file_name}"))
+        best_model = load(path.join("checkpoints",self.file_name))
         return best_model
 
     def save_checkpoint(self, val_loss, model):
@@ -61,5 +61,5 @@ class EarlyStopping:
         :param val_loss: the valid loss of the model to save.
         :param model: the model to save.
         """
-        save(model, path.join(f"./checkpoints/{self.file_name}"))
+        save(model, path.join("checkpoints",self.file_name))
         self.val_loss_min = val_loss

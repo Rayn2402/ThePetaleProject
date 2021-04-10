@@ -64,7 +64,7 @@ class Evaluator:
 
         assert not (device == 'gpu' and parallelism), "Parallel optimization with gpu is not enabled"
 
-        assert not(path.exists(path.join("Recordings/", self.evaluation_name))),\
+        assert not(path.exists(path.join("Recordings", self.evaluation_name))),\
             "Evaluation with this name already exists"
 
         self.device = device
@@ -89,7 +89,7 @@ class Evaluator:
             manual_seed(self.seed)
 
         # We create the recording folder and the folder where the recordings of this evaluation will be stored
-        makedirs(path.join("Recordings/", self.evaluation_name), exist_ok=True)
+        makedirs(path.join("Recordings", self.evaluation_name), exist_ok=True)
 
         # We execute the outter loop in a parallel if we do not train of GPU
         start = time.time()
@@ -244,14 +244,14 @@ class NNEvaluator(Evaluator):
     def nested_cross_valid(self, **kwargs):
 
         # We create the checkpoints folder where the early stopper will save the models
-        if self.early_stopping_activated and not path.exists(path.join("./checkpoints")):
-            mkdir(path.join("./checkpoints"))
+        if self.early_stopping_activated and not path.exists(path.join("checkpoints")):
+            mkdir(path.join("checkpoints"))
 
         scores = super().nested_cross_valid(**kwargs)
 
         # We delete the files created to save the checkpoints of our model by the early stopper
-        if path.exists(path.join("./checkpoints")):
-            rmtree(path.join("./checkpoints"))
+        if path.exists(path.join("checkpoints")):
+            rmtree(path.join("checkpoints"))
 
         return scores
 
@@ -272,7 +272,7 @@ class NNEvaluator(Evaluator):
                        get_hyperparameters_importance=self.get_hyperparameters_importance,
                        get_optimization_history=self.get_optimization_history,
                        early_stopping_activated=self.early_stopping_activated,
-                       path=path.join("Recordings/", self.evaluation_name, f"Split_{index}"), **kwargs)
+                       path=path.join("Recordings", self.evaluation_name, f"Split_{index}"), **kwargs)
 
     def create_model(self, best_hyper_params):
         """
@@ -341,7 +341,7 @@ class RFEvaluator(Evaluator):
                        get_hyperparameters_importance=self.get_hyperparameters_importance,
                        get_parallel_coordinate=self.get_parallel_coordinate,
                        get_optimization_history=self.get_optimization_history,
-                       path=path.join("Recordings/", self.evaluation_name, f"Split_{index}"), **kwargs
+                       path=path.join("Recordings", self.evaluation_name, f"Split_{index}"), **kwargs
                        )
 
     def create_model(self, best_hyper_params):

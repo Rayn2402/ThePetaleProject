@@ -24,9 +24,9 @@ class Recorder:
         folder_name = f"Split_{index}"
 
         # We create the folder where the information will be saved
-        os.makedirs(os.path.join("Recordings/", evaluation_name, folder_name), exist_ok=True)
+        os.makedirs(os.path.join("Recordings", evaluation_name, folder_name), exist_ok=True)
 
-        self.path = os.path.join("Recordings/", evaluation_name, folder_name)
+        self.path = os.path.join("Recordings", evaluation_name, folder_name)
         self.data = {NAME: evaluation_name, INDEX: index, METRICS: {}, HYPERPARAMETERS: {},
                      HYPERPARAMETER_IMPORTANCE: {}}
 
@@ -134,8 +134,8 @@ def get_evaluation_recap(evaluation_name):
 
     :param evaluation_name: The name of the evaluation
     """
-    assert os.path.exists(os.path.join("Recordings/", evaluation_name)), "Evaluation not found"
-    path = os.path.join("Recordings/", evaluation_name)
+    assert os.path.exists(os.path.join("Recordings", evaluation_name)), "Evaluation not found"
+    path = os.path.join("Recordings", evaluation_name)
     json_file = "records.json"
     folders = os.listdir(os.path.join(path))
     data = {
@@ -152,7 +152,7 @@ def get_evaluation_recap(evaluation_name):
 
     keys = None
     for folder in folders:
-        with open(os.path.join(f"{path}/{folder}/{json_file}"), "r") as read_file:
+        with open(os.path.join(path, folder, json_file), "r") as read_file:
             split_data = json.load(read_file)
         data[METRICS][ACCURACY][VALUES].append(split_data[METRICS]["ACCURACY"])
         if keys is None:

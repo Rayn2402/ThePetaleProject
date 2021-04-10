@@ -297,7 +297,7 @@ def create_experiments_recap(path):
             # We add the hyperparameters importance secction
             hyperparameters_importance_section = f"""
                         <div class="row center bottom-space">
-                            <iframe src="{os.path.join(f"{path}/{evaluation}/{split}/{hyperparams_importance_file}")}" 
+                            <iframe src="{os.path.join(path, evaluation, split, hyperparams_importance_file)}" 
                             style="width: 90%;height: 100vh;"></iframe>
                         </div>
                     """
@@ -305,7 +305,7 @@ def create_experiments_recap(path):
             # We add the parallel  coordinate graph
             parallel_coordinate_section = f"""
                         <div class="row center bottom-space">
-                            <iframe src="{os.path.join(f"{path}/{evaluation}/{split}/{parallel_coordinate_file}")}" 
+                            <iframe src="{os.path.join(path, evaluation, split, parallel_coordinate_file)}" 
                             style="width: 90%;height: 100vh;"></iframe>
                         </div>
                     """
@@ -313,7 +313,7 @@ def create_experiments_recap(path):
             # We add the optimization history graph
             optimization_history_section = f"""
                         <div class="row center bottom-space">
-                            <iframe src="{os.path.join(f"{path}/{evaluation}/{split}/{optimization_history_file}")}" 
+                            <iframe src="{os.path.join(path, evaluation, split, optimization_history_file)}" 
                             style="width: 90%;height: 100vh;"></iframe>
                         </div>
                     """

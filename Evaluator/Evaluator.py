@@ -18,9 +18,9 @@ from shutil import rmtree
 
 
 class Evaluator:
-    def __init__(self, evaluation_name, model_generator, sampler, hyper_params, n_trials, optimization_metric, k, l=1,
-                 direction="minimize", seed=None, get_hyperparameters_importance=False, get_parallel_coordinate=False,
-                 get_optimization_history=False, device="cpu", parallelism=True):
+    def __init__(self, evaluation_name, model_generator, sampler, hyper_params, n_trials, optimization_metric,
+                 evaluation_metrics, k, l=1, direction="minimize", seed=None, get_hyperparameters_importance=False,
+                 get_parallel_coordinate=False, get_optimization_history=False, device="cpu", parallelism=True):
         """
         Class that will be responsible of the evaluation of the model
 
@@ -31,6 +31,8 @@ class Evaluator:
         :param hyper_params: dictionary containing information of the hyper parameter we want to tune
         :param optimization_metric: a function that takes the output of the model and the target and returns  the metric
          we want to optimize
+        :param evaluation_metrics: Dictionary containing multiple metric functions that will be used to calculate the
+         scores of those multiple metrics to evaluate the models on the the test set
         :param k: Number of folds in the outer cross validation
         :param l: Number of folds in the inner cross validation
         :param n_trials: number of trials we want to perform
@@ -56,6 +58,7 @@ class Evaluator:
         self.l = l
         self.hyper_params = hyper_params
         self.optimization_metric = optimization_metric
+        self.evaluation_metrics = evaluation_metrics
         self.direction = direction
         self.seed = seed
         self.get_hyperparameters_importance = get_hyperparameters_importance
@@ -165,11 +168,12 @@ class Evaluator:
             # We save the predictions
             recorder.record_predictions(predictions)
 
+            for evaluation_metric in self.evaluation_metrics:
+                # We save the scores, (TO BE UPDATED)
+                recorder.record_scores(score=evaluation_metric["metric"](predictions, target),
+                                       metric=evaluation_metric["name"])
             # We get the score
             score = self.optimization_metric(predictions, target)
-
-            # We save the scores, (TO BE UPDATED)
-            recorder.record_scores(score=score, metric="ACCURACY")
 
             # We save all the data collected in a file
             recorder.generate_file()
@@ -221,8 +225,8 @@ class Evaluator:
 
 class NNEvaluator(Evaluator):
 
-    def __init__(self, evaluation_name, model_generator, sampler, hyper_params, n_trials, optimization_metric, k, l=1,
-                 max_epochs=100,
+    def __init__(self, evaluation_name, model_generator, sampler, hyper_params, n_trials, optimization_metric,
+                 evaluation_metrics, k, l=1, max_epochs=100,
                  direction="minimize", seed=None, get_hyperparameters_importance=False, get_parallel_coordinate=False,
                  get_optimization_history=False, device="cpu", parallelism=True, early_stopping_activated=False):
         """
@@ -232,7 +236,7 @@ class NNEvaluator(Evaluator):
 
         """
         super().__init__(model_generator=model_generator, sampler=sampler, hyper_params=hyper_params, n_trials=n_trials,
-                         optimization_metric=optimization_metric, k=k, l=l, direction=direction, seed=seed,
+                         optimization_metric=optimization_metric, evaluation_metrics=evaluation_metrics, k=k, l=l, direction=direction, seed=seed,
                          get_hyperparameters_importance=get_hyperparameters_importance,
                          get_parallel_coordinate=get_parallel_coordinate,
                          get_optimization_history=get_optimization_history,
@@ -310,17 +314,17 @@ class NNEvaluator(Evaluator):
 
 class RFEvaluator(Evaluator):
 
-    def __init__(self, evaluation_name, model_generator, sampler, hyper_params, n_trials, optimization_metric, k, l=1,
-                 direction="minimize", seed=None, get_hyperparameters_importance=False, get_parallel_coordinate=False,
-                 get_optimization_history=False):
+    def __init__(self, evaluation_name, model_generator, sampler, hyper_params, n_trials, optimization_metric,
+                 evaluation_metrics, k, l=1, direction="minimize", seed=None, get_hyperparameters_importance=False,
+                 get_parallel_coordinate=False, get_optimization_history=False):
         """
         Class that will be responsible of the evaluation of the Random Forest models
 
         """
 
         super().__init__(model_generator=model_generator, sampler=sampler, hyper_params=hyper_params, n_trials=n_trials,
-                         optimization_metric=optimization_metric, k=k, l=l, direction=direction, seed=seed,
-                         get_parallel_coordinate=get_parallel_coordinate,
+                         optimization_metric=optimization_metric, evaluation_metrics=evaluation_metrics, k=k, l=l,
+                         direction=direction, seed=seed, get_parallel_coordinate=get_parallel_coordinate,
                          get_hyperparameters_importance=get_hyperparameters_importance,
                          get_optimization_history=get_optimization_history,
                          evaluation_name=evaluation_name, device="cpu", parallelism=True)
@@ -345,7 +349,7 @@ class RFEvaluator(Evaluator):
                        )
 
     def create_model(self, best_hyper_params):
-        """
+        """git
         Method to create the Model
 
         :param best_hyper_params: Python list that contains a set of hyper parameter used in the creation of the Random

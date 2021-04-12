@@ -31,8 +31,10 @@ class Evaluator:
         :param hyper_params: dictionary containing information of the hyper parameter we want to tune
         :param optimization_metric: a function that takes the output of the model and the target and returns  the metric
          we want to optimize
-        :param evaluation_metrics: Dictionary containing multiple metric functions that will be used to calculate the
-         scores of those multiple metrics to evaluate the models on the the test set
+        :param evaluation_metrics:  list of dictionaries, where each dictionary represents a metric functions, the
+                                    dictionary contains two keys : "name" that represents the name of the metric and
+                                    "metric" that represents the function that will be used to calculate the score of
+                                    this metric
         :param k: Number of folds in the outer cross validation
         :param l: Number of folds in the inner cross validation
         :param n_trials: number of trials we want to perform

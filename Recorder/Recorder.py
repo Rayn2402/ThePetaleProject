@@ -140,10 +140,6 @@ def get_evaluation_recap(evaluation_name):
     folders = os.listdir(os.path.join(path))
     data = {
         METRICS: {
-            "accuracy": {
-                VALUES: [],
-                INFO: ""
-            },
         },
         HYPERPARAMETER_IMPORTANCE: {
 

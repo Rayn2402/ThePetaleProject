@@ -186,8 +186,8 @@ class Tuner:
         # We look for keyword args
         n_startup = kwargs.get('n_startup_trials', 10)
         n_ei_candidates = kwargs.get('n_ei_candidates', 20)
-        min_resource = kwargs.get('min_resource', 10)
-        eta = kwargs.get('eta', 4)
+        min_resource = kwargs.get('min_resource', 15)
+        eta = kwargs.get('eta', 2)
 
         # we create the study 
         self.study = create_study(direction=direction, study_name=study_name,

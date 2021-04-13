@@ -9,13 +9,16 @@ from Models.ModelGenerator import NNModelGenerator
 from Evaluator.Evaluator import NNEvaluator
 from json import load
 from Datasets.Sampling import WarmUpSampler
-from os import path
+from os.path import join
 
 # We create the Petale Data Manager
 manager = PetaleDataManager("mitm2902")
 
+EVALUATION_NAME = "real"
+RECORDING_PATH = join("..", "..")
+
 # We gather the hyperparameter to be optimized
-with open(path.join("..", "..", "Hyperparameters", "hyper_params.json"), "r") as read_file:
+with open(join("..", "..", "Hyperparameters", "hyper_params.json"), "r") as read_file:
     HYPER_PARAMS = load(read_file)
 
 # We create the warmup sampler to get the data
@@ -34,12 +37,12 @@ evaluation_metrics = [
 generator = NNModelGenerator(NNRegressor, num_cont_col=data[0]["train"].X_cont.shape[1])
 
 # We create the Evaluator Object
-NNEvaluator = NNEvaluator(model_generator=generator, sampler=warmup_sampler, k=5, hyper_params=HYPER_PARAMS,
+NNEvaluator = NNEvaluator(model_generator=generator, sampler=warmup_sampler, k=1, hyper_params=HYPER_PARAMS,
                           optimization_metric=RegressionMetrics.mean_absolute_error,
-                          evaluation_metrics=evaluation_metrics, n_trials=300, seed=2019,
-                          evaluation_name="NN_Regressor", early_stopping_activated=True,
+                          evaluation_metrics=evaluation_metrics, n_trials=2048, seed=2019,
+                          evaluation_name=EVALUATION_NAME, early_stopping_activated=False,
                           get_hyperparameters_importance=True, get_optimization_history=True,
-                          get_parallel_coordinate=True)
+                          get_parallel_coordinate=True, recordings_path=RECORDING_PATH)
 
 # We perform the nested cross validation
 score = NNEvaluator.nested_cross_valid()

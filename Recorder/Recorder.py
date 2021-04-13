@@ -14,19 +14,20 @@ from Recorder.constants import *
 
 
 class Recorder:
-    def __init__(self, evaluation_name, index):
+    def __init__(self, evaluation_name, index, recordings_path):
         """
         Class that will be responsible of saving all the data about our experiments
 
         :param evaluation_name: String that represents the name of the evaluation
         :param index: The number of the split
+        :param recordings_path: the path to the recordings folder where we want to save the data
         """
         folder_name = f"Split_{index}"
 
         # We create the folder where the information will be saved
-        os.makedirs(os.path.join("Recordings", evaluation_name, folder_name), exist_ok=True)
+        os.makedirs(os.path.join(recordings_path, "Recordings", evaluation_name, folder_name), exist_ok=True)
 
-        self.path = os.path.join("Recordings", evaluation_name, folder_name)
+        self.path = os.path.join(recordings_path, "Recordings", evaluation_name, folder_name)
         self.data = {NAME: evaluation_name, INDEX: index, METRICS: {}, HYPERPARAMETERS: {},
                      HYPERPARAMETER_IMPORTANCE: {}}
 
@@ -101,8 +102,8 @@ class NNRecorder(Recorder):
         Class that will be responsible of saving all the data about our experiments with Neural networks
     """
 
-    def __init__(self, evaluation_name, index):
-        super().__init__(evaluation_name=evaluation_name, index=index)
+    def __init__(self, evaluation_name, index, recordings_path):
+        super().__init__(evaluation_name=evaluation_name, index=index, recordings_path=recordings_path)
 
     def record_predictions(self, predictions):
         """
@@ -119,16 +120,18 @@ class NNRecorder(Recorder):
         self.data[PREDICTIONS] = [{i: predictions[i].tolist()} for i in range(len(predictions))]
 
 
-def get_evaluation_recap(evaluation_name):
+def get_evaluation_recap(evaluation_name, recordings_path):
     """
     Function that will create a JSON file containing the evaluation recap
 
     :param evaluation_name: The name of the evaluation
+    :param recordings_path: the path to the recordings folder where we want to save the data
     """
-    assert os.path.exists(os.path.join("Recordings", evaluation_name)), "Evaluation not found"
-    path = os.path.join("Recordings", evaluation_name)
+    assert os.path.exists(os.path.join(recordings_path, "Recordings", evaluation_name)), "Evaluation not found"
+    path = os.path.join(recordings_path, "Recordings", evaluation_name)
     json_file = "records.json"
     folders = os.listdir(os.path.join(path))
+    folders = [folder for folder in folders if os.path.isdir(os.path.join(path, folder))]
     data = {
         METRICS: {
         },
@@ -190,19 +193,20 @@ def set_info(data):
             data[section][key][STD] = std(data[section][key][VALUES])
 
 
-def plot_hyperparameter_importance_chart(evaluation_name):
+def plot_hyperparameter_importance_chart(evaluation_name, recordings_path):
     """
     Function that will create a bar plot containing information about the mean and the standard deviation of each
     hyperparameter importance
 
     :param evaluation_name: String that represents the name of the evaluation
+    :param recordings_path: the path to the recordings folder where we want to save the data
 
     """
-    path = os.path.join("Recordings/", evaluation_name)
+    path = os.path.join(recordings_path, "Recordings", evaluation_name)
     json_file = "general.json"
 
-    # We get the content of thte json file
-    with open(os.path.join(f"{path}/{json_file}"), "r") as read_file:
+    # We get the content of the json file
+    with open(os.path.join(path, json_file), "r") as read_file:
         data = json.load(read_file)[HYPERPARAMETER_IMPORTANCE]
 
     # We initialize three lists for the values, the errors, and the labels

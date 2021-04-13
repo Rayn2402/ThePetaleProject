@@ -6,10 +6,13 @@ from Models.LinearModel import LinearRegressor
 from Datasets.Sampling import WarmUpSampler
 from Utils.score_metrics import RegressionMetrics
 from Recorder.Recorder import Recorder, get_evaluation_recap
+from os.path import join
 
 manager = PetaleDataManager("mitm2902")
 
 EVALUATION_NAME = "LinearRegression"
+RECORDING_PATH = join("..", "..")
+
 
 # We create the warmup sampler to get the data
 warmup_sampler = WarmUpSampler(dm=manager)
@@ -23,7 +26,7 @@ for i in range(10):
     linearRegressor = LinearRegressor(input_size=7)
 
     # We create the recorder
-    recorder = Recorder(evaluation_name=EVALUATION_NAME, index=i)
+    recorder = Recorder(evaluation_name=EVALUATION_NAME, index=i, recordings_path=RECORDING_PATH)
 
     # We train the linear regressor
     linearRegressor.train(x=data[i]["train"].X_cont, y=data[i]["train"].y)
@@ -47,6 +50,6 @@ for i in range(10):
     recorder.generate_file()
 
 # We generate the evaluation recap
-get_evaluation_recap(evaluation_name=EVALUATION_NAME)
+get_evaluation_recap(evaluation_name=EVALUATION_NAME, recordings_path=RECORDING_PATH)
 
 print(linear_regression_scores)

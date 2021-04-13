@@ -9,7 +9,7 @@ from Tuner.Tuner import NNTuner, RFTuner
 from torch import manual_seed
 from numpy.random import seed as np_seed
 from Hyperparameters.constants import *
-from Recorder.Recorder import NNRecorder, RFRecorder, get_evaluation_recap, plot_hyperparameter_importance_chart
+from Recorder.Recorder import NNRecorder, Recorder, get_evaluation_recap, plot_hyperparameter_importance_chart
 
 import ray
 import time
@@ -20,7 +20,8 @@ from shutil import rmtree
 class Evaluator:
     def __init__(self, evaluation_name, model_generator, sampler, hyper_params, n_trials, optimization_metric,
                  evaluation_metrics, k, l=1, direction="minimize", seed=None, get_hyperparameters_importance=False,
-                 get_parallel_coordinate=False, get_optimization_history=False, device="cpu", parallelism=True):
+                 get_parallel_coordinate=False, get_optimization_history=False, device="cpu", parallelism=True,
+                 recordings_path=""):
         """
         Class that will be responsible of the evaluation of the model
 
@@ -47,6 +48,8 @@ class Evaluator:
         :param get_optimization_history: Bool to tell if we want to plot the optimization history graph
          the hyper parameters
         :param device: "cpu" or "gpu"
+        :param recordings_path: the path to the recordings folder where we want to save the data
+
 
 
         """
@@ -66,6 +69,7 @@ class Evaluator:
         self.get_hyperparameters_importance = get_hyperparameters_importance
         self.get_parallel_coordinate = get_parallel_coordinate
         self.get_optimization_history = get_optimization_history
+        self.recordings_path = recordings_path
 
         assert not (device == 'gpu' and parallelism), "Parallel optimization with gpu is not enabled"
 
@@ -94,7 +98,7 @@ class Evaluator:
             manual_seed(self.seed)
 
         # We create the recording folder and the folder where the recordings of this evaluation will be stored
-        makedirs(path.join("Recordings", self.evaluation_name), exist_ok=True)
+        makedirs(path.join(self.recordings_path, "Recordings", self.evaluation_name), exist_ok=True)
 
         # We execute the outter loop in a parallel if we do not train of GPU
         start = time.time()
@@ -105,10 +109,10 @@ class Evaluator:
         print(f"Execution time : {execution_time}")
 
         # We save the evaluation recap
-        get_evaluation_recap(evaluation_name=self.evaluation_name)
+        get_evaluation_recap(evaluation_name=self.evaluation_name, recordings_path=self.recordings_path)
 
         # We save the hyperparameters plot
-        plot_hyperparameter_importance_chart(evaluation_name=self.evaluation_name)
+        plot_hyperparameter_importance_chart(evaluation_name=self.evaluation_name, recordings_path=self.recordings_path)
 
         return scores
 
@@ -224,13 +228,17 @@ class Evaluator:
     def create_trainer(self, model, **kwargs):
         raise NotImplementedError
 
+    def create_recorder(self, model, **kwargs):
+        raise NotImplementedError
+
 
 class NNEvaluator(Evaluator):
 
     def __init__(self, evaluation_name, model_generator, sampler, hyper_params, n_trials, optimization_metric,
                  evaluation_metrics, k, l=1, max_epochs=100,
                  direction="minimize", seed=None, get_hyperparameters_importance=False, get_parallel_coordinate=False,
-                 get_optimization_history=False, device="cpu", parallelism=True, early_stopping_activated=False):
+                 get_optimization_history=False, device="cpu", parallelism=True, early_stopping_activated=False,
+                 recordings_path=""):
         """
         Class that will be responsible of the evaluation of the Neural Networks models
 
@@ -238,11 +246,13 @@ class NNEvaluator(Evaluator):
 
         """
         super().__init__(model_generator=model_generator, sampler=sampler, hyper_params=hyper_params, n_trials=n_trials,
-                         optimization_metric=optimization_metric, evaluation_metrics=evaluation_metrics, k=k, l=l, direction=direction, seed=seed,
+                         optimization_metric=optimization_metric, evaluation_metrics=evaluation_metrics, k=k, l=l,
+                         direction=direction, seed=seed,
                          get_hyperparameters_importance=get_hyperparameters_importance,
                          get_parallel_coordinate=get_parallel_coordinate,
                          get_optimization_history=get_optimization_history,
-                         evaluation_name=evaluation_name, device=device, parallelism=parallelism)
+                         evaluation_name=evaluation_name, device=device, parallelism=parallelism,
+                         recordings_path=recordings_path)
 
         self.max_epochs = max_epochs
         self.early_stopping_activated = early_stopping_activated
@@ -278,7 +288,7 @@ class NNEvaluator(Evaluator):
                        get_hyperparameters_importance=self.get_hyperparameters_importance,
                        get_optimization_history=self.get_optimization_history,
                        early_stopping_activated=self.early_stopping_activated,
-                       path=path.join("Recordings", self.evaluation_name, f"Split_{index}"), **kwargs)
+                       path=path.join(self.recordings_path, "Recordings", self.evaluation_name, f"Split_{index}"), **kwargs)
 
     def create_model(self, best_hyper_params):
         """
@@ -311,14 +321,14 @@ class NNEvaluator(Evaluator):
 
         :param index: The index of the split
         """
-        return NNRecorder(evaluation_name=self.evaluation_name, index=index)
+        return NNRecorder(evaluation_name=self.evaluation_name, index=index, recordings_path=self.recordings_path)
 
 
 class RFEvaluator(Evaluator):
 
     def __init__(self, evaluation_name, model_generator, sampler, hyper_params, n_trials, optimization_metric,
                  evaluation_metrics, k, l=1, direction="minimize", seed=None, get_hyperparameters_importance=False,
-                 get_parallel_coordinate=False, get_optimization_history=False):
+                 get_parallel_coordinate=False, get_optimization_history=False, recording_path=""):
         """
         Class that will be responsible of the evaluation of the Random Forest models
 
@@ -329,7 +339,8 @@ class RFEvaluator(Evaluator):
                          direction=direction, seed=seed, get_parallel_coordinate=get_parallel_coordinate,
                          get_hyperparameters_importance=get_hyperparameters_importance,
                          get_optimization_history=get_optimization_history,
-                         evaluation_name=evaluation_name, device="cpu", parallelism=True)
+                         evaluation_name=evaluation_name, device="cpu", parallelism=True,
+                         recordings_path=recording_path)
 
     def create_tuner(self, datasets, index, **kwargs):
         """
@@ -347,7 +358,7 @@ class RFEvaluator(Evaluator):
                        get_hyperparameters_importance=self.get_hyperparameters_importance,
                        get_parallel_coordinate=self.get_parallel_coordinate,
                        get_optimization_history=self.get_optimization_history,
-                       path=path.join("Recordings", self.evaluation_name, f"Split_{index}"), **kwargs
+                       path=path.join(self.recordings_path, "Recordings", self.evaluation_name, f"Split_{index}"), **kwargs
                        )
 
     def create_model(self, best_hyper_params):
@@ -378,4 +389,4 @@ class RFEvaluator(Evaluator):
 
         :param index: The index of the split
         """
-        return RFRecorder(evaluation_name=self.evaluation_name, index=index)
+        return Recorder(evaluation_name=self.evaluation_name, index=index, recordings_path=self.recordings_path)

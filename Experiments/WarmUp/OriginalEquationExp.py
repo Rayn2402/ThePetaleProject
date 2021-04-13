@@ -9,8 +9,10 @@ from SQL.NewTablesScripts.constants import *
 from torch import from_numpy
 import numpy as np
 from Recorder.Recorder import Recorder, get_evaluation_recap
+from os.path import join
 
 EVALUATION_NAME = "OriginalEquation"
+RECORDING_PATH = join("..", "..")
 
 
 manager = PetaleDataManager("mitm2902")
@@ -32,7 +34,7 @@ for i in range(10):
     original_equation_pred = []
 
     # We create the recorder
-    recorder = Recorder(evaluation_name=EVALUATION_NAME, index=i)
+    recorder = Recorder(evaluation_name=EVALUATION_NAME, index=i, recordings_path=RECORDING_PATH)
 
     # We get the predictions
     for index, row in data[i]["test"].X_cont.iterrows():
@@ -55,6 +57,6 @@ for i in range(10):
     recorder.generate_file()
 
 # We generate the evaluation recap
-get_evaluation_recap(evaluation_name=EVALUATION_NAME)
+get_evaluation_recap(evaluation_name=EVALUATION_NAME, recordings_path=RECORDING_PATH)
 
 print(original_equation_scores)

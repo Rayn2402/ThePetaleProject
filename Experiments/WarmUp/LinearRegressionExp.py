@@ -5,7 +5,7 @@ from SQL.DataManager.Utils import PetaleDataManager
 from Models.LinearModel import LinearRegressor
 from Datasets.Sampling import WarmUpSampler
 from Utils.score_metrics import RegressionMetrics
-from Recorder.Recorder import RFRecorder, get_evaluation_recap
+from Recorder.Recorder import Recorder, get_evaluation_recap
 
 manager = PetaleDataManager("mitm2902")
 
@@ -23,7 +23,7 @@ for i in range(10):
     linearRegressor = LinearRegressor(input_size=7)
 
     # We create the recorder
-    recorder = RFRecorder(evaluation_name=EVALUATION_NAME, index=i)
+    recorder = Recorder(evaluation_name=EVALUATION_NAME, index=i)
 
     # We train the linear regressor
     linearRegressor.train(x=data[i]["train"].X_cont, y=data[i]["train"].y)

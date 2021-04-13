@@ -8,7 +8,7 @@ from Utils.score_metrics import RegressionMetrics
 from SQL.NewTablesScripts.constants import *
 from torch import from_numpy
 import numpy as np
-from Recorder.Recorder import RFRecorder, get_evaluation_recap
+from Recorder.Recorder import Recorder, get_evaluation_recap
 
 EVALUATION_NAME = "OriginalEquation"
 
@@ -32,7 +32,7 @@ for i in range(10):
     original_equation_pred = []
 
     # We create the recorder
-    recorder = RFRecorder(evaluation_name=EVALUATION_NAME, index=i)
+    recorder = Recorder(evaluation_name=EVALUATION_NAME, index=i)
 
     # We get the predictions
     for index, row in data[i]["test"].X_cont.iterrows():

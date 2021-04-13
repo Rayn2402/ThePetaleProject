@@ -75,6 +75,16 @@ class Recorder:
         # We save the score of the given metric
         self.data[METRICS][metric] = round(score, 6)
 
+    def record_predictions(self, predictions):
+        """
+        Method to call to save the predictions of a model after an experiments
+
+        :param predictions: The calculated predictions to save
+        """
+
+        # We save the predictions
+        self.data[PREDICTIONS] = [{i: predictions[i]} for i in range(len(predictions))]
+
     def generate_file(self):
         """
         Method to call to save the predictions of a model after an experiments
@@ -107,25 +117,6 @@ class NNRecorder(Recorder):
 
         # We save the predictions
         self.data[PREDICTIONS] = [{i: predictions[i].tolist()} for i in range(len(predictions))]
-
-
-class RFRecorder(Recorder):
-    """
-        Class that will be responsible of saving all the data about our experiments with Random Forest
-    """
-
-    def __init__(self, evaluation_name, index):
-        super().__init__(evaluation_name=evaluation_name, index=index)
-
-    def record_predictions(self, predictions):
-        """
-        Method to call to save the predictions of a Random forest after an experiments
-
-        :param predictions: The calculated predictions to save
-        """
-
-        # We save the predictions
-        self.data[PREDICTIONS] = [{i: predictions[i]} for i in range(len(predictions))]
 
 
 def get_evaluation_recap(evaluation_name):

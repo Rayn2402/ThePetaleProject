@@ -5,8 +5,11 @@ from SQL.DataManager.Utils import PetaleDataManager
 from Models.LinearModel import LinearRegressor
 from Datasets.Sampling import WarmUpSampler
 from Utils.score_metrics import RegressionMetrics
+from Recorder.Recorder import RFRecorder, get_evaluation_recap
 
 manager = PetaleDataManager("mitm2902")
+
+EVALUATION_NAME = "LinearRegression"
 
 # We create the warmup sampler to get the data
 warmup_sampler = WarmUpSampler(dm=manager)
@@ -19,13 +22,31 @@ for i in range(10):
     # We create the linear regressor
     linearRegressor = LinearRegressor(input_size=7)
 
+    # We create the recorder
+    recorder = RFRecorder(evaluation_name=EVALUATION_NAME, index=i)
+
     # We train the linear regressor
     linearRegressor.train(x=data[i]["train"].X_cont, y=data[i]["train"].y)
 
     # We make our predictions
     linear_regression_pred = linearRegressor.predict(x=data[i]["test"].X_cont)
 
+    # We save the predictions
+    recorder.record_predictions(linear_regression_pred.numpy().astype("float64"))
+
+    # We calculate the score
+    score = RegressionMetrics.mean_absolute_error(linear_regression_pred, data[i]["test"].y)
+
+    # We save the score
+    recorder.record_scores(score=score, metric="mean_absolute_error")
+
     # We save the metric score
-    linear_regression_scores.append(RegressionMetrics.mean_absolute_error(linear_regression_pred, data[i]["test"].y))
+    linear_regression_scores.append(score)
+
+    # We generate the file containing the saved data
+    recorder.generate_file()
+
+# We generate the evaluation recap
+get_evaluation_recap(evaluation_name=EVALUATION_NAME)
 
 print(linear_regression_scores)

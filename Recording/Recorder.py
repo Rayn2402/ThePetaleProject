@@ -10,7 +10,7 @@ import json
 from torch.nn import Softmax
 from numpy import std, min, max, mean, median, arange
 import matplotlib.pyplot as plt
-from Recorder.constants import *
+from Recording.constants import *
 
 
 class Recorder:

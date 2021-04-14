@@ -4,12 +4,12 @@ Authors : Mehdi Mitiche
 File that contains the class related to the evaluation of the models
 
 """
-from Trainer.Trainer import NNTrainer, RFTrainer
-from Tuner.Tuner import NNTuner, RFTuner
+from Training.Trainer import NNTrainer, RFTrainer
+from Tuning.Tuner import NNTuner, RFTuner
 from torch import manual_seed
 from numpy.random import seed as np_seed
 from Hyperparameters.constants import *
-from Recorder.Recorder import NNRecorder, RFRecorder, get_evaluation_recap, plot_hyperparameter_importance_chart
+from Recording.Recorder import NNRecorder, RFRecorder, get_evaluation_recap, plot_hyperparameter_importance_chart
 
 import ray
 import time

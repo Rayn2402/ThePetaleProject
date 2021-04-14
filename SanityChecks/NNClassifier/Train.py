@@ -1,8 +1,8 @@
 from SQL.DataManager.Utils import PetaleDataManager
 from Models.GeneralModels import NNClassifier
-from Trainer.Trainer import NNTrainer
+from Training.Trainer import NNTrainer
 from Utils.visualization import visualize_epoch_losses
-from Datasets.Sampling import get_learning_one_sampler
+from Data.Sampling import get_learning_one_sampler
 from torch import unique, manual_seed
 from SQL.NewTablesScripts.constants import SEED
 import numpy as np

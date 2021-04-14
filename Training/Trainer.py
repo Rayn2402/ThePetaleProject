@@ -4,7 +4,7 @@ Authors : Mitiche
 Files that contains class related to the Trainer of the models
 
 """
-from Trainer.EarlyStopping import EarlyStopping
+from Training.EarlyStopping import EarlyStopping
 from torch.nn import Module
 from torch.utils.data import DataLoader, Subset
 from torch import optim, manual_seed, cuda, tensor

@@ -4,6 +4,8 @@ Authors : Mitiche
 Files that contains class related to the Trainer of the models
 
 """
+import torch
+
 from Training.EarlyStopping import EarlyStopping
 from torch.nn import Module
 from torch.utils.data import DataLoader, Subset
@@ -69,6 +71,25 @@ class Trainer:
 
         # We return the final score of the cross validation
         return sum(score) / len(score)
+
+    def fit(self, train_set, val_set):
+        """
+        Trains the model
+
+        :param train_set: Training set
+        :param val_set: Validation set
+        """
+        raise NotImplementedError
+
+    def predict(self, x_cont, x_cat):
+
+        """
+        Returns prediction of the model
+
+        :param x_cont: tensor with continuous inputs
+        :param x_cat: tensor with categorical ordinal encoding
+        """
+        raise NotImplementedError
 
     @staticmethod
     def extract_batch(batch_list, device):
@@ -143,7 +164,7 @@ class NNTrainer(Trainer):
         assert isinstance(model, Module), 'model argument must inherit from torch.nn.Module'
 
         # we save the criterion of that model in the attribute criterion
-        self.criterion = model.criterion_function
+        self.criterion = model.loss
         self.batch_size = batch_size
         self.lr = lr
         self.weight_decay = weight_decay
@@ -194,7 +215,7 @@ class NNTrainer(Trainer):
         # We create the validation data loader
         val_loader = DataLoader(val_set, batch_size=len(val_set))
 
-        # Ee create the optimizer
+        # We create the optimizer
         base_optimizer = optim.Adam(params=self.model.parameters(), lr=self.lr, weight_decay=self.weight_decay)
 
         # We implement ASWA
@@ -256,15 +277,17 @@ class NNTrainer(Trainer):
             # Prep model for validation
             self.model.eval()
 
-            # We extract the continuous data x_cont, the categorical data x_cat
-            # and the correct predictions y for the single batch
-            x_cont, x_cat, y = self.extract_batch(next(iter(val_loader)), device)
+            with torch.no_grad():
 
-            # We perform the forward pass: compute predicted outputs by passing inputs to the model
-            preds = self.model(x_cont=x_cont, x_cat=x_cat)
+                # We extract the continuous data x_cont, the categorical data x_cat
+                # and the correct predictions y for the single batch
+                x_cont, x_cat, y = self.extract_batch(next(iter(val_loader)), device)
 
-            # We calculate the loss
-            val_epoch_loss = self.criterion(preds, y).item()
+                # We perform the forward pass: compute predicted outputs by passing inputs to the model
+                preds = self.model(x_cont=x_cont, x_cat=x_cat)
+
+                # We calculate the loss
+                val_epoch_loss = self.criterion(preds, y).item()
 
             # We record the validation loss
             valid_loss.append(val_epoch_loss)
@@ -276,10 +299,9 @@ class NNTrainer(Trainer):
             if early_stopping.early_stop:
                 self.model = self.best_model
 
-            if self.metric is not None:
-                intermediate_score = self.metric(self.model(x_cont=x_cont, x_cat=x_cat), y) if \
-                    not self.early_stopping_activated else \
-                    self.metric(self.best_model(x_cont=x_cont, x_cat=x_cat), y)
+            intermediate_score = self.metric(self.predict(x_cont=x_cont, x_cat=x_cat), y) if \
+                not self.early_stopping_activated else\
+                self.metric(self.best_model.predict(x_cont=x_cont, x_cat=x_cat), y)
 
             # Pruning logic
             if self.trial is not None:
@@ -293,11 +315,17 @@ class NNTrainer(Trainer):
 
     def predict(self, x_cont, x_cat):
 
-        # We set the model on evaluation mode
-        self.model.eval()
+        """
+        Returns log probabilities in the case of an NNClassifier
+        Returns real-valued targets in the case of NNRegressor
+
+        :param x_cont: tensor with continuous inputs
+        :param x_cat: tensor with categorical ordinal encoding
+        :return: (N, 1) or (N, C) tensor
+        """
 
         # We return the predictions
-        return self.model(x_cont, x_cat).float()
+        return self.model.predict(x_cont, x_cat, log_prob=True)
 
 
 class RFTrainer(Trainer):
@@ -319,8 +347,9 @@ class RFTrainer(Trainer):
         self.model.fit(train_set.X_cont, train_set.y)
 
     def predict(self, x_cont, x_cat=None):
-        # We return the predictions
-        return self.model.predict(x_cont)
+
+        # We return the log probabilities
+        return self.model.predict_log_proba(x_cont)
 
 
 def get_kfold_data(dataset, k, i):
@@ -338,7 +367,7 @@ def get_kfold_data(dataset, k, i):
     assert i < k
 
     # We get the size of one fold
-    fold_size = dataset.__len__() // k
+    fold_size = len(dataset) // k
 
     # We initialize a list that will contain the all the indexes of the the items that will be in the training set
     train_idx = []

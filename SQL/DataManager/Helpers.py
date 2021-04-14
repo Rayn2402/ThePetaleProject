@@ -99,9 +99,9 @@ def reformat_string(table_name):
 
 def timeDeltaToYears(timeDelta):
     """
-    Function that transforms from the type TimeDelta to months
+    Function that transforms from the type TimeDelta to years
 
-    :return: number of month
+    :return: number of years
     """
 
     return round(timeDelta.total_seconds() / SECONDS_IN_YEAR, 2)
@@ -109,7 +109,7 @@ def timeDeltaToYears(timeDelta):
 
 def AbsTimeLapse(df, new_col, first_date, second_date):
     """
-    Computes a new column that gives the absolute differences (in months) between two column dates
+    Computes a new column that gives the absolute differences (in years) between two column dates
 
     :param df: pandas dataframe
     :param new_col: new column name (for the column that will store the results)

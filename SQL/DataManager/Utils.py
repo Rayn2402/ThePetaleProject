@@ -6,8 +6,8 @@ Authors : Nicolas Raymond
 This file contains all functions linked to SQL data management
 
 """
-from . import ChartServices as ChartServices
-from . import Helpers as Helpers
+from . import ChartServices
+from . import Helpers
 import psycopg2
 import pandas as pd
 import os

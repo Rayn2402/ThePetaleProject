@@ -215,10 +215,8 @@ class NNTrainer(Trainer):
         # We create the validation data loader
         val_loader = DataLoader(val_set, batch_size=len(val_set))
 
-        # We create the optimizer
+        # We create the optimizer with SWA
         base_optimizer = optim.Adam(params=self.model.parameters(), lr=self.lr, weight_decay=self.weight_decay)
-
-        # We implement ASWA
         optimizer = SWA(base_optimizer, swa_start=10, swa_freq=5)
 
         # We initialize two empty lists to store the training loss and the validation loss
@@ -239,32 +237,7 @@ class NNTrainer(Trainer):
             # train the model #
             ###################
 
-            # Prep model for training
-            self.model.train()
-            epoch_loss = 0
-
-            for item in train_loader:
-                # We extract the continuous data x_cont, the categorical data x_cat
-                # and the correct predictions y
-                x_cont, x_cat, y = self.extract_batch(item, device)
-
-                # We clear the gradients of all optimized variables
-                optimizer.zero_grad()
-
-                # We perform the forward pass: compute predicted outputs by passing inputs to the model
-                preds = self.model(x_cont=x_cont, x_cat=x_cat)
-
-                # We calculate the loss
-                loss = self.criterion(preds, y)
-                epoch_loss += loss.item()
-
-                # We perfrom the backward pass: compute gradient of the loss with respect to model parameters
-                loss.backward()
-
-                # We perform a single optimization step (parameter update)
-                optimizer.step()
-
-            mean_epoch_loss = epoch_loss / len(train_loader)
+            mean_epoch_loss = self.train(train_loader, optimizer, device)
             update_progress(epoch=epoch, mean_epoch_loss=mean_epoch_loss)
 
             # We record training loss
@@ -284,10 +257,10 @@ class NNTrainer(Trainer):
                 x_cont, x_cat, y = self.extract_batch(next(iter(val_loader)), device)
 
                 # We perform the forward pass: compute predicted outputs by passing inputs to the model
-                preds = self.model(x_cont=x_cont, x_cat=x_cat)
+                output = self.model(x_cont=x_cont, x_cat=x_cat)
 
                 # We calculate the loss
-                val_epoch_loss = self.criterion(preds, y).item()
+                val_epoch_loss = self.criterion(output, y).item()
 
             # We record the validation loss
             valid_loss.append(val_epoch_loss)
@@ -326,6 +299,43 @@ class NNTrainer(Trainer):
 
         # We return the predictions
         return self.model.predict(x_cont, x_cat, log_prob=True)
+
+    def train(self, train_loader, optimizer, device):
+        """
+        Trains the model for a single epoch
+
+        :param train_loader: Training DataLoader
+        :param optimizer: PyTorch optimizer
+        :param device: "cpu" or "gpu"
+        :return: mean epoch loss
+        """
+
+        # Prep model for training
+        self.model.train()
+        epoch_loss = 0
+
+        for item in train_loader:
+            # We extract the continuous data x_cont, the categorical data x_cat
+            # and the correct predictions y
+            x_cont, x_cat, y = self.extract_batch(item, device)
+
+            # We clear the gradients of all optimized variables
+            optimizer.zero_grad()
+
+            # We perform the forward pass: compute predicted outputs by passing inputs to the model
+            output = self.model(x_cont=x_cont, x_cat=x_cat)
+
+            # We calculate the loss
+            loss = self.criterion(output, y)
+            epoch_loss += loss.item()
+
+            # We perform the backward pass: compute gradient of the loss with respect to model parameters
+            loss.backward()
+
+            # We perform a single optimization step (parameter update)
+            optimizer.step()
+
+        return epoch_loss / len(train_loader)
 
 
 class RFTrainer(Trainer):

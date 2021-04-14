@@ -9,7 +9,7 @@ from torch import cat, argmax
 from torch.nn import Module, ModuleList, Embedding, Linear, MSELoss, ReLU, PReLU, LeakyReLU, BatchNorm1d, \
     Dropout, Sequential, CrossEntropyLoss
 from Utils.score_metrics import ClassificationMetrics
-from torch import nn
+from torch import nn, no_grad
 
 
 class NNModel(Module):
@@ -106,7 +106,10 @@ class NNRegressor(NNModel):
 
     def loss(self, x_cont, x_cat, target):
         self.eval()
-        return ((self(x_cont.float(), x_cat).squeeze() - target) ** 2).mean().item()
+        with no_grad:
+            pred = self(x_cont.float(), x_cat).squeeze()
+
+        return ((pred - target) ** 2).mean().item()
 
 
 class NNClassifier(NNModel):
@@ -133,5 +136,6 @@ class NNClassifier(NNModel):
 
     def loss(self, x_cont, x_cat, target):
         self.eval()
-        predictions = (argmax(self(x_cont.float(), x_cat).float(), dim=1))
+        with no_grad:
+            predictions = (argmax(self(x_cont.float(), x_cat).float(), dim=1))
         return ClassificationMetrics.accuracy(predictions, target).item()

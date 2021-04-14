@@ -4,7 +4,7 @@ from Models.ModelGenerator import NNModelGenerator
 from Evaluator.Evaluator import NNEvaluator
 from Utils.score_metrics import ClassificationMetrics as CM
 from SQL.NewTablesScripts.constants import SEED
-from Datasets.Sampling import LearningOneSampler
+from Datasets.Sampling import get_learning_one_sampler
 from torch import unique
 import os
 import json
@@ -17,7 +17,7 @@ if __name__ == '__main__':
 
     # Initialization of DataManager and sampler
     manager = PetaleDataManager("rayn2402")
-    sampler = LearningOneSampler(dm=manager)
+    sampler = get_learning_one_sampler(dm=manager)
 
     # Loading of data
     all_data = sampler(k=1, l=1)

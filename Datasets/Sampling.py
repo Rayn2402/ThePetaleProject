@@ -141,34 +141,30 @@ class Sampler:
             print("#----------------------------------#")
 
 
-class WarmUpSampler(Sampler):
-
-    def __init__(self, dm: PetaleDataManager, to_dataset: bool = True):
-        """
-        Creates a Sampler for the WarmUp data table
-        :param dm: PetaleDataManager
-        :param to_dataset: bool indicating if we want a PetaleDataset (True) or a PetaleDataframe (False)
-        """
-        cont_cols = [WEIGHT, TDM6_HR_END, TDM6_DIST, DT, AGE, MVLPA]
-        super().__init__(dm, LEARNING_0, cont_cols, VO2R_MAX, to_dataset=to_dataset)
+def get_warmup_sampler(dm: PetaleDataManager, to_dataset: bool = True):
+    """
+    Creates a Sampler for the WarmUp data table
+    :param dm: PetaleDataManager
+    :param to_dataset: bool indicating if we want a PetaleDataset (True) or a PetaleDataframe (False)
+    """
+    cont_cols = [WEIGHT, TDM6_HR_END, TDM6_DIST, DT, AGE, MVLPA]
+    return Sampler(dm, LEARNING_0, cont_cols, VO2R_MAX, to_dataset=to_dataset)
 
 
-class LearningOneSampler(Sampler):
+def get_learning_one_sampler(dm: PetaleDataManager, to_dataset: bool = True):
+    """
+    Creates a Sampler for the Learning One data table
+    :param dm: PetaleDataManager
+    :param to_dataset: bool indicating if we want a PetaleDataset (True) or a PetaleDataframe (False)
+    """
+    # We save continuous columns
+    cont_cols = [AGE, HEIGHT, WEIGHT, AGE_AT_DIAGNOSIS, DT, TSEOT, RADIOTHERAPY_DOSE, TDM6_DIST, TDM6_HR_END,
+                 TDM6_HR_REST, TDM6_TAS_END, TDM6_TAD_END, MVLPA, TAS_REST, TAD_REST, DOX]
 
-    def __init__(self, dm: PetaleDataManager, to_dataset: bool = True):
-        """
-        Creates a Sampler for the Learning One data table
-        :param dm: PetaleDataManager
-        :param to_dataset: bool indicating if we want a PetaleDataset (True) or a PetaleDataframe (False)
-        """
-        # We save continuous columns
-        cont_cols = [AGE, HEIGHT, WEIGHT, AGE_AT_DIAGNOSIS, DT, TSEOT, RADIOTHERAPY_DOSE, TDM6_DIST, TDM6_HR_END,
-                     TDM6_HR_REST, TDM6_TAS_END, TDM6_TAD_END, MVLPA, TAS_REST, TAD_REST, DOX]
+    # We save the categorical columns
+    cat_cols = [SEX, SMOKING, DEX_PRESENCE]
 
-        # We save the categorical columns
-        cat_cols = [SEX, SMOKING, DEX_PRESENCE]
-
-        super().__init__(dm, LEARNING_1, cont_cols, FITNESS_LVL, cat_cols, to_dataset)
+    return Sampler(dm, LEARNING_1, cont_cols, FITNESS_LVL, cat_cols, to_dataset)
 
 
 def split_train_test(df: pd.DataFrame, target_col: str,

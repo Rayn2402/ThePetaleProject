@@ -6,8 +6,8 @@ NNRegressor which is a model to preform a regression and predict a real value
 """
 
 from torch import cat, argmax
-from torch.nn import Module, ModuleList, Embedding, Linear, MSELoss, ReLU,PReLU, LeakyReLU, BatchNorm1d, Dropout, Sequential, \
-    CrossEntropyLoss
+from torch.nn import Module, ModuleList, Embedding, Linear, MSELoss, ReLU, PReLU, LeakyReLU, BatchNorm1d, \
+    Dropout, Sequential, CrossEntropyLoss
 from Utils.score_metrics import ClassificationMetrics
 from torch import nn
 

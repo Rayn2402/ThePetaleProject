@@ -7,8 +7,8 @@ Files that contains class related to Datasets
 
 from torch.utils.data import Dataset
 from torch import from_numpy, cat, ones
-from .Preprocessing import *
-from .Transforms import ContinuousTransform as ConT
+from Datasets.Preprocessing import *
+from Datasets.Transforms import ContinuousTransform as ConT
 from SQL.NewTablesScripts.constants import *
 
 

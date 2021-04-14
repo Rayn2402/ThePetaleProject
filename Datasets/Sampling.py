@@ -7,7 +7,7 @@ This file contains the Sampler class used to separate test sets from train sets
 from typing import Sequence, Union, Callable, Tuple
 from SQL.DataManager.Utils import PetaleDataManager
 from Datasets.Datasets import PetaleDataset, PetaleDataframe
-from .Transforms import ContinuousTransform as ConT
+from Datasets.Transforms import ContinuousTransform as ConT
 from SQL.NewTablesScripts.constants import *
 import numpy as np
 import pandas as pd

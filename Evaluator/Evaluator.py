@@ -31,10 +31,9 @@ class Evaluator:
         :param hyper_params: dictionary containing information of the hyper parameter we want to tune
         :param optimization_metric: a function that takes the output of the model and the target and returns  the metric
          we want to optimize
-        :param evaluation_metrics:  list of dictionaries, where each dictionary represents a metric functions, the
-                                    dictionary contains two keys : "name" that represents the name of the metric and
-                                    "metric" that represents the function that will be used to calculate the score of
-                                    this metric
+        :param evaluation_metrics:  dictonary where keys represent name of metrics and values represent
+                                    the function that will be used to calculate the score of
+                                    the associated metric
         :param k: Number of folds in the outer cross validation
         :param l: Number of folds in the inner cross validation
         :param n_trials: number of trials we want to perform
@@ -170,10 +169,10 @@ class Evaluator:
             # We save the predictions
             recorder.record_predictions(predictions)
 
-            for evaluation_metric in self.evaluation_metrics:
+            for metric_name, f in self.evaluation_metrics.items():
                 # We save the scores, (TO BE UPDATED)
-                recorder.record_scores(score=evaluation_metric["metric"](predictions, target),
-                                       metric=evaluation_metric["name"])
+                recorder.record_scores(score=f(predictions, target),
+                                       metric=metric_name)
             # We get the score
             score = self.optimization_metric(predictions, target)
 

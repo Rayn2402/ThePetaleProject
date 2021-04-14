@@ -5,11 +5,9 @@ This file stores the two classes of Neural Networks models :
 NNRegressor which is a model to preform a regression and predict a real value
 """
 
-from torch import cat, argmax
-from torch.nn import Module, ModuleList, Embedding, Linear, MSELoss, ReLU, PReLU, LeakyReLU, BatchNorm1d, \
-    Dropout, Sequential, CrossEntropyLoss
-from Utils.score_metrics import ClassificationMetrics
-from torch import nn, no_grad
+from torch import cat, nn, no_grad, argmax
+from torch.nn import Module, ModuleList, Embedding, Linear, MSELoss, BatchNorm1d, Dropout, Sequential, CrossEntropyLoss
+from torch.nn.functional import log_softmax
 
 
 class NNModel(Module):
@@ -101,15 +99,26 @@ class NNRegressor(NNModel):
         # we define the criterion for that model
         self.criterion = MSELoss()
 
-    def criterion_function(self, pred, y):
+    def loss(self, pred, y):
         return self.criterion(pred.flatten(), y.float())
 
-    def loss(self, x_cont, x_cat, target):
-        self.eval()
-        with no_grad:
-            pred = self(x_cont.float(), x_cat).squeeze()
+    def predict(self, x_cont, x_cat=None, **kwargs):
+        """
+        Returns the real-valued predictions
 
-        return ((pred - target) ** 2).mean().item()
+        :param x_cont: tensor with continuous inputs
+        :param x_cat: tensor with categorical ordinal encoding
+        :return: (N, 1) tensor
+        """
+
+        # We turn in eval mode
+        self.eval()
+
+        # We execute a forward pass
+        with no_grad():
+            output = self.forward(x_cont, x_cat)
+
+        return output
 
 
 class NNClassifier(NNModel):
@@ -131,11 +140,28 @@ class NNClassifier(NNModel):
         # we define the criterion for that model
         self.criterion = CrossEntropyLoss()
 
-    def criterion_function(self, pred, y):
+    def loss(self, pred, y):
         return self.criterion(pred, y.long())
 
-    def loss(self, x_cont, x_cat, target):
+    def predict(self, x_cont, x_cat=None, **kwargs):
+        """
+        Returns the log probabilities related to each class if log_prob = True,
+        else it returns the classes predicted
+
+        :param x_cont: tensor with continuous inputs
+        :param x_cat: tensor with categorical ordinal encoding
+        :return: (N, c) tensor
+        """
+        # We turn in eval mode
         self.eval()
-        with no_grad:
-            predictions = (argmax(self(x_cont.float(), x_cat).float(), dim=1))
-        return ClassificationMetrics.accuracy(predictions, target).item()
+
+        # We execute a forward pass
+        with no_grad():
+            output = self.forward(x_cont, x_cat)
+            if kwargs.get("log_prob", False):
+                log_soft = log_softmax(output, dim=1).float()
+            else:
+                return argmax(output, dim=1).long()
+
+        return log_soft
+

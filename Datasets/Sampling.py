@@ -41,7 +41,7 @@ class Sampler:
         self.target_col = target_col
 
         # We save the dataset class constructor
-        self.dataset_constructor = Sampler.define_container_constructor(to_dataset)
+        self.dataset_constructor = PetaleDataset if to_dataset else PetaleDataframe
 
     def __call__(self, k: int = 10, l: int = 1, split_cat: bool = True,
                  valid_size: Union[int, float] = 0.20, test_size: Union[int, float] = 0.20,
@@ -139,19 +139,6 @@ class Sampler:
                 print(f"{k+1}.{k1} -> Train {len(v1['train'])} - Valid {len(valid)} -"
                       f" Test {len(v1['test'])}")
             print("#----------------------------------#")
-
-    @staticmethod
-    def define_container_constructor(to_dataset: bool) -> Callable:
-        """
-        Defines the correct constructor to use to initialise our dataset
-
-        :param to_dataset: bool indicating if we want a PetaleDataset (True) or a PetaleDataframe (False)
-        :return: function
-        """
-        if to_dataset:
-            return PetaleDataset
-        else:
-            return PetaleDataframe
 
 
 class WarmUpSampler(Sampler):

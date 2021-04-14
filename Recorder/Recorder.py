@@ -140,45 +140,60 @@ def get_evaluation_recap(evaluation_name):
     folders = os.listdir(os.path.join(path))
     data = {
         METRICS: {
-            "accuracy": {
-                VALUES: [],
-                INFO: ""
-            },
         },
         HYPERPARAMETER_IMPORTANCE: {
 
         }
     }
 
-    keys = None
+    hyperparameter_importance_keys = None
+    metrics_keys = None
     for folder in folders:
+        # We open the json file containing the info of each split
         with open(os.path.join(path, folder, json_file), "r") as read_file:
             split_data = json.load(read_file)
-        data[METRICS][ACCURACY][VALUES].append(split_data[METRICS]["ACCURACY"])
-        if keys is None:
-            keys = split_data[HYPERPARAMETER_IMPORTANCE].keys()
+
+        # We collect the info of the different metrics
+        if metrics_keys is None:
+            metrics_keys = split_data[METRICS].keys()
+            for key in metrics_keys:
+                data[METRICS][key] = {
+                    VALUES: [],
+                    INFO: ""
+                }
+        for key in metrics_keys:
+            data[METRICS][key][VALUES].append(split_data[METRICS][key])
+
+        # We collect the info of the different hyperparameter importance
+        if hyperparameter_importance_keys is None:
+            hyperparameter_importance_keys = split_data[HYPERPARAMETER_IMPORTANCE].keys()
             # We exclude the number of nodes from the hyperparameters importance (to be reviewed)
-            keys = [key for key in keys if "n_units" not in key]
-            for key in keys:
+            hyperparameter_importance_keys = [key for key in hyperparameter_importance_keys if "n_units" not in key]
+            for key in hyperparameter_importance_keys:
                 data[HYPERPARAMETER_IMPORTANCE][key] = {
                     VALUES: [],
                     INFO: ""
                 }
-        for key in keys:
+        for key in hyperparameter_importance_keys:
             data[HYPERPARAMETER_IMPORTANCE][key][VALUES].append(split_data[HYPERPARAMETER_IMPORTANCE][key])
+
+    # We add the info about the mean, the standard deviation, the median , the min, and the max
     set_info(data)
+
+    # We save the json containing the information about the evaluation in general
     with open(os.path.join(path, "general.json"), "w") as file:
         json.dump(data, file, indent=True)
 
 
 def set_info(data):
     """
-    Helper function that transforms the data to a specefic format
+    Helper function that transforms the data to a specific format containing the mean, the standard deviation,
+     the median , the min, and the max
     """
     for section in data.keys():
         for key in data[section].keys():
-            data[section][key][INFO] = f"{mean(data[section][key][VALUES])} +- {std(data[section][key][VALUES])} " \
-                                       f"[{median(data[section][key][VALUES])},{min(data[section][key][VALUES])}" \
+            data[section][key][INFO] = f"{round(mean(data[section][key][VALUES]),4)} +- {round(std(data[section][key][VALUES]),4)} " \
+                                       f"[{median(data[section][key][VALUES])}; {min(data[section][key][VALUES])}" \
                                        f"-{max(data[section][key][VALUES])}]"
             data[section][key][MEAN] = mean(data[section][key][VALUES])
             data[section][key][STD] = std(data[section][key][VALUES])

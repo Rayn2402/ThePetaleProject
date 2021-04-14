@@ -225,17 +225,23 @@ def create_experiments_recap(path):
         with open(os.path.join(path, evaluation, "general.json"), "r") as read_file:
             general_data = json.load(read_file)
 
+        main_metrics = ""
+        for key in general_data["metrics"].keys():
+            main_metrics += f"""
+                    <div class="metric-section col center" style="text-align:center">
+                        <div class="label">
+                            {key}
+                        </div>
+                        <div class="info">
+                            {general_data["metrics"][key]["info"]}
+                        </div>
+                    </div>
+                """
+
         # We add the general section
         mains = f"""<div class="main {"hidden" if i != 0 else None}" id="{evaluation}General">
             <div class="metrics col center bottom-space">
-                <div class="metric-section col center" style="text-align:center">
-                        <div class="label">
-                            Accuracy
-                        </div>
-                        <div class="info">
-                            {general_data["metrics"]["accuracy"]["info"]}
-                        </div>
-                </div>
+                {main_metrics}
             </div>
             <img src={os.path.join(path, evaluation,"hyperparameters_importance_recap.png")} >
         </div>"""

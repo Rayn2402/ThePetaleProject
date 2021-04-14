@@ -18,9 +18,9 @@ from shutil import rmtree
 
 
 class Evaluator:
-    def __init__(self, evaluation_name, model_generator, sampler, hyper_params, n_trials, metric, k, l=1,
-                 direction="minimize", seed=None, get_hyperparameters_importance=False, get_parallel_coordinate=False,
-                 get_optimization_history=False, device="cpu", parallelism=True):
+    def __init__(self, evaluation_name, model_generator, sampler, hyper_params, n_trials, optimization_metric,
+                 evaluation_metrics, k, l=1, direction="minimize", seed=None, get_hyperparameters_importance=False,
+                 get_parallel_coordinate=False, get_optimization_history=False, device="cpu", parallelism=True):
         """
         Class that will be responsible of the evaluation of the model
 
@@ -29,8 +29,11 @@ class Evaluator:
         :param sampler: A sampler object that will be called to perform the stratified sampling to get all the train
         and test set for both the inner and the outer training
         :param hyper_params: dictionary containing information of the hyper parameter we want to tune
-        :param metric: a function that takes the output of the model and the target and returns  the metric we want
-        to optimize
+        :param optimization_metric: a function that takes the output of the model and the target and returns  the metric
+         we want to optimize
+        :param evaluation_metrics:  dictonary where keys represent name of metrics and values represent
+                                    the function that will be used to calculate the score of
+                                    the associated metric
         :param k: Number of folds in the outer cross validation
         :param l: Number of folds in the inner cross validation
         :param n_trials: number of trials we want to perform
@@ -55,7 +58,8 @@ class Evaluator:
         self.k = k
         self.l = l
         self.hyper_params = hyper_params
-        self.metric = metric
+        self.optimization_metric = optimization_metric
+        self.evaluation_metrics = evaluation_metrics
         self.direction = direction
         self.seed = seed
         self.get_hyperparameters_importance = get_hyperparameters_importance
@@ -165,17 +169,18 @@ class Evaluator:
             # We save the predictions
             recorder.record_predictions(predictions)
 
+            for metric_name, f in self.evaluation_metrics.items():
+                # We save the scores, (TO BE UPDATED)
+                recorder.record_scores(score=f(predictions, target),
+                                       metric=metric_name)
             # We get the score
-            score = self.metric(predictions, target)
-
-            # We save the scores, (TO BE UPDATED)
-            recorder.record_scores(score=score, metric="ACCURACY")
+            score = self.optimization_metric(predictions, target)
 
             # We save all the data collected in a file
             recorder.generate_file()
 
             # We calculate the score with the help of the metric function
-            return self.metric(predictions, target)
+            return score
 
         return subprocess
 
@@ -221,8 +226,8 @@ class Evaluator:
 
 class NNEvaluator(Evaluator):
 
-    def __init__(self, evaluation_name, model_generator, sampler, hyper_params, n_trials, metric, k, l=1,
-                 max_epochs=100,
+    def __init__(self, evaluation_name, model_generator, sampler, hyper_params, n_trials, optimization_metric,
+                 evaluation_metrics, k, l=1, max_epochs=100,
                  direction="minimize", seed=None, get_hyperparameters_importance=False, get_parallel_coordinate=False,
                  get_optimization_history=False, device="cpu", parallelism=True, early_stopping_activated=False):
         """
@@ -232,7 +237,7 @@ class NNEvaluator(Evaluator):
 
         """
         super().__init__(model_generator=model_generator, sampler=sampler, hyper_params=hyper_params, n_trials=n_trials,
-                         metric=metric, k=k, l=l, direction=direction, seed=seed,
+                         optimization_metric=optimization_metric, evaluation_metrics=evaluation_metrics, k=k, l=l, direction=direction, seed=seed,
                          get_hyperparameters_importance=get_hyperparameters_importance,
                          get_parallel_coordinate=get_parallel_coordinate,
                          get_optimization_history=get_optimization_history,
@@ -266,7 +271,7 @@ class NNEvaluator(Evaluator):
 
         return NNTuner(model_generator=self.model_generator, datasets=datasets,
                        hyper_params=self.hyper_params, n_trials=self.n_trials,
-                       metric=self.metric, direction=self.direction, k=self.l,
+                       metric=self.optimization_metric, direction=self.direction, k=self.l,
                        max_epochs=self.max_epochs, study_name=f"{self.evaluation_name}_{index}",
                        get_parallel_coordinate=self.get_parallel_coordinate,
                        get_hyperparameters_importance=self.get_hyperparameters_importance,
@@ -296,7 +301,7 @@ class NNEvaluator(Evaluator):
 
         return NNTrainer(model, epochs=self.max_epochs, batch_size=best_hyper_params[BATCH_SIZE],
                          lr=best_hyper_params[LR], weight_decay=best_hyper_params[WEIGHT_DECAY],
-                         metric=self.metric, device=kwargs.get('device', 'cpu'),
+                         metric=self.optimization_metric, device=kwargs.get('device', 'cpu'),
                          early_stopping_activated=self.early_stopping_activated)
 
     def create_recorder(self, index):
@@ -310,17 +315,17 @@ class NNEvaluator(Evaluator):
 
 class RFEvaluator(Evaluator):
 
-    def __init__(self, evaluation_name, model_generator, sampler, hyper_params, n_trials, metric, k, l=1,
-                 direction="minimize", seed=None, get_hyperparameters_importance=False, get_parallel_coordinate=False,
-                 get_optimization_history=False):
+    def __init__(self, evaluation_name, model_generator, sampler, hyper_params, n_trials, optimization_metric,
+                 evaluation_metrics, k, l=1, direction="minimize", seed=None, get_hyperparameters_importance=False,
+                 get_parallel_coordinate=False, get_optimization_history=False):
         """
         Class that will be responsible of the evaluation of the Random Forest models
 
         """
 
         super().__init__(model_generator=model_generator, sampler=sampler, hyper_params=hyper_params, n_trials=n_trials,
-                         metric=metric, k=k, l=l, direction=direction, seed=seed,
-                         get_parallel_coordinate=get_parallel_coordinate,
+                         optimization_metric=optimization_metric, evaluation_metrics=evaluation_metrics, k=k, l=l,
+                         direction=direction, seed=seed, get_parallel_coordinate=get_parallel_coordinate,
                          get_hyperparameters_importance=get_hyperparameters_importance,
                          get_optimization_history=get_optimization_history,
                          evaluation_name=evaluation_name, device="cpu", parallelism=True)
@@ -337,7 +342,7 @@ class RFEvaluator(Evaluator):
         """
         return RFTuner(study_name=f"{self.evaluation_name}_{index}", model_generator=self.model_generator,
                        datasets=datasets,hyper_params=self.hyper_params, n_trials=self.n_trials,
-                       metric=self.metric, direction=self.direction, k=self.l,
+                       metric=self.optimization_metric, direction=self.direction, k=self.l,
                        get_hyperparameters_importance=self.get_hyperparameters_importance,
                        get_parallel_coordinate=self.get_parallel_coordinate,
                        get_optimization_history=self.get_optimization_history,
@@ -345,7 +350,7 @@ class RFEvaluator(Evaluator):
                        )
 
     def create_model(self, best_hyper_params):
-        """
+        """git
         Method to create the Model
 
         :param best_hyper_params: Python list that contains a set of hyper parameter used in the creation of the Random
@@ -364,7 +369,7 @@ class RFEvaluator(Evaluator):
 
         """
 
-        return RFTrainer(model=model, metric=self.metric)
+        return RFTrainer(model=model, metric=self.optimization_metric)
 
     def create_recorder(self, index):
         """

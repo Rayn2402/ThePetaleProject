@@ -28,6 +28,9 @@ for i in range(10):
     # We create the recorder
     recorder = Recorder(evaluation_name=EVALUATION_NAME, index=i, recordings_path=RECORDING_PATH)
 
+    recorder.record_data_info("train_set", len(data[i]["train"]))
+    recorder.record_data_info("test_set", len(data[i]["test"]))
+
     # We train the linear regressor
     linearRegressor.train(x=data[i]["train"].X_cont, y=data[i]["train"].y)
 

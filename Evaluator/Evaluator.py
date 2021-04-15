@@ -169,14 +169,14 @@ class Evaluator:
             # We save the trained model
             recorder.record_model(model=model)
 
-            # We extract x_cont, x_cat and target from the test set
-            x_cont, x_cat, target = self.extract_data(test_set)
+            # We extract ids, x_cont, x_cat and target from the test set
+            ids, x_cont, x_cat, target = self.extract_data(test_set)
 
             # We get the predictions
             predictions = trainer.predict(x_cont, x_cat)
 
             # We save the predictions
-            recorder.record_predictions(predictions)
+            recorder.record_predictions(predictions, ids)
 
             for metric_name, f in self.evaluation_metrics.items():
                 # We save the scores, (TO BE UPDATED)
@@ -202,6 +202,7 @@ class Evaluator:
 
         :return: Python tuple containing the continuous data, categorical data, and the target
         """
+        ids = dataset.IDs
         x_cont = dataset.X_cont
         target = dataset.y
         if dataset.X_cat is not None:
@@ -209,7 +210,7 @@ class Evaluator:
         else:
             x_cat = None
 
-        return x_cont, x_cat, target
+        return ids, x_cont, x_cat, target
 
     @staticmethod
     def get_datasets(dataset_dictionary):

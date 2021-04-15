@@ -87,15 +87,16 @@ class Recorder:
         # We save the score of the given metric
         self.data[METRICS][metric] = round(score, 6)
 
-    def record_predictions(self, predictions):
+    def record_predictions(self, predictions, ids):
         """
         Method to call to save the predictions of a model after an experiments
 
         :param predictions: The calculated predictions to save
+        :param ids: The ids of the patients with the predicted data
         """
 
         # We save the predictions
-        self.data[PREDICTIONS] = [{i: predictions[i]} for i in range(len(predictions))]
+        self.data[PREDICTIONS] = [{id: predictions[i]} for i, id in enumerate(ids)]
 
     def record_coefficient(self, name, value):
         """
@@ -129,11 +130,12 @@ class NNRecorder(Recorder):
     def __init__(self, evaluation_name, index, recordings_path):
         super().__init__(evaluation_name=evaluation_name, index=index, recordings_path=recordings_path)
 
-    def record_predictions(self, predictions):
+    def record_predictions(self, predictions, ids):
         """
         Method to call to save the predictions of a neural network after an experiments
 
         :param predictions: The calculated predictions to save
+        :param ids: The ids of the patients with the predicted data
         """
 
         # We initialize the Softmax object
@@ -141,7 +143,7 @@ class NNRecorder(Recorder):
         predictions = softmax(predictions)
 
         # We save the predictions
-        self.data[PREDICTIONS] = [{i: predictions[i].tolist()} for i in range(len(predictions))]
+        self.data[PREDICTIONS] = [{id: predictions[i].tolist()} for i, id in enumerate(ids)]
 
 
 def get_evaluation_recap(evaluation_name, recordings_path):

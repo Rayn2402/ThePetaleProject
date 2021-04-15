@@ -35,9 +35,9 @@
 │
 ├── SQL
 │   ├── DataManager
-│   │   ├── ChartServices.py      <- Vizualisation functions for DataManager
-│   │   ├── Helpers.py            <- Helpers function for DataManager
-│   │   └── Utils.py              <- Store the DataManager class managing interaction with SQL
+│   │   ├── ChartServices.py            <- Vizualisation functions for DataManager
+│   │   ├── Helpers.py                  <- Helpers function for DataManager
+│   │   └── Utils.py                    <- Store the DataManager class managing interaction with SQL
 │   │  
 │   └── NewTablesScripts                <- Scripts that generates table for our experiments
 │   │   ├── 6MWT.py

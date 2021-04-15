@@ -89,6 +89,19 @@ class Recorder:
         # We save the predictions
         self.data[PREDICTIONS] = [{i: predictions[i]} for i in range(len(predictions))]
 
+    def record_coefficient(self, name, value):
+        """
+        Method to call to save the coefficient of a model
+
+        :param name: The name of the coefficient
+        :param value: The value of the coefficient
+        """
+
+        if "coefficient" not in self.data.keys():
+            self.data["coefficient"] = {}
+
+        self.data["coefficient"][name] = value
+
     def generate_file(self):
         """
         Method to call to save the predictions of a model after an experiments

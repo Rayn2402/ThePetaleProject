@@ -197,7 +197,7 @@ class NNTrainer(Trainer):
 
         :return: Two python lists containing the training losses and the validation losses
         """
-        assert not (self.trial is not None and self.metric is None)
+        assert not (self.trial is not None and self.metric is None), "If trial is not None, a metric must be defined"
 
         if self.seed is not None:
             manual_seed(self.seed)
@@ -237,6 +237,7 @@ class NNTrainer(Trainer):
             # train the model #
             ###################
 
+            # We calculate training mean epoch loss on all batches
             mean_epoch_loss = self.train(train_loader, optimizer, device)
             update_progress(epoch=epoch, mean_epoch_loss=mean_epoch_loss)
 
@@ -247,42 +248,9 @@ class NNTrainer(Trainer):
             # validate the model #
             ######################
 
-            # Prep model for validation
-            self.model.eval()
-
-            with torch.no_grad():
-
-                # We extract the continuous data x_cont, the categorical data x_cat
-                # and the correct predictions y for the single batch
-                x_cont, x_cat, y = self.extract_batch(next(iter(val_loader)), device)
-
-                # We perform the forward pass: compute predicted outputs by passing inputs to the model
-                output = self.model(x_cont=x_cont, x_cat=x_cat)
-
-                # We calculate the loss
-                val_epoch_loss = self.criterion(output, y).item()
-
-            # We record the validation loss
+            # We calculate validation epoch loss and save it
+            val_epoch_loss = self.evaluate(val_loader, device, early_stopping, epoch)
             valid_loss.append(val_epoch_loss)
-
-            # We look for early stopping
-            if self.early_stopping_activated:
-                self.best_model = early_stopping(val_epoch_loss, self.model)
-
-            if early_stopping.early_stop:
-                self.model = self.best_model
-
-            intermediate_score = self.metric(self.predict(x_cont=x_cont, x_cat=x_cat), y) if \
-                not self.early_stopping_activated else\
-                self.metric(self.best_model.predict(x_cont=x_cont, x_cat=x_cat), y)
-
-            # Pruning logic
-            if self.trial is not None:
-                # We report the score to optuna
-                self.trial.report(intermediate_score, step=epoch)
-                # We prune the trial if it should be pruned
-                if self.trial.should_prune():
-                    raise TrialPruned()
 
         return tensor(training_loss), tensor(valid_loss)
 
@@ -336,6 +304,54 @@ class NNTrainer(Trainer):
             optimizer.step()
 
         return epoch_loss / len(train_loader)
+
+    def evaluate(self, valid_loader, device, early_stopper, epoch):
+
+        """
+        Calculates the loss on the validation set using a single batch
+        There will be no memory problem since our datasets are really small
+
+        :param valid_loader: Validation DataLoader
+        :param device: "cpu" or "gpu"
+        :param early_stopper: EarlyStopping object
+        :param epoch: Epoch in which we are currently looping
+        :return: Validation loss
+        """
+        # Prep model for validation
+        self.model.eval()
+
+        with torch.no_grad():
+
+            # We extract the continuous data x_cont, the categorical data x_cat
+            # and the correct predictions y for the single batch
+            x_cont, x_cat, y = self.extract_batch(next(iter(valid_loader)), device)
+
+            # We perform the forward pass: compute predicted outputs by passing inputs to the model
+            output = self.model(x_cont=x_cont, x_cat=x_cat)
+
+            # We calculate the loss
+            val_epoch_loss = self.criterion(output, y).item()
+
+            # We look for early stopping
+            if self.early_stopping_activated:
+                self.best_model = early_stopper(val_epoch_loss, self.model)
+
+            if early_stopper.early_stop:
+                self.model = self.best_model
+
+            # Pruning logic
+            if self.trial is not None:
+
+                # We return the score of the best model identified yet by the EarlyStopping object
+                intermediate_score = self.metric(self.best_model.predict(x_cont=x_cont, x_cat=x_cat), y)
+
+                # We report the score to optuna
+                self.trial.report(intermediate_score, step=epoch)
+                # We prune the trial if it should be pruned
+                if self.trial.should_prune():
+                    raise TrialPruned()
+
+        return val_epoch_loss
 
 
 class RFTrainer(Trainer):

@@ -136,6 +136,7 @@ class Evaluator:
             # We create the Recorder object to save the result of this experience
             recorder = self.create_recorder(index=k)
 
+            # We record the data count
             recorder.record_data_info("train_set", len(train_set))
             recorder.record_data_info("valid_set", len(valid_set))
             recorder.record_data_info("test_set", len(test_set))

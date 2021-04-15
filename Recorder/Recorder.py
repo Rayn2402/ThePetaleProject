@@ -29,7 +29,7 @@ class Recorder:
 
         self.path = os.path.join(recordings_path, "Recordings", evaluation_name, folder_name)
         self.data = {NAME: evaluation_name, INDEX: index, METRICS: {}, HYPERPARAMETERS: {},
-                     HYPERPARAMETER_IMPORTANCE: {}}
+                     HYPERPARAMETER_IMPORTANCE: {}, DATA_INFO: {}}
 
     def record_model(self, model):
         """
@@ -41,6 +41,9 @@ class Recorder:
         # We save the model with pickle
         filepath = os.path.join(self.path, "model.sav")
         pickle.dump(model, open(filepath, "wb"))
+
+    def record_data_info(self, data_name, data):
+        self.data[DATA_INFO][data_name] = data
 
     def record_hyperparameters(self, hyperparameters):
         """

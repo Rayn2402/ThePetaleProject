@@ -136,6 +136,10 @@ class Evaluator:
             # We create the Recorder object to save the result of this experience
             recorder = self.create_recorder(index=k)
 
+            recorder.record_data_info("train_set", len(train_set))
+            recorder.record_data_info("valid_set", len(valid_set))
+            recorder.record_data_info("test_set", len(test_set))
+
             # We create the tuner to perform the hyperparameters optimization
             print(f"Hyperparameter tuning started - K = {k}")
             tuner = self.create_tuner(datasets=all_datasets[k]["inner"],

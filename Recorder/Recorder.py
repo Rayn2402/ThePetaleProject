@@ -292,3 +292,63 @@ def plot_hyperparameter_importance_chart(evaluation_name, recordings_path):
 
     # We save the plot
     plt.savefig(os.path.join(path, 'hyperparameters_importance_recap.png'))
+
+
+def compare_recordings(evaluations, split_index, recording_path=""):
+
+    colors = ["blue", "red", "orange"]
+
+    assert len(evaluations) >= 1, "at lest one evaluation must be specified"
+    assert len(evaluations) <= 3, "maximum number of evaluations exceeded"
+
+    # We create the paths to recoding files
+    paths = [os.path.join(recording_path, "Recordings", evaluation, f"Split_{split_index}", "records.json") for evaluation in evaluations]
+
+    all_data = []
+
+    # We get the data from the recordings
+    for path in paths:
+        # We read the record file of the first evaluation
+        with open(path, "r") as read_file:
+            all_data.append(json.load(read_file))
+
+    target, ids, all_predictions = [], [], []
+
+    # We gather the needed data from the recordings
+    for i, data in enumerate(all_data):
+        all_predictions.append([])
+        for id, item in data["results"].items():
+            if i == 0:
+                ids.append((id))
+                target.append(item["target"])
+            all_predictions[i].append(item["prediction"])
+
+    # We sort all the predictions and the ids based on the target
+    indexes = list(range(len(target)))
+    indexes.sort(key=target.__getitem__)
+
+    sorted_all_predictions = []
+    for predictions in all_predictions:
+        sorted_all_predictions.append([predictions[i] for i in indexes])
+    sorted_target = [target[i] for i in indexes]
+    sorted_ids = [ids[i] for i in indexes]
+
+    # We set some parameters of the plot
+    plt.rcParams["figure.figsize"] = (20, 6)
+    plt.rcParams['axes.labelsize'] = 160
+    plt.rcParams['axes.titlesize'] = 160
+    plt.rcParams['xtick.labelsize'] = 6
+
+    # We create the scatter plot
+    plt.scatter(sorted_ids, sorted_target, color='green', label="target")
+    for i, predictions in enumerate(sorted_all_predictions):
+        plt.scatter(sorted_ids, predictions, color=colors[i], label=evaluations[i])
+
+    # We add the legend of the plot
+    plt.legend()
+
+    # We save the plot
+    plt.savefig(os.path.join(recording_path, "Recordings", evaluations[0], f"Split_{split_index}",
+                             f"""comparison_{"_".join(evaluations)}.png"""))
+
+

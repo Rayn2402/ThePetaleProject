@@ -57,7 +57,7 @@ class NNModel(Module):
             all_layers.append(Dropout(dropout))
             input_size = i
 
-            # we define the output layer
+        # we define the output layer
         if len(layers) == 0:
             all_layers.append(Linear(input_size, output_size))
         else:

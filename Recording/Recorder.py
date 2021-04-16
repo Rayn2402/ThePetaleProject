@@ -101,10 +101,6 @@ class NNRecorder(Recorder):
         :param predictions: The calculated predictions to save
         """
 
-        # We initialize the Softmax object
-        softmax = Softmax(dim=1)
-        predictions = softmax(predictions)
-
         # We save the predictions
         self.data[PREDICTIONS] = [{i: predictions[i].tolist()} for i in range(len(predictions))]
 

@@ -92,9 +92,7 @@ def create_experiments_recap(path):
     background-color: #d5dce6;
     height: 8vh;
     font-size: 1.4em;
-    width: fit-content;
-    min-width: 100%;
-}
+x   }
 .split{
     width: 150px;
     height: 100%;
@@ -235,15 +233,19 @@ def create_experiments_recap(path):
                         <div class="info">
                             {general_data["metrics"][key]["info"]}
                         </div>
-                    </div>
+                    x</div>
                 """
+
+            main_image = f"""
+                    <img src={os.path.join(path, evaluation,"hyperparameters_importance_recap.png")} >
+                """ if os.path.exists(os.path.join(path, evaluation,"hyperparameters_importance_recap.png")) else ""
 
         # We add the general section
         mains = f"""<div class="main {"hidden" if i != 0 else None}" id="{evaluation}General">
             <div class="metrics col center bottom-space">
                 {main_metrics}
             </div>
-            <img src={os.path.join(path, evaluation,"hyperparameters_importance_recap.png")} >
+            {main_image}
         </div>"""
 
         for j, split in enumerate(splits):
@@ -306,7 +308,7 @@ def create_experiments_recap(path):
                             <iframe src="{os.path.join(path, evaluation, split, hyperparams_importance_file)}" 
                             style="width: 90%;height: 100vh;"></iframe>
                         </div>
-                    """
+                    """ if os.path.exists(os.path.join(path, evaluation, split, hyperparams_importance_file)) else ""
 
             # We add the parallel  coordinate graph
             parallel_coordinate_section = f"""
@@ -314,7 +316,8 @@ def create_experiments_recap(path):
                             <iframe src="{os.path.join(path, evaluation, split, parallel_coordinate_file)}" 
                             style="width: 90%;height: 100vh;"></iframe>
                         </div>
-                    """
+                    """ if os.path.exists(os.path.join(path, evaluation, split, parallel_coordinate_file)) else ""
+
 
             # We add the optimization history graph
             optimization_history_section = f"""
@@ -322,7 +325,8 @@ def create_experiments_recap(path):
                             <iframe src="{os.path.join(path, evaluation, split, optimization_history_file)}" 
                             style="width: 90%;height: 100vh;"></iframe>
                         </div>
-                    """
+                """ if os.path.exists(os.path.join(path, evaluation, split, optimization_history_file)) else ""
+
 
             # We arrange the different sections
             section = f"""<div class="main hidden" id="{evaluation}{split}">
@@ -374,3 +378,5 @@ def create_experiments_recap(path):
     file = open("Experiments_recap.html", "w")
     file.write(body)
     file.close()
+
+create_experiments_recap(path="Recordings")

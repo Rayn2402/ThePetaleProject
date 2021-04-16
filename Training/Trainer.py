@@ -11,7 +11,6 @@ from torch.nn import Module
 from torch.utils.data import DataLoader, Subset
 from torch import optim, manual_seed, cuda, tensor
 from torch import device as device_
-from optuna import TrialPruned
 from torchcontrib.optim import SWA
 
 
@@ -54,6 +53,7 @@ class Trainer:
         # We initialize an empty list to store the scores
         score = []
         for i in range(k):
+
             # We the get the train, test, valid sets of the step we are currently in
             train_set, test_set, valid_set = self.get_datasets(datasets[i])
 
@@ -173,7 +173,6 @@ class NNTrainer(Trainer):
         self.patience = patience
         self.seed = seed
         self.trial = trial
-        self.best_model = None
 
     def update_progress_func(self, trial, verbose):
         if trial is None and verbose:
@@ -229,7 +228,8 @@ class NNTrainer(Trainer):
         update_progress = self.update_progress_func(self.trial, verbose)
 
         # We declare the variable which will hold the device we’re training on
-        device = device_("cuda" if cuda.is_available() and self.device == "gpu" else "cpu")
+        device = device_("cuda:0" if cuda.is_available() and self.device == "gpu" else "cpu")
+        self.model.to(device)
 
         for epoch in range(self.epochs):
 
@@ -283,6 +283,7 @@ class NNTrainer(Trainer):
         epoch_loss = 0
 
         for item in train_loader:
+
             # We extract the continuous data x_cont, the categorical data x_cat
             # and the correct predictions y
             x_cont, x_cat, y = self.extract_batch(item, device)
@@ -305,7 +306,7 @@ class NNTrainer(Trainer):
 
         return epoch_loss / len(train_loader)
 
-    def evaluate(self, valid_loader, device, early_stopper, epoch):
+    def evaluate(self, valid_loader, device, early_stopper):
 
         """
         Calculates the loss on the validation set using a single batch
@@ -314,7 +315,6 @@ class NNTrainer(Trainer):
         :param valid_loader: Validation DataLoader
         :param device: "cpu" or "gpu"
         :param early_stopper: EarlyStopping object
-        :param epoch: Epoch in which we are currently looping
         :return: Validation loss
         """
         # Prep model for validation
@@ -332,24 +332,14 @@ class NNTrainer(Trainer):
             # We calculate the loss
             val_epoch_loss = self.criterion(output, y).item()
 
-            # We look for early stopping
-            if self.early_stopping_activated:
-                self.best_model = early_stopper(val_epoch_loss, self.model)
+        # We calculate a score for the current model
+        score = self.metric(self.model.predict(x_cont=x_cont, x_cat=x_cat), y)
 
+        # We look for early stopping
+        if self.early_stopping_activated:
+            early_stopper(val_epoch_loss, self.model)
             if early_stopper.early_stop:
-                self.model = self.best_model
-
-            # Pruning logic
-            if self.trial is not None:
-
-                # We return the score of the best model identified yet by the EarlyStopping object
-                intermediate_score = self.metric(self.best_model.predict(x_cont=x_cont, x_cat=x_cat), y)
-
-                # We report the score to optuna
-                self.trial.report(intermediate_score, step=epoch)
-                # We prune the trial if it should be pruned
-                if self.trial.should_prune():
-                    raise TrialPruned()
+                self.model = early_stopper.get_best_model()
 
         return val_epoch_loss
 

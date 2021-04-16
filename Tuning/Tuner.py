@@ -6,15 +6,13 @@ Files that contains the logic related to hyper parameters tuning
 """
 from optuna import create_study
 from optuna.samplers import TPESampler
-from optuna.pruners import SuccessiveHalvingPruner
+from optuna.pruners import NopPruner
 from optuna.importance import get_param_importances, FanovaImportanceEvaluator
 from optuna.visualization import plot_param_importances, plot_parallel_coordinate, plot_optimization_history
 from optuna.logging import FATAL, set_verbosity
 from Training.Trainer import NNTrainer, RFTrainer
 from Hyperparameters.constants import *
-
 import os
-from pathlib import Path
 
 
 class NNObjective:
@@ -140,8 +138,8 @@ class RFObjective:
                                             hyper_params[MAX_SAMPLES][MAX])
 
         # We define the model with the suggested set of hyper parameters
-        model = self.model_generator(n_estimators=n_estimators, max_features=max_features, max_depth=max_depth,
-                                     max_samples=max_samples)
+        model = self.model_generator(n_estimators=n_estimators, max_features=max_features,
+                                     max_depth=max_depth, max_samples=max_samples)
 
         # We create the trainer that will train our model
         trainer = RFTrainer(model=model, metric=self.metric)
@@ -151,9 +149,6 @@ class RFObjective:
 
         # We return the score
         return score
-
-
-HYPER_PARAMS_SEED = 2021
 
 
 class Tuner:
@@ -171,7 +166,7 @@ class Tuner:
                 :param hyper_params: Dictionary containing information of the hyper parameter we want to tune
                 :param k: Number of folds to use in the cross validation
                 :param metric: Function that takes the output of the model and the target and returns
-                the metric we want to optimize
+                               the metric we want to optimize
                 :param n_trials: Number of trials we want to perform
                 :param direction: String to specify if we want to maximize or minimize the value of the metric used
                 :param get_hyperparameters_importance: Bool to tell if we want to plot the hyperparameters importance
@@ -186,16 +181,13 @@ class Tuner:
         # We look for keyword args
         n_startup = kwargs.get('n_startup_trials', 10)
         n_ei_candidates = kwargs.get('n_ei_candidates', 20)
-        min_resource = kwargs.get('min_resource', 10)
-        eta = kwargs.get('eta', 4)
 
         # we create the study 
         self.study = create_study(direction=direction, study_name=study_name,
                                   sampler=TPESampler(n_startup_trials=n_startup,
                                                      n_ei_candidates=n_ei_candidates,
                                                      multivariate=True),
-                                  pruner=SuccessiveHalvingPruner(min_resource=min_resource,
-                                                                 reduction_factor=eta, bootstrap_count=10))
+                                  pruner=NopPruner())
 
         assert not ((get_optimization_history or get_parallel_coordinate or get_hyperparameters_importance) and (
                 path is None)), "Path to the folder where save graphs must be specified "
@@ -246,6 +238,12 @@ class Tuner:
         return self.get_best_hyperparams(), get_param_importances(study=self.study,
                                                                   evaluator=FanovaImportanceEvaluator(
                                                                       seed=HYPER_PARAMS_SEED))
+
+    def get_best_hyperparams(self):
+        """
+        Abstract method to retrieve best hyperparameters
+        """
+        raise NotImplementedError
 
     def plot_hyperparameters_importance_graph(self):
         """

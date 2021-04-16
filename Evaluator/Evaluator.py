@@ -9,7 +9,8 @@ from Tuner.Tuner import NNTuner, RFTuner
 from torch import manual_seed
 from numpy.random import seed as np_seed
 from Hyperparameters.constants import *
-from Recorder.Recorder import NNRecorder, Recorder, get_evaluation_recap, plot_hyperparameter_importance_chart
+from Recorder.Recorder import NNRecorder, Recorder, get_evaluation_recap, plot_hyperparameter_importance_chart,\
+    compare_prediction_recordings
 
 import ray
 import time
@@ -176,7 +177,7 @@ class Evaluator:
             predictions = trainer.predict(x_cont, x_cat)
 
             # We save the predictions
-            recorder.record_predictions(predictions, ids)
+            recorder.record_predictions(predictions=predictions, ids=ids, target=target)
 
             for metric_name, f in self.evaluation_metrics.items():
                 # We save the scores, (TO BE UPDATED)
@@ -187,6 +188,9 @@ class Evaluator:
 
             # We save all the data collected in a file
             recorder.generate_file()
+
+            compare_prediction_recordings(evaluations=[self.evaluation_name], split_index=k,
+                                          recording_path=self.recordings_path)
 
             # We calculate the score with the help of the metric function
             return score

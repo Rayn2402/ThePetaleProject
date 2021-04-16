@@ -64,7 +64,7 @@ class Trainer:
             x_cont, x_cat, target = self.extract_data(test_set)
 
             # We calculate the score with the help of the metric function
-            intermediate_score = self.metric(self.predict(x_cont=x_cont, x_cat=x_cat), target)
+            intermediate_score = self.metric(self.predict(x_cont=x_cont, x_cat=x_cat, log_prob=True), target)
 
             # We save the score
             score.append(intermediate_score)
@@ -81,7 +81,7 @@ class Trainer:
         """
         raise NotImplementedError
 
-    def predict(self, x_cont, x_cat):
+    def predict(self, x_cont, x_cat, **kwargs):
 
         """
         Returns prediction of the model
@@ -249,12 +249,12 @@ class NNTrainer(Trainer):
             ######################
 
             # We calculate validation epoch loss and save it
-            val_epoch_loss = self.evaluate(val_loader, device, early_stopping, epoch)
+            val_epoch_loss = self.evaluate(val_loader, device, early_stopping)
             valid_loss.append(val_epoch_loss)
 
         return tensor(training_loss), tensor(valid_loss)
 
-    def predict(self, x_cont, x_cat):
+    def predict(self, x_cont, x_cat, **kwargs):
 
         """
         Returns log probabilities in the case of an NNClassifier
@@ -266,7 +266,7 @@ class NNTrainer(Trainer):
         """
 
         # We return the predictions
-        return self.model.predict(x_cont, x_cat, log_prob=True)
+        return self.model.predict(x_cont, x_cat, **kwargs)
 
     def train(self, train_loader, optimizer, device):
         """
@@ -333,7 +333,7 @@ class NNTrainer(Trainer):
             val_epoch_loss = self.criterion(output, y).item()
 
         # We calculate a score for the current model
-        score = self.metric(self.model.predict(x_cont=x_cont, x_cat=x_cat), y)
+        score = self.metric(self.model.predict(x_cont=x_cont, x_cat=x_cat, log_prob=True), y)
 
         # We look for early stopping
         if self.early_stopping_activated:
@@ -345,6 +345,7 @@ class NNTrainer(Trainer):
 
 
 class RFTrainer(Trainer):
+
     def __init__(self, model, metric):
         """
         Creates a  Trainer that will train and evaluate a Random Forest model.
@@ -362,7 +363,7 @@ class RFTrainer(Trainer):
 
         self.model.fit(train_set.X_cont, train_set.y)
 
-    def predict(self, x_cont, x_cat=None):
+    def predict(self, x_cont, x_cat=None, **kwargs):
 
         # We return the log probabilities
         return self.model.predict_log_proba(x_cont)

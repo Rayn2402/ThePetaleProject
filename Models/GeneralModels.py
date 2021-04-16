@@ -81,8 +81,18 @@ class NNModel(Module):
             x = x_cont
         return self.layers(x)
 
+    def predict(self, x_cont, x_cat=None):
+        """
+        Abstract method for model prediction function
+
+        :param x_cont: tensor with continuous inputs
+        :param x_cat: tensor with categorical ordinal encoding
+        """
+        raise NotImplementedError
+
 
 class NNRegressor(NNModel):
+
     def __init__(self, num_cont_col, layers, activation, dropout=0.4, cat_sizes=None):
         """Creates a Neural Network model that perform a regression with predicting real values, entity embedding is
         performed on the data if cat_sizes is not null
@@ -150,7 +160,7 @@ class NNClassifier(NNModel):
 
         :param x_cont: tensor with continuous inputs
         :param x_cat: tensor with categorical ordinal encoding
-        :return: (N, c) tensor
+        :return: (N, C) tensor
         """
         # We turn in eval mode
         self.eval()
@@ -160,8 +170,8 @@ class NNClassifier(NNModel):
             output = self.forward(x_cont, x_cat)
             if kwargs.get("log_prob", False):
                 log_soft = log_softmax(output, dim=1).float()
+                return log_soft
             else:
                 return argmax(output, dim=1).long()
 
-        return log_soft
 

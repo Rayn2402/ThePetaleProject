@@ -5,6 +5,7 @@ Files that contains class related to the Trainer of the models
 
 """
 import torch
+import ray
 
 from Training.EarlyStopping import EarlyStopping
 from torch.nn import Module
@@ -12,6 +13,7 @@ from torch.utils.data import DataLoader, Subset
 from torch import optim, manual_seed, cuda, tensor
 from torch import device as device_
 from torchcontrib.optim import SWA
+from numpy import mean, std
 
 
 class Trainer:
@@ -29,18 +31,17 @@ class Trainer:
         self.model = model
 
         # We save the attribute device
-        self.device = device
+        self.device = device_("cuda:0" if cuda.is_available() and device == "gpu" else "cpu")
 
         # We save the metric
         self.metric = metric
 
-    def cross_valid(self, datasets, k=5, seed=None):
+    def inner_random_subsampling(self, datasets, l=5, seed=None):
         """
             Method that will perform a cross validation on the model
 
-            :param datasets: Petale Datasets representing all the train, test, and valid sets to be used in the cross
-             validation
-            :param k: Number of folds
+            :param datasets: PetaleDatasets representing all the inner train, valid, and test sets
+            :param l: Number of random subsampling splits
             :param seed: the starting point in generating random numbers
 
             :return: The score after performing the cross validation
@@ -50,10 +51,32 @@ class Trainer:
         if seed is not None:
             manual_seed(seed)
 
-        # We initialize an empty list to store the scores
-        score = []
-        for i in range(k):
+        # We train and test on each of the inner split
+        subprocess = self.define_subprocess(datasets)
+        futures = [subprocess.remote(i) for i in range(l)]
+        scores = ray.get(futures)
 
+        # We the mean of the scores divided by the standard deviation
+        standard_dev = 1 if len(scores) == 1 else std(scores)
+        return mean(scores) / standard_dev
+
+    def define_subprocess(self, datasets):
+        """
+        Builds the subprocess according to the device
+
+        :param datasets: PetaleDatasets representing all the inner train, valid, and test sets
+        :return: subprocess function
+        """
+
+        gpus = 1 if (self.device == "gpu") else 0
+
+        @ray.remote(num_gpus=gpus)
+        def subprocess(i):
+            """
+            Consists of the parallelizable process of the inner random subsampling
+
+            :param i: i-th inner random subsamples' splits on which to test hyperparameters selection
+            """
             # We the get the train, test, valid sets of the step we are currently in
             train_set, test_set, valid_set = self.get_datasets(datasets[i])
 
@@ -64,13 +87,12 @@ class Trainer:
             x_cont, x_cat, target = self.extract_data(test_set)
 
             # We calculate the score with the help of the metric function
-            intermediate_score = self.metric(self.predict(x_cont=x_cont, x_cat=x_cat, log_prob=True), target)
+            score = self.metric(self.predict(x_cont=x_cont, x_cat=x_cat, log_prob=True), target)
 
             # We save the score
-            score.append(intermediate_score)
+            return score
 
-        # We return the final score of the cross validation
-        return sum(score) / len(score)
+        return subprocess
 
     def fit(self, train_set, val_set):
         """
@@ -91,43 +113,32 @@ class Trainer:
         """
         raise NotImplementedError
 
-    @staticmethod
-    def extract_batch(batch_list, device):
+    def extract_batch(self, batch_list):
         """
         Extracts the continuous data (X_cont), the categorical data (X_cat) and the ground truth (y)
 
         :param batch_list: list containing a batch from dataloader
-        :param device: "cpu" or "gpu"
         :return: 3 tensors
         """
 
         if len(batch_list) > 2:
             x_cont, x_cat, y = batch_list
-            x_cont, x_cat, y = x_cont.to(device), x_cat.to(device), y.to(device)
+            x_cont, x_cat, y = x_cont.to(self.device), x_cat.to(self.device), y.to(self.device)
         else:
             x_cont, y = batch_list
-            x_cont, y = x_cont.to(device), y.to(device)
+            x_cont, y = x_cont.to(self.device), y.to(self.device)
             x_cat = None
 
         return x_cont, x_cat, y
 
-    @staticmethod
-    def extract_data(dataset):
+    def extract_data(self, dataset):
         """
-        Method to extract the continuous data, categorical data, and the target
+        Abstract method to extract data from datasets
 
         :param dataset: PetaleDataset or PetaleDataframe containing the data
-
         :return: Python tuple containing the continuous data, categorical data, and the target
         """
-        x_cont = dataset.X_cont
-        target = dataset.y
-        if dataset.X_cat is not None:
-            x_cat = dataset.X_cat
-        else:
-            x_cat = None
-
-        return x_cont, x_cat, target
+        raise NotImplementedError
 
     @staticmethod
     def get_datasets(dataset_dictionary):
@@ -177,7 +188,7 @@ class NNTrainer(Trainer):
     def update_progress_func(self, trial, verbose):
         if trial is None and verbose:
             def update_progress(epoch, mean_epoch_loss):
-                if epoch % 10 == 0 or (epoch + 1) == self.epochs:
+                if epoch % 5 == 0 or (epoch + 1) == self.epochs:
                     print(f"Epoch {epoch + 1} - Loss : {round(mean_epoch_loss, 4)}")
         else:
             def update_progress(**kwargs):
@@ -211,9 +222,6 @@ class NNTrainer(Trainer):
         else:
             train_loader = DataLoader(train_set, batch_size=self.batch_size, shuffle=True)
 
-        # We create the validation data loader
-        val_loader = DataLoader(val_set, batch_size=len(val_set))
-
         # We create the optimizer with SWA
         base_optimizer = optim.Adam(params=self.model.parameters(), lr=self.lr, weight_decay=self.weight_decay)
         optimizer = SWA(base_optimizer, swa_start=10, swa_freq=5)
@@ -227,9 +235,8 @@ class NNTrainer(Trainer):
         # We init the update function
         update_progress = self.update_progress_func(self.trial, verbose)
 
-        # We declare the variable which will hold the device we’re training on
-        device = device_("cuda:0" if cuda.is_available() and self.device == "gpu" else "cpu")
-        self.model.to(device)
+        # We send model to device
+        self.model.to(self.device)
 
         for epoch in range(self.epochs):
 
@@ -238,7 +245,7 @@ class NNTrainer(Trainer):
             ###################
 
             # We calculate training mean epoch loss on all batches
-            mean_epoch_loss = self.train(train_loader, optimizer, device)
+            mean_epoch_loss = self.train(train_loader, optimizer)
             update_progress(epoch=epoch, mean_epoch_loss=mean_epoch_loss)
 
             # We record training loss
@@ -249,7 +256,7 @@ class NNTrainer(Trainer):
             ######################
 
             # We calculate validation epoch loss and save it
-            val_epoch_loss = self.evaluate(val_loader, device, early_stopping)
+            val_epoch_loss = self.evaluate(val_set, early_stopping)
             valid_loss.append(val_epoch_loss)
 
         return tensor(training_loss), tensor(valid_loss)
@@ -268,13 +275,12 @@ class NNTrainer(Trainer):
         # We return the predictions
         return self.model.predict(x_cont, x_cat, **kwargs)
 
-    def train(self, train_loader, optimizer, device):
+    def train(self, train_loader, optimizer):
         """
         Trains the model for a single epoch
 
         :param train_loader: Training DataLoader
         :param optimizer: PyTorch optimizer
-        :param device: "cpu" or "gpu"
         :return: mean epoch loss
         """
 
@@ -286,7 +292,7 @@ class NNTrainer(Trainer):
 
             # We extract the continuous data x_cont, the categorical data x_cat
             # and the correct predictions y
-            x_cont, x_cat, y = self.extract_batch(item, device)
+            x_cont, x_cat, y = self.extract_batch(item)
 
             # We clear the gradients of all optimized variables
             optimizer.zero_grad()
@@ -306,14 +312,13 @@ class NNTrainer(Trainer):
 
         return epoch_loss / len(train_loader)
 
-    def evaluate(self, valid_loader, device, early_stopper):
+    def evaluate(self, valid_set, early_stopper):
 
         """
         Calculates the loss on the validation set using a single batch
         There will be no memory problem since our datasets are really small
 
-        :param valid_loader: Validation DataLoader
-        :param device: "cpu" or "gpu"
+        :param valid_set: Validation PetaleDataset
         :param early_stopper: EarlyStopping object
         :return: Validation loss
         """
@@ -324,7 +329,7 @@ class NNTrainer(Trainer):
 
             # We extract the continuous data x_cont, the categorical data x_cat
             # and the correct predictions y for the single batch
-            x_cont, x_cat, y = self.extract_batch(next(iter(valid_loader)), device)
+            x_cont, x_cat, y = self.extract_data(valid_set)
 
             # We perform the forward pass: compute predicted outputs by passing inputs to the model
             output = self.model(x_cont=x_cont, x_cat=x_cat)
@@ -333,7 +338,7 @@ class NNTrainer(Trainer):
             val_epoch_loss = self.criterion(output, y).item()
 
         # We calculate a score for the current model
-        score = self.metric(self.model.predict(x_cont=x_cont, x_cat=x_cat, log_prob=True), y)
+        # score = self.metric(self.model.predict(x_cont=x_cont, x_cat=x_cat, log_prob=True), y)
 
         # We look for early stopping
         if self.early_stopping_activated:
@@ -342,6 +347,25 @@ class NNTrainer(Trainer):
                 self.model = early_stopper.get_best_model()
 
         return val_epoch_loss
+
+    def extract_data(self, dataset):
+        """
+        Method to extract the continuous data, categorical data, and the target
+
+        :param dataset: PetaleDataset or PetaleDataframe containing the data
+        :return: Python tuple containing the continuous data, categorical data, and the target
+        """
+        x_cont, y = dataset.X_cont, dataset.y
+
+        if dataset.X_cat is not None:
+            x_cat = dataset.X_cat
+        else:
+            x_cat = None
+
+        # We send all data to the device
+        x_cont, x_cat, y = x_cont.to(self.device), x_cat.to(self.device), y.to(self.device)
+
+        return x_cont, x_cat, y
 
 
 class RFTrainer(Trainer):
@@ -367,6 +391,22 @@ class RFTrainer(Trainer):
 
         # We return the log probabilities
         return self.model.predict_log_proba(x_cont)
+
+    def extract_data(self, dataset):
+        """
+        Method to extract the continuous data, categorical data, and the target
+
+        :param dataset: PetaleDataset or PetaleDataframe containing the data
+        :return: Python tuple containing the continuous data, categorical data, and the target
+        """
+        x_cont, y = dataset.X_cont, dataset.y
+
+        if dataset.X_cat is not None:
+            x_cat = dataset.X_cat
+        else:
+            x_cat = None
+
+        return x_cont, x_cat, y
 
 
 def get_kfold_data(dataset, k, i):

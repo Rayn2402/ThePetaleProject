@@ -16,7 +16,7 @@ import os
 
 
 class NNObjective:
-    def __init__(self, model_generator, datasets, hyper_params, k, metric, max_epochs, early_stopping_activated=False):
+    def __init__(self, model_generator, datasets, hyper_params, l, metric, max_epochs, early_stopping_activated=False):
         """
         Class that will represent the objective function for tuning Neural networks
         
@@ -37,7 +37,7 @@ class NNObjective:
         self.model_generator = model_generator
         self.datasets = datasets
         self.hyper_params = hyper_params
-        self.k = k
+        self.l = l
         self.metric = metric
         self.max_epochs = max_epochs
         self.early_stopping_activated = early_stopping_activated
@@ -87,14 +87,14 @@ class NNObjective:
                             early_stopping_activated=self.early_stopping_activated)
 
         # We perform a k fold cross validation to evaluate the model
-        score = trainer.cross_valid(datasets=self.datasets, k=self.k)
+        score = trainer.inner_random_subsampling(datasets=self.datasets, l=self.l)
 
         # We return the score
         return score
 
 
 class RFObjective:
-    def __init__(self, model_generator, datasets, hyper_params, k, metric, **kwargs):
+    def __init__(self, model_generator, datasets, hyper_params, l, metric, **kwargs):
         """
         Class that will represent the objective function for tuning Random Forests
 
@@ -114,7 +114,7 @@ class RFObjective:
         self.model_generator = model_generator
         self.datasets = datasets
         self.hyper_params = hyper_params
-        self.k = k
+        self.l = l
         self.metric = metric
 
     def __call__(self, trial):
@@ -145,14 +145,14 @@ class RFObjective:
         trainer = RFTrainer(model=model, metric=self.metric)
 
         # We perform a cross validation to evaluate the model
-        score = trainer.cross_valid(datasets=self.datasets, k=self.k)
+        score = trainer.inner_random_subsampling(datasets=self.datasets, l=self.l)
 
         # We return the score
         return score
 
 
 class Tuner:
-    def __init__(self, study_name, model_generator, datasets, hyper_params, k, n_trials, metric, direction="minimize",
+    def __init__(self, study_name, model_generator, datasets, hyper_params, l, n_trials, metric, direction="minimize",
                  get_hyperparameters_importance=False, get_parallel_coordinate=False, get_optimization_history=False,
                  path=None, **kwargs):
         """
@@ -160,11 +160,11 @@ class Tuner:
 
                 :param study_name: String that represents the name of the study
                 :param model_generator: Instance of the ModelGenerator class that will be responsible of generating
-                 the model
+                                        the model
                 :param datasets: Petale Dataset representing all the train and test sets to be used in the cross
-                 validation
+                                 validation
                 :param hyper_params: Dictionary containing information of the hyper parameter we want to tune
-                :param k: Number of folds to use in the cross validation
+                :param l: Number of folds to use in the cross validation
                 :param metric: Function that takes the output of the model and the target and returns
                                the metric we want to optimize
                 :param n_trials: Number of trials we want to perform
@@ -197,7 +197,7 @@ class Tuner:
         self.model_generator = model_generator
         self.datasets = datasets
         self.hyper_params = hyper_params
-        self.k = k
+        self.l = l
         self.metric = metric
         self.get_hyperparameters_importance = get_hyperparameters_importance
         self.get_parallel_coordinate = get_parallel_coordinate
@@ -217,7 +217,7 @@ class Tuner:
             self.Objective(model_generator=self.model_generator,
                            datasets=self.datasets,
                            hyper_params=self.hyper_params,
-                           k=self.k, metric=self.metric, max_epochs=self.max_epochs,
+                           l=self.l, metric=self.metric, max_epochs=self.max_epochs,
                            early_stopping_activated=self.early_stopping_activated
                            ),
             self.n_trials, n_jobs=1, show_progress_bar=verbose)
@@ -281,7 +281,7 @@ class Tuner:
 
 
 class NNTuner(Tuner):
-    def __init__(self, study_name, model_generator, datasets, hyper_params, k, n_trials, metric,
+    def __init__(self, study_name, model_generator, datasets, hyper_params, l, n_trials, metric,
                  direction="minimize", max_epochs=100, get_hyperparameters_importance=False,
                  get_parallel_coordinate=False, get_optimization_history=False,
                  early_stopping_activated=False, **kwargs):
@@ -290,7 +290,7 @@ class NNTuner(Tuner):
 
         """
         super().__init__(study_name=study_name, model_generator=model_generator, datasets=datasets,
-                         hyper_params=hyper_params, k=k, n_trials=n_trials, metric=metric, direction=direction,
+                         hyper_params=hyper_params, l=l, n_trials=n_trials, metric=metric, direction=direction,
                          get_hyperparameters_importance=get_hyperparameters_importance,
                          get_parallel_coordinate=get_parallel_coordinate,
                          get_optimization_history=get_optimization_history, **kwargs)
@@ -325,7 +325,7 @@ class NNTuner(Tuner):
 
 
 class RFTuner(Tuner):
-    def __init__(self, study_name, model_generator, datasets, hyper_params, k, n_trials, metric,
+    def __init__(self, study_name, model_generator, datasets, hyper_params, l, n_trials, metric,
                  direction="minimize", get_hyperparameters_importance=False, get_parallel_coordinate=False,
                  get_optimization_history=False, **kwargs):
         """
@@ -333,7 +333,7 @@ class RFTuner(Tuner):
 
         """
         super().__init__(study_name=study_name, model_generator=model_generator, datasets=datasets,
-                         hyper_params=hyper_params, k=k, n_trials=n_trials, metric=metric, direction=direction,
+                         hyper_params=hyper_params, l=l, n_trials=n_trials, metric=metric, direction=direction,
                          get_hyperparameters_importance=get_hyperparameters_importance,
                          get_intermediate_values=get_parallel_coordinate,
                          get_optimization_history=get_optimization_history, **kwargs)

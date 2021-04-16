@@ -11,8 +11,6 @@ from numpy.random import seed as np_seed
 from Hyperparameters.constants import *
 from Recording.Recorder import NNRecorder, RFRecorder, get_evaluation_recap, plot_hyperparameter_importance_chart
 
-import ray
-import time
 from os import path, mkdir, makedirs
 from shutil import rmtree
 
@@ -20,7 +18,7 @@ from shutil import rmtree
 class Evaluator:
     def __init__(self, evaluation_name, model_generator, sampler, hyper_params, n_trials, optimization_metric,
                  evaluation_metrics, k, l=1, direction="minimize", seed=None, get_hyperparameters_importance=False,
-                 get_parallel_coordinate=False, get_optimization_history=False, device="cpu", parallelism=True):
+                 get_parallel_coordinate=False, get_optimization_history=False, device="cpu"):
         """
         Class that will be responsible of the evaluation of the model
 
@@ -66,13 +64,10 @@ class Evaluator:
         self.get_parallel_coordinate = get_parallel_coordinate
         self.get_optimization_history = get_optimization_history
 
-        assert not (device == 'gpu' and parallelism), "Parallel optimization with gpu is not enabled"
-
         assert not(path.exists(path.join("Recordings", self.evaluation_name))),\
             "Evaluation with this name already exists"
 
         self.device = device
-        self.parallel = parallelism
 
     def nested_cross_valid(self, **kwargs):
         """
@@ -95,38 +90,10 @@ class Evaluator:
         # We create the recording folder and the folder where the recordings of this evaluation will be stored
         makedirs(path.join("Recordings", self.evaluation_name), exist_ok=True)
 
-        # We execute the outter loop in a parallel if we do not train of GPU
-        start = time.time()
-        subprocess = self.define_subprocess(all_datasets, **kwargs)
-        futures = [subprocess.remote(i) for i in range(self.k)]
-        scores = ray.get(futures)
-        execution_time = time.time() - start
-        print(f"Execution time : {execution_time}")
+        # We execute the outter loop
+        for k in range(self.k):
 
-        # We save the evaluation recap
-        get_evaluation_recap(evaluation_name=self.evaluation_name)
-
-        # We save the hyperparameters plot
-        plot_hyperparameter_importance_chart(evaluation_name=self.evaluation_name)
-
-        return scores
-
-    def define_subprocess(self, all_datasets, **kwargs):
-        if self.device == "cpu" and self.parallel:
-            ray.init()
-            verbose = False
-        else:
-            ray.init(num_cpus=1)
-            verbose = True
-
-        @ray.remote(num_cpus=1)
-        def subprocess(k):
-            """
-            Executes one fold of the outter cross valid
-            :param k: fold iteration
-            :return: score
-            """
-            # We get the train, test and valid sets
+            # We extract the datasets
             train_set, test_set, valid_set = self.get_datasets(all_datasets[k])
 
             # We create the Recorder object to save the result of this experience
@@ -134,11 +101,10 @@ class Evaluator:
 
             # We create the tuner to perform the hyperparameters optimization
             print(f"Hyperparameter tuning started - K = {k}")
-            tuner = self.create_tuner(datasets=all_datasets[k]["inner"],
-                                      index=k, **kwargs)
+            tuner = self.create_tuner(datasets=all_datasets[k]["inner"], index=k, **kwargs)
 
             # We perform the hyper parameters tuning to get the best hyper parameters
-            best_hyper_params, hyper_params_importance = tuner.tune(verbose=False)
+            best_hyper_params, hyper_params_importance = tuner.tune()
             print(f"Hyperparameter tuning done - K = {k}")
 
             # We save the hyperparameters
@@ -155,13 +121,13 @@ class Evaluator:
 
             # We train our model with the best hyper parameters
             print(f"Final model training - K = {k}")
-            trainer.fit(train_set=train_set, val_set=valid_set, verbose=verbose)
+            trainer.fit(train_set=train_set, val_set=valid_set)
 
             # We save the trained model
             recorder.record_model(model=model)
 
             # We extract x_cont, x_cat and target from the test set
-            x_cont, x_cat, target = self.extract_data(test_set)
+            x_cont, x_cat, target = trainer.extract_data(test_set)
 
             # We get the predictions
             predictions = trainer.predict(x_cont, x_cat)
@@ -170,37 +136,25 @@ class Evaluator:
             recorder.record_predictions(predictions)
 
             for metric_name, f in self.evaluation_metrics.items():
-                # We save the scores, (TO BE UPDATED)
-                recorder.record_scores(score=f(predictions, target),
-                                       metric=metric_name)
-            # We get the score
-            score = self.optimization_metric(predictions, target)
+                # We save the scores
+                recorder.record_scores(score=f(predictions, target), metric=metric_name)
 
             # We save all the data collected in a file
             recorder.generate_file()
 
-            # We calculate the score with the help of the metric function
-            return score
+            # We save the evaluation recap
+            get_evaluation_recap(evaluation_name=self.evaluation_name)
 
-        return subprocess
+            # We save the hyperparameters plot
+            plot_hyperparameter_importance_chart(evaluation_name=self.evaluation_name)
 
-    @staticmethod
-    def extract_data(dataset):
+    def create_recorder(self, index):
         """
-        Method to extract the continuous data, categorical data, and the target
+        Abstract methods to create recorder
 
-        :param dataset: PetaleDataset or PetaleDataframe containing the data
-
-        :return: Python tuple containing the continuous data, categorical data, and the target
+        :param index: index of the outter random subsampling loop
         """
-        x_cont = dataset.X_cont
-        target = dataset.y
-        if dataset.X_cat is not None:
-            x_cat = dataset.X_cat
-        else:
-            x_cat = None
-
-        return x_cont, x_cat, target
+        raise NotImplementedError
 
     @staticmethod
     def get_datasets(dataset_dictionary):
@@ -229,7 +183,7 @@ class NNEvaluator(Evaluator):
     def __init__(self, evaluation_name, model_generator, sampler, hyper_params, n_trials, optimization_metric,
                  evaluation_metrics, k, l=1, max_epochs=100,
                  direction="minimize", seed=None, get_hyperparameters_importance=False, get_parallel_coordinate=False,
-                 get_optimization_history=False, device="cpu", parallelism=True, early_stopping_activated=False):
+                 get_optimization_history=False, device="cpu", early_stopping_activated=False):
         """
         Class that will be responsible of the evaluation of the Neural Networks models
 
@@ -241,7 +195,7 @@ class NNEvaluator(Evaluator):
                          get_hyperparameters_importance=get_hyperparameters_importance,
                          get_parallel_coordinate=get_parallel_coordinate,
                          get_optimization_history=get_optimization_history,
-                         evaluation_name=evaluation_name, device=device, parallelism=parallelism)
+                         evaluation_name=evaluation_name, device=device)
 
         self.max_epochs = max_epochs
         self.early_stopping_activated = early_stopping_activated
@@ -328,7 +282,7 @@ class RFEvaluator(Evaluator):
                          direction=direction, seed=seed, get_parallel_coordinate=get_parallel_coordinate,
                          get_hyperparameters_importance=get_hyperparameters_importance,
                          get_optimization_history=get_optimization_history,
-                         evaluation_name=evaluation_name, device="cpu", parallelism=True)
+                         evaluation_name=evaluation_name, device="cpu")
 
     def create_tuner(self, datasets, index, **kwargs):
         """

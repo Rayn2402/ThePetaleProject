@@ -8,7 +8,7 @@ from Utils.score_metrics import RegressionMetrics
 from SQL.NewTablesScripts.constants import *
 from torch import from_numpy
 import numpy as np
-from Recorder.Recorder import Recorder, get_evaluation_recap
+from Recorder.Recorder import Recorder, get_evaluation_recap, compare_prediction_recordings
 from os.path import join
 
 EVALUATION_NAME = "OriginalEquation"
@@ -57,6 +57,9 @@ for i in range(10):
 
     # We generate the file containing the saved data
     recorder.generate_file()
+
+    compare_prediction_recordings(evaluations=[EVALUATION_NAME], split_index=i, recording_path=RECORDING_PATH)
+
 
 # We generate the evaluation recap
 get_evaluation_recap(evaluation_name=EVALUATION_NAME, recordings_path=RECORDING_PATH)

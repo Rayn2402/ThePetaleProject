@@ -5,14 +5,13 @@ from SQL.DataManager.Utils import PetaleDataManager
 from Models.LinearModel import LinearRegressor
 from Datasets.Sampling import WarmUpSampler
 from Utils.score_metrics import RegressionMetrics
-from Recorder.Recorder import Recorder, get_evaluation_recap
+from Recorder.Recorder import Recorder, get_evaluation_recap, compare_prediction_recordings
 from os.path import join
 
 manager = PetaleDataManager("mitm2902")
 
 EVALUATION_NAME = "LinearRegression"
 RECORDING_PATH = join("..", "..")
-
 
 # We create the warmup sampler to get the data
 warmup_sampler = WarmUpSampler(dm=manager)
@@ -43,7 +42,7 @@ for i in range(10):
 
     # We save the predictions
     recorder.record_predictions(ids=data[i]["test"].IDs, predictions=linear_regression_pred.numpy().astype("float64"),
-                                 target=data[i]["test"].y)
+                                target=data[i]["test"].y)
 
     # We calculate the score
     score = RegressionMetrics.mean_absolute_error(linear_regression_pred, data[i]["test"].y)
@@ -56,6 +55,8 @@ for i in range(10):
 
     # We generate the file containing the saved data
     recorder.generate_file()
+
+    compare_prediction_recordings(evaluations=[EVALUATION_NAME], split_index=i, recording_path=RECORDING_PATH)
 
 # We generate the evaluation recap
 get_evaluation_recap(evaluation_name=EVALUATION_NAME, recordings_path=RECORDING_PATH)

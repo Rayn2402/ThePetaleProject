@@ -10,9 +10,9 @@ from torch import manual_seed
 from numpy.random import seed as np_seed
 from Hyperparameters.constants import *
 from Recording.Recorder import NNRecorder, RFRecorder, get_evaluation_recap, plot_hyperparameter_importance_chart
-
 from os import path, mkdir, makedirs
 from shutil import rmtree
+import ray
 
 
 class Evaluator:
@@ -91,6 +91,7 @@ class Evaluator:
         makedirs(path.join("Recordings", self.evaluation_name), exist_ok=True)
 
         # We execute the outter loop
+        ray.init()
         for k in range(self.k):
 
             # We extract the datasets
@@ -100,12 +101,12 @@ class Evaluator:
             recorder = self.create_recorder(index=k)
 
             # We create the tuner to perform the hyperparameters optimization
-            print(f"Hyperparameter tuning started - K = {k}")
+            # print(f"Hyperparameter tuning started - K = {k}")
             tuner = self.create_tuner(datasets=all_datasets[k]["inner"], index=k, **kwargs)
 
             # We perform the hyper parameters tuning to get the best hyper parameters
             best_hyper_params, hyper_params_importance = tuner.tune()
-            print(f"Hyperparameter tuning done - K = {k}")
+            # print(f"Hyperparameter tuning done - K = {k}")
 
             # We save the hyperparameters
             recorder.record_hyperparameters(best_hyper_params)
@@ -120,7 +121,7 @@ class Evaluator:
             trainer = self.create_trainer(model=model, best_hyper_params=best_hyper_params, device=self.device)
 
             # We train our model with the best hyper parameters
-            print(f"Final model training - K = {k}")
+            # print(f"Final model training - K = {k}")
             trainer.fit(train_set=train_set, val_set=valid_set)
 
             # We save the trained model
@@ -130,7 +131,7 @@ class Evaluator:
             x_cont, x_cat, target = trainer.extract_data(test_set)
 
             # We get the predictions
-            predictions = trainer.predict(x_cont, x_cat)
+            predictions = trainer.predict(x_cont, x_cat, log_prob=True)
 
             # We save the predictions
             recorder.record_predictions(predictions)
@@ -191,7 +192,8 @@ class NNEvaluator(Evaluator):
 
         """
         super().__init__(model_generator=model_generator, sampler=sampler, hyper_params=hyper_params, n_trials=n_trials,
-                         optimization_metric=optimization_metric, evaluation_metrics=evaluation_metrics, k=k, l=l, direction=direction, seed=seed,
+                         optimization_metric=optimization_metric, evaluation_metrics=evaluation_metrics, k=k, l=l,
+                         direction=direction, seed=seed,
                          get_hyperparameters_importance=get_hyperparameters_importance,
                          get_parallel_coordinate=get_parallel_coordinate,
                          get_optimization_history=get_optimization_history,
@@ -225,7 +227,7 @@ class NNEvaluator(Evaluator):
 
         return NNTuner(model_generator=self.model_generator, datasets=datasets,
                        hyper_params=self.hyper_params, n_trials=self.n_trials,
-                       metric=self.optimization_metric, direction=self.direction, k=self.l,
+                       metric=self.optimization_metric, direction=self.direction, l=self.l,
                        max_epochs=self.max_epochs, study_name=f"{self.evaluation_name}_{index}",
                        get_parallel_coordinate=self.get_parallel_coordinate,
                        get_hyperparameters_importance=self.get_hyperparameters_importance,
@@ -296,7 +298,7 @@ class RFEvaluator(Evaluator):
         """
         return RFTuner(study_name=f"{self.evaluation_name}_{index}", model_generator=self.model_generator,
                        datasets=datasets,hyper_params=self.hyper_params, n_trials=self.n_trials,
-                       metric=self.optimization_metric, direction=self.direction, k=self.l,
+                       metric=self.optimization_metric, direction=self.direction, l=self.l,
                        get_hyperparameters_importance=self.get_hyperparameters_importance,
                        get_parallel_coordinate=self.get_parallel_coordinate,
                        get_optimization_history=self.get_optimization_history,

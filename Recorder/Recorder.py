@@ -28,8 +28,7 @@ class Recorder:
         os.makedirs(os.path.join(recordings_path, "Recordings", evaluation_name, folder_name), exist_ok=True)
 
         self.path = os.path.join(recordings_path, "Recordings", evaluation_name, folder_name)
-        self.data = {NAME: evaluation_name, INDEX: index, METRICS: {}, HYPERPARAMETERS: {},
-                     HYPERPARAMETER_IMPORTANCE: {}}
+        self.data = {NAME: evaluation_name, INDEX: index}
 
     def record_model(self, model):
         """
@@ -42,12 +41,20 @@ class Recorder:
         filepath = os.path.join(self.path, "model.sav")
         pickle.dump(model, open(filepath, "wb"))
 
+    def record_data_info(self, data_name, data):
+        if DATA_INFO not in self.data.keys():
+            self.data[DATA_INFO] = {}
+
+        self.data[DATA_INFO][data_name] = data
+
     def record_hyperparameters(self, hyperparameters):
         """
         Method to call to save the hyperparameters
 
         :param hyperparameters: Python dictionary containing the hyperparameters to save
         """
+        if HYPERPARAMETERS not in self.data.keys():
+            self.data[HYPERPARAMETERS] = {}
 
         # We save all the hyperparameters
         for key in hyperparameters.keys():
@@ -60,6 +67,9 @@ class Recorder:
 
         :param hyperparameter_importance: Python dictionary containing the hyperparameters importance to save
         """
+        if HYPERPARAMETER_IMPORTANCE not in self.data.keys():
+            self.data[HYPERPARAMETER_IMPORTANCE] = {}
+
         # We save all the hyperparameter importance
         for key in hyperparameter_importance.keys():
             self.data[HYPERPARAMETER_IMPORTANCE][key] = round(hyperparameter_importance[key], 4) if \
@@ -72,19 +82,34 @@ class Recorder:
         :param score: The calculated score of a specific metric
         :param metric: The name of the metric to save
         """
-
+        if METRICS not in self.data.keys():
+            self.data[METRICS] = {}
         # We save the score of the given metric
         self.data[METRICS][metric] = round(score, 6)
 
-    def record_predictions(self, predictions):
+    def record_predictions(self, predictions, ids):
         """
         Method to call to save the predictions of a model after an experiments
 
         :param predictions: The calculated predictions to save
+        :param ids: The ids of the patients with the predicted data
         """
 
         # We save the predictions
-        self.data[PREDICTIONS] = [{i: predictions[i]} for i in range(len(predictions))]
+        self.data[PREDICTIONS] = [{id: predictions[i]} for i, id in enumerate(ids)]
+
+    def record_coefficient(self, name, value):
+        """
+        Method to call to save the coefficient of a model
+
+        :param name: The name of the coefficient
+        :param value: The value of the coefficient
+        """
+
+        if COEFFICIENT not in self.data.keys():
+            self.data[COEFFICIENT] = {}
+
+        self.data[COEFFICIENT][name] = value
 
     def generate_file(self):
         """
@@ -105,11 +130,12 @@ class NNRecorder(Recorder):
     def __init__(self, evaluation_name, index, recordings_path):
         super().__init__(evaluation_name=evaluation_name, index=index, recordings_path=recordings_path)
 
-    def record_predictions(self, predictions):
+    def record_predictions(self, predictions, ids):
         """
         Method to call to save the predictions of a neural network after an experiments
 
         :param predictions: The calculated predictions to save
+        :param ids: The ids of the patients with the predicted data
         """
 
         # We initialize the Softmax object
@@ -117,7 +143,7 @@ class NNRecorder(Recorder):
         predictions = softmax(predictions)
 
         # We save the predictions
-        self.data[PREDICTIONS] = [{i: predictions[i].tolist()} for i in range(len(predictions))]
+        self.data[PREDICTIONS] = [{id: predictions[i].tolist()} for i, id in enumerate(ids)]
 
 
 def get_evaluation_recap(evaluation_name, recordings_path):
@@ -133,15 +159,13 @@ def get_evaluation_recap(evaluation_name, recordings_path):
     folders = os.listdir(os.path.join(path))
     folders = [folder for folder in folders if os.path.isdir(os.path.join(path, folder))]
     data = {
-        METRICS: {
-        },
-        HYPERPARAMETER_IMPORTANCE: {
-
-        }
+        METRICS: {}
     }
 
     hyperparameter_importance_keys = None
     metrics_keys = None
+    coefficient_keys = None
+
     for folder in folders:
         # We open the json file containing the info of each split
         with open(os.path.join(path, folder, json_file), "r") as read_file:
@@ -159,17 +183,36 @@ def get_evaluation_recap(evaluation_name, recordings_path):
             data[METRICS][key][VALUES].append(split_data[METRICS][key])
 
         # We collect the info of the different hyperparameter importance
-        if hyperparameter_importance_keys is None:
-            hyperparameter_importance_keys = split_data[HYPERPARAMETER_IMPORTANCE].keys()
-            # We exclude the number of nodes from the hyperparameters importance (to be reviewed)
-            hyperparameter_importance_keys = [key for key in hyperparameter_importance_keys if "n_units" not in key]
+        if HYPERPARAMETER_IMPORTANCE in split_data.keys():
+            if HYPERPARAMETER_IMPORTANCE not in data.keys():
+                data[HYPERPARAMETER_IMPORTANCE] = {}
+            if hyperparameter_importance_keys is None:
+                hyperparameter_importance_keys = split_data[HYPERPARAMETER_IMPORTANCE].keys()
+
+                # We exclude the number of nodes from the hyperparameters importance (to be reviewed)
+                hyperparameter_importance_keys = [key for key in hyperparameter_importance_keys if "n_units" not in key]
+                for key in hyperparameter_importance_keys:
+                    data[HYPERPARAMETER_IMPORTANCE][key] = {
+                        VALUES: [],
+                        INFO: ""
+                    }
             for key in hyperparameter_importance_keys:
-                data[HYPERPARAMETER_IMPORTANCE][key] = {
-                    VALUES: [],
-                    INFO: ""
-                }
-        for key in hyperparameter_importance_keys:
-            data[HYPERPARAMETER_IMPORTANCE][key][VALUES].append(split_data[HYPERPARAMETER_IMPORTANCE][key])
+                data[HYPERPARAMETER_IMPORTANCE][key][VALUES].append(split_data[HYPERPARAMETER_IMPORTANCE][key])
+
+        # We collect the info of the different coefficient
+        if COEFFICIENT in split_data.keys():
+            if COEFFICIENT not in data.keys() :
+                data[COEFFICIENT] = {}
+            if coefficient_keys is None:
+                coefficient_keys = split_data[COEFFICIENT].keys()
+
+                for key in coefficient_keys:
+                    data[COEFFICIENT][key] = {
+                        VALUES: [],
+                        INFO: ""
+                    }
+            for key in coefficient_keys:
+                data[COEFFICIENT][key][VALUES].append(split_data[COEFFICIENT][key])
 
     # We add the info about the mean, the standard deviation, the median , the min, and the max
     set_info(data)

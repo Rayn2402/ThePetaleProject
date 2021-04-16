@@ -32,10 +32,9 @@ class Evaluator:
         :param hyper_params: dictionary containing information of the hyper parameter we want to tune
         :param optimization_metric: a function that takes the output of the model and the target and returns  the metric
          we want to optimize
-        :param evaluation_metrics:  list of dictionaries, where each dictionary represents a metric functions, the
-                                    dictionary contains two keys : "name" that represents the name of the metric and
-                                    "metric" that represents the function that will be used to calculate the score of
-                                    this metric
+        :param evaluation_metrics:  dictonary where keys represent name of metrics and values represent
+                                    the function that will be used to calculate the score of
+                                    the associated metric
         :param k: Number of folds in the outer cross validation
         :param l: Number of folds in the inner cross validation
         :param n_trials: number of trials we want to perform
@@ -137,6 +136,11 @@ class Evaluator:
             # We create the Recorder object to save the result of this experience
             recorder = self.create_recorder(index=k)
 
+            # We record the data count
+            recorder.record_data_info("train_set", len(train_set))
+            recorder.record_data_info("valid_set", len(valid_set))
+            recorder.record_data_info("test_set", len(test_set))
+
             # We create the tuner to perform the hyperparameters optimization
             print(f"Hyperparameter tuning started - K = {k}")
             tuner = self.create_tuner(datasets=all_datasets[k]["inner"],
@@ -165,19 +169,19 @@ class Evaluator:
             # We save the trained model
             recorder.record_model(model=model)
 
-            # We extract x_cont, x_cat and target from the test set
-            x_cont, x_cat, target = self.extract_data(test_set)
+            # We extract ids, x_cont, x_cat and target from the test set
+            ids, x_cont, x_cat, target = self.extract_data(test_set)
 
             # We get the predictions
             predictions = trainer.predict(x_cont, x_cat)
 
             # We save the predictions
-            recorder.record_predictions(predictions)
+            recorder.record_predictions(predictions, ids)
 
-            for evaluation_metric in self.evaluation_metrics:
+            for metric_name, f in self.evaluation_metrics.items():
                 # We save the scores, (TO BE UPDATED)
-                recorder.record_scores(score=evaluation_metric["metric"](predictions, target),
-                                       metric=evaluation_metric["name"])
+                recorder.record_scores(score=f(predictions, target),
+                                       metric=metric_name)
             # We get the score
             score = self.optimization_metric(predictions, target)
 
@@ -198,6 +202,7 @@ class Evaluator:
 
         :return: Python tuple containing the continuous data, categorical data, and the target
         """
+        ids = dataset.IDs
         x_cont = dataset.X_cont
         target = dataset.y
         if dataset.X_cat is not None:
@@ -205,7 +210,7 @@ class Evaluator:
         else:
             x_cat = None
 
-        return x_cont, x_cat, target
+        return ids, x_cont, x_cat, target
 
     @staticmethod
     def get_datasets(dataset_dictionary):

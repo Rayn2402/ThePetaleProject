@@ -36,16 +36,18 @@ for i in range(10):
     # We create the recorder
     recorder = Recorder(evaluation_name=EVALUATION_NAME, index=i, recordings_path=RECORDING_PATH)
 
+    recorder.record_data_info("test_set", len(data[i]["test"]))
+
     # We get the predictions
     for index, row in data[i]["test"].X_cont.iterrows():
         original_equation_pred.append((original_equation(row)))
 
     # We save the predictions
-    recorder.record_predictions(original_equation_pred)
+    recorder.record_predictions(predictions=original_equation_pred, ids=data[i]["test"].IDs)
 
     # We calculate the score
     score = RegressionMetrics.mean_absolute_error(from_numpy(np.array(original_equation_pred)),
-                                                  from_numpy(data[0]["test"].y))
+                                                  from_numpy(data[i]["test"].y))
 
     # We save the score
     recorder.record_scores(score=score, metric="mean_absolute_error")

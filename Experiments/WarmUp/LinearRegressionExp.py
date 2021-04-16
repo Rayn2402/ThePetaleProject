@@ -42,7 +42,8 @@ for i in range(10):
     linear_regression_pred = linearRegressor.predict(x=data[i]["test"].X_cont)
 
     # We save the predictions
-    recorder.record_predictions(predictions=linear_regression_pred.numpy().astype("float64"), ids=data[i]["test"].IDs)
+    recorder.record_predictions(ids=data[i]["test"].IDs, predictions=linear_regression_pred.numpy().astype("float64"),
+                                 target=data[i]["test"].y)
 
     # We calculate the score
     score = RegressionMetrics.mean_absolute_error(linear_regression_pred, data[i]["test"].y)

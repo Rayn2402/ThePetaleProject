@@ -43,7 +43,7 @@ for i in range(10):
         original_equation_pred.append((original_equation(row)))
 
     # We save the predictions
-    recorder.record_predictions(predictions=original_equation_pred, ids=data[i]["test"].IDs)
+    recorder.record_predictions(predictions=original_equation_pred, ids=data[i]["test"].IDs, target=data[i]["test"].y)
 
     # We calculate the score
     score = RegressionMetrics.mean_absolute_error(from_numpy(np.array(original_equation_pred)),

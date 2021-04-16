@@ -254,17 +254,41 @@ x   }
             # We open the json file containing information of a split
             with open(os.path.join(path, evaluation, split, "records.json"), "r") as read_file:
                 data = json.load(read_file)
+
+                data_train_info = f"""<div class="intro-section row center">
+                            <div class="intro-label">Train set:</div>
+                            <div class="intro-info">{data["data_info"]["train_set"]}</div>
+                        </div>""" if "train_set" in data["data_info"].keys() else ""
+
+                data_test_info = f"""<div class="intro-section row center">
+                            <div class="intro-label">Test set:</div>
+                            <div class="intro-info">{data["data_info"]["test_set"]}</div>
+                        </div>""" if "test_set" in data["data_info"].keys() else ""
+
+                data_valid_info = f"""<div class="intro-section row center">
+                            <div class="intro-label">Valid set:</div>
+                            <div class="intro-info">{data["data_info"]["valid_set"]}</div>
+                        </div>""" if "valid_set" in data["data_info"].keys() else ""
             # We add the intro section
-            intro = f"""<div class="intro row bottom-space">
-                    <div class="intro-section row center">
-                        <div class="intro-label">Evaluation name :</div>
-                        <div class="intro-info">{evaluation}</div>
+            intro = f"""
+                    <div class="intro row bottom-space">
+                        <div class="intro-section row center">
+                            <div class="intro-label">Evaluation name :</div>
+                            <div class="intro-info">{evaluation}</div>
+                        </div>
+                        <div class="intro-section row center">
+                            <div class="intro-label">Split index :</div>
+                            <div class="intro-info">{split}</div>
+                        </div>
                     </div>
-                    <div class="intro-section row center">
-                        <div class="intro-label">Split index :</div>
-                        <div class="intro-info">{split}</div>
+                    <div class="intro row bottom-space">
+                    {data_train_info}
+                    {data_valid_info}
+                    {data_test_info}
                     </div>
-                </div>"""
+                    """
+
+
 
             # We add the hyperparameters section
             hyperparams_section = ""
@@ -304,7 +328,7 @@ x   }
             </div>
             """
 
-            # We add the hyperparameters importance secction
+            # We add the hyperparameters importance section
             hyperparameters_importance_section = f"""
                         <div class="row center bottom-space">
                             <iframe src="{os.path.join(path, evaluation, split, hyperparams_importance_file)}" 
@@ -320,7 +344,6 @@ x   }
                         </div>
                     """ if os.path.exists(os.path.join(path, evaluation, split, parallel_coordinate_file)) else ""
 
-
             # We add the optimization history graph
             optimization_history_section = f"""
                         <div class="row center bottom-space">
@@ -329,6 +352,12 @@ x   }
                         </div>
                 """ if os.path.exists(os.path.join(path, evaluation, split, optimization_history_file)) else ""
 
+            # We add the predictions section
+            predictions_section = f"""
+                        <div class="row center bottom-space">
+                            <img src="{os.path.join(path, evaluation, split, f"comparison_{evaluation}.png")}">
+                        </div>
+            """ if os.path.exists(os.path.join(path, evaluation, split, f"comparison_{evaluation}.png")) else ""
 
             # We arrange the different sections
             section = f"""<div class="main hidden" id="{evaluation}{split}">
@@ -338,6 +367,7 @@ x   }
                 {hyperparameters_importance_section}
                 {parallel_coordinate_section}
                 {optimization_history_section}
+                {predictions_section}
             </div>
             """
 

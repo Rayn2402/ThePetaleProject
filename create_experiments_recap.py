@@ -268,20 +268,22 @@ x   }
 
             # We add the hyperparameters section
             hyperparams_section = ""
+            if "hyperparameters" in data.keys():
+                for key in data["hyperparameters"].keys():
+                    hyperparams_section += f"""
+                        <div class="hyperparam-section center">
+                            <div class="label">{key}</div>
+                            <div class="info">{data["hyperparameters"][key]}</div>
+                        </div>
+                    """
 
-            for key in data["hyperparameters"].keys():
-                hyperparams_section += f"""
-                    <div class="hyperparam-section center">
-                        <div class="label">{key}</div>
-                        <div class="info">{data["hyperparameters"][key]}</div>
-                    </div>
-                """
-
-            hyperparams_section = f"""<div class="hyperparams row center bottom-space">
-                    <div class="hyperparam-container row">
-                    {hyperparams_section}
-                    </div>
-                </div>"""
+                hyperparams_section = f"""<div class="hyperparams row center bottom-space">
+                        <div class="hyperparam-container row">
+                        {hyperparams_section}
+                        </div>
+                    </div>"""
+            else:
+                hyperparams_section=""
 
             # We add the metrics section
             metric_section = ""

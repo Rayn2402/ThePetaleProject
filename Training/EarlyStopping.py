@@ -21,7 +21,7 @@ class EarlyStopping:
         self.patience = patience
         self.early_stop = False
         self.counter = 0
-        self.best_score = None
+        self.best_model = None
         self.val_loss_min = np.inf
         self.file_name = f"{uuid4()}.pt"
 
@@ -29,30 +29,20 @@ class EarlyStopping:
         """
         Method to be called to perform the early stopping logic
         """
-        score = -val_loss
-
-        # if there is not best score yet we save the score and the model
-        if self.best_score is None:
-            self.best_score = score
-            self.save_checkpoint(val_loss, model)
 
         # if the score is worst than the best score we increment the counter
-        elif score < self.best_score:
+        if val_loss > self.val_loss_min:
             self.counter += 1
 
             # if the counter reach the patience we early stop
             if self.counter >= self.patience:
                 self.early_stop = True
 
-        # if the score is better than the best score we save the score and the model
+        # if the score is better than the best score saved we update the best model
         else:
-            self.best_score = score
+            self.val_loss_min = val_loss
             self.save_checkpoint(val_loss, model)
             self.counter = 0
-
-        # We return the best saved model
-        best_model = load(path.join("checkpoints",self.file_name))
-        return best_model
 
     def save_checkpoint(self, val_loss, model):
         """
@@ -61,5 +51,13 @@ class EarlyStopping:
         :param val_loss: the valid loss of the model to save.
         :param model: the model to save.
         """
-        save(model, path.join("checkpoints",self.file_name))
+        save(model, path.join("checkpoints", self.file_name))
         self.val_loss_min = val_loss
+
+    def get_best_model(self):
+        """
+        Returns the best model saved
+
+        :return: nn.Module
+        """
+        return load(path.join("checkpoints", self.file_name))

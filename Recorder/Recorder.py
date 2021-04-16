@@ -29,6 +29,7 @@ class Recorder:
 
         self.path = os.path.join(recordings_path, "Recordings", evaluation_name, folder_name)
         self.data = {NAME: evaluation_name, INDEX: index}
+        self.evaluation_name = evaluation_name
 
     def record_model(self, model):
         """
@@ -294,7 +295,8 @@ def plot_hyperparameter_importance_chart(evaluation_name, recordings_path):
     plt.savefig(os.path.join(path, 'hyperparameters_importance_recap.png'))
 
 
-def compare_recordings(evaluations, split_index, recording_path=""):
+def compare_prediction_recordings(evaluations, split_index, recording_path=""):
+    """Function that will plot a scatter plot showing the prediction of multiple experiments and the target value"""
 
     colors = ["blue", "red", "orange"]
 
@@ -327,6 +329,8 @@ def compare_recordings(evaluations, split_index, recording_path=""):
     indexes = list(range(len(target)))
     indexes.sort(key=target.__getitem__)
 
+
+
     sorted_all_predictions = []
     for predictions in all_predictions:
         sorted_all_predictions.append([predictions[i] for i in indexes])
@@ -334,7 +338,7 @@ def compare_recordings(evaluations, split_index, recording_path=""):
     sorted_ids = [ids[i] for i in indexes]
 
     # We set some parameters of the plot
-    plt.rcParams["figure.figsize"] = (20, 6)
+    plt.rcParams["figure.figsize"] = (15, 6)
     plt.rcParams['axes.labelsize'] = 160
     plt.rcParams['axes.titlesize'] = 160
     plt.rcParams['xtick.labelsize'] = 6
@@ -350,5 +354,5 @@ def compare_recordings(evaluations, split_index, recording_path=""):
     # We save the plot
     plt.savefig(os.path.join(recording_path, "Recordings", evaluations[0], f"Split_{split_index}",
                              f"""comparison_{"_".join(evaluations)}.png"""))
-
+    plt.close()
 

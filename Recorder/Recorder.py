@@ -87,16 +87,22 @@ class Recorder:
         # We save the score of the given metric
         self.data[METRICS][metric] = round(score, 6)
 
-    def record_predictions(self, predictions, ids):
+    def record_predictions(self, ids, predictions, target):
         """
         Method to call to save the predictions of a model after an experiments
 
-        :param predictions: The calculated predictions to save
         :param ids: The ids of the patients with the predicted data
+        :param predictions: The calculated predictions to save
+        :param target: The real values
+
         """
 
+        if RESULTS not in self.data.keys():
+            self.data[RESULTS] = {}
+
         # We save the predictions
-        self.data[PREDICTIONS] = [{id: predictions[i]} for i, id in enumerate(ids)]
+        for i, id in enumerate(ids):
+            self.data[RESULTS][id] = {PREDICTION: predictions[i], TARGET: target[i].item()}
 
     def record_coefficient(self, name, value):
         """
@@ -130,20 +136,27 @@ class NNRecorder(Recorder):
     def __init__(self, evaluation_name, index, recordings_path):
         super().__init__(evaluation_name=evaluation_name, index=index, recordings_path=recordings_path)
 
-    def record_predictions(self, predictions, ids):
+    def record_predictions(self, ids, predictions, target):
         """
         Method to call to save the predictions of a neural network after an experiments
 
-        :param predictions: The calculated predictions to save
         :param ids: The ids of the patients with the predicted data
+        :param predictions: The calculated predictions to save
+        :param target: The real values
+
         """
+
+        if RESULTS not in self.data.keys():
+            self.data[RESULTS] = {}
 
         # We initialize the Softmax object
         softmax = Softmax(dim=1)
         predictions = softmax(predictions)
 
+
         # We save the predictions
-        self.data[PREDICTIONS] = [{id: predictions[i].tolist()} for i, id in enumerate(ids)]
+        for i, id in enumerate(ids):
+            self.data[RESULTS][id] = {PREDICTION: predictions[i].tolist(), TARGET: target[i].item()}
 
 
 def get_evaluation_recap(evaluation_name, recordings_path):

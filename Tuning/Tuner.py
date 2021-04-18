@@ -16,7 +16,8 @@ import os
 
 
 class NNObjective:
-    def __init__(self, model_generator, datasets, hyper_params, l, metric, max_epochs, early_stopping_activated=False):
+    def __init__(self, model_generator, datasets, hyper_params, l, metric,
+                 max_epochs, early_stopping_activated=False):
         """
         Class that will represent the objective function for tuning Neural networks
         
@@ -40,7 +41,9 @@ class NNObjective:
         self.l = l
         self.metric = metric
         self.max_epochs = max_epochs
-        self.early_stopping_activated = early_stopping_activated
+        self.trainer = NNTrainer(model=None, batch_size=None, lr=None, epochs=self.max_epochs,
+                                 weight_decay=None, metric=self.metric, trial=None,
+                                 early_stopping_activated=early_stopping_activated)
 
     def __call__(self, trial):
         hyper_params = self.hyper_params
@@ -81,13 +84,12 @@ class NNObjective:
         # We define the model with the suggested set of hyper parameters
         model = self.model_generator(layers=layers, dropout=p, activation=activation)
 
-        # We create the Trainer that will train our model
-        trainer = NNTrainer(model=model, batch_size=batch_size, lr=lr, epochs=self.max_epochs,
-                            weight_decay=weight_decay, metric=self.metric, trial=trial,
-                            early_stopping_activated=self.early_stopping_activated)
+        # We update the Trainer to train our model
+        self.trainer.update_trainer(model=model, weight_decay=weight_decay, batch_size=batch_size,
+                                    lr=lr, trial=trial)
 
         # We perform a k fold cross validation to evaluate the model
-        score = trainer.inner_random_subsampling(datasets=self.datasets, l=self.l)
+        score = self.trainer.inner_random_subsampling(datasets=self.datasets, l=self.l)
 
         # We return the score
         return score
@@ -115,7 +117,7 @@ class RFObjective:
         self.datasets = datasets
         self.hyper_params = hyper_params
         self.l = l
-        self.metric = metric
+        self.trainer = RFTrainer(model=None, metric=metric)
 
     def __call__(self, trial):
         hyper_params = self.hyper_params
@@ -142,10 +144,10 @@ class RFObjective:
                                      max_depth=max_depth, max_samples=max_samples)
 
         # We create the trainer that will train our model
-        trainer = RFTrainer(model=model, metric=self.metric)
+        self.trainer.update_trainer(model=model)
 
         # We perform a cross validation to evaluate the model
-        score = trainer.inner_random_subsampling(datasets=self.datasets, l=self.l)
+        score = self.trainer.inner_random_subsampling(datasets=self.datasets, l=self.l)
 
         # We return the score
         return score

@@ -14,10 +14,13 @@ from torch import optim, manual_seed, cuda, tensor
 from torch import device as device_
 from torchcontrib.optim import SWA
 from numpy import mean, std
+from typing import Optional, Callable, Tuple, Any, Union
+from abc import ABC, abstractmethod
+from Data.Datasets import PetaleDataset, PetaleDataframe
 
 
-class Trainer:
-    def __init__(self, model, metric, device="cpu"):
+class Trainer(ABC):
+    def __init__(self, model: Optional[Module], metric: Optional[Callable], device: str = "cpu"):
         """
         Creates a Trainer that will train and evaluate a given model.
 
@@ -26,6 +29,8 @@ class Trainer:
         :param metric: Function that takes the output of the model and the target and returns  the metric we want
                        to optimize
         """
+        # We call super init since we're using ABC
+        super().__init__()
 
         # We save the model in the attribute model
         self.model = model
@@ -40,14 +45,14 @@ class Trainer:
         self.subprocess_defined = False
         self.subprocess = None
 
-    def inner_random_subsampling(self, l=5, seed=None):
+    def inner_random_subsampling(self, l: int = 5, seed: Optional[int] = None) -> float:
         """
-            Method that will perform a cross validation on the model
+        Method that will perform a random subsampling on the model
 
-            :param l: Number of random subsampling splits
-            :param seed: the starting point in generating random numbers
+        :param l: Number of random subsampling splits
+        :param seed: Starting point in generating random numbers
 
-            :return: The score after performing the cross validation
+        :return: The score after performing the cross validation
         """
         # We make sure that a subprocess has been defined
         assert self.subprocess_defined, "The parallelizable subprocess must be defined before use"
@@ -64,26 +69,25 @@ class Trainer:
         standard_dev = 1 if len(scores) == 1 else std(scores)
         return mean(scores) / standard_dev
 
-    def define_subprocess(self, datasets):
+    def define_subprocess(self, datasets: dict) -> None:
         """
-        Builds the subprocess according to the device
+        Builds the subprocess function according to the datasets and the device
 
-        :param datasets: PetaleDatasets representing all the inner train, valid, and test sets
-        :return: subprocess function
+        :param datasets: Dictionary of PetaleDatasets representing all the inner train, valid, and test sets
         """
 
         # We inform the trainer that a subprocess has been defined
         self.subprocess_defined = True
 
         # We build the subprocess according to the datasets
-        gpus = 1 if (self.device == "gpu") else 0
+        gpus = 0.25 if (self.device == "gpu") else 0
 
         @ray.remote(num_gpus=gpus)
-        def subprocess(i):
+        def subprocess(i: int) -> float:
             """
-            Consists of the parallelizable process of the inner random subsampling
+            Consists of the parallelizable process of the inner random subsampling loop
 
-            :param i: i-th inner random subsamples' splits on which to test hyperparameters selection
+            :param i: Index of the random subsamples' splits on which to test hyperparameters selection
             """
             # We the get the train, test, valid sets of the step we are currently in
             train_set, test_set, valid_set = self.get_datasets(datasets[i])
@@ -100,14 +104,15 @@ class Trainer:
             # We save the score
             return score
 
+        # We set the subprocess internal attribute (function)
         self.subprocess = subprocess
 
-    def extract_batch(self, batch_list):
+    def extract_batch(self, batch_list: list) -> Tuple[Any, Optional[Any], Any]:
         """
         Extracts the continuous data (X_cont), the categorical data (X_cat) and the ground truth (y)
 
-        :param batch_list: list containing a batch from dataloader
-        :return: 3 tensors
+        :param batch_list: List containing a batch from dataloader
+        :return: 3 tensors or dataframes (X_cont, X_cat, y)
         """
 
         if len(batch_list) > 2:
@@ -120,67 +125,72 @@ class Trainer:
 
         return x_cont, x_cat, y
 
+    @abstractmethod
     def update_trainer(self, **kwargs):
         """
         Abstract method to update trainer internal attributes
         """
         raise NotImplementedError
 
-    def fit(self, train_set, val_set):
+    @abstractmethod
+    def fit(self, train_set: Union[PetaleDataset, PetaleDataframe], val_set: Union[PetaleDataset, PetaleDataframe]):
         """
-        Abstract methods to train the model
+        Abstract methods to train and evaluate the model
 
         :param train_set: Training set
         :param val_set: Validation set
         """
         raise NotImplementedError
 
-    def predict(self, x_cont, x_cat, **kwargs):
+    @abstractmethod
+    def predict(self, x_cont: Any, x_cat: Any, **kwargs):
 
         """
         Abstract methods that return prediction of a model
         (log probabilities in case of classification and real-valued number in case of regression)
 
-        :param x_cont: tensor with continuous inputs
-        :param x_cat: tensor with categorical ordinal encoding
+        :param x_cont: Tensor with continuous inputs
+        :param x_cat: Tensor with categorical ordinal encoding
         """
         raise NotImplementedError
 
-    def extract_data(self, dataset):
+    @abstractmethod
+    def extract_data(self, dataset: Union[PetaleDataset, PetaleDataframe]):
         """
         Abstract method to extract data from datasets
 
         :param dataset: PetaleDataset or PetaleDataframe containing the data
-        :return: Python tuple containing the continuous data, categorical data, and the target
+        :return: Tuple containing the continuous data, categorical data, and the target
         """
         raise NotImplementedError
 
     @staticmethod
-    def get_datasets(dataset_dictionary):
+    def get_datasets(dataset_dictionary: dict) -> Tuple[Any, Optional[Any], Any]:
         """
         Method to extract the train, test, and valid sets
 
         :param dataset_dictionary: Python dictionary that contains the three sets
 
-        :return: Python tuple containing the train, test, and valid sets
+        :return: Tuple containing the train, test, and valid sets
         """
         return dataset_dictionary["train"], dataset_dictionary["test"], dataset_dictionary["valid"]
 
 
 class NNTrainer(Trainer):
-    def __init__(self, model, metric, lr, batch_size, weight_decay, epochs, early_stopping_activated=False,
-                 patience=10, device="cpu", trial=None, seed=None):
+    def __init__(self, model: Optional[Module], metric: Optional[Callable], lr: float,
+                 batch_size: int, weight_decay: float, epochs: int,
+                 early_stopping_activated: bool = False, patience: int = 10,
+                 device: str = "cpu", trial: Optional[Any] = None, seed: int = None):
         """
-        Creates a  Trainer that will train and evaluate a Neural Network model.
+        Creates a Trainer that will train and evaluate a Neural Network model.
 
-        :param batch_size: Int that represents the size of the batches to be used in the train data loader
-        :param lr: the learning rate
+        :param batch_size: Size of the batches to be used in the train data loader
+        :param lr: Learning rate
         :param weight_decay: The L2 penalty
         :param epochs: Number of epochs to train the training dataset
         :param early_stopping_activated: Bool indicating if we want to early stop the training when the validation
-        loss stops decreasing
+                                         loss stops decreasing
         :param patience: Number of epochs without improvement allowed before early stopping
-        ce: Int representing how long to wait after last time validation loss improved.
         :param device: The device where we want to run our training, this parameter can take two values : "cpu" or "gpu"
         :param model: Neural network model to be trained
         :param seed: The starting point in generating random numbers
@@ -199,7 +209,7 @@ class NNTrainer(Trainer):
         self.seed = seed
         self.trial = trial
 
-    def update_progress_func(self, trial, verbose):
+    def update_progress_func(self, trial: Optional[Any], verbose: bool) -> Callable:
         if trial is None and verbose:
             def update_progress(epoch, mean_epoch_loss):
                 if epoch % 5 == 0 or (epoch + 1) == self.epochs:
@@ -210,16 +220,15 @@ class NNTrainer(Trainer):
 
         return update_progress
 
-    def fit(self, train_set, val_set, verbose=True):
+    def fit(self, train_set: PetaleDataset, val_set: PetaleDataset, verbose: bool = True) -> Tuple[tensor, tensor]:
         """
         Method that will fit the model to the given data
 
-        :param train_set: Petale Dataset containing the training set
-        :param val_set: Petale Dataset containing the valid set
-        :param verbose: Determines if we want to print progress or not
+        :param train_set: Training set
+        :param val_set: Valid set
+        :param verbose: Determines if we want (True) to print progress or not (False)
 
-
-        :return: Two python lists containing the training losses and the validation losses
+        :return: Two tensors containing the training losses and the validation losses
         """
         assert not (self.trial is not None and self.metric is None), "If trial is not None, a metric must be defined"
         assert self.model is not None, "Model must be set before training"
@@ -276,27 +285,27 @@ class NNTrainer(Trainer):
 
         return tensor(training_loss), tensor(valid_loss)
 
-    def predict(self, x_cont, x_cat, **kwargs):
+    def predict(self, x_cont: tensor, x_cat: tensor, **kwargs) -> tensor:
 
         """
         Returns log probabilities in the case of an NNClassifier
         Returns real-valued targets in the case of NNRegressor
 
-        :param x_cont: tensor with continuous inputs
-        :param x_cat: tensor with categorical ordinal encoding
+        :param x_cont: Tensor with continuous inputs
+        :param x_cat: Tensor with categorical ordinal encoding
         :return: (N, 1) or (N, C) tensor
         """
 
         # We return the predictions
         return self.model.predict(x_cont, x_cat, **kwargs)
 
-    def train(self, train_loader, optimizer):
+    def train(self, train_loader: DataLoader, optimizer: Any) -> float:
         """
         Trains the model for a single epoch
 
         :param train_loader: Training DataLoader
         :param optimizer: PyTorch optimizer
-        :return: mean epoch loss
+        :return: Mean epoch loss
         """
 
         # Prep model for training
@@ -327,13 +336,13 @@ class NNTrainer(Trainer):
 
         return epoch_loss / len(train_loader)
 
-    def evaluate(self, valid_set, early_stopper):
+    def evaluate(self, valid_set: PetaleDataset, early_stopper: EarlyStopping) -> float:
 
         """
         Calculates the loss on the validation set using a single batch
         There will be no memory problem since our datasets are really small
 
-        :param valid_set: Validation PetaleDataset
+        :param valid_set: Validation set
         :param early_stopper: EarlyStopping object
         :return: Validation loss
         """
@@ -363,12 +372,12 @@ class NNTrainer(Trainer):
 
         return val_epoch_loss
 
-    def extract_data(self, dataset):
+    def extract_data(self, dataset: PetaleDataset) -> Tuple[tensor, Optional[tensor], tensor]:
         """
-        Method to extract the continuous data, categorical data, and the target
+        Method to extract the continuous data, categorical data, and the targets
 
-        :param dataset: PetaleDataset or PetaleDataframe containing the data
-        :return: Python tuple containing the continuous data, categorical data, and the target
+        :param dataset: PetaleDataset containing the data
+        :return: Tuple containing the continuous data, categorical data, and the target
         """
         x_cont, y = dataset.X_cont, dataset.y
 

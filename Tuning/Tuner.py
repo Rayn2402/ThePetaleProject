@@ -17,14 +17,14 @@ import os
 
 class NNObjective:
     def __init__(self, model_generator, datasets, hyper_params, l, metric,
-                 max_epochs, early_stopping_activated=False):
+                 max_epochs, device, early_stopping_activated=False):
         """
         Class that will represent the objective function for tuning Neural networks
         
         :param model_generator: Instance of the ModelGenerator class that will be responsible of generating the model
         :param datasets: Datasets representing all the train and test sets to be used in the cross validation
         :param hyper_params: Dictionary containing information of the hyper parameter we want to tune
-        :param k: Number of folds to use in the cross validation
+        :param l: Number of folds to use in the internal random subsampling
         :param metric: Function that takes the output of the model and the target
                        and returns the metric we want to optimize
         :param max_epochs: the maximum number of epochs to do in training
@@ -43,7 +43,8 @@ class NNObjective:
         self.max_epochs = max_epochs
         self.trainer = NNTrainer(model=None, batch_size=None, lr=None, epochs=self.max_epochs,
                                  weight_decay=None, metric=self.metric, trial=None,
-                                 early_stopping_activated=early_stopping_activated)
+                                 early_stopping_activated=early_stopping_activated,
+                                 device=device)
 
     def __call__(self, trial):
         hyper_params = self.hyper_params
@@ -104,7 +105,7 @@ class RFObjective:
         :param model_generator: instance of the ModelGenerator class that will be responsible of generating the model
         :param datasets: Datasets representing all the train and test sets to be used in the cross validation
         :param hyper_params: Dictionary containing information of the hyper parameter we want to tune
-        :param k: Number of folds to use in the cross validation
+        :param l: Number of folds to use in the internal random subsampling
         :param metric: Function that takes the output of the model and the target and returns the metric we want
         to optimize
 
@@ -154,9 +155,9 @@ class RFObjective:
 
 
 class Tuner:
-    def __init__(self, study_name, model_generator, datasets, hyper_params, l, n_trials, metric, direction="minimize",
-                 get_hyperparameters_importance=False, get_parallel_coordinate=False, get_optimization_history=False,
-                 path=None, **kwargs):
+    def __init__(self, study_name, model_generator, datasets, hyper_params, l, n_trials, metric, objective,
+                 max_epochs, early_stopping_activated=False, direction="minimize", get_hyperparameters_importance=False,
+                 get_parallel_coordinate=False, get_optimization_history=False, path=None, device="cpu", **kwargs):
         """
                 Class that will be responsible of the hyperparameters tuning
 
@@ -166,17 +167,20 @@ class Tuner:
                 :param datasets: Petale Dataset representing all the train and test sets to be used in the cross
                                  validation
                 :param hyper_params: Dictionary containing information of the hyper parameter we want to tune
-                :param l: Number of folds to use in the cross validation
+                :param l: Number of folds to use in the internal random subsampling
                 :param metric: Function that takes the output of the model and the target and returns
                                the metric we want to optimize
+                :param objective: Objective function to optimize with Optuna
+                :param max_epochs: Maximal number of epochs to do in training
+                :param early_stopping_activated: Indicate if early stopping is enabled when training
                 :param n_trials: Number of trials we want to perform
                 :param direction: String to specify if we want to maximize or minimize the value of the metric used
-                :param get_hyperparameters_importance: Bool to tell if we want to plot the hyperparameters importance
-                                                        graph
+                :param get_hyperparameters_importance: Bool to tell if we want to plot the hyperparameters
+                                                       importance graph
                 :param get_parallel_coordinate: Bool to tell if we want to plot the parallel_coordinate graph
                 :param get_optimization_history: Bool to tell if we want to plot the optimization history graph
                 :param path: String that represents the path to the folder where we want to save our graphs
-
+                :param device: "cpu" or "gpu"
 
                 """
 
@@ -195,6 +199,9 @@ class Tuner:
                 path is None)), "Path to the folder where save graphs must be specified "
 
         # We save the inputs that will be used when tuning the hyper parameters
+        self.objective = objective
+        self.max_epochs = max_epochs
+        self.early_stopping = early_stopping_activated
         self.n_trials = n_trials
         self.model_generator = model_generator
         self.datasets = datasets
@@ -205,6 +212,7 @@ class Tuner:
         self.get_parallel_coordinate = get_parallel_coordinate
         self.get_optimization_history = get_optimization_history
         self.path = path
+        self.device = device
 
     def tune(self, verbose=True):
         """
@@ -216,12 +224,12 @@ class Tuner:
         # We perform the optimization
         set_verbosity(FATAL)  # We remove verbosity from loading bar
         self.study.optimize(
-            self.Objective(model_generator=self.model_generator,
+            self.objective(model_generator=self.model_generator,
                            datasets=self.datasets,
                            hyper_params=self.hyper_params,
                            l=self.l, metric=self.metric, max_epochs=self.max_epochs,
-                           early_stopping_activated=self.early_stopping_activated
-                           ),
+                           early_stopping_activated=self.early_stopping,
+                           device=self.device),
             self.n_trials, n_jobs=1, show_progress_bar=verbose)
 
         if self.get_hyperparameters_importance:
@@ -286,19 +294,19 @@ class NNTuner(Tuner):
     def __init__(self, study_name, model_generator, datasets, hyper_params, l, n_trials, metric,
                  direction="minimize", max_epochs=100, get_hyperparameters_importance=False,
                  get_parallel_coordinate=False, get_optimization_history=False,
-                 early_stopping_activated=False, **kwargs):
+                 early_stopping_activated=False, device="cpu", **kwargs):
         """
         Class that will be responsible of tuning Neural Networks
 
         """
         super().__init__(study_name=study_name, model_generator=model_generator, datasets=datasets,
-                         hyper_params=hyper_params, l=l, n_trials=n_trials, metric=metric, direction=direction,
+                         hyper_params=hyper_params, l=l, n_trials=n_trials, metric=metric,
+                         objective=NNObjective, max_epochs=max_epochs,
+                         early_stopping_activated=early_stopping_activated, direction=direction,
                          get_hyperparameters_importance=get_hyperparameters_importance,
                          get_parallel_coordinate=get_parallel_coordinate,
-                         get_optimization_history=get_optimization_history, **kwargs)
-        self.Objective = NNObjective
-        self.max_epochs = max_epochs
-        self.early_stopping_activated = early_stopping_activated
+                         get_optimization_history=get_optimization_history,
+                         device=device, **kwargs)
 
     def get_best_hyperparams(self):
         """
@@ -335,13 +343,11 @@ class RFTuner(Tuner):
 
         """
         super().__init__(study_name=study_name, model_generator=model_generator, datasets=datasets,
-                         hyper_params=hyper_params, l=l, n_trials=n_trials, metric=metric, direction=direction,
+                         hyper_params=hyper_params, l=l, n_trials=n_trials, metric=metric,
+                         objective=RFObjective, direction=direction,
                          get_hyperparameters_importance=get_hyperparameters_importance,
                          get_intermediate_values=get_parallel_coordinate,
                          get_optimization_history=get_optimization_history, **kwargs)
-        self.Objective = RFObjective
-        self.max_epochs = None
-        self.early_stopping_activated = None
 
     def get_best_hyperparams(self):
         """

@@ -11,6 +11,7 @@ from torch.nn import Softmax
 from numpy import std, min, max, mean, median, arange
 import matplotlib.pyplot as plt
 from Recorder.constants import *
+from numpy import argmax
 
 
 class Recorder:
@@ -152,12 +153,14 @@ class NNRecorder(Recorder):
 
         # We initialize the Softmax object
         softmax = Softmax(dim=1)
-        predictions = softmax(predictions)
 
+        if predictions.shape[1] > 1:
+            predictions = softmax(predictions)
 
         # We save the predictions
         for i, id in enumerate(ids):
-            self.data[RESULTS][id] = {PREDICTION: predictions[i].tolist(), TARGET: target[i].item()}
+            self.data[RESULTS][id] = {PREDICTION: predictions[i].tolist()
+            if predictions.shape[1] > 1 else predictions[i].item(), TARGET: target[i].item()}
 
 
 def get_evaluation_recap(evaluation_name, recordings_path):
@@ -215,7 +218,7 @@ def get_evaluation_recap(evaluation_name, recordings_path):
 
         # We collect the info of the different coefficient
         if COEFFICIENT in split_data.keys():
-            if COEFFICIENT not in data.keys() :
+            if COEFFICIENT not in data.keys():
                 data[COEFFICIENT] = {}
             if coefficient_keys is None:
                 coefficient_keys = split_data[COEFFICIENT].keys()
@@ -243,9 +246,10 @@ def set_info(data):
     """
     for section in data.keys():
         for key in data[section].keys():
-            data[section][key][INFO] = f"{round(mean(data[section][key][VALUES]),4)} +- {round(std(data[section][key][VALUES]),4)} " \
-                                       f"[{median(data[section][key][VALUES])}; {min(data[section][key][VALUES])}" \
-                                       f"-{max(data[section][key][VALUES])}]"
+            data[section][key][
+                INFO] = f"{round(mean(data[section][key][VALUES]), 4)} +- {round(std(data[section][key][VALUES]), 4)} " \
+                        f"[{median(data[section][key][VALUES])}; {min(data[section][key][VALUES])}" \
+                        f"-{max(data[section][key][VALUES])}]"
             data[section][key][MEAN] = mean(data[section][key][VALUES])
             data[section][key][STD] = std(data[section][key][VALUES])
 
@@ -304,7 +308,8 @@ def compare_prediction_recordings(evaluations, split_index, recording_path=""):
     assert len(evaluations) <= 3, "maximum number of evaluations exceeded"
 
     # We create the paths to recoding files
-    paths = [os.path.join(recording_path, "Recordings", evaluation, f"Split_{split_index}", "records.json") for evaluation in evaluations]
+    paths = [os.path.join(recording_path, "Recordings", evaluation, f"Split_{split_index}", "records.json") for
+             evaluation in evaluations]
 
     all_data = []
 
@@ -323,13 +328,12 @@ def compare_prediction_recordings(evaluations, split_index, recording_path=""):
             if i == 0:
                 ids.append((id))
                 target.append(item["target"])
-            all_predictions[i].append(item["prediction"])
+            all_predictions[i].append(argmax(item["prediction"]) if isinstance(item["prediction"], list)
+                                      else item["prediction"])
 
     # We sort all the predictions and the ids based on the target
     indexes = list(range(len(target)))
     indexes.sort(key=target.__getitem__)
-
-
 
     sorted_all_predictions = []
     for predictions in all_predictions:
@@ -355,4 +359,3 @@ def compare_prediction_recordings(evaluations, split_index, recording_path=""):
     plt.savefig(os.path.join(recording_path, "Recordings", evaluations[0], f"Split_{split_index}",
                              f"""comparison_{"_".join(evaluations)}.png"""))
     plt.close()
-

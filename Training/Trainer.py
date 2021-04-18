@@ -215,6 +215,7 @@ class NNTrainer(Trainer):
         :return: Two python lists containing the training losses and the validation losses
         """
         assert not (self.trial is not None and self.metric is None), "If trial is not None, a metric must be defined"
+        assert self.model is not None, "Model must be set before training"
 
         if self.seed is not None:
             manual_seed(self.seed)

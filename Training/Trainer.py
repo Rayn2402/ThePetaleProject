@@ -9,18 +9,19 @@ import ray
 
 from Training.EarlyStopping import EarlyStopping
 from torch.nn import Module
-from torch.utils.data import DataLoader, Subset
+from torch.utils.data import DataLoader
 from torch import optim, manual_seed, cuda, tensor
 from torch import device as device_
 from torchcontrib.optim import SWA
-from numpy import mean, std
+from numpy import mean, std, array
 from typing import Optional, Callable, Tuple, Any, Union
 from abc import ABC, abstractmethod
 from Data.Datasets import PetaleDataset, PetaleDataframe
+from pandas import DataFrame
 
 
 class Trainer(ABC):
-    def __init__(self, model: Optional[Module], metric: Optional[Callable], device: str = "cpu"):
+    def __init__(self, model: Optional[Any], metric: Optional[Callable], device: str = "cpu"):
         """
         Creates a Trainer that will train and evaluate a given model.
 
@@ -106,24 +107,6 @@ class Trainer(ABC):
 
         # We set the subprocess internal attribute (function)
         self.subprocess = subprocess
-
-    def extract_batch(self, batch_list: list) -> Tuple[Any, Optional[Any], Any]:
-        """
-        Extracts the continuous data (X_cont), the categorical data (X_cat) and the ground truth (y)
-
-        :param batch_list: List containing a batch from dataloader
-        :return: 3 tensors or dataframes (X_cont, X_cat, y)
-        """
-
-        if len(batch_list) > 2:
-            x_cont, x_cat, y = batch_list
-            x_cont, x_cat, y = x_cont.to(self.device), x_cat.to(self.device), y.to(self.device)
-        else:
-            x_cont, y = batch_list
-            x_cont, y = x_cont.to(self.device), y.to(self.device)
-            x_cat = None
-
-        return x_cont, x_cat, y
 
     @abstractmethod
     def update_trainer(self, **kwargs):
@@ -391,7 +374,25 @@ class NNTrainer(Trainer):
 
         return x_cont, x_cat, y
 
-    def update_trainer(self, **kwargs):
+    def extract_batch(self, batch_list: list) -> Tuple[Any, Optional[Any], Any]:
+        """
+        Extracts the continuous data (X_cont), the categorical data (X_cat) and the ground truth (y)
+
+        :param batch_list: List containing a batch from dataloader
+        :return: 3 tensors or dataframes (X_cont, X_cat, y)
+        """
+
+        if len(batch_list) > 2:
+            x_cont, x_cat, y = batch_list
+            x_cont, x_cat, y = x_cont.to(self.device), x_cat.to(self.device), y.to(self.device)
+        else:
+            x_cont, y = batch_list
+            x_cont, y = x_cont.to(self.device), y.to(self.device)
+            x_cat = None
+
+        return x_cont, x_cat, y
+
+    def update_trainer(self, **kwargs) -> None:
         """
         Updates the model, the weight decay, the batch size, the learning rate and the trial
         """
@@ -408,34 +409,41 @@ class NNTrainer(Trainer):
 
 class RFTrainer(Trainer):
 
-    def __init__(self, model, metric):
+    def __init__(self, model: Module, metric: Optional[Callable]):
         """
-        Creates a  Trainer that will train and evaluate a Random Forest model.
+        Creates a Trainer that will train and evaluate a Random Forest model.
 
         :param model: the model to be trained
         """
         super().__init__(model=model, metric=metric)
 
-    def fit(self, train_set, **kwargs):
+    def fit(self, train_set: PetaleDataframe, **kwargs) -> None:
         """
-        Method that will fit the model to the given data
+        Trains the model
 
         :param train_set: Pandas dataframe containing the training set
         """
 
         self.model.fit(train_set.X_cont, train_set.y)
 
-    def predict(self, x_cont, x_cat=None, **kwargs):
+    def predict(self, x_cont: DataFrame, x_cat: Optional[DataFrame] = None, **kwargs) -> array:
+        """
+        Predict the log probabilites associated to each class
+
+        :param x_cont: Continuous inputs
+        :param x_cat: Categorical inputs
+        :return: 2D Numpy array (n_samples, n_classes) with log probabilities
+        """
 
         # We return the log probabilities
         return self.model.predict_log_proba(x_cont)
 
-    def extract_data(self, dataset):
+    def extract_data(self, dataset: PetaleDataframe) -> Tuple[DataFrame, Optional[DataFrame], array]:
         """
         Method to extract the continuous data, categorical data, and the target
 
-        :param dataset: PetaleDataset or PetaleDataframe containing the data
-        :return: Python tuple containing the continuous data, categorical data, and the target
+        :param dataset: PetaleDataframe containing the data
+        :return: Tuple containing the continuous data, categorical data, and the target
         """
         x_cont, y = dataset.X_cont, dataset.y
 
@@ -446,41 +454,8 @@ class RFTrainer(Trainer):
 
         return x_cont, x_cat, y
 
-    def update_trainer(self, **kwargs):
+    def update_trainer(self, **kwargs) -> None:
         """
         Updates the model and the weight decay
         """
         self.model = kwargs.get('model', self.model)
-
-
-def get_kfold_data(dataset, k, i):
-    """
-        Function that will be used to extract the fold needed
-
-        :param dataset: Petale Dataset containing the data
-        :param k: Number of folds
-        :param i: the index of the fold that will  represent the validation set
-
-        :return: returns two subset of the dataset, one for the training set and one for the validation set
-    """
-    # we check some conditions before going further
-    assert k > 1
-    assert i < k
-
-    # We get the size of one fold
-    fold_size = len(dataset) // k
-
-    # We initialize a list that will contain the all the indexes of the the items that will be in the training set
-    train_idx = []
-    for j in range(k):
-
-        # We get all the indexes of the items of the current fold
-        idx = range(fold_size * j, fold_size * (j + 1))
-        if i == j:
-            # We save the indexes of the items of the validation set
-            valid_idx = idx
-        else:
-            # We save the indexes of the items of the training set
-            train_idx += idx
-    # We return two subsets of the dataset, one representing the training set and one representing the validation set
-    return Subset(dataset, train_idx), Subset(dataset, list(valid_idx))

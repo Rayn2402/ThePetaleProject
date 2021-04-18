@@ -101,12 +101,12 @@ class Evaluator:
             recorder = self.create_recorder(index=k)
 
             # We create the tuner to perform the hyperparameters optimization
-            # print(f"Hyperparameter tuning started - K = {k}")
+            print(f"\nHyperparameter tuning started - K = {k}\n")
             tuner = self.create_tuner(datasets=all_datasets[k]["inner"], index=k, **kwargs)
 
             # We perform the hyper parameters tuning to get the best hyper parameters
             best_hyper_params, hyper_params_importance = tuner.tune()
-            # print(f"Hyperparameter tuning done - K = {k}")
+            print(f"\nHyperparameter tuning done - K = {k}\n")
 
             # We save the hyperparameters
             recorder.record_hyperparameters(best_hyper_params)
@@ -121,7 +121,7 @@ class Evaluator:
             trainer = self.create_trainer(model=model, best_hyper_params=best_hyper_params)
 
             # We train our model with the best hyper parameters
-            # print(f"Final model training - K = {k}")
+            print(f"\nFinal model training - K = {k}\n")
             trainer.fit(train_set=train_set, val_set=valid_set)
 
             # We save the trained model
@@ -182,8 +182,8 @@ class Evaluator:
 class NNEvaluator(Evaluator):
 
     def __init__(self, evaluation_name, model_generator, sampler, hyper_params, n_trials, optimization_metric,
-                 evaluation_metrics, k, l=1, max_epochs=100,
-                 direction="minimize", seed=None, get_hyperparameters_importance=False, get_parallel_coordinate=False,
+                 evaluation_metrics, k, l=1, max_epochs=100, direction="minimize", seed=None,
+                 get_hyperparameters_importance=False, get_parallel_coordinate=False,
                  get_optimization_history=False, device="cpu", early_stopping_activated=False):
         """
         Class that will be responsible of the evaluation of the Neural Networks models
@@ -310,7 +310,8 @@ class RFEvaluator(Evaluator):
         """
         return self.model_generator(n_estimators=best_hyper_params[N_ESTIMATORS],
                                     max_features=best_hyper_params[MAX_FEATURES],
-                                    max_depth=best_hyper_params[MAX_DEPTH], max_samples=best_hyper_params[MAX_SAMPLES])
+                                    max_depth=best_hyper_params[MAX_DEPTH],
+                                    max_samples=best_hyper_params[MAX_SAMPLES])
 
     def create_trainer(self, model, **kwargs):
         """

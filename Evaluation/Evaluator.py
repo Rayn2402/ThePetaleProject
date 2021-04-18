@@ -171,10 +171,10 @@ class Evaluator:
         """
         Method to extract the train, test, and valid sets
 
-        :param dataset_dictionary: Python dictionary that contains the three sets
+        :param dataset_dictionary: Dictionary that contains the three sets
 
 
-        :return: Python tuple containing the train, test, and valid sets
+        :return: Tuple containing the train, test, and valid sets
         """
         return dataset_dictionary["train"], dataset_dictionary["test"], dataset_dictionary["valid"]
 
@@ -218,7 +218,7 @@ class NNEvaluator(Evaluator):
         """
         Method to create the Tuner object that will be used in the hyper parameters tuning
 
-        :param datasets: Python list that contains all the inner train, inner test, amd inner valid sets
+        :param datasets: List that contains all the inner train, inner test, amd inner valid sets
         :param index: The index of the split
 
         """
@@ -288,7 +288,7 @@ class RFEvaluator(Evaluator):
         """
         Method to create the Tuner object that will be used in the hyper parameters tuning
 
-        :param datasets: Python list that contains all the inner train, inner test, amd inner valid sets
+        :param datasets: List that contains all the inner train, inner test, amd inner valid sets
         :param index: The index of the split
 
         """

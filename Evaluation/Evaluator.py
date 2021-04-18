@@ -23,22 +23,22 @@ class Evaluator:
         Class that will be responsible of the evaluation of the model
 
         :param evaluation_name: String that represents the name of the evaluation
-        :param model_generator: instance of the ModelGenerator class that will be responsible of generating the model
-        :param sampler: A sampler object that will be called to perform the stratified sampling to get all the train
-        and test set for both the inner and the outer training
-        :param hyper_params: dictionary containing information of the hyper parameter we want to tune
-        :param optimization_metric: a function that takes the output of the model and the target and returns  the metric
-         we want to optimize
-        :param evaluation_metrics:  dictonary where keys represent name of metrics and values represent
+        :param model_generator: Instance of the ModelGenerator class that will be responsible of generating the model
+        :param sampler: Sampler object that will be called to perform the stratified sampling to get all the train
+                        and test set for both the inner and the outer training
+        :param hyper_params: Dictionary containing information of the hyper parameter we want to tune
+        :param optimization_metric: Function that takes the output of the model and the target and returns  the metric
+                                    we want to optimize
+        :param evaluation_metrics:  Dictionary where keys represent name of metrics and values represent
                                     the function that will be used to calculate the score of
                                     the associated metric
-        :param k: Number of folds in the outer cross validation
-        :param l: Number of folds in the inner cross validation
-        :param n_trials: number of trials we want to perform
-        :param direction: direction to specify if we want to maximize or minimize the value of the metric used
-        :param seed: the starting point in generating random numbers
+        :param k: Number of folds to use in the outer random subsampling
+        :param l: Number of folds to use in the internal random subsampling
+        :param n_trials: Number of trials we want to perform
+        :param direction: Direction to specify if we want to maximize or minimize the value of the metric used
+        :param seed: Starting point in generating random numbers
         :param get_hyperparameters_importance: Bool to tell if we want to plot the hyperparameters importance graph
-                                                after tuning the hyper parameters
+                                               after tuning the hyper parameters
         :param get_parallel_coordinate: Bool to tell if we want to plot the parallel coordinate graph after tuning
         the hyper parameters
         :param get_optimization_history: Bool to tell if we want to plot the optimization history graph
@@ -118,7 +118,7 @@ class Evaluator:
             model = self.create_model(best_hyper_params=best_hyper_params)
 
             # We create a trainer to train the model
-            trainer = self.create_trainer(model=model, best_hyper_params=best_hyper_params, device=self.device)
+            trainer = self.create_trainer(model=model, best_hyper_params=best_hyper_params)
 
             # We train our model with the best hyper parameters
             # print(f"Final model training - K = {k}")
@@ -157,6 +157,15 @@ class Evaluator:
         """
         raise NotImplementedError
 
+    def create_tuner(self, datasets, index, **kwargs):
+        raise NotImplementedError
+
+    def create_model(self, best_hyper_params):
+        raise NotImplementedError
+
+    def create_trainer(self, model, **kwargs):
+        raise NotImplementedError
+
     @staticmethod
     def get_datasets(dataset_dictionary):
         """
@@ -168,15 +177,6 @@ class Evaluator:
         :return: Python tuple containing the train, test, and valid sets
         """
         return dataset_dictionary["train"], dataset_dictionary["test"], dataset_dictionary["valid"]
-
-    def create_tuner(self, datasets, index, **kwargs):
-        raise NotImplementedError
-
-    def create_model(self, best_hyper_params):
-        raise NotImplementedError
-
-    def create_trainer(self, model, **kwargs):
-        raise NotImplementedError
 
 
 class NNEvaluator(Evaluator):
@@ -208,13 +208,11 @@ class NNEvaluator(Evaluator):
         if self.early_stopping_activated and not path.exists(path.join("checkpoints")):
             mkdir(path.join("checkpoints"))
 
-        scores = super().nested_cross_valid(**kwargs)
+        super().nested_cross_valid(**kwargs)
 
         # We delete the files created to save the checkpoints of our model by the early stopper
         if path.exists(path.join("checkpoints")):
             rmtree(path.join("checkpoints"))
-
-        return scores
 
     def create_tuner(self, datasets, index, **kwargs):
         """
@@ -227,7 +225,7 @@ class NNEvaluator(Evaluator):
 
         return NNTuner(model_generator=self.model_generator, datasets=datasets,
                        hyper_params=self.hyper_params, n_trials=self.n_trials,
-                       metric=self.optimization_metric, direction=self.direction, l=self.l,
+                       metric=self.optimization_metric, device=self.device, direction=self.direction, l=self.l,
                        max_epochs=self.max_epochs, study_name=f"{self.evaluation_name}_{index}",
                        get_parallel_coordinate=self.get_parallel_coordinate,
                        get_hyperparameters_importance=self.get_hyperparameters_importance,
@@ -239,8 +237,8 @@ class NNEvaluator(Evaluator):
         """
         Method to create the Model
 
-        :param best_hyper_params: Python list that contains a set of hyper parameter used in the creation of the neural
-         network model
+        :param best_hyper_params: List that contains a set of hyper parameters used in the creation of the neural
+                                  network model
         """
         return self.model_generator(layers=best_hyper_params[LAYERS], dropout=best_hyper_params[DROPOUT],
                                     activation=best_hyper_params[ACTIVATION])
@@ -257,7 +255,7 @@ class NNEvaluator(Evaluator):
 
         return NNTrainer(model, epochs=self.max_epochs, batch_size=best_hyper_params[BATCH_SIZE],
                          lr=best_hyper_params[LR], weight_decay=best_hyper_params[WEIGHT_DECAY],
-                         metric=self.optimization_metric, device=kwargs.get('device', 'cpu'),
+                         metric=self.optimization_metric, device=self.device,
                          early_stopping_activated=self.early_stopping_activated)
 
     def create_recorder(self, index):
@@ -293,24 +291,21 @@ class RFEvaluator(Evaluator):
         :param datasets: Python list that contains all the inner train, inner test, amd inner valid sets
         :param index: The index of the split
 
-
-
         """
         return RFTuner(study_name=f"{self.evaluation_name}_{index}", model_generator=self.model_generator,
-                       datasets=datasets,hyper_params=self.hyper_params, n_trials=self.n_trials,
-                       metric=self.optimization_metric, direction=self.direction, l=self.l,
+                       datasets=datasets, hyper_params=self.hyper_params, n_trials=self.n_trials,
+                       metric=self.optimization_metric, device="cpu", direction=self.direction, l=self.l,
                        get_hyperparameters_importance=self.get_hyperparameters_importance,
                        get_parallel_coordinate=self.get_parallel_coordinate,
                        get_optimization_history=self.get_optimization_history,
-                       path=path.join("Recordings", self.evaluation_name, f"Split_{index}"), **kwargs
-                       )
+                       path=path.join("Recordings", self.evaluation_name, f"Split_{index}"), **kwargs)
 
     def create_model(self, best_hyper_params):
-        """git
+        """
         Method to create the Model
 
-        :param best_hyper_params: Python list that contains a set of hyper parameter used in the creation of the Random
-         Forest model
+        :param best_hyper_params: List that contains a set of hyper parameter used in the creation of the Random
+                                  Forest model
 
         """
         return self.model_generator(n_estimators=best_hyper_params[N_ESTIMATORS],

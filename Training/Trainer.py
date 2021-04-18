@@ -377,10 +377,13 @@ class NNTrainer(Trainer):
 
     def update_trainer(self, **kwargs):
         """
-        Updates the model and the weight decay
+        Updates the model, the weight decay, the batch size, the learning rate and the trial
         """
         self.model = kwargs.get('model', self.model)
         self.weight_decay = kwargs.get('weight_decay', self.weight_decay)
+        self.batch_size = kwargs.get('batch_size', self.batch_size)
+        self.lr = kwargs.get('lr', self.lr)
+        self.trial = kwargs.get('trial', self.trial)
 
 
 class RFTrainer(Trainer):

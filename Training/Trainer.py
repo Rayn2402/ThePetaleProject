@@ -36,24 +36,28 @@ class Trainer:
         # We save the metric
         self.metric = metric
 
-    def inner_random_subsampling(self, datasets, l=5, seed=None):
+        # We save the subprocess function for inner random subsampling
+        self.subprocess_defined = False
+        self.subprocess = None
+
+    def inner_random_subsampling(self, l=5, seed=None):
         """
             Method that will perform a cross validation on the model
 
-            :param datasets: PetaleDatasets representing all the inner train, valid, and test sets
             :param l: Number of random subsampling splits
             :param seed: the starting point in generating random numbers
 
             :return: The score after performing the cross validation
         """
+        # We make sure that a subprocess has been defined
+        assert self.subprocess_defined, "The parallelizable subprocess must be defined before use"
 
         # Seed is left to None if fit is called by NNTuner
         if seed is not None:
             manual_seed(seed)
 
         # We train and test on each of the inner split
-        subprocess = self.define_subprocess(datasets)
-        futures = [subprocess.remote(i) for i in range(l)]
+        futures = [self.subprocess.remote(i) for i in range(l)]
         scores = ray.get(futures)
 
         # We the mean of the scores divided by the standard deviation
@@ -68,6 +72,10 @@ class Trainer:
         :return: subprocess function
         """
 
+        # We inform the trainer that a subprocess has been defined
+        self.subprocess_defined = True
+
+        # We build the subprocess according to the datasets
         gpus = 1 if (self.device == "gpu") else 0
 
         @ray.remote(num_gpus=gpus)
@@ -92,7 +100,7 @@ class Trainer:
             # We save the score
             return score
 
-        return subprocess
+        self.subprocess = subprocess
 
     def extract_batch(self, batch_list):
         """

@@ -36,15 +36,13 @@ class NNObjective:
 
         # we save the inputs that will be used when calling the class
         self.model_generator = model_generator
-        self.datasets = datasets
         self.hyper_params = hyper_params
         self.l = l
-        self.metric = metric
-        self.max_epochs = max_epochs
-        self.trainer = NNTrainer(model=None, batch_size=None, lr=None, epochs=self.max_epochs,
-                                 weight_decay=None, metric=self.metric, trial=None,
+        self.trainer = NNTrainer(model=None, batch_size=None, lr=None, epochs=max_epochs,
+                                 weight_decay=None, metric=metric, trial=None,
                                  early_stopping_activated=early_stopping_activated,
                                  device=device)
+        self.trainer.define_subprocess(datasets)
 
     def __call__(self, trial):
         hyper_params = self.hyper_params
@@ -90,7 +88,7 @@ class NNObjective:
                                     lr=lr, trial=trial)
 
         # We perform a k fold cross validation to evaluate the model
-        score = self.trainer.inner_random_subsampling(datasets=self.datasets, l=self.l)
+        score = self.trainer.inner_random_subsampling(l=self.l)
 
         # We return the score
         return score
@@ -115,10 +113,10 @@ class RFObjective:
 
         # We save the inputs that will be used when calling the class
         self.model_generator = model_generator
-        self.datasets = datasets
         self.hyper_params = hyper_params
         self.l = l
         self.trainer = RFTrainer(model=None, metric=metric)
+        self.trainer.define_subprocess(datasets)
 
     def __call__(self, trial):
         hyper_params = self.hyper_params
@@ -148,7 +146,7 @@ class RFObjective:
         self.trainer.update_trainer(model=model)
 
         # We perform a cross validation to evaluate the model
-        score = self.trainer.inner_random_subsampling(datasets=self.datasets, l=self.l)
+        score = self.trainer.inner_random_subsampling(l=self.l)
 
         # We return the score
         return score
@@ -156,7 +154,7 @@ class RFObjective:
 
 class Tuner:
     def __init__(self, study_name, model_generator, datasets, hyper_params, l, n_trials, metric, objective,
-                 max_epochs, early_stopping_activated=False, direction="minimize", get_hyperparameters_importance=False,
+                 max_epochs=100, early_stopping_activated=False, direction="minimize", get_hyperparameters_importance=False,
                  get_parallel_coordinate=False, get_optimization_history=False, path=None, device="cpu", **kwargs):
         """
                 Class that will be responsible of the hyperparameters tuning

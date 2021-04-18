@@ -9,10 +9,11 @@ import numpy as np
 from torch import save, load
 from uuid import uuid4
 from os import path
+from torch.nn import Module
 
 
 class EarlyStopping:
-    def __init__(self, patience):
+    def __init__(self, patience: int):
         """
         Creates a class that will be responsible of the early stopping when training the model
 
@@ -25,9 +26,9 @@ class EarlyStopping:
         self.val_loss_min = np.inf
         self.file_name = f"{uuid4()}.pt"
 
-    def __call__(self, val_loss, model):
+    def __call__(self, val_loss: float, model: Module) -> None:
         """
-        Method to be called to perform the early stopping logic
+        Method called to perform the early stopping logic
         """
 
         # if the score is worst than the best score we increment the counter
@@ -44,9 +45,9 @@ class EarlyStopping:
             self.save_checkpoint(val_loss, model)
             self.counter = 0
 
-    def save_checkpoint(self, val_loss, model):
+    def save_checkpoint(self, val_loss: float, model: Module) -> None:
         """
-        method that will save the best model and store the validation loss of that model
+        Saves the best model and stores the validation loss of that model
         
         :param val_loss: the valid loss of the model to save.
         :param model: the model to save.
@@ -54,7 +55,7 @@ class EarlyStopping:
         save(model, path.join("checkpoints", self.file_name))
         self.val_loss_min = val_loss
 
-    def get_best_model(self):
+    def get_best_model(self) -> Module:
         """
         Returns the best model saved
 

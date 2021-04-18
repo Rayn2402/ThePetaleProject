@@ -94,25 +94,6 @@ class Trainer:
 
         return subprocess
 
-    def fit(self, train_set, val_set):
-        """
-        Trains the model
-
-        :param train_set: Training set
-        :param val_set: Validation set
-        """
-        raise NotImplementedError
-
-    def predict(self, x_cont, x_cat, **kwargs):
-
-        """
-        Returns prediction of the model
-
-        :param x_cont: tensor with continuous inputs
-        :param x_cat: tensor with categorical ordinal encoding
-        """
-        raise NotImplementedError
-
     def extract_batch(self, batch_list):
         """
         Extracts the continuous data (X_cont), the categorical data (X_cat) and the ground truth (y)
@@ -130,6 +111,32 @@ class Trainer:
             x_cat = None
 
         return x_cont, x_cat, y
+
+    def update_trainer(self, **kwargs):
+        """
+        Abstract method to update trainer internal attributes
+        """
+        raise NotImplementedError
+
+    def fit(self, train_set, val_set):
+        """
+        Abstract methods to train the model
+
+        :param train_set: Training set
+        :param val_set: Validation set
+        """
+        raise NotImplementedError
+
+    def predict(self, x_cont, x_cat, **kwargs):
+
+        """
+        Abstract methods that return prediction of a model
+        (log probabilities in case of classification and real-valued number in case of regression)
+
+        :param x_cont: tensor with continuous inputs
+        :param x_cat: tensor with categorical ordinal encoding
+        """
+        raise NotImplementedError
 
     def extract_data(self, dataset):
         """
@@ -367,6 +374,13 @@ class NNTrainer(Trainer):
 
         return x_cont, x_cat, y
 
+    def update_trainer(self, **kwargs):
+        """
+        Updates the model and the weight decay
+        """
+        self.model = kwargs.get('model', self.model)
+        self.weight_decay = kwargs.get('weight_decay', self.weight_decay)
+
 
 class RFTrainer(Trainer):
 
@@ -407,6 +421,12 @@ class RFTrainer(Trainer):
             x_cat = None
 
         return x_cont, x_cat, y
+
+    def update_trainer(self, **kwargs):
+        """
+        Updates the model and the weight decay
+        """
+        self.model = kwargs.get('model', self.model)
 
 
 def get_kfold_data(dataset, k, i):

@@ -36,7 +36,7 @@ if __name__ == '__main__':
     evaluator = NNEvaluator('test', generator, sampler, HYPER_PARAMS,
                             n_trials=200, seed=SEED,  optimization_metric=CM.sensitivity_cross,
                             evaluation_metrics={"accuracy": CM.accuracy, "sensitivity_mean": CM.class_sensitivity},
-                            k=3, max_epochs=50, direction="maximize",
+                            k=3, l=5, max_epochs=20, direction="maximize",
                             get_hyperparameters_importance=True,
                             get_parallel_coordinate=True,
                             get_optimization_history=True)

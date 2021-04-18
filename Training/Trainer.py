@@ -179,10 +179,9 @@ class NNTrainer(Trainer):
         """
         super().__init__(model=model, metric=metric, device=device)
 
-        assert isinstance(model, Module), 'model argument must inherit from torch.nn.Module'
+        assert isinstance(model, Module) or model is None, 'model argument must inherit from torch.nn.Module'
 
-        # we save the criterion of that model in the attribute criterion
-        self.criterion = model.loss
+        # we save the attributes needed for training
         self.batch_size = batch_size
         self.lr = lr
         self.weight_decay = weight_decay
@@ -309,7 +308,7 @@ class NNTrainer(Trainer):
             output = self.model(x_cont=x_cont, x_cat=x_cat)
 
             # We calculate the loss
-            loss = self.criterion(output, y)
+            loss = self.model.loss(output, y)
             epoch_loss += loss.item()
 
             # We perform the backward pass: compute gradient of the loss with respect to model parameters
@@ -343,7 +342,7 @@ class NNTrainer(Trainer):
             output = self.model(x_cont=x_cont, x_cat=x_cat)
 
             # We calculate the loss
-            val_epoch_loss = self.criterion(output, y).item()
+            val_epoch_loss = self.model.loss(output, y).item()
 
         # We calculate a score for the current model
         # score = self.metric(self.model.predict(x_cont=x_cont, x_cat=x_cat, log_prob=True), y)
@@ -379,6 +378,10 @@ class NNTrainer(Trainer):
         """
         Updates the model, the weight decay, the batch size, the learning rate and the trial
         """
+        new_model = kwargs.get('model', self.model)
+
+        assert isinstance(new_model, Module), 'model argument must inherit from torch.nn.Module'
+
         self.model = kwargs.get('model', self.model)
         self.weight_decay = kwargs.get('weight_decay', self.weight_decay)
         self.batch_size = kwargs.get('batch_size', self.batch_size)

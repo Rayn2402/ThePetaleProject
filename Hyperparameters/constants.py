@@ -2,6 +2,9 @@
 This file is used to store useful constants related to hyperparameters name
 """
 
+# HYPERPARAMETERS IMPORTANCE SEED
+HYPER_PARAMS_SEED = 2021
+
 # NN HYPERPARAMETERS
 LR = "lr"
 BATCH_SIZE = "batch_size"

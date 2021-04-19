@@ -1,10 +1,10 @@
 from SQL.DataManager.Utils import PetaleDataManager
 from Models.GeneralModels import NNClassifier
 from Models.ModelGenerator import NNModelGenerator
-from Evaluator.Evaluator import NNEvaluator
+from Evaluation.Evaluator import NNEvaluator
 from Utils.score_metrics import ClassificationMetrics as CM
 from SQL.NewTablesScripts.constants import SEED
-from Datasets.Sampling import LearningOneSampler
+from Data.Sampling import get_learning_one_sampler
 from torch import unique
 import os
 import json
@@ -17,7 +17,7 @@ if __name__ == '__main__':
 
     # Initialization of DataManager and sampler
     manager = PetaleDataManager("rayn2402")
-    sampler = LearningOneSampler(dm=manager)
+    sampler = get_learning_one_sampler(dm=manager)
 
     # Loading of data
     all_data = sampler(k=1, l=1)
@@ -36,7 +36,7 @@ if __name__ == '__main__':
     evaluator = NNEvaluator('test', generator, sampler, HYPER_PARAMS,
                             n_trials=200, seed=SEED,  optimization_metric=CM.sensitivity_cross,
                             evaluation_metrics={"accuracy": CM.accuracy, "sensitivity_mean": CM.class_sensitivity},
-                            k=3, max_epochs=50, direction="maximize",
+                            k=3, l=5, max_epochs=20, direction="maximize",
                             get_hyperparameters_importance=True,
                             get_parallel_coordinate=True,
                             get_optimization_history=True)

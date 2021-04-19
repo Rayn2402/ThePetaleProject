@@ -4,7 +4,7 @@ Author : Nicolas Raymond
 This file contains metric used to measure models' performances
 """
 from torch import sqrt, abs, tensor, argmax, zeros, unique, ones, eye, mean, prod
-from torch.nn.functional import cross_entropy
+from torch.nn.functional import nll_loss
 REDUCTIONS = ["mean", "geometric_mean"]
 
 
@@ -44,7 +44,7 @@ class ClassificationMetrics:
         """
         Returns the accuracy of predictions
 
-        :param pred: (N,C) tensor
+        :param pred: (N,C) tensor with log probabilities
         :param targets: (N,) tensor
         :return: float
         """
@@ -53,21 +53,21 @@ class ClassificationMetrics:
     @staticmethod
     def cross_entropy_loss(pred: tensor, targets: tensor) -> float:
         """
-        Returns the cross entropy related to predictions
+        Returns the cross entropy related to the predictions
 
-        :param pred: (N,C) tensor
+        :param pred: (N,C) tensor with log probabilities
         :param targets: (N,) tensor
         :return: float
         """
 
-        return cross_entropy(pred, targets.long()).item()
+        return nll_loss(pred, targets.long()).item()
 
     @staticmethod
     def acc_cross(pred: tensor, targets: tensor) -> float:
         """
-        Returns the ratio accuracy/cross-entropy related to predictions
+        Returns the ratio accuracy/cross-entropy related to the predictions
 
-        :param pred: (N,C) tensor
+        :param pred: (N,C) tensor with log probabilities
         :param targets: (N,) tensor
         :return: float
         """
@@ -80,7 +80,7 @@ class ClassificationMetrics:
         """
         Returns the ratio (mean class sensitivity / cross entropy)
 
-        :param pred: (N,C) tensor
+        :param pred: (N,C) tensor with log probabilities
         :param targets: (N,) tensor
         :param reduction: str
         :return: float
@@ -94,7 +94,7 @@ class ClassificationMetrics:
         """
         Returns the mean classes sensitivity
 
-        :param pred: (N,C) tensor
+        :param pred: (N,C) tensor with log probabilities
         :param targets: (N,) tensor
         :param reduction: str
         :return: float
@@ -127,7 +127,7 @@ class ClassificationMetrics:
         """
         Returns the confusion matrix
 
-        :param pred: (N,C) tensor
+        :param pred: (N,C) tensor with log probabilities
         :param targets: (N,) tensor
         :return: (C,C) tensor
         """

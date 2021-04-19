@@ -4,10 +4,10 @@ Author : Nicolas Raymond
 This file contains the Sampler class used to separate test sets from train sets
 """
 
-from typing import Sequence, Union, Callable, Tuple
+from typing import Sequence, Union, Tuple
 from SQL.DataManager.Utils import PetaleDataManager
-from Datasets.Datasets import PetaleDataset, PetaleDataframe
-from .Transforms import ContinuousTransform as ConT
+from Data.Datasets import PetaleDataset, PetaleDataframe
+from Data.Transforms import ContinuousTransform as ConT
 from SQL.NewTablesScripts.constants import *
 import numpy as np
 import pandas as pd
@@ -41,7 +41,7 @@ class Sampler:
         self.target_col = target_col
 
         # We save the dataset class constructor
-        self.dataset_constructor = Sampler.define_container_constructor(to_dataset)
+        self.dataset_constructor = PetaleDataset if to_dataset else PetaleDataframe
 
     def __call__(self, k: int = 10, l: int = 1, split_cat: bool = True,
                  valid_size: Union[int, float] = 0.20, test_size: Union[int, float] = 0.20,
@@ -140,48 +140,31 @@ class Sampler:
                       f" Test {len(v1['test'])}")
             print("#----------------------------------#")
 
-    @staticmethod
-    def define_container_constructor(to_dataset: bool) -> Callable:
-        """
-        Defines the correct constructor to use to initialise our dataset
 
-        :param to_dataset: bool indicating if we want a PetaleDataset (True) or a PetaleDataframe (False)
-        :return: function
-        """
-        if to_dataset:
-            return PetaleDataset
-        else:
-            return PetaleDataframe
+def get_warmup_sampler(dm: PetaleDataManager, to_dataset: bool = True):
+    """
+    Creates a Sampler for the WarmUp data table
+    :param dm: PetaleDataManager
+    :param to_dataset: bool indicating if we want a PetaleDataset (True) or a PetaleDataframe (False)
+    """
+    cont_cols = [WEIGHT, TDM6_HR_END, TDM6_DIST, DT, AGE, MVLPA]
+    return Sampler(dm, LEARNING_0, cont_cols, VO2R_MAX, to_dataset=to_dataset)
 
 
-class WarmUpSampler(Sampler):
+def get_learning_one_sampler(dm: PetaleDataManager, to_dataset: bool = True):
+    """
+    Creates a Sampler for the Learning One data table
+    :param dm: PetaleDataManager
+    :param to_dataset: bool indicating if we want a PetaleDataset (True) or a PetaleDataframe (False)
+    """
+    # We save continuous columns
+    cont_cols = [AGE, HEIGHT, WEIGHT, AGE_AT_DIAGNOSIS, DT, TSEOT, RADIOTHERAPY_DOSE, TDM6_DIST, TDM6_HR_END,
+                 TDM6_HR_REST, TDM6_TAS_END, TDM6_TAD_END, MVLPA, TAS_REST, TAD_REST, DOX]
 
-    def __init__(self, dm: PetaleDataManager, to_dataset: bool = True):
-        """
-        Creates a Sampler for the WarmUp data table
-        :param dm: PetaleDataManager
-        :param to_dataset: bool indicating if we want a PetaleDataset (True) or a PetaleDataframe (False)
-        """
-        cont_cols = [WEIGHT, TDM6_HR_END, TDM6_DIST, DT, AGE, MVLPA]
-        super().__init__(dm, LEARNING_0, cont_cols, VO2R_MAX, to_dataset=to_dataset)
+    # We save the categorical columns
+    cat_cols = [SEX, SMOKING, DEX_PRESENCE]
 
-
-class LearningOneSampler(Sampler):
-
-    def __init__(self, dm: PetaleDataManager, to_dataset: bool = True):
-        """
-        Creates a Sampler for the Learning One data table
-        :param dm: PetaleDataManager
-        :param to_dataset: bool indicating if we want a PetaleDataset (True) or a PetaleDataframe (False)
-        """
-        # We save continuous columns
-        cont_cols = [AGE, HEIGHT, WEIGHT, AGE_AT_DIAGNOSIS, DT, TSEOT, RADIOTHERAPY_DOSE, TDM6_DIST, TDM6_HR_END,
-                     TDM6_HR_REST, TDM6_TAS_END, TDM6_TAD_END, MVLPA, TAS_REST, TAD_REST, DOX]
-
-        # We save the categorical columns
-        cat_cols = [SEX, SMOKING, DEX_PRESENCE]
-
-        super().__init__(dm, LEARNING_1, cont_cols, FITNESS_LVL, cat_cols, to_dataset)
+    return Sampler(dm, LEARNING_1, cont_cols, FITNESS_LVL, cat_cols, to_dataset)
 
 
 def split_train_test(df: pd.DataFrame, target_col: str,

@@ -8,10 +8,9 @@ import os
 import pickle
 import json
 from torch.nn import Softmax
-from numpy import std, min, max, mean, median, arange
+from numpy import std, min, max, mean, median, arange, argmax
 import matplotlib.pyplot as plt
-from Recorder.constants import *
-from numpy import argmax
+from Recording.constants import *
 
 
 class Recorder:
@@ -89,23 +88,6 @@ class Recorder:
         # We save the score of the given metric
         self.data[METRICS][metric] = round(score, 6)
 
-    def record_predictions(self, ids, predictions, target):
-        """
-        Method to call to save the predictions of a model after an experiments
-
-        :param ids: The ids of the patients with the predicted data
-        :param predictions: The calculated predictions to save
-        :param target: The real values
-
-        """
-
-        if RESULTS not in self.data.keys():
-            self.data[RESULTS] = {}
-
-        # We save the predictions
-        for i, id in enumerate(ids):
-            self.data[RESULTS][id] = {PREDICTION: predictions[i], TARGET: target[i].item()}
-
     def record_coefficient(self, name, value):
         """
         Method to call to save the coefficient of a model
@@ -151,17 +133,30 @@ class NNRecorder(Recorder):
         if RESULTS not in self.data.keys():
             self.data[RESULTS] = {}
 
-        # We initialize the Softmax object
-        softmax = Softmax(dim=1)
+        # We save the predictions
+        for i, id in enumerate(ids):
+            self.data[RESULTS][id] = {PREDICTION : predictions[i].tolist(), TARGET : target[i].item()}
 
-        if predictions.shape[1] > 1:
-            predictions = softmax(predictions)
+
+class RFRecorder(Recorder):
+    """
+        Class that will be responsible of saving all the data about our experiments with Random Forest
+    """
+
+    def __init__(self, evaluation_name, index):
+        super().__init__(evaluation_name=evaluation_name, index=index)
+
+    def record_predictions(self, ids, predictions, target):
+        """
+        Method to call to save the predictions of a Random forest after an experiments
+        :param predictions: The calculated predictions to save
+        """
+        if RESULTS not in self.data.keys():
+            self.data[RESULTS] = {}
 
         # We save the predictions
         for i, id in enumerate(ids):
-            self.data[RESULTS][id] = {PREDICTION: predictions[i].tolist()
-            if predictions.shape[1] > 1 else predictions[i].item(), TARGET: target[i].item()}
-
+            self.data[RESULTS][id] = {PREDICTION : predictions[i], TARGET : target[i]}    
 
 def get_evaluation_recap(evaluation_name, recordings_path):
     """
@@ -173,12 +168,10 @@ def get_evaluation_recap(evaluation_name, recordings_path):
     assert os.path.exists(os.path.join(recordings_path, "Recordings", evaluation_name)), "Evaluation not found"
     path = os.path.join(recordings_path, "Recordings", evaluation_name)
     json_file = "records.json"
-    folders = os.listdir(os.path.join(path))
-    folders = [folder for folder in folders if os.path.isdir(os.path.join(path, folder))]
+    folders = next(os.walk(path))[1]
     data = {
         METRICS: {}
     }
-
     hyperparameter_importance_keys = None
     metrics_keys = None
     coefficient_keys = None

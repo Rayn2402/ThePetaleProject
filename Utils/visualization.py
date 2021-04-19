@@ -4,9 +4,10 @@ Author : Nicolas Raymond
 This file contains all function related to data visualization
 
 """
-from typing import Union
-from torch import tensor
+from typing import Union, Optional
+from torch import tensor, sum
 from matplotlib import pyplot as plt
+from numpy import array
 from sklearn.manifold import TSNE
 
 
@@ -33,8 +34,33 @@ def compare_predictions(preds: tensor, targets: tensor, title: Union[str, None] 
     plt.close()
 
 
+def visualize_class_distribution(targets: Union[tensor, array], label_names: dict, title: Optional[str] = None) -> None:
+    """
+    Shows a pie chart with classes distribution
+
+    :param targets: Sequence of class targets
+    :param label_names: Dictionary with names associated to target values
+    :param title: Title for the plot
+    """
+    # We first count the number of instances of each value in the targets vector
+    label_counts = {v: sum(targets == k) for k, v in label_names.items()}
+
+    # We prepare a list of string to use as plot labels
+    labels = [f"{k} ({v})" for k, v in label_counts.items()]
+
+    # Pie chart, where the slices will be ordered and plotted counter-clockwise:
+    fig1, ax1 = plt.subplots()
+    ax1.pie(label_counts.values(), labels=labels, autopct='%1.1f%%', shadow=True, startangle=90)
+    ax1.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+
+    if title is not None:
+        ax1.set_title(title)
+
+    plt.show()
+
+
 def visualize_embeddings(embeddings: tensor, category_levels: tensor,
-                         perplexity: int = 10, title: Union[str, None] = None) -> None:
+                         perplexity: int = 10, title: Optional[str] = None) -> None:
     """
     Visualizes embeddings in a 2D space
 

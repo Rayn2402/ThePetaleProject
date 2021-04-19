@@ -5,11 +5,9 @@ This file stores the two classes of Neural Networks models :
 NNRegressor which is a model to preform a regression and predict a real value
 """
 
-from torch import cat, argmax
-from torch.nn import Module, ModuleList, Embedding, Linear, MSELoss, ReLU,PReLU, LeakyReLU, BatchNorm1d, Dropout, Sequential, \
-    CrossEntropyLoss
-from Utils.score_metrics import ClassificationMetrics
-from torch import nn
+from torch import cat, nn, no_grad, argmax
+from torch.nn import Module, ModuleList, Embedding, Linear, MSELoss, BatchNorm1d, Dropout, Sequential, CrossEntropyLoss
+from torch.nn.functional import log_softmax
 
 
 class NNModel(Module):
@@ -59,7 +57,7 @@ class NNModel(Module):
             all_layers.append(Dropout(dropout))
             input_size = i
 
-            # we define the output layer
+        # we define the output layer
         if len(layers) == 0:
             all_layers.append(Linear(input_size, output_size))
         else:
@@ -83,8 +81,18 @@ class NNModel(Module):
             x = x_cont
         return self.layers(x)
 
+    def predict(self, x_cont, x_cat=None):
+        """
+        Abstract method for model prediction function
+
+        :param x_cont: tensor with continuous inputs
+        :param x_cat: tensor with categorical ordinal encoding
+        """
+        raise NotImplementedError
+
 
 class NNRegressor(NNModel):
+
     def __init__(self, num_cont_col, layers, activation, dropout=0.4, cat_sizes=None):
         """Creates a Neural Network model that perform a regression with predicting real values, entity embedding is
         performed on the data if cat_sizes is not null
@@ -101,12 +109,26 @@ class NNRegressor(NNModel):
         # we define the criterion for that model
         self.criterion = MSELoss()
 
-    def criterion_function(self, pred, y):
+    def loss(self, pred, y):
         return self.criterion(pred.flatten(), y.float())
 
-    def loss(self, x_cont, x_cat, target):
+    def predict(self, x_cont, x_cat=None, **kwargs):
+        """
+        Returns the real-valued predictions
+
+        :param x_cont: tensor with continuous inputs
+        :param x_cat: tensor with categorical ordinal encoding
+        :return: (N, 1) tensor
+        """
+
+        # We turn in eval mode
         self.eval()
-        return ((self(x_cont.float(), x_cat).squeeze() - target) ** 2).mean().item()
+
+        # We execute a forward pass
+        with no_grad():
+            output = self.forward(x_cont, x_cat)
+
+        return output
 
 
 class NNClassifier(NNModel):
@@ -128,10 +150,28 @@ class NNClassifier(NNModel):
         # we define the criterion for that model
         self.criterion = CrossEntropyLoss()
 
-    def criterion_function(self, pred, y):
+    def loss(self, pred, y):
         return self.criterion(pred, y.long())
 
-    def loss(self, x_cont, x_cat, target):
+    def predict(self, x_cont, x_cat=None, **kwargs):
+        """
+        Returns the log probabilities related to each class if log_prob = True,
+        else it returns the classes predicted
+
+        :param x_cont: tensor with continuous inputs
+        :param x_cat: tensor with categorical ordinal encoding
+        :return: (N, C) tensor
+        """
+        # We turn in eval mode
         self.eval()
-        predictions = (argmax(self(x_cont.float(), x_cat).float(), dim=1))
-        return ClassificationMetrics.accuracy(predictions, target).item()
+
+        # We execute a forward pass
+        with no_grad():
+            output = self.forward(x_cont, x_cat)
+            if kwargs.get("log_prob", False):
+                log_soft = log_softmax(output, dim=1).float()
+                return log_soft
+            else:
+                return argmax(output, dim=1).long()
+
+

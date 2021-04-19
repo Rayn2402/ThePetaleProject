@@ -4,8 +4,8 @@ Authors : Nicolas Raymond
 This files contains all class function related to preprocessing
 
 """
-from .Transforms import ContinuousTransform as ConT
-from .Transforms import CategoricalTransform as CaT
+from Data.Transforms import ContinuousTransform as ConT
+from Data.Transforms import CategoricalTransform as CaT
 
 ENCODING = ["ordinal", "one-hot"]
 

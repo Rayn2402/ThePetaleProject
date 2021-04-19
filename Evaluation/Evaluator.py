@@ -143,11 +143,11 @@ class Evaluator:
             # We save all the data collected in a file
             recorder.generate_file()
 
-            # We save the evaluation recap
-            get_evaluation_recap(evaluation_name=self.evaluation_name)
+        # We save the evaluation recap
+        get_evaluation_recap(evaluation_name=self.evaluation_name)
 
-            # We save the hyperparameters plot
-            plot_hyperparameter_importance_chart(evaluation_name=self.evaluation_name)
+        # We save the hyperparameters plot
+        plot_hyperparameter_importance_chart(evaluation_name=self.evaluation_name)
 
     def create_recorder(self, index):
         """

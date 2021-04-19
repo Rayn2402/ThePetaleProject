@@ -265,7 +265,7 @@ def get_column_stats(df, col):
     """
     numerical_data = df[col].astype("float")
     mean = round(numerical_data.mean(axis=0), 2)
-    var = round(numerical_data.var(axis=0), 2)
+    var = round(numerical_data.std(axis=0), 2)
     min = numerical_data.min()
     max = numerical_data.max()
 

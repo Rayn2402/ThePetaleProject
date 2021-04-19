@@ -133,7 +133,7 @@ def get_evaluation_recap(evaluation_name):
     assert os.path.exists(os.path.join("Recordings", evaluation_name)), "Evaluation not found"
     path = os.path.join("Recordings", evaluation_name)
     json_file = "records.json"
-    folders = os.listdir(os.path.join(path))
+    folders = next(os.walk(path))[1]
     data = {
         METRICS: {
         },
@@ -141,7 +141,6 @@ def get_evaluation_recap(evaluation_name):
 
         }
     }
-
     hyperparameter_importance_keys = None
     metrics_keys = None
     for folder in folders:

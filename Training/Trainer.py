@@ -118,7 +118,7 @@ class Trainer(ABC):
     @abstractmethod
     def fit(self, train_set: Union[PetaleDataset, PetaleDataframe], val_set: Union[PetaleDataset, PetaleDataframe]):
         """
-        Abstract methods to train and evaluate the model
+        Abstract method to train and evaluate the model
 
         :param train_set: Training set
         :param val_set: Validation set
@@ -129,7 +129,7 @@ class Trainer(ABC):
     def predict(self, x_cont: Any, x_cat: Any, **kwargs):
 
         """
-        Abstract methods that return prediction of a model
+        Abstract method that return prediction of a model
         (log probabilities in case of classification and real-valued number in case of regression)
 
         :param x_cont: Tensor with continuous inputs
@@ -152,7 +152,7 @@ class Trainer(ABC):
         """
         Method to extract the train, test, and valid sets
 
-        :param dataset_dictionary: Python dictionary that contains the three sets
+        :param dataset_dictionary: Dictionary that contains the three sets
 
         :return: Tuple containing the train, test, and valid sets
         """

@@ -6,13 +6,13 @@ Authors : Nicolas Raymond
 This file contains all functions linked to SQL data management
 
 """
-from . import ChartServices as ChartServices
-from . import Helpers as Helpers
+from SQL.DataManager import ChartServices, Helpers
+from SQL.NewTablesScripts.constants import SEX, TAG, PARTICIPANT, PHASE, GEN_1, INNER
+from tqdm import tqdm
 import psycopg2
 import pandas as pd
 import os
 import csv
-from tqdm import tqdm
 
 
 class DataManager:
@@ -296,7 +296,7 @@ class DataManager:
         Helpers.writeCsvFile(results, filename, "missing_data")
         print("File is ready in the folder missing_data! ")
 
-    def get_common_count(self, tables, columns=["Participant", "Tag"], saveInFile=False):
+    def get_common_count(self, tables, columns=[PARTICIPANT, TAG], saveInFile=False):
         """
         Gets the number of common survivors from a list of tables
 
@@ -575,39 +575,39 @@ class PetaleDataManager(DataManager):
         table_df = table_df[cols]
 
         # we get only the rows that satisfy the given conditions
-        if "Tag" in cols:
-            table_df = table_df[table_df["Tag"] == "Phase 1"]
-            table_df = table_df.drop(["Tag"], axis=1)
+        if TAG in cols:
+            table_df = table_df[table_df[TAG] == PHASE]
+            table_df = table_df.drop([TAG], axis=1)
 
         # We get the dataframe from the table the table containing the sex information
-        if "34500 Sex" in cols:
-            sex_df = table_df[["Participant", "34500 Sex"]]
-            table_df = table_df.drop(["34500 Sex"], axis=1)
+        if SEX in cols:
+            sex_df = table_df[[PARTICIPANT, SEX]]
+            table_df = table_df.drop([SEX], axis=1)
         else:
-            sex_df = self.get_table("General_1_Demographic Questionnaire", columns=["Participant", "Tag", "34500 Sex"])
-            sex_df = sex_df[sex_df["Tag"] == "Phase 1"]
-            sex_df = sex_df.drop(["Tag"], axis=1)
+            sex_df = self.get_table(GEN_1, columns=[PARTICIPANT, TAG, SEX])
+            sex_df = sex_df[sex_df[TAG] == PHASE]
+            sex_df = sex_df.drop([TAG], axis=1)
 
         # we retrieve categorical and numerical data
-        categorical_df = Helpers.retrieve_categorical(table_df, ids=["Participant"])
-        numerical_df = Helpers.retrieve_numerical(table_df, ids=["Participant"])
+        categorical_df = Helpers.retrieve_categorical(table_df, ids=[PARTICIPANT])
+        numerical_df = Helpers.retrieve_numerical(table_df, ids=[PARTICIPANT])
 
-        # we merge the the categorical dataframe with the general dataframe by the column "Participant"
-        categorical_df = pd.merge(sex_df, categorical_df, on="Participant", how="inner")
-        categorical_df = categorical_df.drop(["Participant"], axis=1)
+        # we merge the the categorical dataframe with the general dataframe by the column PARTICIPANT
+        categorical_df = pd.merge(sex_df, categorical_df, on=PARTICIPANT, how=INNER)
+        categorical_df = categorical_df.drop([PARTICIPANT], axis=1)
 
-        # we merge the the numerical dataframe with the general dataframe by the column "Participant"
-        numerical_df = pd.merge(sex_df, numerical_df, on="Participant", how="inner")
-        numerical_df = numerical_df.drop(["Participant"], axis=1)
+        # we merge the the numerical dataframe with the general dataframe by the column PARTICIPANT
+        numerical_df = pd.merge(sex_df, numerical_df, on=PARTICIPANT, how=INNER)
+        numerical_df = numerical_df.drop([PARTICIPANT], axis=1)
 
         # we retrieve number of individuals from each sex
-        sex_stats = self.get_group_count(numerical_df, group="34500 Sex")
+        sex_stats = self.get_group_count(numerical_df, group=SEX)
 
         # we make a categorical var analysis for this table
-        categorical_stats = self.get_categorical_var_analysis(table_name, categorical_df, group="34500 Sex")
+        categorical_stats = self.get_categorical_var_analysis(table_name, categorical_df, group=SEX)
 
         # we make a numerical var analysis for this table
-        numerical_stats = self.get_numerical_var_analysis(table_name, numerical_df, group="34500 Sex")
+        numerical_stats = self.get_numerical_var_analysis(table_name, numerical_df, group=SEX)
 
         # we concatenate all the results to get the final stats dataframe
         stats_df = pd.concat([sex_stats, categorical_stats, numerical_stats], ignore_index=True)

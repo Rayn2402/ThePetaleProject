@@ -34,11 +34,11 @@ class NNModelGenerator:
         :return: Neural network model
         """
         if self.output_size is None:
-            # the case when the model doesn't need the the parameter output size like the model NNRegressor
+            # the case when the model doesn't need the parameter output size like the model NNRegressor
             return self.modelClass(num_cont_col=self.num_cont_col, cat_sizes=self.cat_sizes, layers=layers,
                                    dropout=dropout, activation=activation)
         else:
-            # the case when the model need the the parameter output size
+            # the case when the model need the parameter output size
             return self.modelClass(num_cont_col=self.num_cont_col, cat_sizes=self.cat_sizes,
                                    output_size=self.output_size, layers=layers, dropout=dropout, activation=activation)
 

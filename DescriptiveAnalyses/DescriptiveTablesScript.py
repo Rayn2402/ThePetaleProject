@@ -2,9 +2,14 @@
 Authors : Nicolas Raymond
           Mehdi Mitiche
 
-This file store the procedures that need to be executed in order to extract descriptive tables
+This file store the procedures that needs to be executed in order to extract descriptive tables
 with information from all variables of a table.
 """
+
+import os, sys
+dir_path = os.path.dirname(os.path.realpath(__file__))
+parent_dir_path = os.path.abspath(os.path.join(dir_path, os.pardir))
+sys.path.insert(0, parent_dir_path)
 from SQL.DataManager.Utils import PetaleDataManager
 
 

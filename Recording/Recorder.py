@@ -10,7 +10,7 @@ import json
 from torch.nn import Softmax
 from numpy import std, min, max, mean, median, arange
 import matplotlib.pyplot as plt
-from Recorder.constants import *
+from Recording.constants import *
 
 
 class Recorder:
@@ -101,10 +101,6 @@ class NNRecorder(Recorder):
         :param predictions: The calculated predictions to save
         """
 
-        # We initialize the Softmax object
-        softmax = Softmax(dim=1)
-        predictions = softmax(predictions)
-
         # We save the predictions
         self.data[PREDICTIONS] = [{i: predictions[i].tolist()} for i in range(len(predictions))]
 
@@ -137,7 +133,7 @@ def get_evaluation_recap(evaluation_name):
     assert os.path.exists(os.path.join("Recordings", evaluation_name)), "Evaluation not found"
     path = os.path.join("Recordings", evaluation_name)
     json_file = "records.json"
-    folders = os.listdir(os.path.join(path))
+    folders = next(os.walk(path))[1]
     data = {
         METRICS: {
         },
@@ -145,7 +141,6 @@ def get_evaluation_recap(evaluation_name):
 
         }
     }
-
     hyperparameter_importance_keys = None
     metrics_keys = None
     for folder in folders:

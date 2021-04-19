@@ -2,7 +2,7 @@
 ## Project Tree
 ```bash
 .
-├── Datasets
+├── Data
 │   ├── Datasets.py                     <- Custom Datasets classes
 │   ├── Preprocessing.py                <- Preprocessing functions
 │   ├── Sampling.py                     <- Sampler classes
@@ -11,7 +11,7 @@
 ├── DescriptiveAnalyses
 │   └── DescriptiveTablesScript.py      <- Script to get descriptive analyses out of SQL tables
 │
-├── Evaluator
+├── Evaluation
 │   └── Evaluator.py                    <- Class that manages nested cross validation
 │
 ├── Experiments
@@ -30,14 +30,14 @@
 │   ├── LinearModel.py                  <- Linear regression models
 │   └── ModelGenerator.py               <- Class that generates model during hyperparameter optimization
 │
-├── Recorder
+├── Recording
 │   └── Recorder.py                     <- Class that records experiments insights
 │
 ├── SQL
 │   ├── DataManager
-│   │   ├── ChartServices.py      <- Vizualisation functions for DataManager
-│   │   ├── Helpers.py            <- Helpers function for DataManager
-│   │   └── Utils.py              <- Store the DataManager class managing interaction with SQL
+│   │   ├── ChartServices.py            <- Vizualisation functions for DataManager
+│   │   ├── Helpers.py                  <- Helpers function for DataManager
+│   │   └── Utils.py                    <- Store the DataManager class managing interaction with SQL
 │   │  
 │   └── NewTablesScripts                <- Scripts that generates table for our experiments
 │   │   ├── 6MWT.py
@@ -53,16 +53,16 @@
 │
 ├── SanityChecks
 │   └── NNClassifier
-│       ├── HyperOpt.py             <- Hyperparameter optimization test with NNClassifier
-│       └── Train.py                <- Training sanity checks with NNClassifier
+│       ├── HyperOpt.py                 <- Hyperparameter optimization test with NNClassifier
+│       └── Train.py                    <- Training sanity checks with NNClassifier
 │
 ├── Training
-│   ├── EarlyStopping.py            <- Class that manages early stopping
-│   ├── Training.py                 <- Classes that manage training
+│   ├── EarlyStopping.py                <- Class that manages early stopping
+│   ├── Training.py                     <- Classes that manage training
 │
-├── Tuner
-│   └── Tuner.py                    <- Tuner class that deals with hyperparameter optimization
+├── Tuning
+│   └── Tuner.py                        <- Tuner class that deals with hyperparameter optimization
 │
 ├── Utils
-│   ├── score_metrics.py            <- Metrics to evaluate models
-│   └── visualization.py            <- Visualization functions
+│   ├── score_metrics.py                <- Metrics to evaluate models
+│   └── visualization.py                <- Visualization functions

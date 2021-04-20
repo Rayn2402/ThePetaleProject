@@ -120,7 +120,7 @@ class PetaleDataframe:
         self.N = self.IDs.shape[0]
 
         # We save and preprocess continuous features
-        self.X_cont = df[cat_cols + cont_cols].copy()
+        self.X_cont = df[cat_cols + cont_cols].copy() if cat_cols is not None else df[cont_cols].copy()
         self.X_cont[cont_cols] = preprocess_continuous(self.X_cont[cont_cols], mean, std)
 
         # We save and preprocess categorical features

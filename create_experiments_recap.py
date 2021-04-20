@@ -410,5 +410,3 @@ x   }
     file = open("Experiments_recap.html", "w")
     file.write(body)
     file.close()
-
-create_experiments_recap(path="Recordings")

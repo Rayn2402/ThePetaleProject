@@ -1,0 +1,31 @@
+{
+    "lr":{
+        "min": 1e-5,
+        "max": 1e-3
+    },
+    "batch_size":{
+        "min": 5,
+        "max": 15,
+        "step": 5
+    },
+    "n_layers":{
+        "min": 1,
+        "max": 2
+    },
+    "n_units":{
+        "min": 1,
+        "max": 20
+    },
+    "dropout":{
+        "min":0.3,
+        "max":0.31
+    },
+    "activation":{
+        "values": ["ReLU","PReLU","LeakyReLU"]
+    },
+    "weight_decay": {
+        "min": 1e-4,
+        "max": 1e-3
+    }
+
+}

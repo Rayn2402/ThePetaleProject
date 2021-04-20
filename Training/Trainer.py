@@ -100,7 +100,7 @@ class Trainer(ABC):
             x_cont, x_cat, target = self.extract_data(test_set)
 
             # We calculate the score with the help of the metric function
-            score = self.metric(self.predict(x_cont=x_cont, x_cat=x_cat, log_prob=True), target)
+            score = self.metric(self.predict(x_cont=x_cont, x_cat=x_cat, log_prob=True).flatten(), target)
 
             # We save the score
             return score

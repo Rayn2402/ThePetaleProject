@@ -139,7 +139,10 @@ class Evaluator:
             ids, x_cont, x_cat, target = trainer.extract_data(test_set, id=True)
 
             # We get the predictions
-            predictions = trainer.predict(x_cont, x_cat, log_prob=True)
+            predictions = trainer.predict(x_cont, x_cat, log_prob=True).flatten()
+
+            print(predictions)
+            print(target)
 
             # We save the predictions
             recorder.record_predictions(predictions=predictions, ids=ids, target=target)

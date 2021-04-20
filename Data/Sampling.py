@@ -67,12 +67,14 @@ class Sampler:
         # We initialize an empty dictionary to store the outer loops datasets
         all_datasets = {}
 
+        seeds = [19, 2021, 26, 2, 1999, 1010, 54, 777, 3059, 631]
+
         # We create the datasets for the outer validation loops:
         for i in range(k):
 
             # We split the training and test data
-            train, test = split_train_test(self.learning_set, self.target_col, test_size)
-            train, valid = split_train_test(train, self.target_col, valid_size)
+            train, test = split_train_test(self.learning_set, self.target_col, test_size, random_state=seeds[i])
+            train, valid = split_train_test(train, self.target_col, valid_size, random_state=seeds[i])
             outer_dict = self.dataframes_to_datasets(train, valid, test, split_cat, add_biases)
 
             # We add storage in the outer dict to save the inner loops datasets

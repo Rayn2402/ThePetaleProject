@@ -3,9 +3,9 @@ This file is used to store the experiment testing a linear regression model on t
 """
 from SQL.DataManager.Utils import PetaleDataManager
 from Models.LinearModel import LinearRegressor
-from Datasets.Sampling import WarmUpSampler
+from Data.Sampling import get_warmup_sampler
 from Utils.score_metrics import RegressionMetrics
-from Recorder.Recorder import Recorder, get_evaluation_recap, compare_prediction_recordings
+from Recording.Recorder import RFRecorder, get_evaluation_recap, compare_prediction_recordings
 from os.path import join
 
 manager = PetaleDataManager("mitm2902")
@@ -14,7 +14,7 @@ EVALUATION_NAME = "LinearRegression"
 RECORDING_PATH = join("..", "..")
 
 # We create the warmup sampler to get the data
-warmup_sampler = WarmUpSampler(dm=manager)
+warmup_sampler = get_warmup_sampler(dm=manager)
 data = warmup_sampler(k=10, valid_size=0, add_biases=True)
 
 linear_regression_scores = []
@@ -26,7 +26,7 @@ for i in range(10):
     linearRegressor = LinearRegressor(input_size=7)
 
     # We create the recorder
-    recorder = Recorder(evaluation_name=EVALUATION_NAME, index=i, recordings_path=RECORDING_PATH)
+    recorder = RFRecorder(evaluation_name=EVALUATION_NAME, index=i, recordings_path=RECORDING_PATH)
 
     recorder.record_data_info("train_set", len(data[i]["train"]))
     recorder.record_data_info("test_set", len(data[i]["test"]))
@@ -42,7 +42,7 @@ for i in range(10):
 
     # We save the predictions
     recorder.record_predictions(ids=data[i]["test"].IDs, predictions=linear_regression_pred.numpy().astype("float64"),
-                                target=data[i]["test"].y)
+                                target=data[i]["test"].y.numpy().astype("float64"))
 
     # We calculate the score
     score = RegressionMetrics.mean_absolute_error(linear_regression_pred, data[i]["test"].y)

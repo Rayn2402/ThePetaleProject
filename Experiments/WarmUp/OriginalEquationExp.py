@@ -3,12 +3,12 @@ This file is used to store the experiment testing the original equation on the W
 """
 from SQL.DataManager.Utils import PetaleDataManager
 from Models.LinearModel import LinearRegressor
-from Datasets.Sampling import WarmUpSampler
+from Data.Sampling import get_warmup_sampler
 from Utils.score_metrics import RegressionMetrics
 from SQL.NewTablesScripts.constants import *
 from torch import from_numpy
 import numpy as np
-from Recorder.Recorder import Recorder, get_evaluation_recap, compare_prediction_recordings
+from Recording.Recorder import RFRecorder, get_evaluation_recap, compare_prediction_recordings
 from os.path import join
 
 EVALUATION_NAME = "OriginalEquation"
@@ -18,7 +18,7 @@ RECORDING_PATH = join("..", "..")
 manager = PetaleDataManager("mitm2902")
 
 # We create the warmup sampler to get the data
-warmup_sampler = WarmUpSampler(dm=manager, to_dataset=False)
+warmup_sampler = get_warmup_sampler(dm=manager, to_dataset=False)
 data = warmup_sampler(k=10, valid_size=0)
 
 original_equation_scores = []
@@ -34,7 +34,7 @@ for i in range(10):
     original_equation_pred = []
 
     # We create the recorder
-    recorder = Recorder(evaluation_name=EVALUATION_NAME, index=i, recordings_path=RECORDING_PATH)
+    recorder = RFRecorder(evaluation_name=EVALUATION_NAME, index=i, recordings_path=RECORDING_PATH)
 
     recorder.record_data_info("test_set", len(data[i]["test"]))
 

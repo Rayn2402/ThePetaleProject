@@ -135,7 +135,7 @@ class NNRecorder(Recorder):
 
         # We save the predictions
         for i, id in enumerate(ids):
-            self.data[RESULTS][id] = {PREDICTION : predictions[i].tolist(), TARGET : target[i].item()}
+            self.data[RESULTS][id] = {PREDICTION : predictions[i].item(), TARGET : target[i].item()}
 
 
 class RFRecorder(Recorder):
@@ -143,13 +143,15 @@ class RFRecorder(Recorder):
         Class that will be responsible of saving all the data about our experiments with Random Forest
     """
 
-    def __init__(self, evaluation_name, index):
-        super().__init__(evaluation_name=evaluation_name, index=index)
+    def __init__(self, evaluation_name, index, recordings_path):
+        super().__init__(evaluation_name=evaluation_name, index=index, recordings_path=recordings_path)
 
     def record_predictions(self, ids, predictions, target):
         """
-        Method to call to save the predictions of a Random forest after an experiments
+        :param ids: The ids of the patients with the predicted data
         :param predictions: The calculated predictions to save
+        :param target: The real values
+
         """
         if RESULTS not in self.data.keys():
             self.data[RESULTS] = {}

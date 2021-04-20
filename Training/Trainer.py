@@ -138,11 +138,12 @@ class Trainer(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def extract_data(self, dataset: Union[PetaleDataset, PetaleDataframe]):
+    def extract_data(self, dataset: Union[PetaleDataset, PetaleDataframe], id: bool = False):
         """
         Abstract method to extract data from datasets
 
         :param dataset: PetaleDataset or PetaleDataframe containing the data
+        :param id: Bool indicating if we want to extract the IDs or not
         :return: Tuple containing the continuous data, categorical data, and the target
         """
         raise NotImplementedError
@@ -263,8 +264,11 @@ class NNTrainer(Trainer):
             ######################
 
             # We calculate validation epoch loss and save it
-            val_epoch_loss = self.evaluate(val_set, early_stopping)
+            val_epoch_loss, early_stop = self.evaluate(val_set, early_stopping)
             valid_loss.append(val_epoch_loss)
+
+            if early_stop:
+                return tensor(training_loss), tensor(valid_loss)
 
         return tensor(training_loss), tensor(valid_loss)
 
@@ -352,27 +356,36 @@ class NNTrainer(Trainer):
             early_stopper(val_epoch_loss, self.model)
             if early_stopper.early_stop:
                 self.model = early_stopper.get_best_model()
+                return val_epoch_loss,  early_stopper.early_stop
 
-        return val_epoch_loss
+        return val_epoch_loss, False
 
-    def extract_data(self, dataset: PetaleDataset) -> Tuple[tensor, Optional[tensor], tensor]:
+    def extract_data(self, dataset: PetaleDataset, id: bool = False) -> Tuple[tensor, Optional[tensor], tensor]:
         """
         Method to extract the continuous data, categorical data, and the targets
 
         :param dataset: PetaleDataset containing the data
+        :param id: Bool indicating if we want to extract the IDs or not
+
         :return: Tuple containing the continuous data, categorical data, and the target
         """
         x_cont, y = dataset.X_cont, dataset.y
 
         if dataset.X_cat is not None:
             x_cat = dataset.X_cat
+
+            # We send all data to the device
+            x_cont, x_cat, y = x_cont.to(self.device), x_cat.to(self.device), y.to(self.device)
         else:
             x_cat = None
 
-        # We send all data to the device
-        x_cont, x_cat, y = x_cont.to(self.device), x_cat.to(self.device), y.to(self.device)
+            # We send all data to the device
+            x_cont, y = x_cont.to(self.device), y.to(self.device)
 
-        return x_cont, x_cat, y
+        if id:
+            return dataset.IDs, x_cont, x_cat, y
+        else:
+            return x_cont, x_cat, y
 
     def extract_batch(self, batch_list: list) -> Tuple[Any, Optional[Any], Any]:
         """
@@ -438,11 +451,12 @@ class RFTrainer(Trainer):
         # We return the log probabilities
         return self.model.predict_log_proba(x_cont)
 
-    def extract_data(self, dataset: PetaleDataframe) -> Tuple[DataFrame, Optional[DataFrame], array]:
+    def extract_data(self, dataset: PetaleDataframe, id: bool = False) -> Tuple[DataFrame, Optional[DataFrame], array]:
         """
         Method to extract the continuous data, categorical data, and the target
 
         :param dataset: PetaleDataframe containing the data
+        :param id: Bool indicating if we want to extract the IDs or not
         :return: Tuple containing the continuous data, categorical data, and the target
         """
         x_cont, y = dataset.X_cont, dataset.y
@@ -452,8 +466,11 @@ class RFTrainer(Trainer):
         else:
             x_cat = None
 
-        return x_cont, x_cat, y
-
+        if id:
+            return dataset.IDs, x_cont, x_cat, y
+        else:
+            return x_cont, x_cat, y
+        
     def update_trainer(self, **kwargs) -> None:
         """
         Updates the model and the weight decay

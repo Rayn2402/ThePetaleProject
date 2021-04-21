@@ -341,8 +341,6 @@ def compare_prediction_recordings(evaluations, split_index, recording_path=""):
 
     # We set some parameters of the plot
     plt.rcParams["figure.figsize"] = (15, 6)
-    plt.rcParams['axes.labelsize'] = 160
-    plt.rcParams['axes.titlesize'] = 160
     plt.rcParams['xtick.labelsize'] = 6
 
     # We create the scatter plot

@@ -19,9 +19,9 @@ def create_experiments_recap(path):
 
     assert os.path.exists(path), "Recordings Folder not found"
 
-    hyperparams_importance_file = "hyperparameters_importance.html"
-    parallel_coordinate_file = "parallel_coordinate.html"
-    optimization_history_file = "optimization_history.html"
+    hyperparams_importance_file = "hyperparameters_importance.png"
+    parallel_coordinate_file = "parallel_coordinate.png"
+    optimization_history_file = "optimization_history.png"
 
     # We define the style of our webpage with css
     style = """<style>
@@ -245,7 +245,10 @@ x   }
             <div class="metrics col center bottom-space">
                 {main_metrics}
             </div>
+            <div class="metrics col center bottom-space">
             {main_image}
+            </div>
+
         </div>"""
 
         for j, split in enumerate(splits):
@@ -331,24 +334,24 @@ x   }
             # We add the hyperparameters importance section
             hyperparameters_importance_section = f"""
                         <div class="row center bottom-space">
-                            <iframe src="{os.path.join(path, evaluation, split, hyperparams_importance_file)}" 
-                            style="width: 90%;height: 100vh;"></iframe>
+                            <img src="{os.path.join(path, evaluation, split, hyperparams_importance_file)}" 
+                            >
                         </div>
                     """ if os.path.exists(os.path.join(path, evaluation, split, hyperparams_importance_file)) else ""
 
             # We add the parallel  coordinate graph
             parallel_coordinate_section = f"""
                         <div class="row center bottom-space">
-                            <iframe src="{os.path.join(path, evaluation, split, parallel_coordinate_file)}" 
-                            style="width: 90%;height: 100vh;"></iframe>
+                            <img src="{os.path.join(path, evaluation, split, parallel_coordinate_file)}" 
+                            >
                         </div>
                     """ if os.path.exists(os.path.join(path, evaluation, split, parallel_coordinate_file)) else ""
 
             # We add the optimization history graph
             optimization_history_section = f"""
                         <div class="row center bottom-space">
-                            <iframe src="{os.path.join(path, evaluation, split, optimization_history_file)}" 
-                            style="width: 90%;height: 100vh;"></iframe>
+                            <img src="{os.path.join(path, evaluation, split, optimization_history_file)}" 
+                            ></img>
                         </div>
                 """ if os.path.exists(os.path.join(path, evaluation, split, optimization_history_file)) else ""
 
@@ -410,3 +413,5 @@ x   }
     file = open("Experiments_recap.html", "w")
     file.write(body)
     file.close()
+
+create_experiments_recap(path="Recordings")

@@ -263,7 +263,7 @@ class Tuner:
             seed=HYPER_PARAMS_SEED))
 
         # We save the graph in a html file to have an interactive graph
-        fig.write_html(os.path.join(self.path, "hyperparameters_importance.html"))
+        fig.write_image(os.path.join(self.path, "hyperparameters_importance.png"))
 
     def plot_parallel_coordinate_graph(self):
         """
@@ -274,7 +274,7 @@ class Tuner:
         fig = plot_parallel_coordinate(self.study)
 
         # We save the graph in a html file to have an interactive graph
-        fig.write_html(os.path.join(self.path, "parallel_coordinate.html"))
+        fig.write_image(os.path.join(self.path, "parallel_coordinate.png"))
 
     def plot_optimization_history_graph(self):
         """
@@ -285,7 +285,7 @@ class Tuner:
         fig = plot_optimization_history(self.study)
 
         # We save the graph in a html file to have an interactive graph
-        fig.write_html(os.path.join(self.path, "optimization_history.html"))
+        fig.write_image(os.path.join(self.path, "optimization_history.png"))
 
 
 class NNTuner(Tuner):

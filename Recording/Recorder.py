@@ -135,7 +135,9 @@ class NNRecorder(Recorder):
 
         # We save the predictions
         for i, id in enumerate(ids):
-            self.data[RESULTS][id] = {PREDICTION : predictions[i].item(), TARGET : target[i].item()}
+            self.data[RESULTS][id] = {
+                PREDICTION: predictions[i].item() if len(predictions[i].shape) == 0 else predictions[i].tolist(),
+                TARGET: target[i].item()}
 
 
 class RFRecorder(Recorder):
@@ -158,7 +160,8 @@ class RFRecorder(Recorder):
 
         # We save the predictions
         for i, id in enumerate(ids):
-            self.data[RESULTS][id] = {PREDICTION : predictions[i], TARGET : target[i]}    
+            self.data[RESULTS][id] = {PREDICTION: predictions[i], TARGET: target[i]}
+
 
 def get_evaluation_recap(evaluation_name, recordings_path):
     """

@@ -99,8 +99,14 @@ class Trainer(ABC):
             # We extract x_cont, x_cat and target from the test set
             x_cont, x_cat, target = self.extract_data(test_set)
 
+            # We get the predictions
+            predictions = self.predict(x_cont=x_cont, x_cat=x_cat, log_prob=True)
+
+            if predictions.shape[1] == 1:
+                predictions = predictions.flatten()
+
             # We calculate the score with the help of the metric function
-            score = self.metric(self.predict(x_cont=x_cont, x_cat=x_cat, log_prob=True).flatten(), target)
+            score = self.metric(predictions, target)
 
             # We save the score
             return score

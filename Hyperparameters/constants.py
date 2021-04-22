@@ -19,6 +19,7 @@ LAYERS = "layers"
 MIN = "min"
 MAX = "max"
 VALUES = "values"
+VALUE = "value"
 
 # RF HYPERPARAMETERS
 N_ESTIMATORS = "n_estimators"

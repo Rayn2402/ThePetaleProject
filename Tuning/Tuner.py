@@ -48,37 +48,33 @@ class NNObjective:
         hyper_params = self.hyper_params
 
         # We choose a number of hidden layers
-        n_layers = trial.suggest_int(N_LAYERS,
-                                     hyper_params[N_LAYERS][MIN],
-                                     hyper_params[N_LAYERS][MAX])
+        n_layers = hyper_params[N_LAYERS][VALUE] if VALUE in hyper_params[N_LAYERS].keys() else \
+            trial.suggest_int(N_LAYERS, hyper_params[N_LAYERS][MIN], hyper_params[N_LAYERS][MAX])
 
         # We choose a number of node in each hidden layer
-        layers = [trial.suggest_int(f"{N_UNITS}{i}", hyper_params[N_UNITS][MIN],
-                                    hyper_params[N_UNITS][MAX]) for i in range(n_layers)]
+        layers = [hyper_params[N_UNITS][VALUE] if VALUE in hyper_params[N_UNITS].keys() else
+            trial.suggest_int(f"{N_UNITS}{i}", hyper_params[N_UNITS][MIN], hyper_params[N_UNITS][MAX])
+            for i in range(n_layers)]
 
         # We choose the dropout probability
-        p = trial.suggest_uniform(DROPOUT,
-                                  hyper_params[DROPOUT][MIN],
-                                  hyper_params[DROPOUT][MAX])
+        p = hyper_params[DROPOUT][VALUE] if VALUE in hyper_params[DROPOUT].keys() else \
+            trial.suggest_uniform(DROPOUT, hyper_params[DROPOUT][MIN],hyper_params[DROPOUT][MAX])
 
         # We choose a value for the batch size used in the training
-        batch_size = trial.suggest_int(BATCH_SIZE,
-                                       hyper_params[BATCH_SIZE][MIN],
-                                       hyper_params[BATCH_SIZE][MAX])
+        batch_size = hyper_params[BATCH_SIZE][VALUE] if VALUE in hyper_params[BATCH_SIZE].keys() else \
+            trial.suggest_int(BATCH_SIZE, hyper_params[BATCH_SIZE][MIN], hyper_params[BATCH_SIZE][MAX])
 
         # We choose a value for the learning rate
-        lr = trial.suggest_uniform(LR,
-                                   hyper_params[LR][MIN],
-                                   hyper_params[LR][MAX])
+        lr = hyper_params[LR][VALUE] if VALUE in hyper_params[LR].keys() else\
+            trial.suggest_uniform(LR, hyper_params[LR][MIN], hyper_params[LR][MAX])
 
         # We choose a value for the weight decay used in the training
-        weight_decay = trial.suggest_uniform(WEIGHT_DECAY,
-                                             hyper_params[WEIGHT_DECAY][MIN],
-                                             hyper_params[WEIGHT_DECAY][MAX])
+        weight_decay = hyper_params[WEIGHT_DECAY][VALUE] if VALUE in hyper_params[WEIGHT_DECAY].keys() else\
+            trial.suggest_uniform(WEIGHT_DECAY, hyper_params[WEIGHT_DECAY][MIN], hyper_params[WEIGHT_DECAY][MAX])
 
         # We choose a type of activation function for the network
-        activation = trial.suggest_categorical(ACTIVATION,
-                                               hyper_params[ACTIVATION][VALUES])
+        activation = hyper_params[ACTIVATION][VALUE] if VALUE in hyper_params[ACTIVATION].keys() else \
+            trial.suggest_categorical(ACTIVATION, hyper_params[ACTIVATION][VALUES])
 
         # We define the model with the suggested set of hyper parameters
         model = self.model_generator(layers=layers, dropout=p, activation=activation)
@@ -122,21 +118,20 @@ class RFObjective:
         hyper_params = self.hyper_params
 
         # We choose the number of estimators used un the training
-        n_estimators = trial.suggest_int(N_ESTIMATORS, hyper_params[N_ESTIMATORS][MIN],
-                                         hyper_params[N_ESTIMATORS][MAX])
+        n_estimators = hyper_params[N_ESTIMATORS][VALUE] if VALUE in hyper_params[N_ESTIMATORS].keys() else \
+            trial.suggest_int(N_ESTIMATORS, hyper_params[N_ESTIMATORS][MIN], hyper_params[N_ESTIMATORS][MAX])
 
         # We choose the maximum depth of the trees
-        max_depth = trial.suggest_int(MAX_DEPTH, hyper_params[MAX_DEPTH][MIN], hyper_params[MAX_DEPTH][MAX])
+        max_depth = hyper_params[MAX_DEPTH][VALUE] if VALUE in hyper_params[MAX_DEPTH].keys() else\
+            trial.suggest_int(MAX_DEPTH, hyper_params[MAX_DEPTH][MIN], hyper_params[MAX_DEPTH][MAX])
 
         # We choose a value for the max features to consider in each split
-        max_features = trial.suggest_uniform(MAX_FEATURES,
-                                             hyper_params[MAX_FEATURES][MIN],
-                                             hyper_params[MAX_FEATURES][MAX])
+        max_features = hyper_params[MAX_FEATURES][VALUE] if VALUE in hyper_params[MAX_FEATURES].keys() else \
+            trial.suggest_uniform(MAX_FEATURES, hyper_params[MAX_FEATURES][MIN], hyper_params[MAX_FEATURES][MAX])
 
         # We choose a value for the max samples to train for each tree
-        max_samples = trial.suggest_uniform(MAX_SAMPLES,
-                                            hyper_params[MAX_SAMPLES][MIN],
-                                            hyper_params[MAX_SAMPLES][MAX])
+        max_samples = hyper_params[MAX_SAMPLES][VALUE] if VALUE in hyper_params[MAX_SAMPLES].keys() else\
+            trial.suggest_uniform(MAX_SAMPLES, hyper_params[MAX_SAMPLES][MIN], hyper_params[MAX_SAMPLES][MAX])
 
         # We define the model with the suggested set of hyper parameters
         model = self.model_generator(n_estimators=n_estimators, max_features=max_features,
@@ -316,19 +311,23 @@ class NNTuner(Tuner):
 
         # We extract the best architecture of the model
         n_units = [key for key in best_trial.params.keys() if "n_units" in key]
-        if n_units is not None:
+
+        n_layers = self.hyper_params[N_LAYERS][VALUE] if VALUE in self.hyper_params[N_LAYERS].keys() else\
+            best_trial.params[N_LAYERS]
+
+        if len(n_units) > 0:
             layers = list(map(lambda n_unit: best_trial.params[n_unit], n_units))
         else:
-            layers = []
+            layers = [self.hyper_params[N_UNITS][VALUE] for i in range(n_layers)]
 
         # We return the best hyperparameters
         return {
             LAYERS: layers,
-            DROPOUT: best_trial.params[DROPOUT],
-            LR: best_trial.params[LR],
-            BATCH_SIZE: best_trial.params[BATCH_SIZE],
-            WEIGHT_DECAY: best_trial.params[WEIGHT_DECAY],
-            ACTIVATION: best_trial.params[ACTIVATION]
+            DROPOUT: self.hyper_params[DROPOUT][VALUE] if VALUE in self.hyper_params[DROPOUT].keys() else best_trial.params[DROPOUT],
+            LR: self.hyper_params[LR][VALUE] if VALUE in self.hyper_params[LR].keys() else best_trial.params[LR],
+            BATCH_SIZE: self.hyper_params[BATCH_SIZE][VALUE] if VALUE in self.hyper_params[BATCH_SIZE].keys() else best_trial.params[BATCH_SIZE],
+            WEIGHT_DECAY: self.hyper_params[WEIGHT_DECAY][VALUE] if VALUE in self.hyper_params[WEIGHT_DECAY].keys() else best_trial.params[WEIGHT_DECAY],
+            ACTIVATION: self.hyper_params[ACTIVATION][VALUE] if VALUE in self.hyper_params[ACTIVATION].keys() else best_trial.params[ACTIVATION]
         }
 
 
@@ -357,9 +356,8 @@ class RFTuner(Tuner):
 
         # We return the best hyperparameters
         return {
-            N_ESTIMATORS: best_trial.params[N_ESTIMATORS],
-            MAX_DEPTH: best_trial.params[MAX_DEPTH],
-            MAX_SAMPLES: best_trial.params[MAX_SAMPLES],
-            MAX_FEATURES: best_trial.params[MAX_FEATURES],
-
+            N_ESTIMATORS: self.hyper_params[N_ESTIMATORS][VALUE] if VALUE in self.hyper_params[N_ESTIMATORS].keys() else best_trial.params[N_ESTIMATORS],
+            MAX_DEPTH: self.hyper_params[MAX_DEPTH][VALUE] if VALUE in self.hyper_params[MAX_DEPTH].keys() else best_trial.params[MAX_DEPTH],
+            MAX_SAMPLES: self.hyper_params[MAX_SAMPLES][VALUE] if VALUE in self.hyper_params[MAX_SAMPLES].keys() else best_trial.params[MAX_SAMPLES],
+            MAX_FEATURES: self.hyper_params[MAX_FEATURES][VALUE] if VALUE in self.hyper_params[MAX_FEATURES].keys() else best_trial.params[MAX_FEATURES],
         }

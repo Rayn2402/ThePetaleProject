@@ -178,6 +178,7 @@ def get_evaluation_recap(evaluation_name, recordings_path):
         METRICS: {}
     }
     hyperparameter_importance_keys = None
+    hyperparameters_keys = None
     metrics_keys = None
     coefficient_keys = None
 
@@ -213,6 +214,23 @@ def get_evaluation_recap(evaluation_name, recordings_path):
                     }
             for key in hyperparameter_importance_keys:
                 data[HYPERPARAMETER_IMPORTANCE][key][VALUES].append(split_data[HYPERPARAMETER_IMPORTANCE][key])
+
+        # We collect the info of the different hyperparameters
+        if HYPERPARAMETERS in split_data.keys():
+            if HYPERPARAMETERS not in data.keys():
+                data[HYPERPARAMETERS] = {}
+            if hyperparameters_keys is None:
+                hyperparameters_keys = split_data[HYPERPARAMETERS].keys()
+
+                # We exclude the layers from the hyperparameters importance (to be reviewed)
+                hyperparameters_keys = [key for key in hyperparameters_keys if key not in ["layers", "activation"]]
+                for key in hyperparameters_keys:
+                    data[HYPERPARAMETERS][key] = {
+                        VALUES: [],
+                        INFO: ""
+                    }
+            for key in hyperparameters_keys:
+                data[HYPERPARAMETERS][key][VALUES].append(split_data[HYPERPARAMETERS][key])
 
         # We collect the info of the different coefficient
         if COEFFICIENT in split_data.keys():

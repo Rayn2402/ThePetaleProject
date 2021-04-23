@@ -313,6 +313,7 @@ def plot_hyperparameter_importance_chart(evaluation_name, recordings_path):
 
     # We save the plot
     plt.savefig(os.path.join(path, 'hyperparameters_importance_recap.png'))
+    plt.close()
 
 
 def compare_prediction_recordings(evaluations, split_index, recording_path=""):
@@ -368,6 +369,8 @@ def compare_prediction_recordings(evaluations, split_index, recording_path=""):
 
     # We add the legend of the plot
     plt.legend()
+
+    plt.title("visualization of the predictions and the ground truth")
 
     # We save the plot
     plt.savefig(os.path.join(recording_path, "Recordings", evaluations[0], f"Split_{split_index}",

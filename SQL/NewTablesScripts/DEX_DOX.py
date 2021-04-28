@@ -6,11 +6,11 @@ This file contains the procedure to create the table associated to DEX and DOX c
 
 from SQL.DataManager.Utils import initialize_petale_data_manager
 from pandas import read_csv
-from constants import DEX_DOX_TABLE
+from constants import DEX_DOX_TABLE, PARTICIPANT, DEX, DOX, TYPES
 import os
 
 
-COL = {"Participant": "text", "DEX (mg/m2)": "numeric", "DOX (mg/m2)": "numeric"}
+COL = {PARTICIPANT: TYPES[PARTICIPANT], DEX: TYPES[DEX], DOX: TYPES[DOX]}
 DIR = "csv_files"
 EXT = "csv"
 PATH = os.path.join(DIR, f"{DEX_DOX_TABLE}.{EXT}")

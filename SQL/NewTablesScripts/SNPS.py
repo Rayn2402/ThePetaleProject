@@ -7,7 +7,7 @@ This file contains the procedure to create the tables containing the genomic dat
 
 from SQL.DataManager.Utils import initialize_petale_data_manager
 from pandas import read_csv
-from constants import SNPS_COMMON, SNPS_RARE
+from constants import SNPS_COMMON, SNPS_RARE, CATEGORICAL_TYPE, TYPES
 import os
 
 DIR = "csv_files"
@@ -32,10 +32,10 @@ def build_snp_tables(table_name, data_manager):
     df.columns = df.columns.to_series().apply(lambda x: conversion_dict.get(x, x))
 
     # We create the dictionary with column types
-    COL = {k: "text" for k in list(df.columns.values)}
+    types = {k: TYPES.get(k, CATEGORICAL_TYPE) for k in list(df.columns.values)}
 
     # We create and fill the table in the database
-    data_manager.create_and_fill_table(df, table_name, COL)
+    data_manager.create_and_fill_table(df, table_name, types)
 
 
 if __name__ == '__main__':

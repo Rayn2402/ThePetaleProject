@@ -8,14 +8,13 @@ to match patient with genomic results.
 
 from SQL.DataManager.Utils import initialize_petale_data_manager
 from pandas import read_csv
+from constants import PARTICIPANT, REF_NAME, TYPES, PETALE_PANDORA
 import os
 
 
-TABLE_NAME = "PETALE_PANDORA"
-COL = {"ID": "text", "Reference name": "text"}
+COL = {PARTICIPANT: TYPES[PARTICIPANT], REF_NAME: TYPES[REF_NAME]}
 DIR = "csv_files"
 EXT = "csv"
-PATH = os.path.join(DIR, f"{TABLE_NAME}.{EXT}")
 SEP = ","
 
 if __name__ == '__main__':
@@ -24,10 +23,10 @@ if __name__ == '__main__':
     data_manager = initialize_petale_data_manager()
 
     # We build the pandas dataframe
-    df = read_csv(PATH, sep=SEP)
+    df = read_csv(os.path.join(DIR, f"{PETALE_PANDORA}.{EXT}"), sep=SEP)
 
     # We modify data in the "Reference name" column to only keep the part after the last "-"
-    df["Reference name"] = df["Reference name"].apply(lambda x: x.split("-")[-1].lstrip('0'))
+    df[REF_NAME] = df[REF_NAME].apply(lambda x: x.split("-")[-1].lstrip('0'))
 
     # We create and fill the table in the database
-    data_manager.create_and_fill_table(df, TABLE_NAME, COL)
+    data_manager.create_and_fill_table(df, PETALE_PANDORA, COL)

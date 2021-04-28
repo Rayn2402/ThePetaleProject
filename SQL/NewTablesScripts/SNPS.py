@@ -1,11 +1,13 @@
 """
 Author : Nicolas Raymond
 
-This file contains the procedure to create the table SNPS_RARE containing the genomic data related to rare SNPs.
+This file contains the procedure to create the tables containing the genomic data related to SNPs.
+
 """
 
 from SQL.DataManager.Utils import initialize_petale_data_manager
 from pandas import read_csv
+from constants import SNPS_COMMON, SNPS_RARE
 import os
 
 DIR = "csv_files"
@@ -41,8 +43,6 @@ if __name__ == '__main__':
     # We create a data manager
     dm = initialize_petale_data_manager()
 
-    # We build SNPS_RARE table
-    build_snp_tables("SNPS_RARE", dm)
-
-    # We build SNPS_COMMON table
-    build_snp_tables("SNPS_COMMON", dm)
+    # We build SNPS_RARE and SNPS_COMMON tables
+    for t in [SNPS_RARE, SNPS_COMMON]:
+        build_snp_tables(t, dm)

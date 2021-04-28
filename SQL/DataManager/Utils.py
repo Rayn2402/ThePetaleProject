@@ -7,7 +7,7 @@ This file contains all functions linked to SQL data management
 
 """
 from SQL.DataManager import ChartServices, Helpers
-from SQL.NewTablesScripts.constants import SEX, TAG, PARTICIPANT, PHASE, GEN_1, INNER
+from SQL.NewTablesScripts.constants import *
 from tqdm import tqdm
 import psycopg2
 import pandas as pd
@@ -657,6 +657,16 @@ class PetaleDataManager(DataManager):
 
         # we return the result
         return var_info
+
+    def get_id_conversion_map(self):
+        """
+        Returns a map that links genomic patients' reference names to their IDs
+        :return: dict
+        """
+        conversion_df = self.get_table(PETALE_PANDORA)
+        conversion_map = {k: v[0] for k, v in conversion_df.set_index('Reference name').T.to_dict('series').items()}
+
+        return conversion_map
 
 
 def initialize_petale_data_manager():

@@ -27,7 +27,7 @@ if __name__ == '__main__':
     df = read_csv(PATH, sep=SEP)
 
     # We modify data in the "Reference name" column to only keep the part after the last "-"
-    df["Reference name"] = df["Reference name"].apply(lambda x: x.split("-")[-1])
+    df["Reference name"] = df["Reference name"].apply(lambda x: x.split("-")[-1].lstrip('0'))
 
     # We create and fill the table in the database
     data_manager.create_and_fill_table(df, TABLE_NAME, COL)

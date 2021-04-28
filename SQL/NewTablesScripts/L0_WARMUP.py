@@ -49,9 +49,7 @@ if __name__ == '__main__':
     learning_df, hold_out_df = split_train_test(complete_df, VO2R_MAX, test_size=0.10, random_state=SEED)
 
     # We create the dictionary needed to create the table
-    types = {}
-    for var in all_vars:
-        types[var] = TYPES[var]
+    types = {c: TYPES[c] for c in all_vars}
 
     # We make sure that the target is at the end
     types.pop(VO2R_MAX)

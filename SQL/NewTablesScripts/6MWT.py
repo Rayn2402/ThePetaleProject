@@ -28,9 +28,7 @@ if __name__ == '__main__':
     complete_df = pd.merge(IDs, df_cardio_4, on=[PARTICIPANT], how=INNER)
 
     # We create the dictionary needed to create the table
-    types = {}
-    for var in C4_vars:
-        types[var] = TYPES[var]
+    types = {c: TYPES[c] for c in C4_vars}
     types.pop(TAG)
 
     # We create the table

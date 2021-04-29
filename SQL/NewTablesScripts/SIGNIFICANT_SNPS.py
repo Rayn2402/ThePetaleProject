@@ -8,7 +8,8 @@ cardiorespiratory fitness.
 
 from SQL.DataManager.Utils import initialize_petale_data_manager
 from pandas import read_csv
-from constants import SIGNIFICANT_COMMON_SNPS_ID, GENES, SNPS_ID, SNP_POSITION, CHROM, TYPES
+from constants import SIGNIFICANT_COMMON_SNPS_ID, GENES, SNPS_ID,\
+    SNP_POSITION, CHROM, TYPES, SIGNIFICANT_RARE_SNPS_ID
 import os
 
 COL = {GENES: TYPES[GENES], SNPS_ID: TYPES[SNPS_ID], CHROM: TYPES[CHROM], SNP_POSITION: TYPES[SNP_POSITION]}
@@ -18,17 +19,19 @@ SEP = ","
 
 if __name__ == '__main__':
 
-    # We create a data manager
-    dm = initialize_petale_data_manager()
+    for t in [SIGNIFICANT_COMMON_SNPS_ID, SIGNIFICANT_RARE_SNPS_ID]:
 
-    # We build the pandas dataframe
-    df = read_csv(os.path.join(DIR, f"{SIGNIFICANT_COMMON_SNPS_ID}.{EXT}"), sep=SEP)
+        # We create a data manager
+        dm = initialize_petale_data_manager()
 
-    # We remove duplicate rows
-    df = df.drop_duplicates()
+        # We build the pandas dataframe
+        df = read_csv(os.path.join(DIR, f"{t}.{EXT}"), sep=SEP)
 
-    # We create and fill the table in the database
-    dm.create_and_fill_table(df, SIGNIFICANT_COMMON_SNPS_ID, COL)
+        # We remove duplicate rows
+        df = df.drop_duplicates()
+
+        # We create and fill the table in the database
+        dm.create_and_fill_table(df, t, COL)
 
 
 

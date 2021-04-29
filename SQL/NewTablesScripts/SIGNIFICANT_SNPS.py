@@ -8,7 +8,7 @@ cardiorespiratory fitness.
 
 from SQL.DataManager.Utils import initialize_petale_data_manager
 from pandas import read_csv
-from constants import SIGNIFICANT_COMMON_SNPS_ID, GENES, SNPS_ID,\
+from SQL.NewTablesScripts.constants import SIGNIFICANT_COMMON_SNPS_ID, GENES, SNPS_ID,\
     SNPS_POSITION, CHROM, TYPES, SIGNIFICANT_RARE_SNPS_ID
 import os
 

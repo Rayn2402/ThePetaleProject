@@ -15,7 +15,7 @@ Criterias can be found in :
 from SQL.DataManager.Utils import initialize_petale_data_manager
 from SQL.DataManager.Helpers import fill_id
 from pandas import read_csv
-from constants import ID_TABLE, PARTICIPANT, TYPES
+from SQL.NewTablesScripts.constants import ID_TABLE, PARTICIPANT, TYPES
 import os
 
 DIR = "csv_files"

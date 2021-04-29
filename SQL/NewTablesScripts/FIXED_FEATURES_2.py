@@ -15,7 +15,7 @@ table in the database.
 """
 
 from SQL.DataManager.Utils import initialize_petale_data_manager
-from constants import *
+from SQL.NewTablesScripts.constants import *
 from numpy import select, nan
 from SQL.NewTablesScripts.L0_WARMUP import get_missing_update
 import pandas as pd

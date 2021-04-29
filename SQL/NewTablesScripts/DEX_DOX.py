@@ -6,7 +6,7 @@ This file contains the procedure to create the table associated to DEX and DOX c
 
 from SQL.DataManager.Utils import initialize_petale_data_manager
 from pandas import read_csv
-from constants import DEX_DOX_TABLE, PARTICIPANT, DEX, DOX, TYPES
+from SQL.NewTablesScripts.constants import DEX_DOX_TABLE, PARTICIPANT, DEX, DOX, TYPES
 import os
 
 

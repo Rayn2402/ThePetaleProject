@@ -41,6 +41,7 @@ CATEGORICAL_TYPE = "text"
 
 # GENERAL 1 COLUMNS
 SEX = "34500 Sex"
+SEX_CATEGORIES = {0: "Women", 1: "Men"}
 DATE_OF_BIRTH = "34501 Date of birth (survivor)"
 HEIGHT = "34502 Height"
 WEIGHT = "34503 Weight"

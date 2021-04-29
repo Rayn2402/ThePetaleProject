@@ -7,7 +7,7 @@ This file contains all functions linked to SQL data management
 
 """
 from SQL.DataManager import ChartServices, Helpers
-from SQL.NewTablesScripts.constants import SEX, TAG, PARTICIPANT, PHASE, GEN_1, INNER
+from SQL.NewTablesScripts.constants import SEX, TAG, PARTICIPANT, PHASE, GEN_1, INNER, SEX_CATEGORIES
 from tqdm import tqdm
 import psycopg2
 import pandas as pd
@@ -380,16 +380,16 @@ class DataManager:
 
             # we append the mean and the var for all participants to the results dictionary
             results[var_name].append(col)
-            all_mean, all_var, all_min, all_max = Helpers.get_column_stats(df, col)
-            results[all_].append(f"{all_mean} ({all_var}) [{all_min}, {all_max}]")
+            all_mean, all_std, all_min, all_max = Helpers.get_column_stats(df, col)
+            results[all_].append(f"{all_mean} ({all_std}) [{all_min}, {all_max}]")
 
             # if the group is given, we calculate the stats for each possible value of that group
             if group is not None:
                 for group_val in group_values:
                     # we append the mean and the var for sub group participants to the results dictionary
                     df_group = df[df[group] == group_val]
-                    group_mean, group_var, group_min, group_max = Helpers.get_column_stats(df_group, col)
-                    results[f"{group} {group_val}"].append(f"{group_mean} ({group_var}) [{group_min}, {group_max}]")
+                    group_mean, group_std, group_min, group_max = Helpers.get_column_stats(df_group, col)
+                    results[f"{group} {group_val}"].append(f"{group_mean} ({group_std}) [{group_min}, {group_max}]")
 
         # for each variable of the given dataframe we plot a chart
         folder_name = Helpers.reformat_string(table_name)
@@ -611,6 +611,7 @@ class PetaleDataManager(DataManager):
 
         # we concatenate all the results to get the final stats dataframe
         stats_df = pd.concat([sex_stats, categorical_stats, numerical_stats], ignore_index=True)
+        stats_df = stats_df.rename(columns={f"{SEX} 0.0": SEX_CATEGORIES[0], f"{SEX} 1.0": SEX_CATEGORIES[1]})
         table_name = Helpers.reformat_string(table_name)
 
         # if saveInFile True we save the dataframe in a csv file

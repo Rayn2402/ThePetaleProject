@@ -19,10 +19,10 @@ SEP = ","
 
 if __name__ == '__main__':
 
-    for t in [SIGNIFICANT_COMMON_SNPS_ID, SIGNIFICANT_RARE_SNPS_ID]:
+    # We create a data manager
+    dm = initialize_petale_data_manager()
 
-        # We create a data manager
-        dm = initialize_petale_data_manager()
+    for t in [SIGNIFICANT_COMMON_SNPS_ID, SIGNIFICANT_RARE_SNPS_ID]:
 
         # We build the pandas dataframe
         df = read_csv(os.path.join(DIR, f"{t}.{EXT}"), sep=SEP)

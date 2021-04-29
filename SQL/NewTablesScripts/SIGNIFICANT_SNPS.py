@@ -9,10 +9,10 @@ cardiorespiratory fitness.
 from SQL.DataManager.Utils import initialize_petale_data_manager
 from pandas import read_csv
 from constants import SIGNIFICANT_COMMON_SNPS_ID, GENES, SNPS_ID,\
-    SNP_POSITION, CHROM, TYPES, SIGNIFICANT_RARE_SNPS_ID
+    SNPS_POSITION, CHROM, TYPES, SIGNIFICANT_RARE_SNPS_ID
 import os
 
-COL = {GENES: TYPES[GENES], SNPS_ID: TYPES[SNPS_ID], CHROM: TYPES[CHROM], SNP_POSITION: TYPES[SNP_POSITION]}
+COL = {GENES: TYPES[GENES], SNPS_ID: TYPES[SNPS_ID], CHROM: TYPES[CHROM], SNPS_POSITION: TYPES[SNPS_POSITION]}
 DIR = "csv_files"
 EXT = "csv"
 SEP = ","

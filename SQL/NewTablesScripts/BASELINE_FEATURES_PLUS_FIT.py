@@ -1,10 +1,10 @@
 """
 Author : Nicolas Raymond
 
-This file stores the procedure to execute in order to obtain "FIXED_FEATURES_AND_COMPLICATIONS_(FILTERED)"
+This file stores the procedure to execute in order to obtain "BASE_FEATURES_AND_COMPLICATIONS_+_FITNESS"
 table in the database.
 
- FIXED_FEATURES_AND_COMPLICATIONS_(FILTERED) contains :
+ BASE_FEATURES_AND_COMPLICATIONS contains :
 
     Features:
      - Same features as FIXED FEATURES but without patients that have missing VO2r_max values
@@ -29,9 +29,9 @@ if __name__ == '__main__':
     C0_vars = PKEY + [VO2_MAX, VO2_MAX_PRED]
 
     # We retrieve the tables with fixed features, cardio variables and IDs with good VO2r MAX values
-    df_fixed = data_manager.get_table(FIXED_FEATURES_AND_COMPLICATIONS)
+    df_fixed = data_manager.get_table(BASE_FEATURES_AND_COMPLICATIONS)
     df_cardio_0 = data_manager.get_table(CARDIO_0, C0_vars)
-    IDs = data_manager.get_table(ID_TABLE)
+    VO2_ids = data_manager.get_table(VO2_ID_TABLE)
 
     # We only keep survivors from Phase 1 in the cardio table
     df_cardio_0 = df_cardio_0[df_cardio_0[TAG] == PHASE]
@@ -56,17 +56,17 @@ if __name__ == '__main__':
 
     """ DATAFRAME CONCATENATION """
     # We concatenate all the dataframes
-    complete_df = pd.merge(df_fixed, IDs, on=[PARTICIPANT], how=INNER)
+    complete_df = pd.merge(df_fixed, VO2_ids, on=[PARTICIPANT], how=INNER)
     complete_df = pd.merge(complete_df, df_cardio_0, on=[PARTICIPANT], how=INNER)
 
     # We look at the number of rows and the total of missing values per column
-    get_missing_update(complete_df)  # 6 values out of 216X14 = 3024 (~0.2%)
+    get_missing_update(complete_df)  # 6 values out of 216X13 = 2808 (~0.2%)
 
     """ TABLE CREATION """
     types = {c: TYPES[c] for c in complete_df.columns}
 
     # We create the table
-    data_manager.create_and_fill_table(complete_df, FIXED_FEATURES_AND_COMPLICATIONS_FILTERED,
+    data_manager.create_and_fill_table(complete_df, BASE_FEATURES_AND_COMPLICATIONS_PLUS_FITNESS,
                                        types=types, primary_key=[PARTICIPANT])
 
 

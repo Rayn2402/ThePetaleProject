@@ -29,4 +29,4 @@ if __name__ == '__main__':
     df[REF_NAME] = df[REF_NAME].apply(lambda x: x.split("-")[-1].lstrip('0'))
 
     # We create and fill the table in the database
-    data_manager.create_and_fill_table(df, PETALE_PANDORA, COL)
+    data_manager.create_and_fill_table(df, PETALE_PANDORA, COL, primary_key=[PARTICIPANT])

@@ -25,4 +25,5 @@ if __name__ == '__main__':
     invalid_ids[PARTICIPANT] = invalid_ids[PARTICIPANT].astype('string').apply(fill_id)
 
     # We create and fill the table in the database
-    data_manager.create_and_fill_table(invalid_ids, INVALID_ID_TABLE, {PARTICIPANT: TYPES[PARTICIPANT]})
+    data_manager.create_and_fill_table(invalid_ids, INVALID_ID_TABLE,
+                                       {PARTICIPANT: TYPES[PARTICIPANT]}, primary_key=[PARTICIPANT])

@@ -32,4 +32,6 @@ if __name__ == '__main__':
     IDs[PARTICIPANT] = IDs[PARTICIPANT].astype('string').apply(fill_id)
 
     # We create and fill the table in the database
-    data_manager.create_and_fill_table(IDs, ID_TABLE, {PARTICIPANT: TYPES[PARTICIPANT]})
+    data_manager.create_and_fill_table(IDs, ID_TABLE,
+                                       {PARTICIPANT: TYPES[PARTICIPANT]},
+                                       primary_key=[PARTICIPANT])

@@ -11,7 +11,7 @@ GENERALS contains :
      - DURATION OF TREATMENT (DT)
      - RADIOTHERAPY DOSE
      - DOX DOSE
-     - DEX (0: "Unknown", 1: "Yes")
+     - DEX (0: No, 1: Yes)
      - GESTATIONAL AGE AT BIRTH (1: <37w, 2: >=37w, 9: Unknown)
      - WEIGHT AT BIRTH (1: <2500g, 2: >=2500g, 3: Unknown)
      - HEIGHT
@@ -41,8 +41,9 @@ if __name__ == '__main__':
     data_manager = initialize_petale_data_manager()
 
     # We save the variables needed from FIXED_FEATURES_AND_COMPLICATIONS_(FILTERED)
-    FIXED_vars = [FITNESS_COMPLICATIONS, PARTICIPANT, SEX, AGE_AT_DIAGNOSIS, DT, RADIOTHERAPY_DOSE, DOX, DEX_PRESENCE,
-                  BIRTH_AGE, BIRTH_WEIGHT]
+    BASE_vars = [FITNESS_COMPLICATIONS, PARTICIPANT, SEX,
+                 AGE_AT_DIAGNOSIS, DT, RADIOTHERAPY_DOSE,
+                 DOX, DEX_PRESENCE, BIRTH_AGE, BIRTH_WEIGHT]
 
     # We save the variables needed from General_1
     G1_vars = PKEY + [DATE, DATE_OF_BIRTH, HEIGHT, WEIGHT, SMOKING]
@@ -57,7 +58,7 @@ if __name__ == '__main__':
     C3_vars = PKEY + [MVLPA]
 
     # We retrieve the tables with the variables
-    df_fixed_filtered = data_manager.get_table(FIXED_FEATURES_AND_COMPLICATIONS_FILTERED, FIXED_vars)
+    df_base = data_manager.get_table(BASE_FEATURES_AND_COMPLICATIONS_PLUS_FITNESS, BASE_vars)
     df_general_1 = data_manager.get_table(GEN_1, G1_vars)
     df_general_2 = data_manager.get_table(GEN_2, G2_vars)
     df_cardio_0 = data_manager.get_table(CARDIO_0, C0_vars)
@@ -85,7 +86,7 @@ if __name__ == '__main__':
 
     """ DATAFRAME CONCATENATION """
     # We concatenate all the dataframes
-    complete_df = pd.merge(df_fixed_filtered, df_general_1, on=[PARTICIPANT], how=INNER)
+    complete_df = pd.merge(df_base, df_general_1, on=[PARTICIPANT], how=INNER)
     complete_df = pd.merge(complete_df, df_general_2, on=PKEY, how=INNER)
     complete_df = pd.merge(complete_df, df_cardio_3, on=PKEY, how=INNER)
     complete_df = pd.merge(complete_df, df_cardio_0, on=PKEY, how=INNER)

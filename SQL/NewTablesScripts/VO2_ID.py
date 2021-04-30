@@ -15,12 +15,12 @@ Criterias can be found in :
 from SQL.DataManager.Utils import initialize_petale_data_manager
 from SQL.DataManager.Helpers import fill_id
 from pandas import read_csv
-from SQL.NewTablesScripts.constants import ID_TABLE, PARTICIPANT, TYPES
+from SQL.NewTablesScripts.constants import VO2_ID_TABLE, PARTICIPANT, TYPES
 import os
 
 DIR = "csv_files"
 EXT = "csv"
-PATH = os.path.join(DIR, f"{ID_TABLE}.{EXT}")
+PATH = os.path.join(DIR, f"{VO2_ID_TABLE}.{EXT}")
 
 if __name__ == '__main__':
 
@@ -32,6 +32,6 @@ if __name__ == '__main__':
     IDs[PARTICIPANT] = IDs[PARTICIPANT].astype('string').apply(fill_id)
 
     # We create and fill the table in the database
-    data_manager.create_and_fill_table(IDs, ID_TABLE,
+    data_manager.create_and_fill_table(IDs, VO2_ID_TABLE,
                                        {PARTICIPANT: TYPES[PARTICIPANT]},
                                        primary_key=[PARTICIPANT])

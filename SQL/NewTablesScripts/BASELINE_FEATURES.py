@@ -1,7 +1,7 @@
 """
 Author : Nicolas Raymond
 
-This file stores the procedure to execute in order to obtain "FIXED_FEATURES_AND_COMPLICATIONS"
+This file stores the procedure to execute in order to obtain "BASE_FEATURES_AND_COMPLICATIONS"
 table in the database.
 
  FIXED_FEATURES_AND_COMPLICATIONS contains :
@@ -12,15 +12,15 @@ table in the database.
      - DURATION OF TREATMENT (DT)
      - RADIOTHERAPY DOSE
      - DOX DOSE
-     - DEX (0: "Unknown", 1: "Yes")
+     - DEX (0: No, 1: Yes)
      - GESTATIONAL AGE AT BIRTH (1: <37w, 2: >=37w, 9: Unknown)
      - WEIGHT AT BIRTH (1: <2500g, 2: >=2500g, 3: Unknown)
 
     Complications:
     - Metabolic (0: No, 1: Yes)
     - Skeletal/Bone (0: No, 1: Yes)
-    - Cardiac (0: No, 1: Yes)
-    - Neurocognitive (0: No, 1: Yes)
+    - Cardiometabolic (0: No, 1: Yes)
+
 
 """
 
@@ -28,6 +28,7 @@ from SQL.DataManager.Utils import initialize_petale_data_manager
 from SQL.DataManager.Helpers import AbsTimeLapse
 from SQL.NewTablesScripts.constants import *
 from numpy import select
+from numpy import minimum as npmin
 from SQL.NewTablesScripts.L0_WARMUP import get_missing_update
 import pandas as pd
 
@@ -46,16 +47,23 @@ if __name__ == '__main__':
     # We save variables needed from DEX_DOX
     DEX_DOX_vars = [PARTICIPANT, DEX, DOX]
 
-    # We retrieve the tables with variables and the table with IDs with good VO2r MAX values
+    # We retrieve the tables with baseline features and the table with invalid IDS
     df_general_1 = data_manager.get_table(GEN_1, G1_vars)
     df_general_2 = data_manager.get_table(GEN_2, G2_vars)
     DEX_DOX = data_manager.get_table(DEX_DOX_TABLE, DEX_DOX_vars)
+    invalid_ids = data_manager.get_table(INVALID_ID_TABLE)
 
     # We only keep survivors from Phase 1
     df_general_1 = df_general_1[df_general_1[TAG] == PHASE]
     df_general_2 = df_general_2[df_general_2[TAG] == PHASE]
 
     """ GENERAL 2 DATA HANDLING """
+    # We combine metabolic and cardio complications
+    cardio_metabolic = (df_general_2[METABOLIC_COMPLICATIONS].astype(float) +
+                        df_general_2[CARDIAC_COMPLICATIONS].astype(float)).to_numpy()
+
+    df_general_2[CARDIOMETABOLIC_COMPLICATIONS] = npmin(cardio_metabolic, 1)
+
     # We add a new column "Duration of treatment" (DT) (years)
     AbsTimeLapse(df_general_2, DT, DATE_OF_DIAGNOSIS, DATE_OF_TREATMENT_END)
 
@@ -63,7 +71,9 @@ if __name__ == '__main__':
     df_general_2.loc[df_general_2[RADIOTHERAPY] == '0.0', RADIOTHERAPY_DOSE] = 0
 
     # We delete unnecessary variables from the dataframe
-    df_general_2 = df_general_2.drop([RADIOTHERAPY, DATE_OF_DIAGNOSIS, DATE_OF_TREATMENT_END], axis=1)
+    df_general_2 = df_general_2.drop([RADIOTHERAPY, DATE_OF_DIAGNOSIS,
+                                      DATE_OF_TREATMENT_END, METABOLIC_COMPLICATIONS,
+                                      CARDIAC_COMPLICATIONS], axis=1)
 
     # We reorder columns to have complications at the end
     cols = list(df_general_2.columns.values)
@@ -73,7 +83,7 @@ if __name__ == '__main__':
     """ DEX_DOX DATA HANDLING """
     # We add a new categorical column based on DEX cumulative dose
     conditions = [(~DEX_DOX[DEX].isnull()), (DEX_DOX[DEX].isnull())]
-    categories = ["Yes", "Unknown"]
+    categories = ["Yes", "No"]
 
     DEX_DOX[DEX_PRESENCE] = select(conditions, categories)
 
@@ -88,12 +98,15 @@ if __name__ == '__main__':
     # We remove TAG variable
     complete_df = complete_df.drop([TAG], axis=1)
 
+    """ REMOVAL OF INVALID ID """
+    complete_df = complete_df[~(complete_df[PARTICIPANT].isin(list(invalid_ids[PARTICIPANT].values)))]
+
     # We look at the number of rows and the total of missing values per column
-    get_missing_update(complete_df)  # 9 values out of 13x251 = 3263 (0.2%)
+    get_missing_update(complete_df)  # 7 values out of 12x251 = 3012 (0.2%)
 
     """ TABLE CREATION """
     types = {c: TYPES[c] for c in complete_df.columns}
 
     # We create the table
-    data_manager.create_and_fill_table(complete_df, FIXED_FEATURES_AND_COMPLICATIONS,
+    data_manager.create_and_fill_table(complete_df, BASE_FEATURES_AND_COMPLICATIONS,
                                        types=types, primary_key=[PARTICIPANT])

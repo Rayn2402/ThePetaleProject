@@ -11,12 +11,14 @@ from Data.Transforms import ContinuousTransform as ConT
 from SQL.NewTablesScripts.constants import *
 import numpy as np
 import pandas as pd
+from Data.Preprocessing import preprocess_outliers
 
 
 class Sampler:
 
     def __init__(self, dm: PetaleDataManager, table_name: str, cont_cols: Sequence[str],
-                 target_col: str, cat_cols: Union[None, Sequence[str]] = None, to_dataset: bool = True):
+                 target_col: str, cat_cols: Union[None, Sequence[str]] = None, to_dataset: bool = True,
+                 outliers_ids: Sequence[str] = []):
         """
         Object that creates all datasets
         :param dm: PetaleDataManager
@@ -25,10 +27,15 @@ class Sampler:
         :param cat_cols: list with the names of the categorical columns of the table
         :param target_col: name of the target column in the table
         :param to_dataset: bool indicating if we want a PetaleDataset (True) or a PetaleDataframe (False)
+        :param outliers_ids: list of the outliers ids
         """
 
         # We save the learning set as seen in the Workflow presentation
         self.learning_set = dm.get_table(table_name)
+
+        # We remove the outliers
+        self.learning_set = preprocess_outliers(df=self.learning_set, cont_cols=cont_cols, cat_cols=cat_cols,
+                                                ids=outliers_ids)
 
         # We make sure that continuous variables are considered as continuous
         self.learning_set[cont_cols] = ConT.to_float(self.learning_set[cont_cols])
@@ -143,14 +150,15 @@ class Sampler:
             print("#----------------------------------#")
 
 
-def get_warmup_sampler(dm: PetaleDataManager, to_dataset: bool = True):
+def get_warmup_sampler(dm: PetaleDataManager, to_dataset: bool = True, outliers_ids: Sequence[str] = []):
     """
     Creates a Sampler for the WarmUp data table
     :param dm: PetaleDataManager
     :param to_dataset: bool indicating if we want a PetaleDataset (True) or a PetaleDataframe (False)
+    :param outliers_ids: list of the outliers ids
     """
     cont_cols = [WEIGHT, TDM6_HR_END, TDM6_DIST, DT, AGE, MVLPA]
-    return Sampler(dm, LEARNING_0, cont_cols, VO2R_MAX, to_dataset=to_dataset)
+    return Sampler(dm, LEARNING_0, cont_cols, VO2R_MAX, to_dataset=to_dataset, outliers_ids=outliers_ids)
 
 
 def get_learning_one_sampler(dm: PetaleDataManager, to_dataset: bool = True):
@@ -213,6 +221,7 @@ def stratified_sample(df: pd.DataFrame, target_col: str, n: Union[int, float],
 
     # We make a deep copy of the current dataframe
     sample = df.copy()
+    sample[target_col] = sample[target_col].astype(float)
 
     # If the column on which we want to do a stratified sampling is continuous,
     # we create another discrete column based on quantiles

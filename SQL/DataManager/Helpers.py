@@ -280,3 +280,13 @@ def fill_id(id):
     return f"P" + "".join(["0"]*(3-len(id))) + id
 
 
+def get_missing_update(df):
+    """
+    Prints the number of rows and the number of missing values for each column
+    :param df: pandas dataframe
+    """
+    print("Current number of rows : ", df.shape[0])
+    print("Missing counts : ")
+    print(df.isnull().sum(axis=0), "\n\n")
+
+

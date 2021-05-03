@@ -6,7 +6,7 @@ This table will consist of one of the simplest dataset that we will use to train
 """
 
 from SQL.DataManager.Utils import initialize_petale_data_manager
-from SQL.NewTablesScripts.L0_WARMUP import get_missing_update
+from SQL.DataManager.Helpers import get_missing_update
 from Data.Sampling import split_train_test
 from SQL.NewTablesScripts.constants import *
 import pandas as pd

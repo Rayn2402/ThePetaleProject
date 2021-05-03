@@ -57,6 +57,16 @@ if __name__ == '__main__':
     df_general_1 = df_general_1[df_general_1[TAG] == PHASE]
     df_general_2 = df_general_2[df_general_2[TAG] == PHASE]
 
+    """ GENERAL 1 DATA HANDLING """
+    # We change values of SEX according to their respective categories
+    df_general_1[SEX] = df_general_1[SEX].apply(lambda a: SEX_CATEGORIES[int(float(a))])
+
+    # We change values of BIRTH AGE according to their respective categories
+    df_general_1[BIRTH_AGE] = df_general_1[BIRTH_AGE].apply(lambda ba: BIRTH_AGE_CATEGORIES[int(float(ba))])
+
+    # We change values of BIRTH WEIGHT according to their respective categories
+    df_general_1[BIRTH_WEIGHT] = df_general_1[BIRTH_WEIGHT].apply(lambda bw: BIRTH_WEIGHT_CATEGORIES[int(float(bw))])
+
     """ GENERAL 2 DATA HANDLING """
     # We combine metabolic and cardio complications
     cardio_metabolic = (df_general_2[METABOLIC_COMPLICATIONS].astype(float) +
@@ -81,14 +91,19 @@ if __name__ == '__main__':
     df_general_2 = df_general_2[cols]
 
     """ DEX_DOX DATA HANDLING """
-    # We add a new categorical column based on DEX cumulative dose
-    conditions = [(~DEX_DOX[DEX].isnull()), (DEX_DOX[DEX].isnull())]
-    categories = ["Yes", "No"]
+    # We create a categorical column based on DEX cumulative dose
+    temp = DEX_DOX[~(DEX_DOX[DEX].isnull())]  # Temp dataframe with non null values
+    median = temp[DEX].median()               # DEX median
 
-    DEX_DOX[DEX_PRESENCE] = select(conditions, categories)
+    conditions = [(DEX_DOX[DEX] > median),
+                  (DEX_DOX[DEX] <= median),
+                  (DEX_DOX[DEX].isnull())]
 
-    # We delete unnecessary variables from the dataframe
-    DEX_DOX = DEX_DOX.drop([DEX], axis=1)
+    categories = [f">{median}", f">0, <={median}", "0"]
+    DEX_DOX.loc[:, DEX] = select(conditions, categories)
+
+    # We change null DOX values for 0
+    DEX_DOX.loc[DEX_DOX[DOX].isnull(), DOX] = 0
 
     """ DATAFRAME CONCATENATION """
     # We concatenate all the dataframes
@@ -102,7 +117,7 @@ if __name__ == '__main__':
     complete_df = complete_df[~(complete_df[PARTICIPANT].isin(list(invalid_ids[PARTICIPANT].values)))]
 
     # We look at the number of rows and the total of missing values per column
-    get_missing_update(complete_df)  # 7 values out of 12x251 = 3012 (0.2%)
+    get_missing_update(complete_df)  # 32 values out of 12x247 = 2964 (1%)
 
     """ TABLE CREATION """
     types = {c: TYPES[c] for c in complete_df.columns}

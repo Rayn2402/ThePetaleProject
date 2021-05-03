@@ -10,7 +10,6 @@ from SQL.DataManager.Utils import initialize_petale_data_manager
 from pandas import concat
 from SQL.NewTablesScripts.constants import SIGNIFICANT_COMMON_SNPS_ID, GENES, SNPS_ID, SNPS_TYPE, \
     SNPS_POSITION, CHROM, TYPES, SIGNIFICANT_RARE_SNPS_ID, TOP12_SNPS_ID
-import os
 
 
 COL = {GENES: TYPES[GENES], SNPS_TYPE: TYPES[SNPS_TYPE],

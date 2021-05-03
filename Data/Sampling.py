@@ -162,7 +162,7 @@ def get_learning_one_sampler(dm: PetaleDataManager, to_dataset: bool = True):
                  TDM6_HR_REST, TDM6_TAS_END, TDM6_TAD_END, MVLPA, TAS_REST, TAD_REST, DOX]
 
     # We save the categorical columns
-    cat_cols = [SEX, SMOKING, DEX_PRESENCE, BIRTH_AGE, BIRTH_WEIGHT]
+    cat_cols = [SEX, SMOKING, DEX, BIRTH_AGE, BIRTH_WEIGHT]
 
     return Sampler(dm, LEARNING_1, cont_cols, FITNESS_COMPLICATIONS, cat_cols, to_dataset)
 

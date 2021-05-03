@@ -12,9 +12,9 @@ table in the database.
      - DURATION OF TREATMENT (DT)
      - RADIOTHERAPY DOSE
      - DOX DOSE
-     - DEX (0: No, 1: Yes)
-     - GESTATIONAL AGE AT BIRTH (1: <37w, 2: >=37w, 9: Unknown)
-     - WEIGHT AT BIRTH (1: <2500g, 2: >=2500g, 3: Unknown)
+     - DEX (0; >0, <=Med; >Med) where Med is the median without 0's
+     - GESTATIONAL AGE AT BIRTH (<37w, >=37w, NaN)
+     - WEIGHT AT BIRTH (<2500g, >=2500g, NaN)
 
     Complications:
     - Metabolic (0: No, 1: Yes)

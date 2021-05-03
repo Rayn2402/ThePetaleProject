@@ -11,9 +11,9 @@ GENERALS contains :
      - DURATION OF TREATMENT (DT)
      - RADIOTHERAPY DOSE
      - DOX DOSE
-     - DEX (0: No, 1: Yes)
-     - GESTATIONAL AGE AT BIRTH (1: <37w, 2: >=37w, 9: Unknown)
-     - WEIGHT AT BIRTH (1: <2500g, 2: >=2500g, 3: Unknown)
+     - DEX (0; >0, <=Med; >Med) where Med is the median without 0's
+     - GESTATIONAL AGE AT BIRTH (<37w, >=37w, NaN)
+     - WEIGHT AT BIRTH (<2500g, >=2500g, NaN)
      - HEIGHT
      - WEIGHT
      - SMOKING (0: No, 1: Yes)
@@ -43,7 +43,7 @@ if __name__ == '__main__':
     # We save the variables needed from FIXED_FEATURES_AND_COMPLICATIONS_(FILTERED)
     BASE_vars = [FITNESS_COMPLICATIONS, PARTICIPANT, SEX,
                  AGE_AT_DIAGNOSIS, DT, RADIOTHERAPY_DOSE,
-                 DOX, DEX_PRESENCE, BIRTH_AGE, BIRTH_WEIGHT]
+                 DOX, DEX, BIRTH_AGE, BIRTH_WEIGHT]
 
     # We save the variables needed from General_1
     G1_vars = PKEY + [DATE, DATE_OF_BIRTH, HEIGHT, WEIGHT, SMOKING]

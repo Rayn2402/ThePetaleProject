@@ -30,9 +30,8 @@ GENERALS contains :
 """
 
 from SQL.DataManager.Utils import initialize_petale_data_manager
-from SQL.DataManager.Helpers import AbsTimeLapse
+from SQL.DataManager.Helpers import AbsTimeLapse, get_missing_update
 from SQL.NewTablesScripts.constants import *
-from SQL.NewTablesScripts.L0_WARMUP import get_missing_update
 import pandas as pd
 
 if __name__ == '__main__':

@@ -1,24 +1,15 @@
 """
 Authors : Nicolas Raymond
 
-This file contains the procedure to execute in order to obtain "Learning_0_WarmUp" table.
-This table will consist of one of the dataset two reproduce 6MWT experiment with a more complex model.
+This file contains the procedure to execute in order to obtain "L0_WARMUP" and "L0_WARMUP_HOLDOUT" tables.
+This table is used to reproduce 6MWT experiment with a more complex model.
 """
 
 from SQL.DataManager.Utils import initialize_petale_data_manager
 from Data.Sampling import split_train_test
 from SQL.NewTablesScripts.constants import *
+from SQL.DataManager.Helpers import get_missing_update
 import pandas as pd
-
-
-def get_missing_update(df):
-    """
-    Prints the number of rows and the number of missing values for each column
-    :param df: pandas dataframe
-    """
-    print("Current number of rows : ", df.shape[0])
-    print("Missing counts : ")
-    print(df.isnull().sum(axis=0), "\n\n")
 
 
 if __name__ == '__main__':
@@ -44,6 +35,9 @@ if __name__ == '__main__':
 
     # We proceed to table concatenation
     complete_df = pd.merge(gen_df, six_df, on=[PARTICIPANT], how=INNER)
+
+    # We look at the missing data
+    get_missing_update(complete_df)
 
     # We extract an holdout set from the complete df
     learning_df, hold_out_df = split_train_test(complete_df, VO2R_MAX, test_size=0.10, random_state=SEED)

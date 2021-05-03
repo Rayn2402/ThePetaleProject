@@ -7,10 +7,10 @@ table in the database.
  BASE_FEATURES_AND_COMPLICATIONS contains :
 
     Features:
-     - Same features as FIXED FEATURES but without patients that have missing VO2r_max values
+     - Same features as BASE_FEATURES_AND_COMPLICATIONS but without patients that have missing VO2r_max values
 
     Complications:
-    - Same complications as FIXED FEATURES + Fitness (0: No, 1: Yes)
+    - Same complications as BASE_FEATURES_AND_COMPLICATIONS + Fitness (0: No, 1: Yes)
 
 """
 
@@ -60,7 +60,7 @@ if __name__ == '__main__':
     complete_df = pd.merge(complete_df, df_cardio_0, on=[PARTICIPANT], how=INNER)
 
     # We look at the number of rows and the total of missing values per column
-    get_missing_update(complete_df)  # 6 values out of 216X13 = 2808 (~0.2%)
+    get_missing_update(complete_df)  # 29 values out of 216X13 = 2808 (1%)
 
     """ TABLE CREATION """
     types = {c: TYPES[c] for c in complete_df.columns}

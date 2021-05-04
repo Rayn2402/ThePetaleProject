@@ -415,8 +415,7 @@ class DataManager:
         """
 
         # we initialize a python dictionary where we will save the results
-        results, var_name, all_, group_values = DataManager.__initialize_results_dict(
-            df, group)
+        results, var_name, all_, group_values = DataManager.__initialize_results_dict(df, group)
 
         # we get the columns on which we will calculate the stats
         cols = [col for col in df.columns if col != group]
@@ -436,8 +435,7 @@ class DataManager:
 
                 for group_val in group_values:
                     single_data_for_chart[group_val] = []
-                    group_totals[group_val] = df.loc[df[group]
-                                                     == group_val, col].dropna().shape[0]
+                    group_totals[group_val] = df.loc[df[group] == group_val, col].dropna().shape[0]
 
             # we get all the categories of this variable
             categories = df[col].dropna().unique()
@@ -487,15 +485,15 @@ class DataManager:
                 filename = Helpers.reformat_string(item["col_name"])
                 folder_name = Helpers.reformat_string(table_name)
                 ChartServices.drawBinaryGroupedBarChart(
-                    item["values"], {"label": "Male", "values": item["1.0"]},
-                    {"label": "Female",
-                        "values": item["0.0"]}, "Categories", "Count", item["col_name"],
+                    item["values"], {"label": "Men", "values": item["Men"]},
+                    {"label": "Women", "values": item["Women"]}, "Categories", "Count", item["col_name"],
                     f"chart_{filename}", f"charts_{folder_name}")
 
         # we return the data frame containing the informations
         return pd.DataFrame(results)
 
-    def get_group_count(self, df, group):
+    @staticmethod
+    def get_group_count(df, group):
         """
         Count the number of items from each group
 

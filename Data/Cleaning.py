@@ -3,12 +3,15 @@ This file stores the class DataCleaner used remove invalid rows and columns from
 """
 
 import pandas as pd
-from numpy import mean, cov, linalg, array, einsum, sqrt
+import matplotlib.pyplot as plt
+from adjustText import adjust_text
+from numpy import mean, cov, linalg, array, einsum
 from scipy.stats import chi2
 from SQL.NewTablesScripts.constants import PARTICIPANT
 from SQL.DataManager.Helpers import retrieve_numerical
-from typing import List, Optional
+from typing import List, Optional, Any
 from json import dump
+from os.path import join
 
 
 class DataCleaner:
@@ -34,17 +37,20 @@ class DataCleaner:
     # MAHALANOBIS COLUMN ID
     MAHALANOBIS = "Mahalanobis"
 
-    def __init__(self, column_thresh: float, row_thresh: float,
-                 outlier_alpha: float, qchi2_mahalanobis_cutoff: float, records_path: str):
+    def __init__(self, records_path: str, column_thresh: float = 0.15, row_thresh: float = 0.15,
+                 outlier_alpha: float = 1.5, qchi2_mahalanobis_cutoff: float = 0.975):
         """
         Class constructor
 
+        :param records_path: json file path to save results of cleaning
         :param column_thresh: percentage threshold (0 <= thresh <= 1)
         :param row_thresh: percentage threshold (0 <= thresh <= 1)
         :param outlier_alpha: constant multiplied by inter quartile range (IQR) to determine outliers
         :param qchi2_mahalanobis_cutoff: Chi-squared quantile used to determine Mahalanobis cutoff value
-        :param records_path: json file path to save results of cleaning
         """
+        assert 0 <= column_thresh <= 1 and 0 <= row_thresh <= 1, "Thresholds must be in range [0, 1]"
+        assert 0 < qchi2_mahalanobis_cutoff < 1, "Chi-squared quantile cutoff must be in range (0, 1)"
+
         # Internal private fixed attributes
         self.__column_tresh = column_thresh
         self.__row_thresh = row_thresh
@@ -118,6 +124,11 @@ class DataCleaner:
         # For each column, computes quartiles and IQR = (Q3 - Q1) and identify outliers
         for c in numerical_columns:
 
+            # Boxplot creation
+            fig, ax = plt.subplots()
+            ax.boxplot(df[c].values)
+            texts = []
+
             # Quartiles computation
             quartiles = list((df[c].quantile([0.25, 0.5, 0.75])).values)
             q1, q2, q3 = quartiles
@@ -126,11 +137,26 @@ class DataCleaner:
 
             # Outliers identification (< Q1)
             low_outliers = df.loc[df[c] < q1 - self.__outlier_alpha*iqr, [PARTICIPANT, c]]
-            self.__update_outliers_records(low_outliers, c, self.LOW)
+            self.__update_outliers_records(low_outliers, c, self.LOW, ax, texts)
 
             # Outliers identification (> Q3)
             high_outliers = df.loc[df[c] > q3 + self.__outlier_alpha*iqr, [PARTICIPANT, c]]
-            self.__update_outliers_records(high_outliers, c, self.HIGH)
+            self.__update_outliers_records(high_outliers, c, self.HIGH, ax, texts)
+
+            # We save the box plot
+            adjust_text(texts, only_move={'points': 'y', 'texts': 'y'},
+                        arrowprops=dict(arrowstyle="->", color='r', lw=0.5))
+
+            ax.set_ylabel(c)
+            plt.tick_params(
+                axis='x',           # changes apply to the x-axis
+                which='both',       # both major and minor ticks are affected
+                bottom=False,       # ticks along the bottom edge are off
+                top=False,          # ticks along the top edge are off
+                labelbottom=False)  # labels along the bottom edge are off
+
+            ax.set_title(f'Potential outliers (a = {self.__outlier_alpha})')
+            fig.savefig(join(self.__records_path, f"{c}_boxplot"))
 
     def __identify_multivariate_outliers(self, df: pd.DataFrame, numerical_columns: List[str]) -> None:
         """
@@ -144,7 +170,6 @@ class DataCleaner:
         # We calculate Mahalanobis distances for all patients
         temporary_df = df.loc[:, [PARTICIPANT]]
         temporary_df[self.MAHALANOBIS] = self.__calculate_squared_mahalanobis_distances(df, numerical_columns)
-        print(temporary_df.columns)
 
         # We calculate a cutoff values based on a Chi-squared distribution
         cutoff = chi2.ppf(self.__qchi2, len(numerical_columns))
@@ -162,7 +187,7 @@ class DataCleaner:
                 self.__update_single_outlier_records(patient, warning)
 
     def __update_outliers_records(self, subset: pd.DataFrame,
-                                  column: str, lvl: str) -> None:
+                                  column: str, lvl: str, ax: Any, texts: Any) -> None:
         """
         Adds outliers data to records
 
@@ -170,12 +195,15 @@ class DataCleaner:
         :param column: name of the numerical column
         :param lvl: "Low" or "High" depending if value is lower than Q1 - alpha*(Q3-Q1) or higher than
                     Q3 + alpha*(Q3-Q1)
+        :param ax: matplotlib pyplot axis
+        :param texts: list of texts added to boxplot
 
         """
         for i in range(subset.shape[0]):
 
             # We extract patient's id and value
             patient, value = subset.iloc[i, 0], subset.iloc[i, 1]
+            texts.append(ax.text(1, value, patient))
 
             # We create the appropriate warning message
             warning = self.__return_outlier_warning(column, value, lvl)
@@ -200,7 +228,7 @@ class DataCleaner:
         Saves the records dictionary into a json file
         """
         # We save all the removed rows and columns collected in a json file
-        with open(self.__records_path, "w") as file:
+        with open(join(self.__records_path, "cleaner_record.json"), "w") as file:
             dump(self.__records, file, indent=True)
 
     @staticmethod
@@ -213,7 +241,7 @@ class DataCleaner:
         :return: numpy array
         """
         # We fill NaN values with column means transform the data to numpy array
-        numerical_df = df[numerical_columns].fillna(df[numerical_columns].mean())
+        numerical_df = df[numerical_columns]
         X = numerical_df.to_numpy().reshape((df.shape[0], -1))
 
         # We get the center point, the vector composed of the means of each variable
@@ -241,7 +269,7 @@ class DataCleaner:
         :return: same dataframe with only numeric
         """
         assert PARTICIPANT in df.columns.values, f"{PARTICIPANT} column must be in the dataframe"
-        df[numerical_columns] = df[numerical_columns].astype(float)
+        df[numerical_columns] = df[numerical_columns].astype(float).fillna(df[numerical_columns].mean())
 
         return df
 

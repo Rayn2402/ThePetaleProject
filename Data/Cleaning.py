@@ -174,6 +174,12 @@ class DataCleaner:
         # We calculate a cutoff values based on a Chi-squared distribution
         cutoff = chi2.ppf(self.__qchi2, len(numerical_columns))
 
+        # We order distances and create a plot
+        temporary_df.sort_values(by=self.MAHALANOBIS, inplace=True)
+        fig, ax = plt.subplots()
+        ax.scatter(range(temporary_df.shape[0]), temporary_df[self.MAHALANOBIS])
+        plt.show()
+
         # We save distances to records
         for i in range(temporary_df.shape[0]):
 

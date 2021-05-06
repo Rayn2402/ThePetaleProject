@@ -5,13 +5,15 @@ This file stores the class DataCleaner used remove invalid rows and columns from
 import pandas as pd
 import matplotlib.pyplot as plt
 from adjustText import adjust_text
+from Data.Transforms import ContinuousTransform as CT
 from numpy import mean, cov, linalg, array, einsum
 from scipy.stats import chi2
 from SQL.NewTablesScripts.constants import PARTICIPANT
 from SQL.DataManager.Helpers import retrieve_numerical
-from typing import List, Optional, Any
+from typing import List, Optional, Any, Tuple
 from json import dump
 from os.path import join
+from os import makedirs
 
 
 class DataCleaner:
@@ -25,6 +27,7 @@ class DataCleaner:
     CP = "Critical Patients"
     CC = "Critical Columns"
     CQD = "Column Quartile Details"
+    CSC = "Chi-Squared Cutoff"
 
     # PRE-SAVED WARNING MESSAGES
     ROW_TRESHOLD_WARNING = "Row threshold condition not fulfilled"
@@ -46,7 +49,7 @@ class DataCleaner:
         :param column_thresh: percentage threshold (0 <= thresh <= 1)
         :param row_thresh: percentage threshold (0 <= thresh <= 1)
         :param outlier_alpha: constant multiplied by inter quartile range (IQR) to determine outliers
-        :param qchi2_mahalanobis_cutoff: Chi-squared quantile used to determine Mahalanobis cutoff value
+        :param qchi2_mahalanobis_cutoff: Chi-squared quantile probability used to determine Mahalanobis cutoff value
         """
         assert 0 <= column_thresh <= 1 and 0 <= row_thresh <= 1, "Thresholds must be in range [0, 1]"
         assert 0 < qchi2_mahalanobis_cutoff < 1, "Chi-squared quantile cutoff must be in range (0, 1)"
@@ -57,6 +60,7 @@ class DataCleaner:
         self.__outlier_alpha = outlier_alpha
         self.__qchi2 = qchi2_mahalanobis_cutoff
         self.__records_path = records_path
+        self.__plots_path = join(records_path, "plots")
 
         # Private mutable attribute
         self.__records = {self.CP: {},
@@ -64,8 +68,12 @@ class DataCleaner:
                           "Column Threshold": self.__column_tresh,
                           "Row Threshold": self.__row_thresh,
                           "Outlier Alpha": self.__outlier_alpha,
+                          self.CSC: {"Probability": self.__qchi2},
                           self.CQD: {},
                           self.MAHALANOBIS: {}}
+
+        # Creation of folder to store results
+        makedirs(self.__plots_path, exist_ok=True)
 
     def __call__(self, df: pd.DataFrame, numerical_columns: Optional[List[str]] = None) -> pd.DataFrame:
         """
@@ -124,15 +132,13 @@ class DataCleaner:
         # For each column, computes quartiles and IQR = (Q3 - Q1) and identify outliers
         for c in numerical_columns:
 
-            # Boxplot creation
+            # Boxplot creation for single attribute
             fig, ax = plt.subplots()
-            ax.boxplot(df[c].values)
+            bp = ax.boxplot(df[c].values)
             texts = []
 
-            # Quartiles computation
-            quartiles = list((df[c].quantile([0.25, 0.5, 0.75])).values)
-            q1, q2, q3 = quartiles
-            iqr = round(q3 - q1, 4)
+            # Quartiles extraction
+            q1, q2, q3, iqr = self.__extract_quartiles(bp)
             self.__records[self.CQD][c] = {"Q1": q1, "Q2": q2, "Q3": q3, "IQR": iqr}
 
             # Outliers identification (< Q1)
@@ -155,8 +161,17 @@ class DataCleaner:
                 top=False,          # ticks along the top edge are off
                 labelbottom=False)  # labels along the bottom edge are off
 
-            ax.set_title(f'Potential outliers (a = {self.__outlier_alpha})')
-            fig.savefig(join(self.__records_path, f"{c}_boxplot"))
+            ax.set_title(f'Potential univariate outliers (a = {self.__outlier_alpha})')
+            fig.savefig(join(self.__plots_path, f"{c}_boxplot"), format='svg')
+
+        # Box plot creation for all numerical features at once
+        normalize_df = CT.normalize(df[numerical_columns])
+        normalize_dict = normalize_df.to_dict('list')
+        fig, ax = plt.subplots()
+        ax.boxplot(normalize_dict.values())
+        ax.set_xticklabels(normalize_dict.keys(), rotation=45)
+        fig.tight_layout()
+        plt.show()
 
     def __identify_multivariate_outliers(self, df: pd.DataFrame, numerical_columns: List[str]) -> None:
         """
@@ -173,12 +188,14 @@ class DataCleaner:
 
         # We calculate a cutoff values based on a Chi-squared distribution
         cutoff = chi2.ppf(self.__qchi2, len(numerical_columns))
+        self.__records[self.CSC].update({"Quantile": cutoff})
 
         # We order distances and create a plot
         temporary_df.sort_values(by=self.MAHALANOBIS, inplace=True)
         fig, ax = plt.subplots()
         ax.scatter(range(temporary_df.shape[0]), temporary_df[self.MAHALANOBIS])
-        plt.show()
+        ax.hlines(cutoff, xmin=0, xmax=temporary_df.shape[0], linestyles='dashed', colors='black')
+        texts = []
 
         # We save distances to records
         for i in range(temporary_df.shape[0]):
@@ -189,8 +206,25 @@ class DataCleaner:
 
             # We had a warning message to the patient if its value is over the cutoff
             if value > cutoff:
+                texts.append(ax.text(i, value, patient))
                 warning = self.__return_mahalanobis_warning(value)
                 self.__update_single_outlier_records(patient, warning)
+
+        # We adjust plot axis
+        ax.set_ylabel(f"Squared {self.MAHALANOBIS} distance")
+        plt.tick_params(
+            axis='x',  # changes apply to the x-axis
+            which='both',  # both major and minor ticks are affected
+            bottom=False,  # ticks along the bottom edge are off
+            top=False,  # ticks along the top edge are off
+            labelbottom=False)  # labels along the bottom edge are off
+
+        # We save the plot
+        adjust_text(texts, only_move={'points': 'y', 'texts': 'y'},
+                    arrowprops=dict(arrowstyle="->", color='r', lw=0.5))
+
+        ax.set_title(f'Potential mutlivariate outliers (qchi2 = {self.__qchi2})')
+        fig.savefig(join(self.__plots_path, self.MAHALANOBIS), format='svg')
 
     def __update_outliers_records(self, subset: pd.DataFrame,
                                   column: str, lvl: str, ax: Any, texts: Any) -> None:
@@ -264,6 +298,21 @@ class DataCleaner:
         squared_distances = einsum('ij,ij->i', B, A)
 
         return squared_distances
+
+    @staticmethod
+    def __extract_quartiles(bp: Any, idx_of_box: int = 0) -> Tuple[float, float, float, float]:
+        """
+        Extracts quartiles data out of matplotlib boxplot
+
+        :param bp: matplotlib boxplot
+        :param idx_of_box: index of box in the boxplot in the box plot
+        :return: q1, q2, q3, iqr (q3 - q1)
+        """
+        q1 = bp['boxes'][idx_of_box].get_ydata()[1]
+        q2 = bp['medians'][idx_of_box].get_ydata()[1]
+        q3 = bp['boxes'][idx_of_box].get_ydata()[2]
+
+        return q1, q2, q3, round(q3 - q1, 4)
 
     @staticmethod
     def __refactor_dataframe(df: pd.DataFrame, numerical_columns: List[str]) -> pd.DataFrame:

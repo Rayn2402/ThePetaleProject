@@ -18,6 +18,7 @@ from typing import Optional, Callable, Tuple, Any, Union
 from abc import ABC, abstractmethod
 from Data.Datasets import PetaleDataset, PetaleDataframe
 from pandas import DataFrame
+from Utils.visualization import visualize_epoch_progression
 
 
 class Trainer(ABC):
@@ -210,18 +211,23 @@ class NNTrainer(Trainer):
 
         return update_progress
 
-    def fit(self, train_set: PetaleDataset, val_set: PetaleDataset, verbose: bool = True) -> Tuple[tensor, tensor]:
+    def fit(self, train_set: PetaleDataset, val_set: PetaleDataset, verbose: bool = True, visualization: bool = False,
+            path: str = None) -> Tuple[tensor, tensor]:
         """
         Method that will fit the model to the given data
 
         :param train_set: Training set
         :param val_set: Valid set
         :param verbose: Determines if we want (True) to print progress or not (False)
+        :param visualization: Determines if we want (True) to visualize progress of the loss in the train and valid sets
+         or not (False)
+         :param path: Determines the path where to save the visualization plots
 
         :return: Two tensors containing the training losses and the validation losses
         """
         assert not (self.trial is not None and self.metric is None), "If trial is not None, a metric must be defined"
         assert self.model is not None, "Model must be set before training"
+        assert visualization is False or path is not None, "Path must be specified"
 
         if self.seed is not None:
             manual_seed(self.seed)
@@ -241,7 +247,7 @@ class NNTrainer(Trainer):
         optimizer = SWA(base_optimizer, swa_start=10, swa_freq=5)
 
         # We initialize two empty lists to store the training loss and the validation loss
-        training_loss, valid_loss = [], []
+        training_loss, valid_loss, training_score, valid_score = [], [], [], []
 
         # We init the early stopping class
         early_stopping = EarlyStopping(patience=self.patience)
@@ -259,22 +265,33 @@ class NNTrainer(Trainer):
             ###################
 
             # We calculate training mean epoch loss on all batches
-            mean_epoch_loss = self.train(train_loader, optimizer)
+            mean_epoch_loss, train_metric_score = self.train(train_loader, optimizer)
             update_progress(epoch=epoch, mean_epoch_loss=mean_epoch_loss)
 
-            # We record training loss
+            # We record training loss and score
             training_loss.append(mean_epoch_loss)
+            training_score.append(train_metric_score)
 
             ######################
             # validate the model #
             ######################
 
             # We calculate validation epoch loss and save it
-            val_epoch_loss, early_stop = self.evaluate(val_set, early_stopping)
+            val_epoch_loss, val_metric_score, early_stop = self.evaluate(val_set, early_stopping)
             valid_loss.append(val_epoch_loss)
+            valid_score.append(val_metric_score)
 
             if early_stop:
+                if visualization:
+                    # We plot the graph to visualize the training and validation loss
+                    visualize_epoch_progression(tensor(training_loss), tensor(valid_loss), progression_type="loss", path=path)
+                    visualize_epoch_progression(tensor(training_score), tensor(valid_score), progression_type="metric", path=path)
                 return tensor(training_loss), tensor(valid_loss)
+
+        if visualization:
+            # We plot the graph to visualize the training and validation loss
+            visualize_epoch_progression(tensor(training_loss), tensor(valid_loss), progression_type="loss", path=path)
+            visualize_epoch_progression(tensor(training_score), tensor(valid_score), progression_type="metric", path=path)
 
         return tensor(training_loss), tensor(valid_loss)
 
@@ -303,10 +320,9 @@ class NNTrainer(Trainer):
 
         # Prep model for training
         self.model.train()
-        epoch_loss = 0
+        epoch_loss, epoch_score = 0, 0
 
         for item in train_loader:
-
             # We extract the continuous data x_cont, the categorical data x_cat
             # and the correct predictions y
             x_cont, x_cat, y = self.extract_batch(item)
@@ -317,9 +333,11 @@ class NNTrainer(Trainer):
             # We perform the forward pass: compute predicted outputs by passing inputs to the model
             output = self.model(x_cont=x_cont, x_cat=x_cat)
 
-            # We calculate the loss
+            # We calculate the loss and the score
             loss = self.model.loss(output, y)
+            score = self.metric(output, y)
             epoch_loss += loss.item()
+            epoch_score += score
 
             # We perform the backward pass: compute gradient of the loss with respect to model parameters
             loss.backward()
@@ -327,7 +345,7 @@ class NNTrainer(Trainer):
             # We perform a single optimization step (parameter update)
             optimizer.step()
 
-        return epoch_loss / len(train_loader)
+        return epoch_loss / len(train_loader), epoch_score / len(train_loader)
 
     def evaluate(self, valid_set: PetaleDataset, early_stopper: EarlyStopping) -> float:
 
@@ -351,8 +369,9 @@ class NNTrainer(Trainer):
             # We perform the forward pass: compute predicted outputs by passing inputs to the model
             output = self.model(x_cont=x_cont, x_cat=x_cat)
 
-            # We calculate the loss
+            # We calculate the loss and the score
             val_epoch_loss = self.model.loss(output, y).item()
+            score = self.metric(output, y)
 
         # We calculate a score for the current model
         # score = self.metric(self.model.predict(x_cont=x_cont, x_cat=x_cat, log_prob=True), y)
@@ -362,9 +381,9 @@ class NNTrainer(Trainer):
             early_stopper(val_epoch_loss, self.model)
             if early_stopper.early_stop:
                 self.model = early_stopper.get_best_model()
-                return val_epoch_loss,  early_stopper.early_stop
+                return val_epoch_loss, score, early_stopper.early_stop
 
-        return val_epoch_loss, False
+        return val_epoch_loss, score, False
 
     def extract_data(self, dataset: PetaleDataset, id: bool = False) -> Tuple[tensor, Optional[tensor], tensor]:
         """
@@ -455,7 +474,7 @@ class RFTrainer(Trainer):
         """
 
         # We return the log probabilities
-        return self.model.predict_log_proba(x_cont)
+        return self.model.predict(x_cont)
 
     def extract_data(self, dataset: PetaleDataframe, id: bool = False) -> Tuple[DataFrame, Optional[DataFrame], array]:
         """
@@ -476,7 +495,7 @@ class RFTrainer(Trainer):
             return dataset.IDs, x_cont, x_cat, y
         else:
             return x_cont, x_cat, y
-        
+
     def update_trainer(self, **kwargs) -> None:
         """
         Updates the model and the weight decay

@@ -78,7 +78,6 @@ class Evaluator:
 
         :return: List containing the scores of the model after performing a nested cross validation
         """
-
         # we set the seed for the sampling
         if self.seed is not None:
             np_seed(self.seed)
@@ -130,7 +129,8 @@ class Evaluator:
 
             # We train our model with the best hyper parameters
             print(f"\nFinal model training - K = {k}\n")
-            trainer.fit(train_set=train_set, val_set=valid_set)
+            trainer.fit(train_set=train_set, val_set=valid_set, visualization=True,
+                        path=path.join(self.recordings_path, "Recordings", self.evaluation_name, f"Split_{k}"))
 
             # We save the trained model
             recorder.record_model(model=model)

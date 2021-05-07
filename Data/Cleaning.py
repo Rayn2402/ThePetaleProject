@@ -37,11 +37,15 @@ class DataCleaner:
     LOW = "LOW"
     HIGH = "HIGH"
 
+    # BOXES DISTANCE
+    BD = 2
+
     # MAHALANOBIS COLUMN ID
     MAHALANOBIS = "Mahalanobis"
 
-    def __init__(self, records_path: str, column_thresh: float = 0.15, row_thresh: float = 0.15,
-                 outlier_alpha: float = 1.5, qchi2_mahalanobis_cutoff: float = 0.975):
+    def __init__(self, records_path: str, column_thresh: float = 0.15, row_thresh: float = 0.20,
+                 outlier_alpha: float = 1.5, qchi2_mahalanobis_cutoff: float = 0.975,
+                 figure_format: str = 'png'):
         """
         Class constructor
 
@@ -50,6 +54,7 @@ class DataCleaner:
         :param row_thresh: percentage threshold (0 <= thresh <= 1)
         :param outlier_alpha: constant multiplied by inter quartile range (IQR) to determine outliers
         :param qchi2_mahalanobis_cutoff: Chi-squared quantile probability used to determine Mahalanobis cutoff value
+        :param figure_format: format of figure saved by matplotlib
         """
         assert 0 <= column_thresh <= 1 and 0 <= row_thresh <= 1, "Thresholds must be in range [0, 1]"
         assert 0 < qchi2_mahalanobis_cutoff < 1, "Chi-squared quantile cutoff must be in range (0, 1)"
@@ -61,6 +66,7 @@ class DataCleaner:
         self.__qchi2 = qchi2_mahalanobis_cutoff
         self.__records_path = records_path
         self.__plots_path = join(records_path, "plots")
+        self.__fig_format = figure_format
 
         # Private mutable attribute
         self.__records = {self.CP: {},
@@ -88,13 +94,24 @@ class DataCleaner:
             numerical_df = retrieve_numerical(df, [])
             numerical_columns = list(numerical_df.columns.values)
 
-        # We proceed to data cleaning
+        # We identify and remove columns and rows with too many missing values
         updated_df = self.__identify_critical_rows_and_columns(df)
+
+        # We make sure that numerical columns values are float and fill NaN with columns' means
         updated_df = self.__refactor_dataframe(updated_df, numerical_columns)
-        self.__identify_univariate_outliers(updated_df, numerical_columns)
+
+        # Creation of boxplots for each numerical attribute separately
+        # Recording of potential univariate outliers and recording of attributes' quartiles
+        for c in numerical_columns:
+            self.__identify_univariate_outliers(updated_df, [c])
+
+        # Creation of boxplot for all numerical attributes at once
+        self.__identify_univariate_outliers(updated_df, numerical_columns, record=False)
+
+        # Recording of potential multivariate outliers and their mahalanobis distances
         self.__identify_multivariate_outliers(updated_df, numerical_columns)
 
-        # We save the records
+        # We save the records in a .json file
         self.__save_records()
 
         return updated_df
@@ -121,39 +138,48 @@ class DataCleaner:
 
         return updated_df
 
-    def __identify_univariate_outliers(self, df: pd.DataFrame, numerical_columns: List[str]) -> None:
+    def __identify_univariate_outliers(self, df: pd.DataFrame, numerical_columns: List[str],
+                                       record: bool = True) -> None:
         """
         Identifies patients (rows) with numerical attribute value lower than
         Q1 - alpha*(Q3-Q1) or higher than Q3 + alpha*(Q3-Q1)
 
         :param df: pandas dataframe
         :param numerical_columns: list with names of numerical columns
+        :param record: True indicates that we want to save outliers and quartiles in the records
         """
-        # For each column, computes quartiles and IQR = (Q3 - Q1) and identify outliers
-        for c in numerical_columns:
+        # Check if there is a single box or there are multiple boxes to create
+        nb_numerical_col = len(numerical_columns)
+        single_box = (nb_numerical_col == 1)
 
-            # Boxplot creation for single attribute
-            fig, ax = plt.subplots()
-            bp = ax.boxplot(df[c].values)
-            texts = []
+        # Creation of boxplot figure
+        fig, ax = plt.subplots()
+        updated_df = df
 
-            # Quartiles extraction
-            q1, q2, q3, iqr = self.__extract_quartiles(bp)
-            self.__records[self.CQD][c] = {"Q1": q1, "Q2": q2, "Q3": q3, "IQR": iqr}
+        if not single_box:
 
-            # Outliers identification (< Q1)
-            low_outliers = df.loc[df[c] < q1 - self.__outlier_alpha*iqr, [PARTICIPANT, c]]
-            self.__update_outliers_records(low_outliers, c, self.LOW, ax, texts)
+            # Saving of figure filename
+            filename = join(self.__plots_path, "boxplot")
 
-            # Outliers identification (> Q3)
-            high_outliers = df.loc[df[c] > q3 + self.__outlier_alpha*iqr, [PARTICIPANT, c]]
-            self.__update_outliers_records(high_outliers, c, self.HIGH, ax, texts)
+            # Normalization of column values
+            updated_df[numerical_columns] = CT.normalize(df[numerical_columns])
 
-            # We save the box plot
-            adjust_text(texts, only_move={'points': 'y', 'texts': 'y'},
-                        arrowprops=dict(arrowstyle="->", color='r', lw=0.5))
+            # Creation of figure with multiple boxplots
+            data_dict = updated_df[numerical_columns].to_dict('list')
+            bp = ax.boxplot(data_dict.values(), whis=self.__outlier_alpha,
+                            positions=[i*self.BD for i in range(nb_numerical_col)])
 
-            ax.set_ylabel(c)
+            ax.set_xticklabels(data_dict.keys(), rotation=45)
+
+        else:
+            # Saving of figure filename
+            filename = join(self.__plots_path, f"{numerical_columns[0]} boxplot")
+
+            # Creation of single boxplot
+            updated_df = df
+            bp = ax.boxplot(df[numerical_columns[0]].values, whis=self.__outlier_alpha, positions=[0])
+
+            # Removal of x label
             plt.tick_params(
                 axis='x',           # changes apply to the x-axis
                 which='both',       # both major and minor ticks are affected
@@ -161,16 +187,34 @@ class DataCleaner:
                 top=False,          # ticks along the top edge are off
                 labelbottom=False)  # labels along the bottom edge are off
 
-            ax.set_title(f'Potential univariate outliers (a = {self.__outlier_alpha})')
-            fig.savefig(join(self.__plots_path, f"{c}_boxplot"), format='svg')
+            ax.set_ylabel(numerical_columns[0])
 
-        # Box plot creation for all numerical features at once
-        normalize_df = CT.normalize(df[numerical_columns])
-        normalize_dict = normalize_df.to_dict('list')
-        fig, ax = plt.subplots()
-        ax.boxplot(normalize_dict.values())
-        ax.set_xticklabels(normalize_dict.keys(), rotation=45)
+        ax.set_title(f'Potential univariate outliers (a = {self.__outlier_alpha})')
+
+        # Identification and recording of potential outliers
+        texts = []
+        for i, c in enumerate(numerical_columns):
+
+            # Quartiles extraction
+            q1, q2, q3, iqr = self.__extract_quartiles(bp, i)
+
+            if record:
+                self.__records[self.CQD][c] = {"Q1": q1, "Q2": q2, "Q3": q3, "IQR": iqr}
+
+            # Outliers identification (< Q1)
+            low_outliers = updated_df.loc[updated_df[c] < q1 - self.__outlier_alpha*iqr, [PARTICIPANT, c]]
+            self.__update_outliers_records(low_outliers, c, self.LOW, i*self.BD, ax, texts, record)
+
+            # Outliers identification (> Q3)
+            high_outliers = updated_df.loc[updated_df[c] > q3 + self.__outlier_alpha*iqr, [PARTICIPANT, c]]
+            self.__update_outliers_records(high_outliers, c, self.HIGH, i*self.BD, ax, texts, record)
+
+        # We save the box plot
+        adjust_text(texts, only_move={'points': 'y', 'texts': 'y'},
+                    arrowprops=dict(arrowstyle="->", color='r', lw=0.5))
+
         fig.tight_layout()
+        fig.savefig(filename, format=self.__fig_format)
         plt.show()
 
     def __identify_multivariate_outliers(self, df: pd.DataFrame, numerical_columns: List[str]) -> None:
@@ -188,7 +232,7 @@ class DataCleaner:
 
         # We calculate a cutoff values based on a Chi-squared distribution
         cutoff = chi2.ppf(self.__qchi2, len(numerical_columns))
-        self.__records[self.CSC].update({"Quantile": cutoff})
+        self.__records[self.CSC].update({"Quantile": round(cutoff, 4)})
 
         # We order distances and create a plot
         temporary_df.sort_values(by=self.MAHALANOBIS, inplace=True)
@@ -224,10 +268,11 @@ class DataCleaner:
                     arrowprops=dict(arrowstyle="->", color='r', lw=0.5))
 
         ax.set_title(f'Potential mutlivariate outliers (qchi2 = {self.__qchi2})')
-        fig.savefig(join(self.__plots_path, self.MAHALANOBIS), format='svg')
+        fig.savefig(join(self.__plots_path, self.MAHALANOBIS), format=self.__fig_format)
 
     def __update_outliers_records(self, subset: pd.DataFrame,
-                                  column: str, lvl: str, ax: Any, texts: Any) -> None:
+                                  column: str, lvl: str, box_idx: int, ax: Any, texts: Any,
+                                  record: bool = True) -> None:
         """
         Adds outliers data to records
 
@@ -235,21 +280,25 @@ class DataCleaner:
         :param column: name of the numerical column
         :param lvl: "Low" or "High" depending if value is lower than Q1 - alpha*(Q3-Q1) or higher than
                     Q3 + alpha*(Q3-Q1)
+        :param box_idx: boxplot index
         :param ax: matplotlib pyplot axis
         :param texts: list of texts added to boxplot
+        :param record: If true we add outliers id and warning message to record, else we only append
+                       participants' ids to boxplot
 
         """
         for i in range(subset.shape[0]):
 
             # We extract patient's id and value
             patient, value = subset.iloc[i, 0], subset.iloc[i, 1]
-            texts.append(ax.text(1, value, patient))
+            texts.append(ax.text(box_idx, value, patient))
 
-            # We create the appropriate warning message
-            warning = self.__return_outlier_warning(column, value, lvl)
+            if record:
+                # We create the appropriate warning message
+                warning = self.__return_outlier_warning(column, value, lvl)
 
-            # We add the warning to the records
-            self.__update_single_outlier_records(patient, warning)
+                # We add the warning to the records
+                self.__update_single_outlier_records(patient, warning)
 
     def __update_single_outlier_records(self, patient: str, warning: str):
         """

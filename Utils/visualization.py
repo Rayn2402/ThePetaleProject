@@ -9,6 +9,7 @@ from torch import tensor, sum
 from matplotlib import pyplot as plt
 from numpy import array
 from sklearn.manifold import TSNE
+from os.path import join
 
 
 def compare_predictions(preds: tensor, targets: tensor, title: Union[str, None] = None) -> None:
@@ -86,26 +87,30 @@ def visualize_embeddings(embeddings: tensor, category_levels: tensor,
     plt.close()
 
 
-def visualize_epoch_losses(train_loss_history: tensor, test_loss_history: tensor) -> None:
+def visualize_epoch_progression(train_history: tensor, valid_history: tensor, progression_type: str, path: str) -> None:
     """
     Visualizes train and test loss history over training epoch
 
-    :param train_loss_history: (E,) tensor where E is the number of epochs
-    :param test_loss_history: (E,) tensor
+    :param train_history: (E,) tensor where E is the number of epochs
+    :param valid_history: (E,) tensor
+    :param progression_type: (string) type of the progression to visualize
+    :param path: (string) determines where to save the plots
     """
-    nb_epochs = train_loss_history.shape[0]
-    if nb_epochs != test_loss_history.shape[0]:
-        raise Exception("Both train and test tensors must be of the same shape")
+    nb_epochs = train_history.shape[0]
+    if nb_epochs != valid_history.shape[0]:
+        raise Exception("Both train and valid tensors must be of the same shape")
 
     epochs = range(nb_epochs)
 
-    plt.plot(epochs, train_loss_history, label='train loss')
-    plt.plot(epochs, test_loss_history, label='test loss')
+    plt.plot(epochs, train_history, label=f'train {progression_type}')
+    plt.plot(epochs, valid_history, label=f'valid {progression_type}')
+
+    plt.legend()
+
+    title = f'Train_and_valid_{progression_type}_over_epochs'
 
     plt.xlabel('Epochs')
-    plt.ylabel('Loss')
-    plt.title('Train and test losses over epochs')
-    plt.show()
+    plt.ylabel(title)
+    plt.title(title)
+    plt.savefig(join(path, f"{title}.png"))
     plt.close()
-
-

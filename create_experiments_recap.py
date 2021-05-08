@@ -22,6 +22,10 @@ def create_experiments_recap(path):
     hyperparams_importance_file = "hyperparameters_importance.png"
     parallel_coordinate_file = "parallel_coordinate.png"
     optimization_history_file = "optimization_history.png"
+    loss_over_epochs_file = "Train_and_valid_loss_over_epochs.png"
+    metric_over_epochs_file = "Train_and_valid_metric_over_epochs.png"
+
+
 
     # We define the style of our webpage with css
     style = """<style>
@@ -334,7 +338,7 @@ x   }
             # We add the hyperparameters importance section
             hyperparameters_importance_section = f"""
                         <div class="row center bottom-space">
-                            <img src="{os.path.join(path, evaluation, split, hyperparams_importance_file)}" 
+                            <img width="1200" src="{os.path.join(path, evaluation, split, hyperparams_importance_file)}" 
                             >
                         </div>
                     """ if os.path.exists(os.path.join(path, evaluation, split, hyperparams_importance_file)) else ""
@@ -358,9 +362,25 @@ x   }
             # We add the predictions section
             predictions_section = f"""
                         <div class="row center bottom-space">
-                            <img src="{os.path.join(path, evaluation, split, f"comparison_{evaluation}.png")}">
+                            <img width="1200" src="{os.path.join(path, evaluation, split, f"comparison_{evaluation}.png")}">
                         </div>
             """ if os.path.exists(os.path.join(path, evaluation, split, f"comparison_{evaluation}.png")) else ""
+
+            # We add the section visualizing the progression of the loss over the epochs
+            loss_over_epochs_section = f"""
+                                    <div class="row center bottom-space">
+                                        <img width="800" src="{os.path.join(path, evaluation, split, loss_over_epochs_file)}">
+                                    </div>
+                        """ if os.path.exists(
+                os.path.join(path, evaluation, split, loss_over_epochs_file)) else ""
+
+            # We add the section visualizing the progression of the metric over the epochs
+            metric_over_epochs_section = f"""
+                                                <div class="row center bottom-space">
+                                                    <img width="800" src="{os.path.join(path, evaluation, split, metric_over_epochs_file)}">
+                                                </div>
+                                    """ if os.path.exists(
+                os.path.join(path, evaluation, split, metric_over_epochs_file)) else ""
 
             # We arrange the different sections
             section = f"""<div class="main hidden" id="{evaluation}{split}">
@@ -371,6 +391,8 @@ x   }
                 {parallel_coordinate_section}
                 {optimization_history_section}
                 {predictions_section}
+                {loss_over_epochs_section}
+                {metric_over_epochs_section}
             </div>
             """
 

@@ -215,7 +215,7 @@ def stratified_sample(df: pd.DataFrame, target_col: str, n: Union[int, float],
     # If the column on which we want to do a stratified sampling is continuous,
     # we create another discrete column based on quantiles
     if len(df[target_col].unique()) > 10:
-        sample["quantiles"] = pd.qcut(sample[target_col], quantiles, labels=False)
+        sample["quantiles"] = pd.qcut(sample[target_col].astype(float), quantiles, labels=False)
         target_col = "quantiles"
 
     # We execute the sampling

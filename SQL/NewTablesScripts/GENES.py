@@ -8,9 +8,7 @@ related to the top 5 and the top 12 SNPs most significantly associated to cardio
 
 from SQL.DataManager.Utils import initialize_petale_data_manager
 from SQL.DataManager.Helpers import get_missing_update
-from SQL.NewTablesScripts.constants import SNPS_COMMON, SNPS_RARE, TOP5_SNPS_ID, CHROM,\
-    SNPS_POSITION, REF, ALT, PARTICIPANT, GENE_REF_GEN, INNER,\
-    CATEGORICAL_TYPE, TYPES, GENES_5, GENES_12, TOP12_SNPS_ID, SNPS_TYPE
+from SQL.NewTablesScripts.constants import *
 from pandas import merge
 
 KEY = "CHROM_POS"

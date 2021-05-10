@@ -4,18 +4,21 @@ Authors : Nicolas Raymond
 Files that contains class related to Datasets
 
 """
-
+from typing import Optional, List, Callable, Sequence, Tuple
+from pandas import DataFrame, Series
 from torch.utils.data import Dataset
-from torch import from_numpy, cat, ones
-from Data.Preprocessing import *
+from torch import from_numpy, cat, ones, tensor
+from Data.Preprocessing import preprocess_continuous, preprocess_categoricals
 from Data.Transforms import ContinuousTransform as ConT
 from SQL.constants import *
 
 
 class PetaleDataset(Dataset):
 
-    def __init__(self, df, cont_cols, target, cat_cols=None,
-                 split=True, add_biases=False, mean=None, std=None):
+    def __init__(self, df: DataFrame, cont_cols: List[str], target: str,
+                 cat_cols: Optional[List[str]] = None, split: bool = True,
+                 add_biases: bool = False, mean: Optional[Series] = None,
+                 std: Optional[Series] = None, mode: Optional[Series] = None):
         """
         Creates a petale dataset where categoricals columns are separated from the continuous by default.
 
@@ -27,6 +30,7 @@ class PetaleDataset(Dataset):
         :param add_biases: boolean indicating if a column of ones should be added at the beginning of X_cont
         :param mean: means to use for data normalization (pandas series)
         :param std : stds to use for data normalization (pandas series)
+        :param mode: modes to use in order to fill missing categorical values (pandas series)
         """
         assert PARTICIPANT in df.columns, 'IDs missing from the dataframe'
 
@@ -48,11 +52,11 @@ class PetaleDataset(Dataset):
         if cat_cols is not None:
             if split:
                 # We keep ordinal encodings of categorical features separated from continuous features
-                self.X_cat = preprocess_categoricals(df[cat_cols])
+                self.X_cat = preprocess_categoricals(df[cat_cols], mode=mode)
                 self.X_cat = from_numpy(self.X_cat.values).float()
             else:
                 # We concatenate one-hot encodings of categorical features with continuous features
-                self.X_cat = preprocess_categoricals(df[cat_cols], encoding='one-hot')
+                self.X_cat = preprocess_categoricals(df[cat_cols], encoding='one-hot', mode=mode)
                 self.X_cat = from_numpy(self.X_cat.values).float()
                 self.__concat_dataset()
         else:
@@ -64,13 +68,13 @@ class PetaleDataset(Dataset):
         # We define the getter function according to the presence of absence of categorical features
         self.getter = self.define_getter(cat_cols, split)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self.N
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: Sequence[int]) -> Tuple[tensor, tensor, Optional[tensor]]:
         return self.getter(idx)
 
-    def define_getter(self, cat_cols, split):
+    def define_getter(self, cat_cols: List[str], split: bool) -> Callable:
         """
         Builds to right __getitem__ function according to cat_cols value
 
@@ -88,7 +92,7 @@ class PetaleDataset(Dataset):
 
         return f
 
-    def __concat_dataset(self):
+    def __concat_dataset(self) -> None:
         """
         Concatenates categorical and continuous data
         WARNING! : !Categorical and continuous must remain separated if we want to have an embedding layer!
@@ -99,7 +103,9 @@ class PetaleDataset(Dataset):
 
 class PetaleDataframe:
 
-    def __init__(self, df, cont_cols, target, cat_cols=None, mean=None, std=None, **kwargs):
+    def __init__(self, df: DataFrame, cont_cols: List[str], target: str,
+                 cat_cols: Optional[List[str]] = None, mean: Optional[Series] = None,
+                 std: Optional[Series] = None, mode: Optional[Series] = None, **kwargs):
         """
         Applies transformations to a dataframe and store the result as the dataset for the Random Forest model
 
@@ -109,6 +115,7 @@ class PetaleDataframe:
         :param cat_cols: list with names of categorical columns
         :param mean: means to use for data normalization (pandas series)
         :param std : stds to use for data normalization (pandas series)
+        :param mode: modes to use in order to fill missing categorical values (pandas series)
         """
 
         assert PARTICIPANT in df.columns, 'IDs missing from the dataframe'
@@ -125,7 +132,7 @@ class PetaleDataframe:
 
         # We save and preprocess categorical features
         if cat_cols is not None:
-            self.X_cont[cat_cols] = preprocess_categoricals(self.X_cont[cat_cols])
+            self.X_cont[cat_cols] = preprocess_categoricals(self.X_cont[cat_cols], mode=mode)
 
         # We save the targets
         self.y = ConT.to_float(df[target]).values.flatten()
@@ -133,5 +140,5 @@ class PetaleDataframe:
         # We set the categorical data to none
         self.X_cat = None
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self.N

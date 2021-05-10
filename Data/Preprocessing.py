@@ -22,18 +22,19 @@ def preprocess_continuous(df, mean=None, std=None):
     return ConT.normalize(ConT.fill_missing(df, mean), mean, std)
 
 
-def preprocess_categoricals(df, encoding="ordinal"):
+def preprocess_categoricals(df, encoding="ordinal", mode=None):
     """
     Applies all categorical transforms to a dataframe containing only continuous data
 
     :param df: pandas dataframe
     :param encoding: one option in ("ordinal", "one-hot")
+    :param mode: panda series with modes of columns
     :return: pandas dataframe, list of encoding sizes
     """
     assert encoding in ENCODING, 'Encoding option not available'
 
     # We ensure that all columns are considered as categories
-    df = CaT.to_category(df)
+    df = CaT.fill_missing(CaT.to_category(df), mode)
 
     if encoding == "ordinal":
         return CaT.ordinal_encode(df)

@@ -31,6 +31,9 @@ def argument_parser():
     parser.add_argument('-rt', '--raw_table', type=str,
                         help=f"Name of the raw learning table (ex. 'L0_WARMUP')")
 
+    parser.add_argument('-nt', '--new_table', type=str,
+                        help=f"Name of the new table created")
+
     parser.add_argument('-ocsv', '--outliers_csv', type=str,
                         help=f"Path of the csv file containing participant ids to remove")
 
@@ -83,5 +86,5 @@ if __name__ == '__main__':
     types = {c: TYPES[c] for c in list(learning_df.columns)}
 
     # We create the tables
-    data_manager.create_and_fill_table(learning_df, LEARNING_0, types, primary_key=[PARTICIPANT])
-    data_manager.create_and_fill_table(hold_out_df, LEARNING_0_HOLDOUT, types, primary_key=[PARTICIPANT])
+    data_manager.create_and_fill_table(learning_df, args.new_table, types, primary_key=[PARTICIPANT])
+    data_manager.create_and_fill_table(hold_out_df, f"{args.new_table}_HOLDOUT", types, primary_key=[PARTICIPANT])

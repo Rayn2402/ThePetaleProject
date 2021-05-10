@@ -13,7 +13,7 @@ from SQL.NewTablesScripts.constants import SIGNIFICANT_COMMON_SNPS_ID, GENES, SN
 import os
 
 COL = {GENES: TYPES[GENES], SNPS_ID: TYPES[SNPS_ID], CHROM: TYPES[CHROM], SNPS_POSITION: TYPES[SNPS_POSITION]}
-DIR = "csv_files"
+DIR = "../csv_files"
 EXT = "csv"
 SEP = ","
 

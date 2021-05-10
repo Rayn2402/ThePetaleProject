@@ -13,7 +13,7 @@ import os
 
 
 COL = {PARTICIPANT: TYPES[PARTICIPANT], REF_NAME: TYPES[REF_NAME]}
-DIR = "csv_files"
+DIR = "../csv_files"
 EXT = "csv"
 SEP = ","
 

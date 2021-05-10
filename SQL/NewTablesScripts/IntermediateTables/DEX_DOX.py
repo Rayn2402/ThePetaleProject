@@ -11,7 +11,7 @@ import os
 
 
 COL = {PARTICIPANT: TYPES[PARTICIPANT], DEX: TYPES[DEX], DOX: TYPES[DOX]}
-DIR = "csv_files"
+DIR = "../csv_files"
 EXT = "csv"
 PATH = os.path.join(DIR, f"{DEX_DOX_TABLE}.{EXT}")
 

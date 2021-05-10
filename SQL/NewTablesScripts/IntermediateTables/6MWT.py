@@ -5,7 +5,7 @@ This file stores the procedure to execute in order to obtain "6MWT" table in the
 """
 
 from SQL.DataManagement.Utils import initialize_petale_data_manager
-from constants import *
+from SQL.NewTablesScripts.constants import *
 import pandas as pd
 
 if __name__ == '__main__':

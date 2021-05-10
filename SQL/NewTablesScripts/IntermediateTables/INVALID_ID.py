@@ -11,7 +11,7 @@ from pandas import read_csv
 from SQL.NewTablesScripts.constants import INVALID_ID_TABLE, PARTICIPANT, TYPES
 import os
 
-DIR = "csv_files"
+DIR = "../csv_files"
 EXT = "csv"
 PATH = os.path.join(DIR, f"{INVALID_ID_TABLE}.{EXT}")
 

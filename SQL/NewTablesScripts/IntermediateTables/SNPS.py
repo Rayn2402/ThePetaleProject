@@ -10,7 +10,7 @@ from pandas import read_csv
 from SQL.NewTablesScripts.constants import SNPS_COMMON, SNPS_RARE, CATEGORICAL_TYPE, TYPES
 import os
 
-DIR = "csv_files"
+DIR = "../csv_files"
 EXT = "csv"
 SEP = ","
 

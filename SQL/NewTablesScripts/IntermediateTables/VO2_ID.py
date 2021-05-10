@@ -18,7 +18,7 @@ from pandas import read_csv
 from SQL.NewTablesScripts.constants import VO2_ID_TABLE, PARTICIPANT, TYPES
 import os
 
-DIR = "csv_files"
+DIR = "../csv_files"
 EXT = "csv"
 PATH = os.path.join(DIR, f"{VO2_ID_TABLE}.{EXT}")
 

@@ -1,16 +1,19 @@
 """
 Authors : Nicolas Raymond
 
-This file contains the procedure to execute in order to obtain "L0_WARMUP" and "L0_WARMUP_HOLDOUT" tables.
+This file contains the procedure to execute in order to obtain "L0_WARMUP_RAW".
 This table is used to reproduce 6MWT experiment with a more complex model.
 """
 
 from SQL.DataManagement.Utils import initialize_petale_data_manager
-from Data.Sampling import split_train_test
 from SQL.constants import *
 from SQL.DataManagement.Helpers import get_missing_update
+from Data.Cleaning import DataCleaner
+from os.path import join
 import pandas as pd
 
+data_cleaner = DataCleaner(join(CLEANING_RECORDS, "WARMUP"), column_thresh=COLUMN_REMOVAL_THRESHOLD,
+                           row_thresh=ROW_REMOVAL_THRESHOLD, outlier_alpha=OUTLIER_ALPHA)
 
 if __name__ == '__main__':
 
@@ -39,8 +42,14 @@ if __name__ == '__main__':
     # We look at the missing data
     get_missing_update(complete_df)
 
+    # We remove rows and columns with too many missing values and stores other cleaning suggestions
+    complete_df = data_cleaner(complete_df)
+
+    # We look at the missing data
+    get_missing_update(complete_df)
+    
     # We extract an holdout set from the complete df
-    learning_df, hold_out_df = split_train_test(complete_df, VO2R_MAX, test_size=0.10, random_state=SEED)
+    # learning_df, hold_out_df = split_train_test(complete_df, VO2R_MAX, test_size=0.10, random_state=SEED)
 
     # We create the dictionary needed to create the table
     types = {c: TYPES[c] for c in all_vars}
@@ -49,8 +58,11 @@ if __name__ == '__main__':
     types.pop(VO2R_MAX)
     types[VO2R_MAX] = TYPES[VO2R_MAX]
 
-    # We create the tables
-    data_manager.create_and_fill_table(learning_df, LEARNING_0, types, primary_key=[PARTICIPANT])
-    data_manager.create_and_fill_table(hold_out_df, LEARNING_0_HOLDOUT, types, primary_key=[PARTICIPANT])
+    # We create the RAW learning table
+    data_manager.create_and_fill_table(complete_df, f"{LEARNING_0}_{RAW}", types, primary_key=[PARTICIPANT])
+
+    # # We create the tables
+    # data_manager.create_and_fill_table(learning_df, LEARNING_0, types, primary_key=[PARTICIPANT])
+    # data_manager.create_and_fill_table(hold_out_df, LEARNING_0_HOLDOUT, types, primary_key=[PARTICIPANT])
 
 

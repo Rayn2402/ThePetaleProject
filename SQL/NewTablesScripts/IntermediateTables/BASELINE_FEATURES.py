@@ -17,7 +17,7 @@ table in the database.
      - WEIGHT AT BIRTH (<2500g, >=2500g, NaN)
 
     Complications:
-    - Metabolic (0: No, 1: Yes)
+    - Neurocognitive (0: No, 1: Yes)
     - Skeletal/Bone (0: No, 1: Yes)
     - Cardiometabolic (0: No, 1: Yes)
 

@@ -8,7 +8,7 @@ from adjustText import adjust_text
 from Data.Transforms import ContinuousTransform as CT
 from numpy import mean, cov, linalg, array, einsum
 from scipy.stats import chi2
-from SQL.NewTablesScripts.constants import PARTICIPANT
+from SQL.constants import PARTICIPANT
 from SQL.DataManager.Helpers import retrieve_numerical
 from typing import List, Optional, Any, Tuple
 from json import dump

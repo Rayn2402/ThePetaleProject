@@ -9,7 +9,7 @@ from torch.utils.data import Dataset
 from torch import from_numpy, cat, ones
 from Data.Preprocessing import *
 from Data.Transforms import ContinuousTransform as ConT
-from SQL.NewTablesScripts.constants import *
+from SQL.constants import *
 
 
 class PetaleDataset(Dataset):

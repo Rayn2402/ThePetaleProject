@@ -31,7 +31,7 @@ GENERALS contains :
 
 from SQL.DataManagement.Utils import initialize_petale_data_manager
 from SQL.DataManagement.Helpers import AbsTimeLapse, get_missing_update
-from SQL.NewTablesScripts.constants import *
+from SQL.constants import *
 import pandas as pd
 
 if __name__ == '__main__':

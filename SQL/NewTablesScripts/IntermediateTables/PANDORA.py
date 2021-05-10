@@ -8,7 +8,7 @@ to match patient with genomic results.
 
 from SQL.DataManagement.Utils import initialize_petale_data_manager
 from pandas import read_csv
-from SQL.NewTablesScripts.constants import PARTICIPANT, REF_NAME, TYPES, PETALE_PANDORA
+from SQL.constants import PARTICIPANT, REF_NAME, TYPES, PETALE_PANDORA
 import os
 
 

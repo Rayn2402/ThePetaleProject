@@ -16,7 +16,7 @@ table in the database.
 
 from SQL.DataManagement.Utils import initialize_petale_data_manager
 from SQL.DataManagement.Helpers import get_missing_update
-from SQL.NewTablesScripts.constants import *
+from SQL.constants import *
 from numpy import select, nan
 import pandas as pd
 

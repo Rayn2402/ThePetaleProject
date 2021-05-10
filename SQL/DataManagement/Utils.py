@@ -7,7 +7,7 @@ This file contains all functions linked to SQL data management
 
 """
 from SQL.DataManagement import ChartServices, Helpers
-from SQL.NewTablesScripts.constants import *
+from SQL.constants import *
 from tqdm import tqdm
 import psycopg2
 import pandas as pd

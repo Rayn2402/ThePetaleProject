@@ -7,7 +7,7 @@ This table is used to reproduce 6MWT experiment with a more complex model.
 
 from SQL.DataManagement.Utils import initialize_petale_data_manager
 from Data.Sampling import split_train_test
-from SQL.NewTablesScripts.constants import *
+from SQL.constants import *
 from SQL.DataManagement.Helpers import get_missing_update
 import pandas as pd
 

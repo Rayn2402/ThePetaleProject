@@ -173,7 +173,7 @@ class DataCleaner:
 
         else:
             # Saving of figure filename
-            filename = join(self.__plots_path, f"{numerical_columns[0]} boxplot")
+            filename = join(self.__plots_path, f"{numerical_columns[0].replace('/','-')} boxplot")
 
             # Creation of single boxplot
             bp = ax.boxplot(df[numerical_columns[0]].values, whis=self.__outlier_alpha, positions=[0])
@@ -213,7 +213,7 @@ class DataCleaner:
                     arrowprops=dict(arrowstyle="->", color='r', lw=0.5))
 
         fig.tight_layout()
-        fig.savefig(filename, format=self.__fig_format)
+        fig.savefig(f"{filename}.{self.__fig_format}", format=self.__fig_format)
 
     def __identify_multivariate_outliers(self, df: pd.DataFrame, numerical_columns: List[str]) -> None:
         """
@@ -266,7 +266,7 @@ class DataCleaner:
                     arrowprops=dict(arrowstyle="->", color='r', lw=0.5))
 
         ax.set_title(f'Potential mutlivariate outliers (qchi2 = {self.__qchi2})')
-        fig.savefig(join(self.__plots_path, self.MAHALANOBIS), format=self.__fig_format)
+        fig.savefig(f"{join(self.__plots_path, self.MAHALANOBIS)}.{self.__fig_format}", format=self.__fig_format)
 
     def __update_outliers_records(self, subset: pd.DataFrame,
                                   column: str, lvl: str, box_idx: int, ax: Any, texts: Any,

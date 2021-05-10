@@ -52,7 +52,7 @@ def argument_parser():
     args = parser.parse_args()
 
     # Print arguments
-    print("\n The inputs are:")
+    print("\nThe inputs are:")
     for arg in vars(args):
         print("{}: {}".format(arg, getattr(args, arg)))
     print("\n")
@@ -83,7 +83,7 @@ if __name__ == '__main__':
                                                 test_size=args.holdout_size, random_state=args.seed)
 
     # We create the dictionary needed to create the table
-    types = {c: TYPES[c] for c in list(learning_df.columns)}
+    types = {c: TYPES.get(c, CATEGORICAL_TYPE) for c in list(learning_df.columns)}
 
     # We create the tables
     data_manager.create_and_fill_table(learning_df, args.new_table, types, primary_key=[PARTICIPANT])

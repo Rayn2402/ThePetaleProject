@@ -2,7 +2,7 @@
 Authors : Nicolas Raymond
 
 This file contains the procedure to execute in order to obtain
-"L1_BASELINES_CARDIOMETABOLIC" and "L1_BASELINES_CARDIOMETABOLIC_HOLDOUT" tables.
+"L1_BASELINES_CARDIOMETABOLIC_RAW" table.
 
 """
 
@@ -20,7 +20,7 @@ if __name__ == '__main__':
     # We build a PetaleDataManager that will help interacting with PETALE database
     data_manager = initialize_petale_data_manager()
 
-    # We save the variables needed from GENERALS
+    # We save the variables needed from BASELINES and COMPLICATIONS table
     vars = [PARTICIPANT, SEX, AGE_AT_DIAGNOSIS, DT, RADIOTHERAPY_DOSE,
             DOX, DEX, BIRTH_AGE, BIRTH_WEIGHT, CARDIOMETABOLIC_COMPLICATIONS]
 

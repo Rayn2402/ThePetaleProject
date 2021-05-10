@@ -31,7 +31,7 @@ class ContinuousTransform:
     @staticmethod
     def fill_missing(df, mean=None):
         """
-        Fills missing value of continuous data columns with mean
+        Fills missing values of continuous data columns with mean
         """
         if mean is not None:
             return df.fillna(mean)
@@ -67,4 +67,14 @@ class CategoricalTransform:
             df[c] = df[c].cat.codes
 
         return df
+
+    @staticmethod
+    def fill_missing(df, mode=None):
+        """
+        Fills missing values of continuous data columns with mode
+        """
+        if mode is not None:
+            return df.fillna(mode)
+        else:
+            return df.fillna(df.mode().iloc[0])
 

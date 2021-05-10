@@ -19,11 +19,12 @@ def execute_linear_regression_experience(k, regularization=False, lambda_values=
     warmup_sampler = get_warmup_sampler(dm=manager, outliers_ids=["P140", "P108"])
     data = warmup_sampler(k=k, valid_size=0, add_biases=True)
 
-    linear_regression_scores = []
+
 
     features = ["B", "WEIGHT", "TDM6_HR_END", "TDM6_DIST", "DT", "AGE", "MVLPA"]
 
     for value in lambda_values:
+        linear_regression_scores = []
         evaluation_name = f"{evaluation_name}_{value if value is not None else ''}"
         for i in range(k):
             # We create the linear regressor

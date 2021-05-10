@@ -70,7 +70,7 @@ class DataCleaner:
 
         # Private mutable attribute
         self.__records = {self.CP: {},
-                          self.CC: [],
+                          self.CC: {},
                           "Column Threshold": self.__column_tresh,
                           "Row Threshold": self.__row_thresh,
                           "Outlier Alpha": self.__outlier_alpha,

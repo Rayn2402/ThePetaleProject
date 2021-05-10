@@ -4,11 +4,20 @@ Authors : Nicolas Raymond
 This file contains the procedure to execute in order to obtain "L0_WARMUP and L0_WARMUP_HOLDOUT".
 This table is used to reproduce 6MWT experiment with a more complex model.
 """
+
 import argparse
+import os
+import sys
+dir_path = os.path.dirname(os.path.realpath(__file__))
+parent_dir_path = os.path.abspath(os.path.join(dir_path, os.pardir))
+parent_parent = os.path.abspath(os.path.join(parent_dir_path, os.pardir))
+sys.path.insert(0, parent_parent)
 from Data.Sampling import split_train_test
 from SQL.DataManagement.Utils import initialize_petale_data_manager
+from SQL.DataManagement.Helpers import fill_id
 from SQL.constants import *
 from pandas import read_csv
+from decimal import Decimal
 
 
 def argument_parser():
@@ -61,10 +70,11 @@ if __name__ == '__main__':
     df = data_manager.get_table(args.raw_table)
 
     # We retrieve participant ids to remove
-    outliers_id = read_csv(args.outliers_csv, sep=args.csv_separator)
+    outliers_ids = read_csv(args.outliers_csv, sep=args.csv_separator)
+    outliers_ids[PARTICIPANT] = outliers_ids[PARTICIPANT].astype(str).apply(fill_id)
 
     # We remove the ids
-    df = df[df[PARTICIPANT].isin(list(outliers_id[PARTICIPANT].values()))]
+    df = df.loc[~df[PARTICIPANT].isin(list(outliers_ids[PARTICIPANT].values)), :]
 
     # We extract an holdout set from the whole dataframe
     learning_df, hold_out_df = split_train_test(df, args.target_column,

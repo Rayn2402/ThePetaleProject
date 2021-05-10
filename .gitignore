@@ -3,8 +3,7 @@ missing_data_charts
 DescriptiveAnalyses/stats
 DescriptiveAnalyses/charts
 .idea
-SQL/NewTablesScripts/csv_files/VO2_ID.csv
-SQL/NewTablesScripts/csv_files/DEX_DOX.csv
 SQL/NewTablesScripts/csv_files
+SQL/NewTablesScripts/CleaningRecords
 __pycache__
 *.pt

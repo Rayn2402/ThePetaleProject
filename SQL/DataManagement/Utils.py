@@ -6,7 +6,7 @@ Authors : Nicolas Raymond
 This file contains all functions linked to SQL data management
 
 """
-from SQL.DataManager import ChartServices, Helpers
+from SQL.DataManagement import ChartServices, Helpers
 from SQL.NewTablesScripts.constants import *
 from tqdm import tqdm
 import psycopg2

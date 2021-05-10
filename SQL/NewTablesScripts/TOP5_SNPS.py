@@ -6,7 +6,7 @@ the most significantly associated to cardiorespiratory fitness.
 
 """
 
-from SQL.DataManager.Utils import initialize_petale_data_manager
+from SQL.DataManagement.Utils import initialize_petale_data_manager
 from pandas import read_csv, concat
 from SQL.NewTablesScripts.constants import SIGNIFICANT_COMMON_SNPS_ID, GENES, SNPS_ID, SNPS_TYPE, \
     SNPS_POSITION, CHROM, TYPES, SIGNIFICANT_RARE_SNPS_ID, TOP5_SNPS_ID

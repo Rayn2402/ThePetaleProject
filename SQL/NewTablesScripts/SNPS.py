@@ -5,7 +5,7 @@ This file contains the procedure to create the tables containing the genomic dat
 
 """
 
-from SQL.DataManager.Utils import initialize_petale_data_manager
+from SQL.DataManagement.Utils import initialize_petale_data_manager
 from pandas import read_csv
 from SQL.NewTablesScripts.constants import SNPS_COMMON, SNPS_RARE, CATEGORICAL_TYPE, TYPES
 import os

@@ -29,8 +29,8 @@ GENERALS contains :
 
 """
 
-from SQL.DataManager.Utils import initialize_petale_data_manager
-from SQL.DataManager.Helpers import AbsTimeLapse, get_missing_update
+from SQL.DataManagement.Utils import initialize_petale_data_manager
+from SQL.DataManagement.Helpers import AbsTimeLapse, get_missing_update
 from SQL.NewTablesScripts.constants import *
 import pandas as pd
 

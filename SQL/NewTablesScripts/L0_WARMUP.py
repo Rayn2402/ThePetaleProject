@@ -5,10 +5,10 @@ This file contains the procedure to execute in order to obtain "L0_WARMUP" and "
 This table is used to reproduce 6MWT experiment with a more complex model.
 """
 
-from SQL.DataManager.Utils import initialize_petale_data_manager
+from SQL.DataManagement.Utils import initialize_petale_data_manager
 from Data.Sampling import split_train_test
 from SQL.NewTablesScripts.constants import *
-from SQL.DataManager.Helpers import get_missing_update
+from SQL.DataManagement.Helpers import get_missing_update
 import pandas as pd
 
 

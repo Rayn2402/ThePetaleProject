@@ -1,7 +1,5 @@
 import os
 import csv
-from SQL.NewTablesScripts.constants import PARTICIPANT
-from json import dump
 from pathlib import Path
 
 SECONDS_IN_YEAR = 31556952

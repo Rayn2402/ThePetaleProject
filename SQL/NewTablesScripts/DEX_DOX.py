@@ -4,7 +4,7 @@ Author : Nicolas Raymond
 This file contains the procedure to create the table associated to DEX and DOX cumulative doses.
 """
 
-from SQL.DataManager.Utils import initialize_petale_data_manager
+from SQL.DataManagement.Utils import initialize_petale_data_manager
 from pandas import read_csv
 from SQL.NewTablesScripts.constants import DEX_DOX_TABLE, PARTICIPANT, DEX, DOX, TYPES
 import os

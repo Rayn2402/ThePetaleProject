@@ -4,7 +4,7 @@ Author : Nicolas Raymond
 This file stores the procedure to execute in order to obtain "6MWT" table in the database.
 """
 
-from SQL.DataManager.Utils import initialize_petale_data_manager
+from SQL.DataManagement.Utils import initialize_petale_data_manager
 from constants import *
 import pandas as pd
 

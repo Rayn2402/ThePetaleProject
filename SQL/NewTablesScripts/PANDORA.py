@@ -6,7 +6,7 @@ This file contains the procedure to create the table PANDORA containing the IDs 
 to match patient with genomic results.
 """
 
-from SQL.DataManager.Utils import initialize_petale_data_manager
+from SQL.DataManagement.Utils import initialize_petale_data_manager
 from pandas import read_csv
 from SQL.NewTablesScripts.constants import PARTICIPANT, REF_NAME, TYPES, PETALE_PANDORA
 import os

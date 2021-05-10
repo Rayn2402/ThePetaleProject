@@ -12,8 +12,8 @@ Criterias can be found in :
  lymphoblastic leukemia survivors exposed to chemotherapy"
 
 """
-from SQL.DataManager.Utils import initialize_petale_data_manager
-from SQL.DataManager.Helpers import fill_id
+from SQL.DataManagement.Utils import initialize_petale_data_manager
+from SQL.DataManagement.Helpers import fill_id
 from pandas import read_csv
 from SQL.NewTablesScripts.constants import VO2_ID_TABLE, PARTICIPANT, TYPES
 import os

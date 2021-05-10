@@ -5,8 +5,8 @@ This file contains the procedure to create the table with IDs of
 invalid participant that didn't receive the same treatment as the others
 
 """
-from SQL.DataManager.Utils import initialize_petale_data_manager
-from SQL.DataManager.Helpers import fill_id
+from SQL.DataManagement.Utils import initialize_petale_data_manager
+from SQL.DataManagement.Helpers import fill_id
 from pandas import read_csv
 from SQL.NewTablesScripts.constants import INVALID_ID_TABLE, PARTICIPANT, TYPES
 import os

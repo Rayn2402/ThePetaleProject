@@ -5,7 +5,7 @@ This file contains the Sampler class used to separate test sets from train sets
 """
 
 from typing import Sequence, Union, Tuple
-from SQL.DataManager.Utils import PetaleDataManager
+from SQL.DataManagement.Utils import PetaleDataManager
 from Data.Datasets import PetaleDataset, PetaleDataframe
 from Data.Transforms import ContinuousTransform as ConT
 from SQL.constants import *

@@ -17,7 +17,6 @@ from SQL.DataManagement.Utils import initialize_petale_data_manager
 from SQL.DataManagement.Helpers import fill_id
 from SQL.constants import *
 from pandas import read_csv
-from decimal import Decimal
 
 
 def argument_parser():

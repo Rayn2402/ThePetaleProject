@@ -292,38 +292,5 @@ def get_missing_update(df):
     print(df.isnull().sum(axis=0), "\n\n")
 
 
-def clean_dataframe(df, column_threshold, row_threshold, json_save_path=None):
-    """
-    Remove columns and rows with too many missing values.
-    Rows (Columns) are removed if the portion of missing values is higher than the threshold.
-
-    :param df: pandas dataframe
-    :param column_threshold: percentage threshold (0 <= thresh <= 1)
-    :param row_threshold: percentage threshold (0 <= thresh <= 1)
-    :param json_save_path: path where to write names of participant and columns removed
-    :return: pandas dataframe
-    """
-    # Column cleaning
-    update_df = df.dropna(axis=1, thresh=round(df.shape[0]*(1-column_threshold)))
-
-    # Row cleaning
-    update_df = update_df.dropna(axis=0, thresh=round(update_df.shape[1]*(1-row_threshold)))
-
-    if json_save_path is not None:
-
-        # We save removed columns and removed participant
-        removed_data = {"Removed columns": [c for c in df.columns if c not in update_df.columns],
-                        "Removed participant": [p for p in df[PARTICIPANT].values if
-                                                p not in update_df[PARTICIPANT].values],
-                        "Column Threshold": column_threshold,
-                        "Row Threshold": row_threshold}
-
-        # We save all the removed rows and columns collected in a json file
-        with open(json_save_path, "w") as file:
-            dump(removed_data, file, indent=True)
-
-    return update_df
-
-
 
 

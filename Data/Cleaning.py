@@ -9,7 +9,7 @@ from Data.Transforms import ContinuousTransform as CT
 from numpy import mean, cov, linalg, array, einsum
 from scipy.stats import chi2
 from SQL.constants import PARTICIPANT
-from SQL.DataManager.Helpers import retrieve_numerical
+from SQL.DataManagement.Helpers import retrieve_numerical
 from typing import List, Optional, Any, Tuple
 from json import dump
 from os.path import join
@@ -215,7 +215,6 @@ class DataCleaner:
 
         fig.tight_layout()
         fig.savefig(filename, format=self.__fig_format)
-        plt.show()
 
     def __identify_multivariate_outliers(self, df: pd.DataFrame, numerical_columns: List[str]) -> None:
         """

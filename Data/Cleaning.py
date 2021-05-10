@@ -95,10 +95,10 @@ class DataCleaner:
             numerical_columns = list(numerical_df.columns.values)
 
         # We identify and remove columns and rows with too many missing values
-        updated_df = self.__identify_critical_rows_and_columns(df)
+        cleaned_df = self.__identify_critical_rows_and_columns(df)
 
         # We make sure that numerical columns values are float and fill NaN with columns' means
-        updated_df = self.__refactor_dataframe(updated_df, numerical_columns)
+        updated_df = self.__refactor_dataframe(cleaned_df, numerical_columns)
 
         # Creation of boxplots for each numerical attribute separately
         # Recording of potential univariate outliers and recording of attributes' quartiles
@@ -114,7 +114,7 @@ class DataCleaner:
         # We save the records in a .json file
         self.__save_records()
 
-        return updated_df
+        return cleaned_df
 
     def __identify_critical_rows_and_columns(self, df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -176,7 +176,6 @@ class DataCleaner:
             filename = join(self.__plots_path, f"{numerical_columns[0]} boxplot")
 
             # Creation of single boxplot
-            updated_df = df
             bp = ax.boxplot(df[numerical_columns[0]].values, whis=self.__outlier_alpha, positions=[0])
 
             # Removal of x label
@@ -372,9 +371,10 @@ class DataCleaner:
         :return: same dataframe with only numeric
         """
         assert PARTICIPANT in df.columns.values, f"{PARTICIPANT} column must be in the dataframe"
-        df[numerical_columns] = df[numerical_columns].astype(float).fillna(df[numerical_columns].mean())
+        updated_df = df.copy()
+        updated_df[numerical_columns] = df[numerical_columns].astype(float).fillna(df[numerical_columns].mean())
 
-        return df
+        return updated_df
 
     @staticmethod
     def __return_outlier_warning(numerical_attribute: str, value: float, lvl: str) -> str:

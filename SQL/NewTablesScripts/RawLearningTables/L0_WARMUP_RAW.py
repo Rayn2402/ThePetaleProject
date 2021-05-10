@@ -2,7 +2,7 @@
 Authors : Nicolas Raymond
 
 This file contains the procedure to execute in order to obtain "L0_WARMUP_RAW".
-This table is used to reproduce 6MWT experiment with a more complex model.
+
 """
 
 from SQL.DataManagement.Utils import initialize_petale_data_manager
@@ -47,9 +47,6 @@ if __name__ == '__main__':
 
     # We look at the missing data
     get_missing_update(complete_df)
-    
-    # We extract an holdout set from the complete df
-    # learning_df, hold_out_df = split_train_test(complete_df, VO2R_MAX, test_size=0.10, random_state=SEED)
 
     # We create the dictionary needed to create the table
     types = {c: TYPES[c] for c in all_vars}
@@ -60,9 +57,5 @@ if __name__ == '__main__':
 
     # We create the RAW learning table
     data_manager.create_and_fill_table(complete_df, f"{LEARNING_0}_{RAW}", types, primary_key=[PARTICIPANT])
-
-    # # We create the tables
-    # data_manager.create_and_fill_table(learning_df, LEARNING_0, types, primary_key=[PARTICIPANT])
-    # data_manager.create_and_fill_table(hold_out_df, LEARNING_0_HOLDOUT, types, primary_key=[PARTICIPANT])
 
 

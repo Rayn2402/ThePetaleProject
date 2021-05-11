@@ -1,7 +1,7 @@
 """
 This file is used to store the experiment testing a linear regression model on the WarmUp dataset.
 """
-from SQL.DataManager.Utils import PetaleDataManager
+from SQL.DataManagement.Utils import PetaleDataManager
 from Models.LinearModel import LinearRegressor
 from Data.Sampling import get_warmup_sampler
 from Utils.score_metrics import RegressionMetrics
@@ -16,7 +16,7 @@ def execute_linear_regression_experience(k, regularization=False, lambda_values=
     RECORDING_PATH = join("..", "..")
 
     # We create the warmup sampler to get the data
-    warmup_sampler = get_warmup_sampler(dm=manager, outliers_ids=["P140", "P108"])
+    warmup_sampler = get_warmup_sampler(dm=manager)
     data = warmup_sampler(k=k, valid_size=0, add_biases=True)
 
 
@@ -67,7 +67,3 @@ def execute_linear_regression_experience(k, regularization=False, lambda_values=
         # We generate the evaluation recap
         get_evaluation_recap(evaluation_name=evaluation_name, recordings_path=RECORDING_PATH)
 
-        print(linear_regression_scores)
-
-
-execute_linear_regression_experience(k=10, regularization=False)

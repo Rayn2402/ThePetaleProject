@@ -2,7 +2,7 @@
 
 This file is used to store the experiment for testing a polynomial regression model on the WarmUp dataset.
 """
-from SQL.DataManager.Utils import PetaleDataManager
+from SQL.DataManagement.Utils import PetaleDataManager
 from Models.LinearModel import LinearRegressor
 from Data.Sampling import get_warmup_sampler
 from Utils.score_metrics import RegressionMetrics
@@ -19,7 +19,7 @@ def execute_polynomial_regression(k, degree, regularization=False, lambda_values
     RECORDING_PATH = join("..", "..")
 
     # We create the warmup sampler to get the data
-    warmup_sampler = get_warmup_sampler(dm=manager, outliers_ids=["P108", "P140"])
+    warmup_sampler = get_warmup_sampler(dm=manager)
     data = warmup_sampler(k=k, valid_size=0)
 
 
@@ -69,7 +69,5 @@ def execute_polynomial_regression(k, degree, regularization=False, lambda_values
 
         # We generate the evaluation recap
         get_evaluation_recap(evaluation_name=evaluation_name, recordings_path=RECORDING_PATH)
-        print(polynomial_regression_scores)
 
 
-execute_polynomial_regression(k=10, degree=2, regularization=True, lambda_values=[100, 0.001])

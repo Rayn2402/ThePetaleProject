@@ -2,7 +2,7 @@
 This file is used to store the experiment testing a Neural Network on the WarmUp dataset.
 """
 from os.path import join
-from SQL.DataManager.Utils import PetaleDataManager
+from SQL.DataManagement.Utils import PetaleDataManager
 from Utils.score_metrics import RegressionMetrics
 from Models.GeneralModels import NNRegressor
 from Models.ModelGenerator import NNModelGenerator
@@ -47,7 +47,5 @@ def execute_neural_network_experiment(k, l, n_trials, hp_files_ids, ):
                                   get_parallel_coordinate=True, recordings_path=RECORDING_PATH)
 
         # We perform the nested cross validation
-        score = evaluator.nested_cross_valid()
-
-        print(score)
+        evaluator.nested_cross_valid()
 

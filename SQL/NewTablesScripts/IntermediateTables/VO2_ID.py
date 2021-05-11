@@ -12,16 +12,15 @@ Criterias can be found in :
  lymphoblastic leukemia survivors exposed to chemotherapy"
 
 """
-from SQL.DataManager.Utils import initialize_petale_data_manager
-from SQL.DataManager.Helpers import fill_id
+from SQL.DataManagement.Utils import initialize_petale_data_manager
+from SQL.DataManagement.Helpers import fill_id
 from pandas import read_csv
+from SQL.constants import VO2_ID_TABLE, PARTICIPANT, TYPES
 import os
 
-TABLE_NAME = "VO2_ID"
-COL = "Participant"
-DIR = "csv_files"
+DIR = "../csv_files"
 EXT = "csv"
-PATH = os.path.join(DIR, f"{TABLE_NAME}.{EXT}")
+PATH = os.path.join(DIR, f"{VO2_ID_TABLE}.{EXT}")
 
 if __name__ == '__main__':
 
@@ -30,7 +29,9 @@ if __name__ == '__main__':
 
     # We build the pandas dataframe
     IDs = read_csv(PATH)
-    IDs[COL] = IDs[COL].astype('string').apply(fill_id)
+    IDs[PARTICIPANT] = IDs[PARTICIPANT].astype('string').apply(fill_id)
 
     # We create and fill the table in the database
-    data_manager.create_and_fill_table(IDs, TABLE_NAME, {COL: "text"})
+    data_manager.create_and_fill_table(IDs, VO2_ID_TABLE,
+                                       {PARTICIPANT: TYPES[PARTICIPANT]},
+                                       primary_key=[PARTICIPANT])

@@ -4,8 +4,8 @@ Author : Nicolas Raymond
 This file stores the procedure to execute in order to obtain "6MWT" table in the database.
 """
 
-from SQL.DataManager.Utils import initialize_petale_data_manager
-from constants import *
+from SQL.DataManagement.Utils import initialize_petale_data_manager
+from SQL.constants import *
 import pandas as pd
 
 if __name__ == '__main__':
@@ -18,7 +18,7 @@ if __name__ == '__main__':
 
     # We retrieve the table with the variables and the table with the filtered ID
     df_cardio_4 = data_manager.get_table(CARDIO_4, C4_vars)
-    IDs = data_manager.get_table(ID_TABLE)
+    IDs = data_manager.get_table(VO2_ID_TABLE)
 
     # We only keep survivors from phase 1
     df_cardio_4 = df_cardio_4[df_cardio_4[TAG] == PHASE]

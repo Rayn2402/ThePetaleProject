@@ -4,13 +4,16 @@ Authors : Nicolas Raymond
 This files contains all class function related to preprocessing
 
 """
+from typing import Optional
+from pandas import DataFrame, Series
 from Data.Transforms import ContinuousTransform as ConT
 from Data.Transforms import CategoricalTransform as CaT
 
 ENCODING = ["ordinal", "one-hot"]
 
 
-def preprocess_continuous(df, mean=None, std=None):
+def preprocess_continuous(df: DataFrame, mean: Optional[Series] = None,
+                          std: Optional[Series] = None) -> DataFrame:
     """
     Applies all continuous transforms to a dataframe containing only continuous data
 
@@ -22,18 +25,20 @@ def preprocess_continuous(df, mean=None, std=None):
     return ConT.normalize(ConT.fill_missing(df, mean), mean, std)
 
 
-def preprocess_categoricals(df, encoding="ordinal"):
+def preprocess_categoricals(df: DataFrame, encoding: str = "ordinal",
+                            mode: Optional[Series] = None) -> DataFrame:
     """
     Applies all categorical transforms to a dataframe containing only continuous data
 
     :param df: pandas dataframe
     :param encoding: one option in ("ordinal", "one-hot")
+    :param mode: panda series with modes of columns
     :return: pandas dataframe, list of encoding sizes
     """
     assert encoding in ENCODING, 'Encoding option not available'
 
     # We ensure that all columns are considered as categories
-    df = CaT.to_category(df)
+    df = CaT.fill_missing(CaT.to_category(df), mode)
 
     if encoding == "ordinal":
         return CaT.ordinal_encode(df)

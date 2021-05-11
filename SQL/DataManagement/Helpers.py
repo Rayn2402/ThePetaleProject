@@ -265,11 +265,11 @@ def get_column_stats(df, col):
     """
     numerical_data = df[col].astype("float")
     mean = round(numerical_data.mean(axis=0), 2)
-    var = round(numerical_data.std(axis=0), 2)
+    std = round(numerical_data.std(axis=0), 2)
     min = numerical_data.min()
     max = numerical_data.max()
 
-    return mean, var, min, max
+    return mean, std, min, max
 
 
 def fill_id(id):
@@ -278,5 +278,17 @@ def fill_id(id):
     :param id: current id (string)
     """
     return f"P" + "".join(["0"]*(3-len(id))) + id
+
+
+def get_missing_update(df):
+    """
+    Prints the number of rows and the number of missing values for each column
+    :param df: pandas dataframe
+    """
+    print("Current number of rows : ", df.shape[0])
+    print("Missing counts : ")
+    print(df.isnull().sum(axis=0), "\n\n")
+
+
 
 

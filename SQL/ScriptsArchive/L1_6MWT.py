@@ -5,10 +5,10 @@ This file contains the procedure to execute in order to obtain "Learning_1 Gener
 This table will consist of one of the simplest dataset that we will use to train our different model.
 """
 
-from SQL.DataManager.Utils import initialize_petale_data_manager
-from SQL.NewTablesScripts.L0_WARMUP import get_missing_update
+from SQL.DataManagement.Utils import initialize_petale_data_manager
+from SQL.DataManagement.Helpers import get_missing_update
 from Data.Sampling import split_train_test
-from constants import *
+from SQL.constants import *
 import pandas as pd
 
 if __name__ == '__main__':

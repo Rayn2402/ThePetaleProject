@@ -38,6 +38,9 @@ class Trainer(ABC):
         self.model = model
 
         # We save the attribute device
+        self.device_type = device
+
+        # We set the device
         self.device = device_("cuda:0" if cuda.is_available() and device == "gpu" else "cpu")
 
         # We save the metric
@@ -82,7 +85,7 @@ class Trainer(ABC):
         self.subprocess_defined = True
 
         # We build the subprocess according to the datasets
-        gpus = 0.25 if (self.device == "gpu") else 0
+        gpus = 0.10 if (self.device_type != "cpu") else 0
 
         @ray.remote(num_gpus=gpus)
         def subprocess(i: int) -> float:

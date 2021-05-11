@@ -1,10 +1,11 @@
-from SQL.DataManager.Utils import PetaleDataManager
+from SQL.DataManagement.Utils import PetaleDataManager
 from Models.GeneralModels import NNClassifier
 from Training.Trainer import NNTrainer
 from Utils.visualization import visualize_epoch_losses
 from Data.Sampling import get_learning_one_sampler
+from Utils.score_metrics import ClassificationMetrics as CM
 from torch import unique, manual_seed
-from SQL.NewTablesScripts.constants import SEED
+from SQL.constants import SEED
 import numpy as np
 
 if __name__ == '__main__':
@@ -20,7 +21,7 @@ if __name__ == '__main__':
 
     # Initialization of DataManager and sampler
     manager = PetaleDataManager("rayn2402")
-    sampler = get_learning_one_sampler(dm=manager)
+    sampler = get_learning_one_sampler(dm=manager, genes=True)
 
     # Loading of data
     all_data = sampler(k=1, l=1)
@@ -36,11 +37,11 @@ if __name__ == '__main__':
     manual_seed(SEED)
 
     # Creation of a simple model
-    Model = NNClassifier(num_cont_col=cont, output_size=3, layers=[10, 20, 20],
+    Model = NNClassifier(num_cont_col=cont, output_size=2, layers=[10, 20, 10],
                          activation='ReLU', cat_sizes=cat_sizes)
 
     # Creation of a Trainer
-    trainer = NNTrainer(Model, metric=None, lr=0.001, batch_size=20, weight_decay=0,
+    trainer = NNTrainer(Model, metric=CM.acc_cross, lr=0.001, batch_size=20, weight_decay=0,
                         epochs=1000, early_stopping_activated=False)
 
     # Training for 1000 epochs
@@ -62,7 +63,7 @@ if __name__ == '__main__':
         manual_seed(SEED)
 
         # Creation of a simple model
-        Model = NNClassifier(num_cont_col=cont, output_size=3, layers=[10, 20, 20],
+        Model = NNClassifier(num_cont_col=cont, output_size=2, layers=[10, 20, 20],
                              activation='ReLU', cat_sizes=cat_sizes)
 
         # Creation of a Trainer
@@ -82,7 +83,7 @@ if __name__ == '__main__':
     manual_seed(SEED)
 
     # Creation of a simple model
-    Model = NNClassifier(num_cont_col=cont, output_size=3, layers=[10, 20, 20],
+    Model = NNClassifier(num_cont_col=cont, output_size=2, layers=[10, 20, 20],
                          activation='ReLU', cat_sizes=cat_sizes)
 
     # Creation of a Trainer

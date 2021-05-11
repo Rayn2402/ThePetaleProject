@@ -4,38 +4,32 @@ Author : Nicolas Raymond
 This file contains the Sampler class used to separate test sets from train sets
 """
 
-from typing import Sequence, Union, Tuple
-from SQL.DataManager.Utils import PetaleDataManager
+from typing import List, Union, Tuple
+from SQL.DataManagement.Utils import PetaleDataManager
 from Data.Datasets import PetaleDataset, PetaleDataframe
 from Data.Transforms import ContinuousTransform as ConT
-from SQL.NewTablesScripts.constants import *
+from SQL.constants import *
 import numpy as np
 import pandas as pd
-from Data.Preprocessing import preprocess_outliers
 
 
 class Sampler:
 
-    def __init__(self, dm: PetaleDataManager, table_name: str, cont_cols: Sequence[str],
-                 target_col: str, cat_cols: Union[None, Sequence[str]] = None, to_dataset: bool = True,
-                 outliers_ids: Sequence[str] = []):
+    def __init__(self, dm: PetaleDataManager, table_name: str, cont_cols: List[str],
+                 target_col: str, cat_cols: Union[None, List[str]] = None, to_dataset: bool = True):
         """
         Object that creates all datasets
+
         :param dm: PetaleDataManager
         :param table_name: name of the table on which we want to sample datasets
         :param cont_cols: list with the names of continuous columns of the table
         :param cat_cols: list with the names of the categorical columns of the table
         :param target_col: name of the target column in the table
         :param to_dataset: bool indicating if we want a PetaleDataset (True) or a PetaleDataframe (False)
-        :param outliers_ids: list of the outliers ids
         """
 
         # We save the learning set as seen in the Workflow presentation
         self.learning_set = dm.get_table(table_name)
-
-        # We remove the outliers
-        self.learning_set = preprocess_outliers(df=self.learning_set, cont_cols=cont_cols, cat_cols=cat_cols,
-                                                ids=outliers_ids)
 
         # We make sure that continuous variables are considered as continuous
         self.learning_set[cont_cols] = ConT.to_float(self.learning_set[cont_cols])
@@ -74,14 +68,12 @@ class Sampler:
         # We initialize an empty dictionary to store the outer loops datasets
         all_datasets = {}
 
-        seeds = [19, 2021, 26, 2, 1999, 1010, 54, 777, 3059, 631]
-
         # We create the datasets for the outer validation loops:
         for i in range(k):
 
             # We split the training and test data
-            train, test = split_train_test(self.learning_set, self.target_col, test_size, random_state=seeds[i])
-            train, valid = split_train_test(train, self.target_col, valid_size, random_state=seeds[i])
+            train, test = split_train_test(self.learning_set, self.target_col, test_size)
+            train, valid = split_train_test(train, self.target_col, valid_size)
             outer_dict = self.dataframes_to_datasets(train, valid, test, split_cat, add_biases)
 
             # We add storage in the outer dict to save the inner loops datasets
@@ -112,6 +104,9 @@ class Sampler:
         # We save the mean and the standard deviations of the continuous columns in train
         mean, std = train[self.cont_cols].mean(), train[self.cont_cols].std()
 
+        # We save the mode of the categorical columns in train
+        mode = train[self.cat_cols].mode().iloc[0] if self.cat_cols is not None else None
+
         # We create the train, valid and test datasets
         train_ds = self.dataset_constructor(df=train, cont_cols=self.cont_cols, target=self.target_col,
                                             cat_cols=self.cat_cols, split=split_cat, add_biases=add_biases)
@@ -119,13 +114,13 @@ class Sampler:
         if valid is not None:
             valid_ds = self.dataset_constructor(df=valid, cont_cols=self.cont_cols, target=self.target_col,
                                                 cat_cols=self.cat_cols, split=split_cat, mean=mean, std=std,
-                                                add_biases=add_biases)
+                                                mode=mode, add_biases=add_biases)
         else:
             valid_ds = None
 
         test_ds = self.dataset_constructor(df=test, cont_cols=self.cont_cols, target=self.target_col,
                                            cat_cols=self.cat_cols, split=split_cat, mean=mean, std=std,
-                                           add_biases=add_biases)
+                                           mode=mode, add_biases=add_biases)
 
         return {"train": train_ds, "valid": valid_ds, "test": test_ds}
 
@@ -150,31 +145,38 @@ class Sampler:
             print("#----------------------------------#")
 
 
-def get_warmup_sampler(dm: PetaleDataManager, to_dataset: bool = True, outliers_ids: Sequence[str] = []):
+def get_warmup_sampler(dm: PetaleDataManager, to_dataset: bool = True):
     """
     Creates a Sampler for the WarmUp data table
     :param dm: PetaleDataManager
     :param to_dataset: bool indicating if we want a PetaleDataset (True) or a PetaleDataframe (False)
-    :param outliers_ids: list of the outliers ids
     """
     cont_cols = [WEIGHT, TDM6_HR_END, TDM6_DIST, DT, AGE, MVLPA]
-    return Sampler(dm, LEARNING_0, cont_cols, VO2R_MAX, to_dataset=to_dataset, outliers_ids=outliers_ids)
+    return Sampler(dm, LEARNING_0, cont_cols, VO2R_MAX, to_dataset=to_dataset)
 
 
-def get_learning_one_sampler(dm: PetaleDataManager, to_dataset: bool = True):
+def get_learning_one_sampler(dm: PetaleDataManager, to_dataset: bool = True, genes: bool = False):
     """
-    Creates a Sampler for the Learning One data table
+    Creates a Sampler for the L1 data table
+
     :param dm: PetaleDataManager
     :param to_dataset: bool indicating if we want a PetaleDataset (True) or a PetaleDataframe (False)
+    :param genes: bool indicating if we want to consider significant genes (True) or not (False)
     """
+    # We save table name
+    table_name = LEARNING_1
+
     # We save continuous columns
-    cont_cols = [AGE, HEIGHT, WEIGHT, AGE_AT_DIAGNOSIS, DT, TSEOT, RADIOTHERAPY_DOSE, TDM6_DIST, TDM6_HR_END,
-                 TDM6_HR_REST, TDM6_TAS_END, TDM6_TAD_END, MVLPA, TAS_REST, TAD_REST, DOX]
+    cont_cols = [AGE_AT_DIAGNOSIS, DT, DOX]
 
     # We save the categorical columns
-    cat_cols = [SEX, SMOKING, DEX_PRESENCE]
+    cat_cols = [SEX, RADIOTHERAPY_DOSE, DEX, BIRTH_AGE, BIRTH_WEIGHT]
 
-    return Sampler(dm, LEARNING_1, cont_cols, FITNESS_LVL, cat_cols, to_dataset)
+    if genes:
+        table_name = LEARNING_1_1
+        cat_cols = cat_cols + SIGNIFICANT_CHROM_POS
+
+    return Sampler(dm, table_name, cont_cols, CARDIOMETABOLIC_COMPLICATIONS, cat_cols, to_dataset)
 
 
 def split_train_test(df: pd.DataFrame, target_col: str,
@@ -226,7 +228,7 @@ def stratified_sample(df: pd.DataFrame, target_col: str, n: Union[int, float],
     # If the column on which we want to do a stratified sampling is continuous,
     # we create another discrete column based on quantiles
     if len(df[target_col].unique()) > 10:
-        sample["quantiles"] = pd.qcut(sample[target_col], quantiles, labels=False)
+        sample["quantiles"] = pd.qcut(sample[target_col].astype(float), quantiles, labels=False)
         target_col = "quantiles"
 
     # We execute the sampling

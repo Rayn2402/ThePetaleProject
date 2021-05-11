@@ -13,12 +13,17 @@ from Recording.Recorder import NNRecorder, RFRecorder, compare_prediction_record
 from os import path, mkdir, makedirs
 from shutil import rmtree
 import ray
+from typing import Callable, Optional
 
 
 class Evaluator:
-    def __init__(self, evaluation_name, model_generator, sampler, hyper_params, n_trials, optimization_metric,
-                 evaluation_metrics, k, l=1, direction="minimize", seed=None, get_hyperparameters_importance=False,
-                 get_parallel_coordinate=False, get_optimization_history=False, device="cpu", recordings_path=""):
+    def __init__(self, evaluation_name: str, model_generator: Callable, sampler: Callable, hyper_params: dict,
+                 n_trials: int, optimization_metric: Callable,
+                 evaluation_metrics: dict, k: int, l: int = 1, direction: str = "minimize", seed: Optional[int]=None,
+                 get_hyperparameters_importance: Optional[bool] = False,
+                 get_parallel_coordinate: Optional[bool] = False,
+                 get_optimization_history: Optional[bool] = False, device: Optional[str] = "cpu",
+                 recordings_path: Optional[str] = ""):
         """
         Class that will be responsible of the evaluation of the model
 
@@ -69,6 +74,8 @@ class Evaluator:
 
         assert not(path.exists(path.join("Recordings", self.evaluation_name))),\
             "Evaluation with this name already exists"
+
+        assert device == "cpu" or device == "gpu", "Device must be 'cpu' or 'gpu'"
 
         self.device = device
 

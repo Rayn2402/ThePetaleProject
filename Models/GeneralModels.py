@@ -2,16 +2,19 @@
 Authors : Mehdi Mitiche
 
 This file stores the two classes of Neural Networks models : 
-NNRegressor which is a model to preform a regression and predict a real value
+NNRegressor which is a model to preform regression
+NNClassifier which is a model to perform classification
 """
 
 from torch import cat, nn, no_grad, argmax
 from torch.nn import Module, ModuleList, Embedding, Linear, MSELoss, BatchNorm1d, Dropout, Sequential, CrossEntropyLoss
 from torch.nn.functional import log_softmax
+from typing import List, Optional
 
 
 class NNModel(Module):
-    def __init__(self, num_cont_col, output_size, layers, activation, dropout=0.4, cat_sizes=None):
+    def __init__(self, num_cont_col: int, output_size: int, layers: List[int], activation:str, dropout: float = 0.4,
+                 cat_sizes: Optional[List[int]] = None):
         """
         Creates a Neural Network model, entity embedding
         is performed on the categorical data if cat_sizes is not null
@@ -69,9 +72,11 @@ class NNModel(Module):
     def forward(self, x_cont, x_cat=None):
         embeddings = []
         if x_cat is not None:
+
             # we perform the entity embedding
             for i, e in enumerate(self.embedding_layers):
                 embeddings.append(e(x_cat[:, i].long()))
+
             # we concatenate all the embeddings
             x = cat(embeddings, 1)
 
@@ -93,7 +98,8 @@ class NNModel(Module):
 
 class NNRegressor(NNModel):
 
-    def __init__(self, num_cont_col, layers, activation, dropout=0.4, cat_sizes=None):
+    def __init__(self, num_cont_col: int, layers: List[int], activation: str, dropout:float = 0.4,
+                 cat_sizes:Optional[List[int]]=None):
         """Creates a Neural Network model that perform a regression with predicting real values, entity embedding is
         performed on the data if cat_sizes is not null
 
@@ -132,7 +138,8 @@ class NNRegressor(NNModel):
 
 
 class NNClassifier(NNModel):
-    def __init__(self, num_cont_col, output_size, layers, activation, dropout=0.4, cat_sizes=None):
+    def __init__(self, num_cont_col: int, output_size: int, layers: List[int], activation: str, dropout: float = 0.4,
+                 cat_sizes: Optional[list[int]]=None):
         """ Creates a Neural Network model that perform a regression With predicting real values, entity embedding is
         performed on the data if cat_sizes is not null
         :param num_cont_col: the number of continuous columns we have

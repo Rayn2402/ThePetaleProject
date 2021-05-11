@@ -12,21 +12,21 @@ from torch.nn import Module, ModuleList, Embedding, Linear, MSELoss
 
 class LinearRegressor:
 
-    def __init__(self, input_size, regularization=False, regularization_value=None):
+    def __init__(self, input_size, regularization=False, lambda_value=None):
         """
         Creates a model that give us the analytical solution of the  linear regression 
         :param input_size: the number of features we have
         :param regularization: (boolean) Specify if we want to use regularization (True) or not (False)
-        :param regularization_value: (number) The lambda value used in the regularization
+        :param lambda_value: (number) The lambda value used in the regularization
         """
 
         # We check if the regularization_value is specified if the regularization is activated
-        assert regularization is False or regularization_value is not None, "regularization value must be specified"
+        assert regularization is False or lambda_value is not None, "regularization value must be specified"
 
         # we initialize the weights with random numbers
         self.W = randn(input_size, 1)
         self.regularization = regularization
-        self.regularization_value = regularization_value
+        self.lambda_value = lambda_value
 
     def train(self, x, y):
         # we find weights using the analytical solution formula of the linear regression
@@ -34,7 +34,7 @@ class LinearRegressor:
             self.W = matmul(matmul(inverse(matmul(transpose(x, 0, 1), x)), transpose(x, 0, 1)), y)
         else:
             self.W = matmul(matmul(inverse((matmul(transpose(x, 0, 1), x) +
-                                            eye(x.shape[1]) * self.regularization_value)), transpose(x, 0, 1)), y)
+                                            eye(x.shape[1]) * self.lambda_value)), transpose(x, 0, 1)), y)
 
     def predict(self, x):
         """

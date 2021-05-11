@@ -1,9 +1,9 @@
-from SQL.DataManager.Utils import PetaleDataManager
+from SQL.DataManagement.Utils import PetaleDataManager
 from Models.GeneralModels import NNClassifier
 from Models.ModelGenerator import NNModelGenerator
 from Evaluation.Evaluator import NNEvaluator
 from Utils.score_metrics import ClassificationMetrics as CM
-from SQL.NewTablesScripts.constants import SEED
+from SQL.constants import SEED
 from Data.Sampling import get_learning_one_sampler
 from torch import unique
 import os

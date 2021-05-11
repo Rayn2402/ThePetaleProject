@@ -8,12 +8,16 @@ File that contains class related to the Early Stopping
 import numpy as np
 from torch import save, load
 from uuid import uuid4
-from os import path
+from os import path, makedirs
 from torch.nn import Module
 
 
 class EarlyStopping:
+
+    FOLDER = "checkpoints"
+
     def __init__(self, patience: int):
+
         """
         Creates a class that will be responsible of the early stopping when training the model
 
@@ -25,6 +29,8 @@ class EarlyStopping:
         self.best_model = None
         self.val_loss_min = np.inf
         self.file_name = f"{uuid4()}.pt"
+
+        makedirs(self.FOLDER, exist_ok=True)
 
     def __call__(self, val_loss: float, model: Module) -> None:
         """
@@ -61,4 +67,4 @@ class EarlyStopping:
 
         :return: nn.Module
         """
-        return load(path.join("checkpoints", self.file_name))
+        return load(path.join(self.FOLDER, self.file_name))

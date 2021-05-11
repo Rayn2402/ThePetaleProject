@@ -317,7 +317,12 @@ def plot_hyperparameter_importance_chart(evaluation_name, recordings_path):
 
 
 def compare_prediction_recordings(evaluations, split_index, recording_path=""):
-    """Function that will plot a scatter plot showing the prediction of multiple experiments and the target value"""
+    """Function that will plot a scatter plot showing the prediction of multiple experiments and the target value
+
+    :param evaluations: List of strings representing the names of the evaluations to compare
+    :param split_index: The index of the split we want to compare
+    :param recording_path: the path to the recordings folder where we want to save the data
+    """
 
     colors = ["blue", "red", "orange"]
 
@@ -335,6 +340,25 @@ def compare_prediction_recordings(evaluations, split_index, recording_path=""):
         # We read the record file of the first evaluation
         with open(path, "r") as read_file:
             all_data.append(json.load(read_file))
+
+    comparaison_possible = True
+    ids = list(all_data[0]["results"].keys())
+
+    # We check if the two evaluations are made on the same patients
+    for i, data in enumerate(all_data):
+        if i == 0:
+            continue
+        if len(data["results"]) != len(all_data[0]["results"]):
+            comparaison_possible = False
+            break
+        id_to_compare = list(data["results"].keys())
+
+        for j,id in enumerate(id_to_compare):
+            if id != ids[j]:
+                comparaison_possible = False
+                break
+
+    assert comparaison_possible is True, "Different patients present in the given evaluations"
 
     target, ids, all_predictions = [], [], []
 

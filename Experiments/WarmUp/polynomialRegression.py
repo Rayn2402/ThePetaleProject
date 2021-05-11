@@ -1,6 +1,7 @@
 """
+Author : Mehdi Mitiche
 
-This file is used to store the experiment for testing a polynomial regression model on the WarmUp dataset.
+This file is used to store the procedure to test polynomial regression experiments on the WarmUp dataset.
 """
 from SQL.DataManagement.Utils import PetaleDataManager
 from Models.LinearModel import LinearRegressor
@@ -10,8 +11,19 @@ from Recording.Recorder import RFRecorder, get_evaluation_recap, compare_predict
 from os.path import join
 from sklearn.preprocessing import PolynomialFeatures
 from torch import tensor, float32
+from typing import List, Union
 
-def execute_polynomial_regression(k, degree, regularization=False, lambda_values=[None]):
+
+def execute_polynomial_regression(k: int, degree: int, regularization: bool = False,
+                                  lambda_values: List[Union[float, None]] = [None]):
+    """
+        Function that executes a linear regression experiments
+
+        :param k: Number of outer splits
+        :param degree: Number  representing the degree of the polynomial regression
+        :param regularization: Bool to specify if we eant to perform regularization (True) or not (False)
+        :param lambda_values: list of values of lambda to try in the case when we want to perform regularization
+        """
 
     manager = PetaleDataManager("mitm2902")
 
@@ -21,8 +33,6 @@ def execute_polynomial_regression(k, degree, regularization=False, lambda_values
     # We create the warmup sampler to get the data
     warmup_sampler = get_warmup_sampler(dm=manager)
     data = warmup_sampler(k=k, valid_size=0)
-
-
 
     for value in lambda_values:
         evaluation_name = f"{evaluation_name}_{value if value is not None else ''}"
@@ -50,7 +60,8 @@ def execute_polynomial_regression(k, degree, regularization=False, lambda_values
             linear_regression_pred = linear_regressor.predict(x=transformed_test_data)
 
             # We save the predictions
-            recorder.record_predictions(ids=data[i]["test"].IDs, predictions=linear_regression_pred.numpy().astype("float64"),
+            recorder.record_predictions(ids=data[i]["test"].IDs,
+                                        predictions=linear_regression_pred.numpy().astype("float64"),
                                         target=data[i]["test"].y.numpy().astype("float64"))
 
             # We calculate the score
@@ -69,5 +80,3 @@ def execute_polynomial_regression(k, degree, regularization=False, lambda_values
 
         # We generate the evaluation recap
         get_evaluation_recap(evaluation_name=evaluation_name, recordings_path=RECORDING_PATH)
-
-

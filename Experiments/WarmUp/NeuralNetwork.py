@@ -1,5 +1,7 @@
 """
-This file is used to store the experiment testing a Neural Network on the WarmUp dataset.
+Author : Mehdi Mitiche
+
+This file is used to store the procedure to test Neural Networks experiments on the WarmUp dataset.
 """
 from os.path import join
 from SQL.DataManagement.Utils import PetaleDataManager
@@ -9,9 +11,19 @@ from Models.ModelGenerator import NNModelGenerator
 from Evaluation.Evaluator import NNEvaluator
 from json import load
 from Data.Sampling import get_warmup_sampler
+from typing import List
 
 
-def execute_neural_network_experiment(k, l, n_trials, hp_files_ids, ):
+def execute_neural_network_experiment(k: int, l: int, n_trials: int, hp_files_ids: List[int]):
+    """
+    Function that executes a Neural Network experiments
+
+    :param k: Number of outer splits
+    :param l: Number of inner splits
+    :param n_trials: Number of trials to perform during the experiments
+    :param hp_files_ids: List of ids of the hyperparameters file to test
+    """
+
     # We create the Petale Data Manager
     manager = PetaleDataManager("mitm2902")
 

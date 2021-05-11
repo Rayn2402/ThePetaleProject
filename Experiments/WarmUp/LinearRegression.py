@@ -1,5 +1,7 @@
 """
-This file is used to store the experiment testing a linear regression model on the WarmUp dataset.
+Author : Mehdi Mitiche
+
+This file is used to store the procedure to test linear regression experiments on the WarmUp dataset.
 """
 from SQL.DataManagement.Utils import PetaleDataManager
 from Models.LinearModel import LinearRegressor
@@ -7,9 +9,18 @@ from Data.Sampling import get_warmup_sampler
 from Utils.score_metrics import RegressionMetrics
 from Recording.Recorder import RFRecorder, get_evaluation_recap, compare_prediction_recordings
 from os.path import join
+from typing import List, Union
 
 
-def execute_linear_regression_experience(k, regularization=False, lambda_values=[None]):
+def execute_linear_regression_experience(k: int, regularization: bool = False,
+                                         lambda_values: List[Union[float, None]]=[None]):
+    """
+    Function that executes a linear regression experiments
+
+    :param k: Number of outer splits
+    :param regularization: Bool to specify if we eant to perform regularization (True) or not (False)
+    :param lambda_values: list of values of lambda to try in the case when we want to perform regularization
+    """
     manager = PetaleDataManager("mitm2902")
 
     evaluation_name = f"LinearRegression_{'r' if regularization is True else 'nr'}_k{k}"

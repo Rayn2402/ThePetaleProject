@@ -14,20 +14,17 @@ from torch import tensor, float32
 from typing import List, Union
 
 
-def execute_polynomial_regression(k: int, degree: int, regularization: bool = False,
-                                  lambda_values: List[Union[float, None]] = [None]):
+def execute_polynomial_regression(k: int, degree: int, lambda_values: List[float] = [0]):
     """
         Function that executes a linear regression experiments
 
         :param k: Number of outer splits
         :param degree: Number  representing the degree of the polynomial regression
-        :param regularization: Bool to specify if we eant to perform regularization (True) or not (False)
         :param lambda_values: list of values of lambda to try in the case when we want to perform regularization
         """
 
     manager = PetaleDataManager("mitm2902")
 
-    evaluation_name = f"PolynomialRegression_d{degree}_{'r' if regularization is True else 'nr'}_k{k}"
     RECORDING_PATH = join("..", "..")
 
     # We create the warmup sampler to get the data
@@ -35,7 +32,8 @@ def execute_polynomial_regression(k: int, degree: int, regularization: bool = Fa
     data = warmup_sampler(k=k, valid_size=0)
 
     for value in lambda_values:
-        evaluation_name = f"{evaluation_name}_{value if value is not None else ''}"
+        evaluation_name = f"PolynomialRegression_d{degree}_k{k}"
+        evaluation_name = f"{evaluation_name}_r{value}"
         polynomial_regression_scores = []
         for i in range(k):
             # We transform the data
@@ -44,8 +42,7 @@ def execute_polynomial_regression(k: int, degree: int, regularization: bool = Fa
             transformed_test_data = tensor(polynomial_features.fit_transform(data[i]["test"].X_cont), dtype=float32)
 
             # We create the linear regressor
-            linear_regressor = LinearRegressor(input_size=transformed_train_data.shape[1],
-                                               regularization=regularization, lambda_value=value)
+            linear_regressor = LinearRegressor(input_size=transformed_train_data.shape[1], lambda_value=value)
 
             # We create the recorder
             recorder = RFRecorder(evaluation_name=evaluation_name, index=i, recordings_path=RECORDING_PATH)

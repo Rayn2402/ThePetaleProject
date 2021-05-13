@@ -12,18 +12,15 @@ from os.path import join
 from typing import List, Union
 
 
-def execute_linear_regression_experience(k: int, regularization: bool = False,
-                                         lambda_values: List[Union[float, None]]=[None]):
+def execute_linear_regression_experience(k: int, lambda_values: List[float] = [0]):
     """
     Function that executes a linear regression experiments
 
     :param k: Number of outer splits
-    :param regularization: Bool to specify if we eant to perform regularization (True) or not (False)
     :param lambda_values: list of values of lambda to try in the case when we want to perform regularization
     """
     manager = PetaleDataManager("mitm2902")
 
-    evaluation_name = f"LinearRegression_{'r' if regularization is True else 'nr'}_k{k}"
     RECORDING_PATH = join("..", "..")
 
     # We create the warmup sampler to get the data
@@ -36,10 +33,11 @@ def execute_linear_regression_experience(k: int, regularization: bool = False,
 
     for value in lambda_values:
         linear_regression_scores = []
-        evaluation_name = f"{evaluation_name}_{value if value is not None else ''}"
+        evaluation_name = f"LinearRegression_k{k}"
+        evaluation_name = f"{evaluation_name}_r{value}"
         for i in range(k):
             # We create the linear regressor
-            linear_regressor = LinearRegressor(input_size=7, regularization=regularization, lambda_value=value)
+            linear_regressor = LinearRegressor(input_size=7, lambda_value=value)
 
             # We create the recorder
             recorder = RFRecorder(evaluation_name=evaluation_name, index=i, recordings_path=RECORDING_PATH)

@@ -223,7 +223,6 @@ def stratified_sample(df: pd.DataFrame, target_col: str, n: Union[int, float],
 
     # We make a deep copy of the current dataframe
     sample = df.copy()
-    sample[target_col] = sample[target_col].astype(float)
 
     # If the column on which we want to do a stratified sampling is continuous,
     # we create another discrete column based on quantiles

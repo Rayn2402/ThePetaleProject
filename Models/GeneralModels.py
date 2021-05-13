@@ -139,7 +139,7 @@ class NNRegressor(NNModel):
 
 class NNClassifier(NNModel):
     def __init__(self, num_cont_col: int, output_size: int, layers: List[int], activation: str, dropout: float = 0.4,
-                 cat_sizes: Optional[list[int]]=None):
+                 cat_sizes: Optional[List[int]]=None):
         """ Creates a Neural Network model that perform a regression With predicting real values, entity embedding is
         performed on the data if cat_sizes is not null
         :param num_cont_col: the number of continuous columns we have

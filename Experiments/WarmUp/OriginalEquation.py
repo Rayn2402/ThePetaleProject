@@ -1,11 +1,11 @@
 """
 This file is used to store the experiment testing the original equation on the WarmUp dataset.
 """
-from SQL.DataManager.Utils import PetaleDataManager
+from SQL.DataManagement.Utils import PetaleDataManager
 from Models.LinearModel import LinearRegressor
 from Data.Sampling import get_warmup_sampler
 from Utils.score_metrics import RegressionMetrics
-from SQL.NewTablesScripts.constants import *
+from SQL.constants import *
 from torch import from_numpy
 import numpy as np
 from Recording.Recorder import RFRecorder, get_evaluation_recap, compare_prediction_recordings

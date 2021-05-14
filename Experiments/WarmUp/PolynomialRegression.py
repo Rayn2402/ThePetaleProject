@@ -25,7 +25,7 @@ def execute_polynomial_regression(k: int, degree: int, lambda_values: List[float
 
     manager = PetaleDataManager("mitm2902")
 
-    RECORDING_PATH = join("..", "..")
+    RECORDING_PATH = join(".")
 
     # We create the warmup sampler to get the data
     warmup_sampler = get_warmup_sampler(dm=manager)

@@ -30,7 +30,7 @@ def execute_neural_network_experiment(k: int, l: int, n_trials: int, hp_files_id
     manager = PetaleDataManager("mitm2902")
 
     evaluation_name = f"NeuralNetwork_n{n_trials}_k{k}_l{l}"
-    RECORDING_PATH = join("..", "..")
+    RECORDING_PATH = join(".")
 
     # We create the warmup sampler to get the data
     warmup_sampler = get_warmup_sampler(dm=manager)

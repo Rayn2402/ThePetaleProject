@@ -21,7 +21,7 @@ def execute_linear_regression_experience(k: int, lambda_values: List[float] = [0
     """
     manager = PetaleDataManager("mitm2902")
 
-    RECORDING_PATH = join("..", "..")
+    RECORDING_PATH = join(".")
 
     # We create the warmup sampler to get the data
     warmup_sampler = get_warmup_sampler(dm=manager)

@@ -57,7 +57,7 @@ def argument_parser():
                         help='values of lambda for the regularization in the case of the linear regression'
                         'and the polynomial regression')
     parser.add_argument('-u', '--username', type=str, default="rayn2402",
-                        help='username of the person using the database')
+                        help='username of the petale database')
 
 
     args = parser.parse_args()

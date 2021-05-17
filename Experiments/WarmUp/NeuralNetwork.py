@@ -15,10 +15,11 @@ from typing import List
 import ray
 
 
-def execute_neural_network_experiment(k: int, l: int, n_trials: int, hp_files_ids: List[int]):
+def execute_neural_network_experiment(dm:PetaleDataManager,k: int, l: int, n_trials: int, hp_files_ids: List[int]):
     """
     Function that executes a Neural Network experiments
 
+    :param dm: The Petale data manager
     :param k: Number of outer splits
     :param l: Number of inner splits
     :param n_trials: Number of trials to perform during the experiments
@@ -27,13 +28,11 @@ def execute_neural_network_experiment(k: int, l: int, n_trials: int, hp_files_id
 
     assert len(hp_files_ids) > 0, "At least one hyperparameter id must be specified"
 
-    # We create the Petale Data Manager
-    manager = PetaleDataManager("mitm2902")
 
     RECORDING_PATH = join(".")
 
     # We create the warmup sampler to get the data
-    warmup_sampler = get_warmup_sampler(dm=manager)
+    warmup_sampler = get_warmup_sampler(dm=dm)
     data = warmup_sampler(k=k, valid_size=0)
 
     # We define the evaluation metrics

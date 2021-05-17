@@ -12,19 +12,19 @@ from os.path import join
 from typing import List, Union
 
 
-def execute_linear_regression_experience(k: int, lambda_values: List[float] = [0]):
+def execute_linear_regression_experience(dm: PetaleDataManager,k: int, lambda_values: List[float] = [0]):
     """
     Function that executes a linear regression experiments
 
+    :param dm: The Petale data manager
     :param k: Number of outer splits
     :param lambda_values: list of values of lambda to try in the case when we want to perform regularization
     """
-    manager = PetaleDataManager("mitm2902")
 
     RECORDING_PATH = join(".")
 
     # We create the warmup sampler to get the data
-    warmup_sampler = get_warmup_sampler(dm=manager)
+    warmup_sampler = get_warmup_sampler(dm=dm)
     data = warmup_sampler(k=k, valid_size=0, add_biases=True)
 
 

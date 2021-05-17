@@ -19,7 +19,8 @@ sys.path.insert(0, parent_parent)
 from Experiments.WarmUp.LinearRegression import execute_linear_regression_experience
 from Experiments.WarmUp.PolynomialRegression import execute_polynomial_regression
 from Experiments.WarmUp.NeuralNetwork import execute_neural_network_experiment
-REQUIRED_PYTHON = "python3"
+from SQL.DataManagement.Utils import PetaleDataManager
+
 
 LINEAR_REGRESSION = "linear_regression"
 POLYNOMIAL_REGRESSION = "polynomial_regression"
@@ -31,7 +32,7 @@ def argument_parser():
     This function defines a parser to enable user to easily experiment different models
     """
     # Create a parser
-    parser = argparse.ArgumentParser(usage='\n python3 train.py [model] [hyper_parameters]',
+    parser = argparse.ArgumentParser(usage='\n python3 experiment.py [model]',
                                      description="This program enables user to train different "
                                                  "models of regression to predict the  VO2 max "
                                                  "value.")
@@ -55,6 +56,9 @@ def argument_parser():
     parser.add_argument('-y', '--lambda_values', type=int, default=0,
                         help='values of lambda for the regularization in the case of the linear regression'
                         'and the polynomial regression')
+    parser.add_argument('-u', '--username', type=str, default="rayn2402",
+                        help='username of the person using the database')
+
 
     args = parser.parse_args()
 
@@ -66,6 +70,7 @@ def main():
     args = argument_parser()
 
     # We extract arguments
+    username = args.username
     model = args.model
     k = args.k_splits
     l = args.l_splits
@@ -73,6 +78,8 @@ def main():
     hyperparameter_ids = args.hyperparameter_ids
     trials = args.trials
     lambda_values = args.lambda_values
+
+    dm = PetaleDataManager(user=username)
 
     # We transform the args expected to be of type list
     if isinstance(lambda_values, int):
@@ -83,11 +90,11 @@ def main():
 
     # We call appropriate model
     if model == LINEAR_REGRESSION:
-        execute_linear_regression_experience(k=k, lambda_values=lambda_values)
+        execute_linear_regression_experience(dm=dm, k=k, lambda_values=lambda_values)
     elif model == POLYNOMIAL_REGRESSION:
-        execute_polynomial_regression(k=k, degree=degree, lambda_values=lambda_values)
+        execute_polynomial_regression(dm=dm, k=k, degree=degree, lambda_values=lambda_values)
     elif model == NEURAL_NETWORK:
-        execute_neural_network_experiment(k=k, l=l,n_trials=trials, hp_files_ids=hyperparameter_ids )
+        execute_neural_network_experiment(dm=dm, k=k, l=l,n_trials=trials, hp_files_ids=hyperparameter_ids )
 
 
 

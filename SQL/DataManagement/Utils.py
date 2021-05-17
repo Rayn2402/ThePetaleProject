@@ -201,19 +201,19 @@ class DataManager:
         # We return the names of the tables in the database
         return list(map(lambda t: t[0], tables))
 
-    def get_column_names(self, tableName):
+    def get_column_names(self, table_name: str):
         """
         Function that retrieves the names of all the columns in a given table
 
-        :param tableName : the name of the table
+        :param table_name : the name of the table
         :return: list of strings
 
         """
-        escapedTableName = tableName.replace("'", "''")
+        table_name = table_name.replace("'", "''")
 
         try:
             self.cur.execute(
-                f"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME= \'{escapedTableName}\'")
+                f"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME= \'{table_name}\'")
         except psycopg2.Error as e:
             print(e.pgerror)
             raise

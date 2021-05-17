@@ -4,7 +4,7 @@ Author : Nicolas Raymond
 This file contains all transformations related to preprocessing treatment
 """
 
-from typing import Optional
+from typing import Optional, Tuple
 import pandas as pd
 
 
@@ -61,14 +61,22 @@ class CategoricalTransform:
         return pd.get_dummies(df)
 
     @staticmethod
-    def ordinal_encode(df: pd.DataFrame) -> pd.DataFrame:
+    def ordinal_encode(df: pd.DataFrame, encodings: Optional[dict] = None) -> Tuple[pd.DataFrame, dict]:
         """
         Applies ordinal encoding to all columns of the dataframe
         """
-        for c in df.columns:
-            df[c] = df[c].cat.codes
+        if encodings is None:
+            encodings = {}
+            for c in df.columns:
+                encodings[c] = {v: k for k, v in enumerate(df[c].cat.categories)}
+                df[c] = df[c].cat.codes
 
-        return df
+        else:
+            for c in df.columns:
+                column_encoding = encodings[c]
+                df[c] = df[c].apply(lambda x: column_encoding[x])
+
+        return df, encodings
 
     @staticmethod
     def fill_missing(df: pd.DataFrame, mode: Optional[pd.Series] = None) -> pd.DataFrame:

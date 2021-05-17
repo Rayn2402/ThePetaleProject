@@ -4,11 +4,10 @@ Authors : Nicolas Raymond
 This files contains all class function related to preprocessing
 
 """
-from typing import Optional
+from typing import Optional, Tuple
 from pandas import DataFrame, Series
 from Data.Transforms import ContinuousTransform as ConT
 from Data.Transforms import CategoricalTransform as CaT
-from SQL.constants import *
 
 ENCODING = ["ordinal", "one-hot"]
 
@@ -27,13 +26,15 @@ def preprocess_continuous(df: DataFrame, mean: Optional[Series] = None,
 
 
 def preprocess_categoricals(df: DataFrame, encoding: str = "ordinal",
-                            mode: Optional[Series] = None) -> DataFrame:
+                            mode: Optional[Series] = None,
+                            encodings: Optional[dict] = None) -> Tuple[DataFrame, Optional[dict]]:
     """
     Applies all categorical transforms to a dataframe containing only continuous data
 
     :param df: pandas dataframe
     :param encoding: one option in ("ordinal", "one-hot")
     :param mode: panda series with modes of columns
+    :param encodings: dict of dict with integers to use as encoding for each category's values
     :return: pandas dataframe, list of encoding sizes
     """
     assert encoding in ENCODING, 'Encoding option not available'
@@ -42,7 +43,8 @@ def preprocess_categoricals(df: DataFrame, encoding: str = "ordinal",
     df = CaT.fill_missing(CaT.to_category(df), mode)
 
     if encoding == "ordinal":
-        return CaT.ordinal_encode(df)
+        df, encodings_dict = CaT.ordinal_encode(df, encodings)
+        return df, encodings_dict
 
     else:
-        return CaT.one_hot_encode(df)
+        return CaT.one_hot_encode(df), None

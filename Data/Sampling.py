@@ -114,16 +114,19 @@ class Sampler:
         train_ds = self.dataset_constructor(df=train, cont_cols=self.cont_cols, target=self.target_col,
                                             cat_cols=self.cat_cols, split=split_cat, add_biases=add_biases)
 
+        # We save the encodings used if "ordinal" encoding was used
+        enc = train_ds.encodings if (split_cat and self.cat_cols is not None) else None
+
         if valid is not None:
             valid_ds = self.dataset_constructor(df=valid, cont_cols=self.cont_cols, target=self.target_col,
                                                 cat_cols=self.cat_cols, split=split_cat, mean=mean, std=std,
-                                                mode=mode, add_biases=add_biases)
+                                                mode=mode, add_biases=add_biases, encodings=enc)
         else:
             valid_ds = None
 
         test_ds = self.dataset_constructor(df=test, cont_cols=self.cont_cols, target=self.target_col,
                                            cat_cols=self.cat_cols, split=split_cat, mean=mean, std=std,
-                                           mode=mode, add_biases=add_biases)
+                                           mode=mode, add_biases=add_biases, encodings=enc)
 
         return {"train": train_ds, "valid": valid_ds, "test": test_ds}
 

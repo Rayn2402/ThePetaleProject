@@ -18,7 +18,8 @@ class PetaleDataset(Dataset):
     def __init__(self, df: DataFrame, cont_cols: List[str], target: str,
                  cat_cols: Optional[List[str]] = None, split: bool = True,
                  add_biases: bool = False, mean: Optional[Series] = None,
-                 std: Optional[Series] = None, mode: Optional[Series] = None):
+                 std: Optional[Series] = None, mode: Optional[Series] = None,
+                 encodings: Optional[dict] = None):
         """
         Creates a petale dataset where categoricals columns are separated from the continuous by default.
 
@@ -31,6 +32,7 @@ class PetaleDataset(Dataset):
         :param mean: means to use for data normalization (pandas series)
         :param std : stds to use for data normalization (pandas series)
         :param mode: modes to use in order to fill missing categorical values (pandas series)
+        :param encodings: dict of dict with integers to use as encoding for each category's values
         """
         assert PARTICIPANT in df.columns, 'IDs missing from the dataframe'
 
@@ -52,11 +54,11 @@ class PetaleDataset(Dataset):
         if cat_cols is not None:
             if split:
                 # We keep ordinal encodings of categorical features separated from continuous features
-                self.X_cat = preprocess_categoricals(df[cat_cols], mode=mode)
+                self.X_cat, self.encodings = preprocess_categoricals(df[cat_cols], mode=mode, encodings=encodings)
                 self.X_cat = from_numpy(self.X_cat.values).float()
             else:
                 # We concatenate one-hot encodings of categorical features with continuous features
-                self.X_cat = preprocess_categoricals(df[cat_cols], encoding='one-hot', mode=mode)
+                self.X_cat, _ = preprocess_categoricals(df[cat_cols], encoding='one-hot', mode=mode)
                 self.X_cat = from_numpy(self.X_cat.values).float()
                 self.__concat_dataset()
         else:
@@ -105,7 +107,8 @@ class PetaleDataframe:
 
     def __init__(self, df: DataFrame, cont_cols: List[str], target: str,
                  cat_cols: Optional[List[str]] = None, mean: Optional[Series] = None,
-                 std: Optional[Series] = None, mode: Optional[Series] = None, **kwargs):
+                 std: Optional[Series] = None, mode: Optional[Series] = None,
+                 encodings: Optional[dict] = None, **kwargs):
         """
         Applies transformations to a dataframe and store the result as the dataset for the Random Forest model
 
@@ -116,6 +119,7 @@ class PetaleDataframe:
         :param mean: means to use for data normalization (pandas series)
         :param std : stds to use for data normalization (pandas series)
         :param mode: modes to use in order to fill missing categorical values (pandas series)
+        :param encodings: dict of dict with integers to use as encoding for each category's values
         """
 
         assert PARTICIPANT in df.columns, 'IDs missing from the dataframe'
@@ -132,8 +136,8 @@ class PetaleDataframe:
 
         # We save and preprocess categorical features
         if cat_cols is not None:
-            self.X_cont[cat_cols] = preprocess_categoricals(self.X_cont[cat_cols], mode=mode)
-
+            self.X_cont[cat_cols], self.encodings = preprocess_categoricals(self.X_cont[cat_cols], mode=mode,
+                                                                            encodings=encodings)
         # We save the targets
         self.y = ConT.to_float(df[target]).values.flatten()
 

@@ -4,7 +4,7 @@ Author : Nicolas Raymond
 This file contains the Sampler class used to separate test sets from train sets
 """
 
-from typing import List, Union, Tuple
+from typing import List, Union, Tuple, Optional
 from SQL.DataManagement.Utils import PetaleDataManager
 from Data.Datasets import PetaleDataset, PetaleDataframe
 from Data.Transforms import ContinuousTransform as ConT
@@ -12,11 +12,14 @@ from SQL.constants import *
 import numpy as np
 import pandas as pd
 
+SIGNIFICANT, ALL = "significant", "all"
+GENES_CHOICES = [None, SIGNIFICANT, ALL]
+
 
 class Sampler:
 
     def __init__(self, dm: PetaleDataManager, table_name: str, cont_cols: List[str],
-                 target_col: str, cat_cols: Union[None, List[str]] = None, to_dataset: bool = True):
+                 target_col: str, cat_cols: Optional[List[str]] = None, to_dataset: bool = True):
         """
         Object that creates all datasets
 
@@ -155,14 +158,16 @@ def get_warmup_sampler(dm: PetaleDataManager, to_dataset: bool = True):
     return Sampler(dm, LEARNING_0, cont_cols, VO2R_MAX, to_dataset=to_dataset)
 
 
-def get_learning_one_sampler(dm: PetaleDataManager, to_dataset: bool = True, genes: bool = False):
+def get_learning_one_sampler(dm: PetaleDataManager, to_dataset: bool = True, genes: Optional[str] = None):
     """
     Creates a Sampler for the L1 data table
 
     :param dm: PetaleDataManager
     :param to_dataset: bool indicating if we want a PetaleDataset (True) or a PetaleDataframe (False)
-    :param genes: bool indicating if we want to consider significant genes (True) or not (False)
+    :param genes: str indicating if we want to consider no genes, significant genes or all genes
     """
+    assert genes in GENES_CHOICES, f"Genes parameter must be in {GENES_CHOICES}"
+
     # We save table name
     table_name = LEARNING_1
 
@@ -172,9 +177,15 @@ def get_learning_one_sampler(dm: PetaleDataManager, to_dataset: bool = True, gen
     # We save the categorical columns
     cat_cols = [SEX, RADIOTHERAPY_DOSE, DEX, BIRTH_AGE, BIRTH_WEIGHT]
 
-    if genes:
+    if genes == SIGNIFICANT:
         table_name = LEARNING_1_1
         cat_cols = cat_cols + SIGNIFICANT_CHROM_POS
+
+    elif genes == ALL:
+        table_name = LEARNING_1_2
+        current_col_list = [PARTICIPANT, CARDIOMETABOLIC_COMPLICATIONS] + cont_cols + cat_cols
+        cat_cols = cat_cols + [c for c in dm.get_column_names(table_name) if
+                               c not in current_col_list]
 
     return Sampler(dm, table_name, cont_cols, CARDIOMETABOLIC_COMPLICATIONS, cat_cols, to_dataset)
 
@@ -203,7 +214,7 @@ def split_train_test(df: pd.DataFrame, target_col: str,
 
 
 def stratified_sample(df: pd.DataFrame, target_col: str, n: Union[int, float],
-                      quantiles: int = 4, random_state: Union[int, None] = None) -> pd.DataFrame:
+                      quantiles: int = 4, random_state: Optional[int] = None) -> pd.DataFrame:
     """
     Proceeds to a stratified sampling of the original dataset based on the target variable
 

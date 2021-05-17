@@ -12,6 +12,7 @@ from Evaluation.Evaluator import NNEvaluator
 from json import load
 from Data.Sampling import get_warmup_sampler
 from typing import List
+import ray
 
 
 def execute_neural_network_experiment(k: int, l: int, n_trials: int, hp_files_ids: List[int]):
@@ -29,7 +30,6 @@ def execute_neural_network_experiment(k: int, l: int, n_trials: int, hp_files_id
     # We create the Petale Data Manager
     manager = PetaleDataManager("mitm2902")
 
-    evaluation_name = f"NeuralNetwork_n{n_trials}_k{k}_l{l}"
     RECORDING_PATH = join(".")
 
     # We create the warmup sampler to get the data
@@ -45,6 +45,7 @@ def execute_neural_network_experiment(k: int, l: int, n_trials: int, hp_files_id
     generator = NNModelGenerator(NNRegressor, num_cont_col=data[0]["train"].X_cont.shape[1])
 
     for hp_id in hp_files_ids:
+        evaluation_name = f"aNeuralNetwork_n{n_trials}_k{k}_l{l}"
         # We set the hyperparameter file id
         hp_id = str(hp_id)
         hp_id = f"{(3-len(hp_id))*'0'}{hp_id}"
@@ -67,4 +68,6 @@ def execute_neural_network_experiment(k: int, l: int, n_trials: int, hp_files_id
 
         # We perform the nested cross validation
         evaluator.nested_cross_valid()
+
+        ray.shutdown()
 

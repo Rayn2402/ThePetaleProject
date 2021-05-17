@@ -12,6 +12,7 @@ Description:
 import argparse
 import sys
 import os
+
 dir_path = os.path.dirname(os.path.realpath(__file__))
 parent_dir_path = os.path.abspath(os.path.join(dir_path, os.pardir))
 parent_parent = os.path.abspath(os.path.join(parent_dir_path, os.pardir))
@@ -20,7 +21,6 @@ from Experiments.WarmUp.LinearRegression import execute_linear_regression_experi
 from Experiments.WarmUp.PolynomialRegression import execute_polynomial_regression
 from Experiments.WarmUp.NeuralNetwork import execute_neural_network_experiment
 from SQL.DataManagement.Utils import PetaleDataManager
-
 
 LINEAR_REGRESSION = "linear_regression"
 POLYNOMIAL_REGRESSION = "polynomial_regression"
@@ -55,10 +55,9 @@ def argument_parser():
                         help='Number of trials made in the optimization for the cas of neural networks')
     parser.add_argument('-y', '--lambda_values', type=int, default=0,
                         help='values of lambda for the regularization in the case of the linear regression'
-                        'and the polynomial regression')
+                             'and the polynomial regression')
     parser.add_argument('-u', '--username', type=str, default="rayn2402",
                         help='username of the petale database')
-
 
     args = parser.parse_args()
 
@@ -94,8 +93,7 @@ def main():
     elif model == POLYNOMIAL_REGRESSION:
         execute_polynomial_regression(dm=dm, k=k, degree=degree, lambda_values=lambda_values)
     elif model == NEURAL_NETWORK:
-        execute_neural_network_experiment(dm=dm, k=k, l=l,n_trials=trials, hp_files_ids=hyperparameter_ids )
-
+        execute_neural_network_experiment(dm=dm, k=k, l=l, n_trials=trials, hp_files_ids=hyperparameter_ids)
 
 
 if __name__ == "__main__":

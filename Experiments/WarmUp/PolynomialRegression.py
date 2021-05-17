@@ -14,7 +14,7 @@ from torch import tensor, float32
 from typing import List, Union
 
 
-def execute_polynomial_regression(dm: PetaleDataManager,k: int, degree: int, lambda_values: List[float] = [0]):
+def execute_polynomial_regression(dm: PetaleDataManager, k: int, degree: int, lambda_values: List[float] = [0]):
     """
         Function that executes a linear regression experiments
 
@@ -23,7 +23,6 @@ def execute_polynomial_regression(dm: PetaleDataManager,k: int, degree: int, lam
         :param degree: Number  representing the degree of the polynomial regression
         :param lambda_values: list of values of lambda to try in the case when we want to perform regularization
         """
-
 
     RECORDING_PATH = join(".")
 

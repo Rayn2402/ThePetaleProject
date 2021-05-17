@@ -12,7 +12,7 @@ from os.path import join
 from typing import List, Union
 
 
-def execute_linear_regression_experience(dm: PetaleDataManager,k: int, lambda_values: List[float] = [0]):
+def execute_linear_regression_experience(dm: PetaleDataManager, k: int, lambda_values: List[float] = [0]):
     """
     Function that executes a linear regression experiments
 
@@ -26,8 +26,6 @@ def execute_linear_regression_experience(dm: PetaleDataManager,k: int, lambda_va
     # We create the warmup sampler to get the data
     warmup_sampler = get_warmup_sampler(dm=dm)
     data = warmup_sampler(k=k, valid_size=0, add_biases=True)
-
-
 
     features = ["B", "WEIGHT", "TDM6_HR_END", "TDM6_DIST", "DT", "AGE", "MVLPA"]
 
@@ -75,4 +73,3 @@ def execute_linear_regression_experience(dm: PetaleDataManager,k: int, lambda_va
 
         # We generate the evaluation recap
         get_evaluation_recap(evaluation_name=evaluation_name, recordings_path=RECORDING_PATH)
-

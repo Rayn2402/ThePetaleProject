@@ -15,7 +15,7 @@ from typing import List
 import ray
 
 
-def execute_neural_network_experiment(dm:PetaleDataManager,k: int, l: int, n_trials: int, hp_files_ids: List[int]):
+def execute_neural_network_experiment(dm: PetaleDataManager, k: int, l: int, n_trials: int, hp_files_ids: List[int]):
     """
     Function that executes a Neural Network experiments
 
@@ -27,7 +27,6 @@ def execute_neural_network_experiment(dm:PetaleDataManager,k: int, l: int, n_tri
     """
 
     assert len(hp_files_ids) > 0, "At least one hyperparameter id must be specified"
-
 
     RECORDING_PATH = join(".")
 
@@ -47,9 +46,9 @@ def execute_neural_network_experiment(dm:PetaleDataManager,k: int, l: int, n_tri
         evaluation_name = f"aNeuralNetwork_n{n_trials}_k{k}_l{l}"
         # We set the hyperparameter file id
         hp_id = str(hp_id)
-        hp_id = f"{(3-len(hp_id))*'0'}{hp_id}"
+        hp_id = f"{(3 - len(hp_id)) * '0'}{hp_id}"
 
-        #We set the name of the evaluation
+        # We set the name of the evaluation
         evaluation_name = f"{evaluation_name}_hp{hp_id}"
 
         # We gather the hyperparameter to be optimized
@@ -69,4 +68,3 @@ def execute_neural_network_experiment(dm:PetaleDataManager,k: int, l: int, n_tri
         evaluator.nested_cross_valid()
 
         ray.shutdown()
-

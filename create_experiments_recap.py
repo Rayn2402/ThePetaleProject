@@ -19,9 +19,13 @@ def create_experiments_recap(path):
 
     assert os.path.exists(path), "Recordings Folder not found"
 
-    hyperparams_importance_file = "hyperparameters_importance.html"
-    parallel_coordinate_file = "parallel_coordinate.html"
-    optimization_history_file = "optimization_history.html"
+    hyperparams_importance_file = "hyperparameters_importance.png"
+    parallel_coordinate_file = "parallel_coordinate.png"
+    optimization_history_file = "optimization_history.png"
+    loss_over_epochs_file = "Train_and_valid_loss_over_epochs.png"
+    metric_over_epochs_file = "Train_and_valid_metric_over_epochs.png"
+
+
 
     # We define the style of our webpage with css
     style = """<style>
@@ -92,9 +96,7 @@ def create_experiments_recap(path):
     background-color: #d5dce6;
     height: 8vh;
     font-size: 1.4em;
-    width: fit-content;
-    min-width: 100%;
-}
+x   }
 .split{
     width: 150px;
     height: 100%;
@@ -207,7 +209,7 @@ def create_experiments_recap(path):
     # We get the the folders of each evaluation
     evaluations = os.listdir(os.path.join(path))
     evaluations = [folder for folder in evaluations if os.path.isdir(os.path.join(path,folder))]
-
+    evaluations.sort()
     body = ""
     board = ""
     evaluation_sections = ""
@@ -218,7 +220,7 @@ def create_experiments_recap(path):
         # We get the folders of all the splits
         splits = os.listdir(os.path.join(path, evaluation))
         splits = [folder for folder in splits if os.path.isdir(os.path.join(path, evaluation, folder))]
-
+        splits.sort()
         split_board = f"""<div class="split center {"split-active" if i==0 else None}">General</div>"""
 
         # We open the json file containing the general information of an evaluation
@@ -235,15 +237,22 @@ def create_experiments_recap(path):
                         <div class="info">
                             {general_data["metrics"][key]["info"]}
                         </div>
-                    </div>
+                    x</div>
                 """
+
+            main_image = f"""
+                    <img src={os.path.join(path, evaluation,"hyperparameters_importance_recap.png")} >
+                """ if os.path.exists(os.path.join(path, evaluation,"hyperparameters_importance_recap.png")) else ""
 
         # We add the general section
         mains = f"""<div class="main {"hidden" if i != 0 else None}" id="{evaluation}General">
             <div class="metrics col center bottom-space">
                 {main_metrics}
             </div>
-            <img src={os.path.join(path, evaluation,"hyperparameters_importance_recap.png")} >
+            <div class="metrics col center bottom-space">
+            {main_image}
+            </div>
+
         </div>"""
 
         for j, split in enumerate(splits):
@@ -252,34 +261,60 @@ def create_experiments_recap(path):
             # We open the json file containing information of a split
             with open(os.path.join(path, evaluation, split, "records.json"), "r") as read_file:
                 data = json.load(read_file)
+
+                data_train_info = f"""<div class="intro-section row center">
+                            <div class="intro-label">Train set:</div>
+                            <div class="intro-info">{data["data_info"]["train_set"]}</div>
+                        </div>""" if "train_set" in data["data_info"].keys() else ""
+
+                data_test_info = f"""<div class="intro-section row center">
+                            <div class="intro-label">Test set:</div>
+                            <div class="intro-info">{data["data_info"]["test_set"]}</div>
+                        </div>""" if "test_set" in data["data_info"].keys() else ""
+
+                data_valid_info = f"""<div class="intro-section row center">
+                            <div class="intro-label">Valid set:</div>
+                            <div class="intro-info">{data["data_info"]["valid_set"]}</div>
+                        </div>""" if "valid_set" in data["data_info"].keys() else ""
             # We add the intro section
-            intro = f"""<div class="intro row bottom-space">
-                    <div class="intro-section row center">
-                        <div class="intro-label">Evaluation name :</div>
-                        <div class="intro-info">{evaluation}</div>
+            intro = f"""
+                    <div class="intro row bottom-space">
+                        <div class="intro-section row center">
+                            <div class="intro-label">Evaluation name :</div>
+                            <div class="intro-info">{evaluation}</div>
+                        </div>
+                        <div class="intro-section row center">
+                            <div class="intro-label">Split index :</div>
+                            <div class="intro-info">{split}</div>
+                        </div>
                     </div>
-                    <div class="intro-section row center">
-                        <div class="intro-label">Split index :</div>
-                        <div class="intro-info">{split}</div>
+                    <div class="intro row bottom-space">
+                    {data_train_info}
+                    {data_valid_info}
+                    {data_test_info}
                     </div>
-                </div>"""
+                    """
+
+
 
             # We add the hyperparameters section
             hyperparams_section = ""
+            if "hyperparameters" in data.keys():
+                for key in data["hyperparameters"].keys():
+                    hyperparams_section += f"""
+                        <div class="hyperparam-section center">
+                            <div class="label">{key}</div>
+                            <div class="info">{data["hyperparameters"][key]}</div>
+                        </div>
+                    """
 
-            for key in data["hyperparameters"].keys():
-                hyperparams_section += f"""
-                    <div class="hyperparam-section center">
-                        <div class="label">{key}</div>
-                        <div class="info">{data["hyperparameters"][key]}</div>
-                    </div>
-                """
-
-            hyperparams_section = f"""<div class="hyperparams row center bottom-space">
-                    <div class="hyperparam-container row">
-                    {hyperparams_section}
-                    </div>
-                </div>"""
+                hyperparams_section = f"""<div class="hyperparams row center bottom-space">
+                        <div class="hyperparam-container row">
+                        {hyperparams_section}
+                        </div>
+                    </div>"""
+            else:
+                hyperparams_section=""
 
             # We add the metrics section
             metric_section = ""
@@ -300,29 +335,52 @@ def create_experiments_recap(path):
             </div>
             """
 
-            # We add the hyperparameters importance secction
+            # We add the hyperparameters importance section
             hyperparameters_importance_section = f"""
                         <div class="row center bottom-space">
-                            <iframe src="{os.path.join(path, evaluation, split, hyperparams_importance_file)}" 
-                            style="width: 90%;height: 100vh;"></iframe>
+                            <img width="1200" src="{os.path.join(path, evaluation, split, hyperparams_importance_file)}" 
+                            >
                         </div>
-                    """
+                    """ if os.path.exists(os.path.join(path, evaluation, split, hyperparams_importance_file)) else ""
 
             # We add the parallel  coordinate graph
             parallel_coordinate_section = f"""
                         <div class="row center bottom-space">
-                            <iframe src="{os.path.join(path, evaluation, split, parallel_coordinate_file)}" 
-                            style="width: 90%;height: 100vh;"></iframe>
+                            <img src="{os.path.join(path, evaluation, split, parallel_coordinate_file)}" 
+                            >
                         </div>
-                    """
+                    """ if os.path.exists(os.path.join(path, evaluation, split, parallel_coordinate_file)) else ""
 
             # We add the optimization history graph
             optimization_history_section = f"""
                         <div class="row center bottom-space">
-                            <iframe src="{os.path.join(path, evaluation, split, optimization_history_file)}" 
-                            style="width: 90%;height: 100vh;"></iframe>
+                            <img src="{os.path.join(path, evaluation, split, optimization_history_file)}" 
+                            ></img>
                         </div>
-                    """
+                """ if os.path.exists(os.path.join(path, evaluation, split, optimization_history_file)) else ""
+
+            # We add the predictions section
+            predictions_section = f"""
+                        <div class="row center bottom-space">
+                            <img width="1200" src="{os.path.join(path, evaluation, split, f"comparison_{evaluation}.png")}">
+                        </div>
+            """ if os.path.exists(os.path.join(path, evaluation, split, f"comparison_{evaluation}.png")) else ""
+
+            # We add the section visualizing the progression of the loss over the epochs
+            loss_over_epochs_section = f"""
+                                    <div class="row center bottom-space">
+                                        <img width="800" src="{os.path.join(path, evaluation, split, loss_over_epochs_file)}">
+                                    </div>
+                        """ if os.path.exists(
+                os.path.join(path, evaluation, split, loss_over_epochs_file)) else ""
+
+            # We add the section visualizing the progression of the metric over the epochs
+            metric_over_epochs_section = f"""
+                                                <div class="row center bottom-space">
+                                                    <img width="800" src="{os.path.join(path, evaluation, split, metric_over_epochs_file)}">
+                                                </div>
+                                    """ if os.path.exists(
+                os.path.join(path, evaluation, split, metric_over_epochs_file)) else ""
 
             # We arrange the different sections
             section = f"""<div class="main hidden" id="{evaluation}{split}">
@@ -332,6 +390,9 @@ def create_experiments_recap(path):
                 {hyperparameters_importance_section}
                 {parallel_coordinate_section}
                 {optimization_history_section}
+                {predictions_section}
+                {loss_over_epochs_section}
+                {metric_over_epochs_section}
             </div>
             """
 
@@ -374,3 +435,5 @@ def create_experiments_recap(path):
     file = open("Experiments_recap.html", "w")
     file.write(body)
     file.close()
+
+create_experiments_recap(path="Recordings")

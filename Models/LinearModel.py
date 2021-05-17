@@ -6,23 +6,27 @@ LinearRegressor which is the class that will represent the analytical solution a
 GDLinearRegressor which is the class that will represent the model of the linear regression with gradient descent
 """
 
-from torch import randn, matmul, cat, inverse, transpose
+from torch import randn, matmul, cat, inverse, transpose, eye
 from torch.nn import Module, ModuleList, Embedding, Linear, MSELoss
 
 
 class LinearRegressor:
 
-    def __init__(self, input_size):
+    def __init__(self, input_size, lambda_value=0):
         """
         Creates a model that give us the analytical solution of the  linear regression 
         :param input_size: the number of features we have
+        :param lambda_value: (number) The lambda value used in the regularization
         """
+
         # we initialize the weights with random numbers
         self.W = randn(input_size, 1)
+        self.lambda_value = lambda_value
 
     def train(self, x, y):
         # we find weights using the analytical solution formula of the linear regression
-        self.W = matmul(matmul(inverse(matmul(transpose(x, 0, 1), x)), transpose(x, 0, 1)), y)
+        self.W = matmul(matmul(inverse((matmul(transpose(x, 0, 1), x) +
+                                        eye(x.shape[1]) * self.lambda_value)), transpose(x, 0, 1)), y)
 
     def predict(self, x):
         """

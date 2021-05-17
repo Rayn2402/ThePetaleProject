@@ -8,6 +8,7 @@ from typing import Optional
 from pandas import DataFrame, Series
 from Data.Transforms import ContinuousTransform as ConT
 from Data.Transforms import CategoricalTransform as CaT
+from SQL.constants import *
 
 ENCODING = ["ordinal", "one-hot"]
 

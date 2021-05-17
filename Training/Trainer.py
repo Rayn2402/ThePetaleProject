@@ -18,6 +18,7 @@ from typing import Optional, Callable, Tuple, Any, Union
 from abc import ABC, abstractmethod
 from Data.Datasets import PetaleDataset, PetaleDataframe
 from pandas import DataFrame
+from Utils.visualization import visualize_epoch_progression
 
 
 class Trainer(ABC):
@@ -37,6 +38,9 @@ class Trainer(ABC):
         self.model = model
 
         # We save the attribute device
+        self.device_type = device
+
+        # We set the device
         self.device = device_("cuda:0" if cuda.is_available() and device == "gpu" else "cpu")
 
         # We save the metric
@@ -81,7 +85,7 @@ class Trainer(ABC):
         self.subprocess_defined = True
 
         # We build the subprocess according to the datasets
-        gpus = 0.10 if (self.device != "cpu") else 0
+        gpus = 0.10 if (self.device_type != "cpu") else 0
 
         @ray.remote(num_gpus=gpus)
         def subprocess(i: int) -> float:
@@ -99,8 +103,14 @@ class Trainer(ABC):
             # We extract x_cont, x_cat and target from the test set
             x_cont, x_cat, target = self.extract_data(test_set)
 
+            # We get the predictions
+            predictions = self.predict(x_cont=x_cont, x_cat=x_cat, log_prob=True)
+
+            if predictions.shape[1] == 1:
+                predictions = predictions.flatten()
+
             # We calculate the score with the help of the metric function
-            score = self.metric(self.predict(x_cont=x_cont, x_cat=x_cat, log_prob=True), target)
+            score = self.metric(predictions, target)
 
             # We save the score
             return score
@@ -138,11 +148,12 @@ class Trainer(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def extract_data(self, dataset: Union[PetaleDataset, PetaleDataframe]):
+    def extract_data(self, dataset: Union[PetaleDataset, PetaleDataframe], id: bool = False):
         """
         Abstract method to extract data from datasets
 
         :param dataset: PetaleDataset or PetaleDataframe containing the data
+        :param id: Bool indicating if we want to extract the IDs or not
         :return: Tuple containing the continuous data, categorical data, and the target
         """
         raise NotImplementedError
@@ -203,18 +214,23 @@ class NNTrainer(Trainer):
 
         return update_progress
 
-    def fit(self, train_set: PetaleDataset, val_set: PetaleDataset, verbose: bool = True) -> Tuple[tensor, tensor]:
+    def fit(self, train_set: PetaleDataset, val_set: PetaleDataset, verbose: bool = True, visualization: bool = False,
+            path: str = None) -> Tuple[tensor, tensor]:
         """
         Method that will fit the model to the given data
 
         :param train_set: Training set
         :param val_set: Valid set
         :param verbose: Determines if we want (True) to print progress or not (False)
+        :param visualization: Determines if we want (True) to visualize progress of the loss in the train and valid sets
+         or not (False)
+         :param path: Determines the path where to save the visualization plots
 
         :return: Two tensors containing the training losses and the validation losses
         """
         assert not (self.trial is not None and self.metric is None), "If trial is not None, a metric must be defined"
         assert self.model is not None, "Model must be set before training"
+        assert visualization is False or path is not None, "Path must be specified"
 
         if self.seed is not None:
             manual_seed(self.seed)
@@ -234,7 +250,7 @@ class NNTrainer(Trainer):
         optimizer = SWA(base_optimizer, swa_start=10, swa_freq=5)
 
         # We initialize two empty lists to store the training loss and the validation loss
-        training_loss, valid_loss = [], []
+        training_loss, valid_loss, training_score, valid_score = [], [], [], []
 
         # We init the early stopping class
         early_stopping = EarlyStopping(patience=self.patience)
@@ -252,19 +268,31 @@ class NNTrainer(Trainer):
             ###################
 
             # We calculate training mean epoch loss on all batches
-            mean_epoch_loss = self.train(train_loader, optimizer)
+            mean_epoch_loss, train_metric_score = self.train(train_loader, optimizer)
             update_progress(epoch=epoch, mean_epoch_loss=mean_epoch_loss)
 
-            # We record training loss
+            # We record training loss and score
             training_loss.append(mean_epoch_loss)
+            training_score.append(train_metric_score)
 
             ######################
             # validate the model #
             ######################
 
             # We calculate validation epoch loss and save it
-            val_epoch_loss = self.evaluate(val_set, early_stopping)
+            val_epoch_loss, val_metric_score, early_stop = self.evaluate(val_set, early_stopping)
             valid_loss.append(val_epoch_loss)
+            valid_score.append(val_metric_score)
+
+            if early_stop:
+                break
+
+        if visualization:
+            # We plot the graph to visualize the training and validation loss
+            visualize_epoch_progression(tensor(training_loss), tensor(valid_loss), progression_type="loss", path=path)
+            # We plot the graph to visualize the training and validation metric
+            visualize_epoch_progression(tensor(training_score), tensor(valid_score), progression_type="metric",
+                                        path=path)
 
         return tensor(training_loss), tensor(valid_loss)
 
@@ -293,10 +321,9 @@ class NNTrainer(Trainer):
 
         # Prep model for training
         self.model.train()
-        epoch_loss = 0
+        epoch_loss, epoch_score = 0, 0
 
         for item in train_loader:
-
             # We extract the continuous data x_cont, the categorical data x_cat
             # and the correct predictions y
             x_cont, x_cat, y = self.extract_batch(item)
@@ -307,9 +334,11 @@ class NNTrainer(Trainer):
             # We perform the forward pass: compute predicted outputs by passing inputs to the model
             output = self.model(x_cont=x_cont, x_cat=x_cat)
 
-            # We calculate the loss
+            # We calculate the loss and the score
             loss = self.model.loss(output, y)
+            score = self.metric(output, y)
             epoch_loss += loss.item()
+            epoch_score += score
 
             # We perform the backward pass: compute gradient of the loss with respect to model parameters
             loss.backward()
@@ -317,7 +346,7 @@ class NNTrainer(Trainer):
             # We perform a single optimization step (parameter update)
             optimizer.step()
 
-        return epoch_loss / len(train_loader)
+        return epoch_loss / len(train_loader), epoch_score / len(train_loader)
 
     def evaluate(self, valid_set: PetaleDataset, early_stopper: EarlyStopping) -> float:
 
@@ -341,8 +370,9 @@ class NNTrainer(Trainer):
             # We perform the forward pass: compute predicted outputs by passing inputs to the model
             output = self.model(x_cont=x_cont, x_cat=x_cat)
 
-            # We calculate the loss
+            # We calculate the loss and the score
             val_epoch_loss = self.model.loss(output, y).item()
+            score = self.metric(output, y)
 
         # We calculate a score for the current model
         # score = self.metric(self.model.predict(x_cont=x_cont, x_cat=x_cat, log_prob=True), y)
@@ -352,27 +382,36 @@ class NNTrainer(Trainer):
             early_stopper(val_epoch_loss, self.model)
             if early_stopper.early_stop:
                 self.model = early_stopper.get_best_model()
+                return val_epoch_loss, score, early_stopper.early_stop
 
-        return val_epoch_loss
+        return val_epoch_loss, score, False
 
-    def extract_data(self, dataset: PetaleDataset) -> Tuple[tensor, Optional[tensor], tensor]:
+    def extract_data(self, dataset: PetaleDataset, id: bool = False) -> Tuple[tensor, Optional[tensor], tensor]:
         """
         Method to extract the continuous data, categorical data, and the targets
 
         :param dataset: PetaleDataset containing the data
+        :param id: Bool indicating if we want to extract the IDs or not
+
         :return: Tuple containing the continuous data, categorical data, and the target
         """
         x_cont, y = dataset.X_cont, dataset.y
 
         if dataset.X_cat is not None:
             x_cat = dataset.X_cat
+
+            # We send all data to the device
+            x_cont, x_cat, y = x_cont.to(self.device), x_cat.to(self.device), y.to(self.device)
         else:
             x_cat = None
 
-        # We send all data to the device
-        x_cont, x_cat, y = x_cont.to(self.device), x_cat.to(self.device), y.to(self.device)
+            # We send all data to the device
+            x_cont, y = x_cont.to(self.device), y.to(self.device)
 
-        return x_cont, x_cat, y
+        if id:
+            return dataset.IDs, x_cont, x_cat, y
+        else:
+            return x_cont, x_cat, y
 
     def extract_batch(self, batch_list: list) -> Tuple[Any, Optional[Any], Any]:
         """
@@ -436,13 +475,14 @@ class RFTrainer(Trainer):
         """
 
         # We return the log probabilities
-        return self.model.predict_log_proba(x_cont)
+        return self.model.predict(x_cont)
 
-    def extract_data(self, dataset: PetaleDataframe) -> Tuple[DataFrame, Optional[DataFrame], array]:
+    def extract_data(self, dataset: PetaleDataframe, id: bool = False) -> Tuple[DataFrame, Optional[DataFrame], array]:
         """
         Method to extract the continuous data, categorical data, and the target
 
         :param dataset: PetaleDataframe containing the data
+        :param id: Bool indicating if we want to extract the IDs or not
         :return: Tuple containing the continuous data, categorical data, and the target
         """
         x_cont, y = dataset.X_cont, dataset.y
@@ -452,7 +492,10 @@ class RFTrainer(Trainer):
         else:
             x_cat = None
 
-        return x_cont, x_cat, y
+        if id:
+            return dataset.IDs, x_cont, x_cat, y
+        else:
+            return x_cont, x_cat, y
 
     def update_trainer(self, **kwargs) -> None:
         """

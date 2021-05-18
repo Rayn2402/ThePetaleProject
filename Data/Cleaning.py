@@ -6,7 +6,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from adjustText import adjust_text
 from Data.Transforms import ContinuousTransform as CT
-from numpy import mean, cov, linalg, array, einsum
+from numpy import mean, cov, linalg, array, einsum, nan
 from scipy.stats import chi2
 from SQL.constants import PARTICIPANT
 from SQL.DataManagement.Helpers import retrieve_numerical
@@ -30,10 +30,10 @@ class DataCleaner:
     CSC = "Chi-Squared Cutoff"
 
     # PRE-SAVED WARNING MESSAGES
-    ROW_TRESHOLD_WARNING = "Row threshold condition not fulfilled"
-    COL_THRESHOLD_WARNING = "Column threshold condition not fulfilled"
-    MIN_PER_CAT_WARNING = "Minimal number per category not satisfied"
-    MAX_PER_CAT_WARNING = "Maximal percentage allowed for one category not satisfied"
+    ROW_TRESHOLD_WARNING = "Row threshold condition not fulfilled."
+    COL_THRESHOLD_WARNING = "Column threshold condition not fulfilled."
+    MIN_PER_CAT_WARNING = "Minimal number per category not satisfied."
+    MAX_PER_CAT_WARNING = "Maximal percentage allowed for one category not satisfied."
 
     # OUTLIER LVLS
     LOW = "LOW"
@@ -46,8 +46,8 @@ class DataCleaner:
     MAHALANOBIS = "Mahalanobis"
 
     def __init__(self, records_path: str, column_thresh: float = 0.15, row_thresh: float = 0.20,
-                 outlier_alpha: float = 1.5, min_n_per_cat: int = 6, qchi2_mahalanobis_cutoff: float = 0.975,
-                 figure_format: str = 'png'):
+                 outlier_alpha: float = 1.5, min_n_per_cat: int = 6, max_cat_percentage: float = 0.95,
+                 qchi2_mahalanobis_cutoff: float = 0.975, figure_format: str = 'png'):
         """
         Class constructor
 
@@ -56,11 +56,13 @@ class DataCleaner:
         :param row_thresh: percentage threshold (0 <= thresh <= 1)
         :param outlier_alpha: constant multiplied by inter quartile range (IQR) to determine outliers
         :param min_n_per_cat: minimal number of items having a certain category value in a categorical column
+        :param max_cat_percentage: maximal percentage that a category can occupied within a categorical column
         :param qchi2_mahalanobis_cutoff: Chi-squared quantile probability used to determine Mahalanobis cutoff value
         :param figure_format: format of figure saved by matplotlib
         """
         assert 0 <= column_thresh <= 1 and 0 <= row_thresh <= 1, "Thresholds must be in range [0, 1]"
         assert min_n_per_cat > 0, "The minimal number of items per category must be greater than 0"
+        assert 0 < max_cat_percentage < 1, "The maximal percentage must be in range (0, 1)"
         assert 0 < qchi2_mahalanobis_cutoff < 1, "Chi-squared quantile cutoff must be in range (0, 1)"
 
         # Internal private fixed attributes
@@ -68,6 +70,7 @@ class DataCleaner:
         self.__row_thresh = row_thresh
         self.__outlier_alpha = outlier_alpha
         self.__min_n_per_cat = min_n_per_cat
+        self.__max_cat_percentage = max_cat_percentage
         self.__qchi2 = qchi2_mahalanobis_cutoff
         self.__records_path = records_path
         self.__plots_path = join(records_path, "plots")
@@ -100,6 +103,13 @@ class DataCleaner:
             numerical_df = retrieve_numerical(df, [])
             numerical_columns = list(numerical_df.columns.values)
 
+        # We set missing values to NaN
+        df = df.fillna(nan)
+
+        # We identify and remove categories of categorical column with a too low number of appearance
+        categorical_columns = [c for c in df.columns.values if c not in [PARTICIPANT] + numerical_columns]
+        test_df = self.__identify_critical_categories(df, categorical_columns)
+
         # We identify and remove columns and rows with too many missing values
         cleaned_df = self.__identify_critical_rows_and_columns(df)
 
@@ -122,9 +132,51 @@ class DataCleaner:
 
         return cleaned_df
 
+    def __identify_critical_categories(self, df: pd.DataFrame, categorical_columns: List[str]) -> pd.DataFrame:
+        """
+        Set category with less than "self.__min_n_per_cat" to NaN
+
+        :param df: pandas dataframe
+        :param categorical_columns: list with names of categorical columns
+        :return curated dataframe
+        """
+        # We save a list with column to remove
+        to_remove = []
+
+        # For all categorical column
+        for c in categorical_columns:
+
+            # We identify the possible categories
+            categories = [cat for cat in df[c].unique() if cat is not nan]
+
+            # If one category does not satisfy the threshold we save a warning in the records
+            # and change the value for NaN.
+            for cat in categories:
+
+                n = df.loc[df[c] == cat].shape[0]
+                p = n/df.shape[0]
+
+                if n < self.__min_n_per_cat:
+                    warning = self.__return_categorical_warning(cat, n)
+                    self.__update_single_column_records(c, warning)
+                    df.loc[df[c] == cat, [c]] = nan
+
+                elif p > self.__max_cat_percentage:
+                    warning = self.__return_categorical_warning(cat, p, min_warning=False)
+                    self.__update_single_column_records(c, warning)
+                    to_remove.append(c)
+
+        # We delete column to remove
+        df = df.drop(to_remove, axis=1)
+
+        return df
+
     def __identify_critical_rows_and_columns(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Removes rows and columns with too many missing values
+
+        :param df: pandas dataframe
+        :return curated dataframe
         """
 
         # Column cleaning
@@ -140,7 +192,7 @@ class DataCleaner:
 
         for column in df.columns:
             if column not in updated_df.columns:
-                self.__records[self.CC][column] = self.COL_THRESHOLD_WARNING
+                self.__update_single_column_records(column, self.COL_THRESHOLD_WARNING)
 
         return updated_df
 
@@ -256,7 +308,7 @@ class DataCleaner:
             if value > cutoff:
                 texts.append(ax.text(i, value, patient))
                 warning = self.__return_mahalanobis_warning(value)
-                self.__update_single_outlier_records(patient, warning)
+                self.__update_single_patient_records(patient, warning)
 
         # We adjust plot axis
         ax.set_ylabel(f"Squared {self.MAHALANOBIS} distance")
@@ -302,19 +354,38 @@ class DataCleaner:
                 warning = self.__return_outlier_warning(column, value, lvl)
 
                 # We add the warning to the records
-                self.__update_single_outlier_records(patient, warning)
+                self.__update_single_patient_records(patient, warning)
 
-    def __update_single_outlier_records(self, patient: str, warning: str):
+    def __update_records(self, key: str, sub_key: str, warning: str) -> None:
+        """
+        Add warning message to a patient or a column in the records
+
+        :param key: str, self.CP or self.CC
+        :param sub_key: str, patient of column name
+        :param warning: str, warning message
+        """
+        if sub_key in self.__records[key].keys():
+            self.__records[key][sub_key].update({len(self.__records[key][sub_key].keys()): warning})
+        else:
+            self.__records[key][sub_key] = {0: warning}
+
+    def __update_single_patient_records(self, patient: str, warning: str):
         """
         Add warning message to a patient in the records
 
         :param patient: str
         :param warning: str, warning message
         """
-        if patient in self.__records[self.CP].keys():
-            self.__records[self.CP][patient].update({len(self.__records[self.CP][patient].keys()): warning})
-        else:
-            self.__records[self.CP][patient] = {0: warning}
+        self.__update_records(self.CP, patient, warning)
+
+    def __update_single_column_records(self, column: str, warning: str):
+        """
+        Add warning message to a patient in the records
+
+        :param column: str
+        :param warning: str, warning message
+        """
+        self.__update_records(self.CC, column, warning)
 
     def __save_records(self) -> None:
         """
@@ -383,6 +454,20 @@ class DataCleaner:
         return updated_df
 
     @staticmethod
+    def __return_categorical_warning(category: str, value: float, min_warning: bool = True) -> str:
+        """
+        Return a string to use as warning message for column in the records
+
+        :param category: str, category of a categorical variable
+        :param value: number of times the category appears or percentage of column occupied by the category
+        :return: str
+        """
+        if min_warning:
+            return f"Only {value} items had the category {category}."
+        else:
+            return f"Category {category} was representing {round(value*100,2)} % of the column."
+
+    @staticmethod
     def __return_outlier_warning(numerical_attribute: str, value: float, lvl: str) -> str:
         """
         Returns a string to use as warning message in the records.
@@ -394,7 +479,7 @@ class DataCleaner:
         :return: str
         """
         return f"Patient targeted as an outlier" \
-               f" due to a {lvl} '{numerical_attribute}' value of {value}"
+               f" due to a {lvl} '{numerical_attribute}' value of {value}."
 
     @staticmethod
     def __return_mahalanobis_warning(value: float) -> str:
@@ -404,4 +489,4 @@ class DataCleaner:
         :param value: Patient's Mahalanobis distance
         :return: str
         """
-        return f"Patient targeted as an outlier due to its Mahalanobis distance of {value}"
+        return f"Patient targeted as an outlier due to its Mahalanobis distance of {value}."

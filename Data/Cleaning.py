@@ -32,6 +32,8 @@ class DataCleaner:
     # PRE-SAVED WARNING MESSAGES
     ROW_TRESHOLD_WARNING = "Row threshold condition not fulfilled"
     COL_THRESHOLD_WARNING = "Column threshold condition not fulfilled"
+    MIN_PER_CAT_WARNING = "Minimal number per category not satisfied"
+    MAX_PER_CAT_WARNING = "Maximal percentage allowed for one category not satisfied"
 
     # OUTLIER LVLS
     LOW = "LOW"
@@ -44,7 +46,7 @@ class DataCleaner:
     MAHALANOBIS = "Mahalanobis"
 
     def __init__(self, records_path: str, column_thresh: float = 0.15, row_thresh: float = 0.20,
-                 outlier_alpha: float = 1.5, qchi2_mahalanobis_cutoff: float = 0.975,
+                 outlier_alpha: float = 1.5, min_n_per_cat: int = 6, qchi2_mahalanobis_cutoff: float = 0.975,
                  figure_format: str = 'png'):
         """
         Class constructor
@@ -53,16 +55,19 @@ class DataCleaner:
         :param column_thresh: percentage threshold (0 <= thresh <= 1)
         :param row_thresh: percentage threshold (0 <= thresh <= 1)
         :param outlier_alpha: constant multiplied by inter quartile range (IQR) to determine outliers
+        :param min_n_per_cat: minimal number of items having a certain category value in a categorical column
         :param qchi2_mahalanobis_cutoff: Chi-squared quantile probability used to determine Mahalanobis cutoff value
         :param figure_format: format of figure saved by matplotlib
         """
         assert 0 <= column_thresh <= 1 and 0 <= row_thresh <= 1, "Thresholds must be in range [0, 1]"
+        assert min_n_per_cat > 0, "The minimal number of items per category must be greater than 0"
         assert 0 < qchi2_mahalanobis_cutoff < 1, "Chi-squared quantile cutoff must be in range (0, 1)"
 
         # Internal private fixed attributes
         self.__column_tresh = column_thresh
         self.__row_thresh = row_thresh
         self.__outlier_alpha = outlier_alpha
+        self.__min_n_per_cat = min_n_per_cat
         self.__qchi2 = qchi2_mahalanobis_cutoff
         self.__records_path = records_path
         self.__plots_path = join(records_path, "plots")
@@ -74,6 +79,7 @@ class DataCleaner:
                           "Column Threshold": self.__column_tresh,
                           "Row Threshold": self.__row_thresh,
                           "Outlier Alpha": self.__outlier_alpha,
+                          "Min Item Per Category": self.__min_n_per_cat,
                           self.CSC: {"Probability": self.__qchi2},
                           self.CQD: {},
                           self.MAHALANOBIS: {}}

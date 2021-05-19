@@ -13,7 +13,7 @@ from pandas import DataFrame, Series
 from SQL.constants import *
 from torch.utils.data import Dataset
 from torch import from_numpy, cat, ones, tensor
-from typing import Optional, List, Callable, Sequence, Tuple, Union
+from typing import Optional, List, Callable, Tuple, Union, Any
 
 
 class CustomDataset(ABC):
@@ -162,8 +162,8 @@ class CustomDataset(ABC):
         mu, std, modes, enc = self._current_train_stats()
 
         # We update the data that will be available via __get_item__
-        self._numerical_setter(mu, std)
-        self._categorical_setter(modes, enc)
+        self._set_numerical(mu, std)
+        self._set_categorical(modes, enc)
 
     @abstractmethod
     def _numerical_setter(self, mu: Series, std: Series) -> None:
@@ -214,16 +214,18 @@ class PetaleDataset(CustomDataset, Dataset):
             target: name of the column with the targets
             cont_cols: list of column names associated with continuous data
             cat_cols: list of column names associated with categorical data
-
         """
         # We use the _init_ of the parent class CustomDataset
         CustomDataset.__init__(self, df, target, cont_cols, cat_cols)
 
-    def __len__(self):
+        # We define the item getter function
+        self._item_getter = self._define_item_getter(cont_cols, cat_cols)
+
+    def __len__(self) -> int:
         return CustomDataset.__len__(self)
 
-    def __getitem__(self, idx):
-        return self._x_cont[idx, :], self._x_cat[idx, :], self._y[idx]
+    def __getitem__(self, idx: Any) -> Tuple[tensor, tensor, tensor]:
+        return self._item_getter(idx)
 
     def _categorical_setter(self, modes: Series, enc: dict) -> None:
         """
@@ -239,6 +241,42 @@ class PetaleDataset(CustomDataset, Dataset):
         # We apply an ordinal encoding to categorical columns
         temporary_df, _ = preprocess_categoricals(self._original_data[self.cat_cols].copy(), mode=modes, encodings=enc)
         self._x_cat = from_numpy(temporary_df.values).float()
+
+    def _define_item_getter(self, cont_cols: Optional[List[str]] = None,
+                            cat_cols: Optional[List[str]] = None) -> Callable:
+        """
+        Defines the function that must be used by __get_item__ in order to get an item data
+        Args:
+            cont_cols: list of column names associated with continuous data
+            cat_cols: list of column names associated with categorical data
+
+        Returns: item_getter function
+        """
+        if cont_cols is None:
+            def item_getter(idx: Any) -> Tuple[None, tensor, tensor]:
+                return None, self._x_cat[idx, :], self._y[idx]
+
+        elif cat_cols is None:
+            def item_getter(idx: Any) -> Tuple[tensor, None, tensor]:
+                return self._x_cont[idx, :], None, self._y[idx]
+
+        else:
+            def item_getter(idx: Any) -> Tuple[tensor, tensor, tensor]:
+                return self._x_cont[idx, :], self._x_cat[idx, :], self._y[idx]
+
+        return item_getter
+
+    def _initialize_targets(self, target: str) -> Union[tensor, array]:
+        """
+        Saves targets values in a tensor
+
+        Args:
+            target: name of the column with the targets
+
+        Returns: tensor
+        """
+        temporary_df = self._original_data[target].astype(float)
+        return from_numpy(temporary_df.values).float().flatten()
 
     def _numerical_setter(self, mu: Series, std: Series) -> None:
         """
@@ -256,17 +294,6 @@ class PetaleDataset(CustomDataset, Dataset):
         temporary_df = preprocess_continuous(self._original_data[self.cont_cols].copy(), mu, std)
         self._x_cont = from_numpy(temporary_df.values).float()
 
-    def _initialize_targets(self, target: str) -> Union[tensor, array]:
-        """
-        Saves targets values in a tensor
-
-        Args:
-            target: name of the column with the targets
-
-        Returns: tensor
-        """
-        temporary_df = self._original_data[target].astype(float)
-        return from_numpy(temporary_df.values).float().flatten()
 
 #
 # class PetaleDataframe:

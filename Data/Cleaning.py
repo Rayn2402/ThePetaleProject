@@ -108,10 +108,10 @@ class DataCleaner:
 
         # We identify and remove categories of categorical column with a too low number of appearance
         categorical_columns = [c for c in df.columns.values if c not in [PARTICIPANT] + numerical_columns]
-        test_df = self.__identify_critical_categories(df, categorical_columns)
+        cleaned_df = self.__identify_critical_categories(df, categorical_columns)
 
         # We identify and remove columns and rows with too many missing values
-        cleaned_df = self.__identify_critical_rows_and_columns(df)
+        cleaned_df = self.__identify_critical_rows_and_columns(cleaned_df)
 
         # We make sure that numerical columns values are float and fill NaN with columns' means
         updated_df = self.__refactor_dataframe(cleaned_df, numerical_columns)

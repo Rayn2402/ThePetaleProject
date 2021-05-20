@@ -40,7 +40,7 @@ def preprocess_categoricals(df: DataFrame, encoding: str = "ordinal",
     assert encoding in ENCODING, 'Encoding option not available'
 
     # We ensure that all columns are considered as categories
-    df = CaT.fill_missing(CaT.to_category(df), mode)
+    df = CaT.fill_missing(df, mode)
 
     if encoding == "ordinal":
         df, encodings_dict = CaT.ordinal_encode(df, encodings)

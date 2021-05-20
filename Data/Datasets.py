@@ -7,12 +7,11 @@ Files that contains class related to Datasets
 
 from abc import ABC, abstractmethod
 from Data.Preprocessing import preprocess_continuous, preprocess_categoricals
-from Data.Transforms import ContinuousTransform as ConT
 from numpy import array
 from pandas import DataFrame, Series
 from SQL.constants import *
 from torch.utils.data import Dataset
-from torch import from_numpy, cat, ones, tensor
+from torch import from_numpy, tensor
 from typing import Optional, List, Callable, Tuple, Union, Any
 
 
@@ -42,9 +41,9 @@ class CustomDataset(ABC):
         super().__init__()
 
         # Set private attributes
-        self._ids = df[PARTICIPANT]
+        self._ids = list(df[PARTICIPANT].values)
         self._target = target
-        self._train_mask, self._valid_mask, self._test_mask = [], [], []
+        self._train_mask, self._valid_mask, self._test_mask = [], None, []
         self._original_data = df
         self._n = df.shape[0]
         self._x_cont, self._x_cat = None, None
@@ -69,6 +68,26 @@ class CustomDataset(ABC):
 
     def __len__(self) -> int:
         return self._n
+
+    @property
+    def ids(self) -> List[str]:
+        return self._ids
+
+    @property
+    def test_mask(self) -> List[int]:
+        return self._test_mask
+
+    @property
+    def train_mask(self) -> List[int]:
+        return self._train_mask
+
+    @property
+    def valid_mask(self) -> Optional[List[int]]:
+        return self._valid_mask
+
+    @property
+    def y(self) -> Union[tensor, array]:
+        return self._y
 
     def _current_train_stats(self) -> Tuple[Optional[Series], Optional[Series], Optional[Series], Optional[dict]]:
         """

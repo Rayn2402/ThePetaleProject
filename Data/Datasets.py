@@ -65,7 +65,7 @@ class CustomDataset(ABC):
         self._set_categorical = self._define_categorical_data_setter(cat_cols)
 
         # We update current training mask with all the data
-        self._update_masks(list(range(self._n)), [], [])
+        self.update_masks(list(range(self._n)), [], [])
 
     def __len__(self) -> int:
         return self._n
@@ -149,8 +149,8 @@ class CustomDataset(ABC):
 
         return get_mu_and_std
 
-    def _update_masks(self, train_mask: List[int], test_mask: List[int],
-                      valid_mask: Optional[List[int]] = None) -> None:
+    def update_masks(self, train_mask: List[int], test_mask: List[int],
+                     valid_mask: Optional[List[int]] = None) -> None:
         """
         Updates the train, valid and test masks and then preprocess the data available
         according to the current statistics of the training data

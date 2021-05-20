@@ -12,12 +12,6 @@ class ContinuousTransform:
     """
     Class of transformation that can be applied to continuous data
     """
-    @staticmethod
-    def to_float(df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Changes type of pandas columns to float
-        """
-        return df.astype('float')
 
     @staticmethod
     def normalize(df: pd.DataFrame, mean: Optional[pd.Series] = None,
@@ -45,13 +39,6 @@ class CategoricalTransform:
     """
     Class of transformation that can be applied to categorical data
     """
-
-    @staticmethod
-    def to_category(df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Changes type of pandas column to category
-        """
-        return df.astype('category')
 
     @staticmethod
     def one_hot_encode(df: pd.DataFrame) -> pd.DataFrame:

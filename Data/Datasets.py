@@ -22,7 +22,7 @@ class CustomDataset(ABC):
     def __init__(self, df: DataFrame, target: str,
                  cont_cols: Optional[List[str]] = None, cat_cols: Optional[List[str]] = None):
         """
-        Sets private and public attributes of our custom dataset class
+        Sets protected and public attributes of our custom dataset class
 
         Args:
             df: dataframe with the original data
@@ -40,13 +40,12 @@ class CustomDataset(ABC):
         # We call super init since we're using ABC
         super().__init__()
 
-        # Set private attributes
+        # Set protected attributes
         self._ids = list(df[PARTICIPANT].values)
         self._target = target
         self._train_mask, self._valid_mask, self._test_mask = [], None, []
         self._original_data = df
         self._n = df.shape[0]
-        self._x_cont, self._x_cat = None, None
         self._y = self._initialize_targets(target)
 
         # Set public attributes
@@ -219,14 +218,14 @@ class CustomDataset(ABC):
                 assert c in dataframe_columns, f"Column {c} is not part of the given dataframe"
 
 
-class PetaleDataset(CustomDataset, Dataset):
+class PetaleNNDataset(CustomDataset, Dataset):
     """
     Datasets used to train, valid and tests our neural network models
     """
     def __init__(self, df: DataFrame, target: str,
                  cont_cols: Optional[List[str]] = None, cat_cols: Optional[List[str]] = None):
         """
-        Sets private and public attributes of the class
+        Sets protected and public attributes of the class
 
         Args:
             df: dataframe with the original data
@@ -234,6 +233,9 @@ class PetaleDataset(CustomDataset, Dataset):
             cont_cols: list of column names associated with continuous data
             cat_cols: list of column names associated with categorical data
         """
+        # We set protected attributes to None before they get initialized in the CustomDataset constructor
+        self._x_cont, self._x_cat = None, None
+
         # We use the _init_ of the parent class CustomDataset
         CustomDataset.__init__(self, df, target, cont_cols, cat_cols)
 
@@ -245,6 +247,14 @@ class PetaleDataset(CustomDataset, Dataset):
 
     def __getitem__(self, idx: Any) -> Tuple[tensor, tensor, tensor]:
         return self._item_getter(idx)
+
+    @property
+    def x_cont(self) -> Optional[tensor]:
+        return self._x_cont
+
+    @property
+    def x_cat(self) -> Optional[tensor]:
+        return self._x_cat
 
     def _categorical_setter(self, modes: Series, enc: dict) -> None:
         """
@@ -285,7 +295,7 @@ class PetaleDataset(CustomDataset, Dataset):
 
         return item_getter
 
-    def _initialize_targets(self, target: str) -> Union[tensor, array]:
+    def _initialize_targets(self, target: str) -> tensor:
         """
         Saves targets values in a tensor
 
@@ -314,47 +324,72 @@ class PetaleDataset(CustomDataset, Dataset):
         self._x_cont = from_numpy(temporary_df.values).float()
 
 
-#
-# class PetaleDataframe:
-#
-#     def _init_(self, df: DataFrame, cont_cols: List[str], target: str,
-#                  cat_cols: Optional[List[str]] = None, mean: Optional[Series] = None,
-#                  std: Optional[Series] = None, mode: Optional[Series] = None,
-#                  encodings: Optional[dict] = None, **kwargs):
-#         """
-#         Applies transformations to a dataframe and store the result as the dataset for the Random Forest model
-#
-#         :param df: pandas dataframe
-#         :param cont_cols: list with names of continuous columns
-#         :param target: string with target column name
-#         :param cat_cols: list with names of categorical columns
-#         :param mean: means to use for data normalization (pandas series)
-#         :param std : stds to use for data normalization (pandas series)
-#         :param mode: modes to use in order to fill missing categorical values (pandas series)
-#         :param encodings: dict of dict with integers to use as encoding for each category's values
-#         """
-#
-#         assert PARTICIPANT in df.columns, 'IDs missing from the dataframe'
-#
-#         # We save the survivors ID
-#         self.IDs = df[PARTICIPANT]
-#
-#         # We save the number of elements in the datasets
-#         self.N = self.IDs.shape[0]
-#
-#         # We save and preprocess continuous features
-#         self.X_cont = df[cat_cols + cont_cols].copy() if cat_cols is not None else df[cont_cols].copy()
-#         self.X_cont[cont_cols] = preprocess_continuous(self.X_cont[cont_cols], mean, std)
-#
-#         # We save and preprocess categorical features
-#         if cat_cols is not None:
-#             self.X_cont[cat_cols], self.encodings = preprocess_categoricals(self.X_cont[cat_cols], mode=mode,
-#                                                                             encodings=encodings)
-#         # We save the targets
-#         self.y = ConT.to_float(df[target]).values.flatten()
-#
-#         # We set the categorical data to none
-#         self.X_cat = None
-#
-#     def _len_(self) -> int:
-#         return self.N
+class PetaleRFDataset(CustomDataset):
+    """
+    Datasets used to train, valid and tests our random forest models
+    """
+    def __init__(self, df: DataFrame, target: str,
+                 cont_cols: Optional[List[str]] = None, cat_cols: Optional[List[str]] = None):
+        """
+        Sets protected and public attributes of using the CustomDataset constructor
+
+        Args:
+            df: dataframe with the original data
+            target: name of the column with the targets
+            cont_cols: list of column names associated with continuous data
+            cat_cols: list of column names associated with categorical data
+        """
+
+        # We set protected attributes to None before they get initialized in the CustomDataset constructor
+        self._x = df.copy()
+
+        # We use the _init_ of the parent class CustomDataset
+        super().__init__(df, target, cont_cols, cat_cols)
+
+    def __getitem__(self, idx) -> Series:
+        return self._x.iloc[idx]
+
+    @property
+    def x(self) -> DataFrame:
+        return self._x
+
+    def _categorical_setter(self, modes: Series, enc: dict) -> None:
+        """
+        Fill missing values of categorical data according to the modes in the training set and
+        then encodes categories using the same ordinal encoding as in the training set.
+
+        Args:
+            modes: modes of the categorical column according to the training mask
+            enc: ordinal encodings used for categorical columns according to the training mask
+
+        Returns: None
+        """
+        # We apply an ordinal encoding to categorical columns
+        self._x[self.cat_cols], _ = preprocess_categoricals(self._original_data[self.cat_cols].copy(),
+                                                            mode=modes, encodings=enc)
+
+    def _initialize_targets(self, target: str) -> array:
+        """
+        Saves targets values in a numpy array
+
+        Args:
+            target: name of the column with the targets
+
+        Returns: tensor
+        """
+        return self._original_data[target].astype(float).values
+
+    def _numerical_setter(self, mu: Series, std: Series) -> None:
+        """
+        Fills missing values of numerical continuous data according according to the means of the
+        training set and then normalize continuous data using the means and the standard
+        deviations of the training set.
+
+        Args:
+            mu: means of the numerical column according to the training mask
+            std: standard deviations of the numerical column according to the training mask
+
+        Returns: None
+        """
+        # We fill missing with means and normalize the data
+        self._x[self.cont_cols] = preprocess_continuous(self._original_data[self.cont_cols].copy(), mu, std)

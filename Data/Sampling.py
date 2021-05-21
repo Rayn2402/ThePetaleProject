@@ -5,6 +5,7 @@ This file contains the Sampler class used to separate test sets from train sets
 """
 
 from numpy import array
+from numpy.random import seed
 from pandas import qcut
 from sklearn.model_selection import train_test_split
 from torch import tensor
@@ -61,6 +62,10 @@ class RandomStratifiedSampler:
         {0: {'train': [..], 'valid': [..], 'test': [..], 'inner': {0: {'train': [..], 'valid': [..], 'test': [..] }}}
 
         """
+
+        # We set the random state
+        if self.random_state is not None:
+            seed(self.random_state)
 
         # We initialize the dict that will contain the results and the list of indexes to use
         masks, idx = {}, array(range(len(targets)))

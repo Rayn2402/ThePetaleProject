@@ -8,15 +8,19 @@ This table is used to reproduce 6MWT experiment with a more complex model.
 import argparse
 import os
 import sys
+
+# Few lines of code to avoid problem when calling script from terminal
 dir_path = os.path.dirname(os.path.realpath(__file__))
 parent_dir_path = os.path.abspath(os.path.join(dir_path, os.pardir))
 parent_parent = os.path.abspath(os.path.join(parent_dir_path, os.pardir))
 sys.path.insert(0, parent_parent)
-from Data.Sampling import split_train_test
+
+
+from pandas import read_csv
+from sklearn.model_selection import train_test_split
 from SQL.DataManagement.Utils import initialize_petale_data_manager
 from SQL.DataManagement.Helpers import fill_id
 from SQL.constants import *
-from pandas import read_csv
 
 
 def argument_parser():
@@ -79,8 +83,10 @@ if __name__ == '__main__':
     df = df.loc[~df[PARTICIPANT].isin(list(outliers_ids[PARTICIPANT].values)), :]
 
     # We extract an holdout set from the whole dataframe
-    learning_df, hold_out_df = split_train_test(df, args.target_column,
-                                                test_size=args.holdout_size, random_state=args.seed)
+    learning_idx, hold_out_idx = train_test_split(list(range(df.shape[0])), stratify=df[args.target_column].values,
+                                                  test_size=args.holdout_size, random_state=args.seed)
+
+    learning_df, hold_out_df = df.iloc[learning_idx, :], df.iloc[hold_out_idx, :]
 
     # We create the dictionary needed to create the table
     types = {c: TYPES.get(c, CATEGORICAL_TYPE) for c in list(learning_df.columns)}

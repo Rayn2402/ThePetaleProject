@@ -4,131 +4,133 @@ Author : Nicolas Raymond
 This file contains the Sampler class used to separate test sets from train sets
 """
 
-from typing import List, Union, Tuple, Optional
-from SQL.DataManagement.Utils import PetaleDataManager
-from Data.Datasets import PetaleDataset, PetaleDataframe
-from Data.Transforms import ContinuousTransform as ConT
-from SQL.constants import *
-import numpy as np
-import pandas as pd
+from numpy import array
+from pandas import qcut
+from sklearn.model_selection import train_test_split
+from torch import tensor
+from typing import List, Union, Optional, Dict, Any, Tuple, Callable
+
 
 SIGNIFICANT, ALL = "significant", "all"
 GENES_CHOICES = [None, SIGNIFICANT, ALL]
 
 
-class Sampler:
-
-    def __init__(self, dm: PetaleDataManager, table_name: str, cont_cols: List[str],
-                 target_col: str, cat_cols: Optional[List[str]] = None, to_dataset: bool = True):
+class RandomStratifiedSampler:
+    """
+    Object uses in order to generate lists of indexes to use as train, valid
+    and test masks for outer and inner validation loops.
+    """
+    def __init__(self, n_out_split: int, n_in_split: int,
+                 valid_size: float = 0.20, test_size: float = 0.20, random_state: Optional[int] = None):
         """
-        Object that creates all datasets
+        Set public attributes of the sampler
 
-        :param dm: PetaleDataManager
-        :param table_name: name of the table on which we want to sample datasets
-        :param cont_cols: list with the names of continuous columns of the table
-        :param cat_cols: list with the names of the categorical columns of the table
-        :param target_col: name of the target column in the table
-        :param to_dataset: bool indicating if we want a PetaleDataset (True) or a PetaleDataframe (False)
+        Args:
+            n_out_split: number of outer splits to produce
+            n_in_split: number of inner splits to produce
+            valid_size: percentage of data taken to create the validation indexes set
+            test_size: percentage of data taken to create the train indexes set
         """
+        assert n_out_split > 0, 'Number of outer split must be greater than 0'
+        assert n_in_split >= 0, 'Number of inner split must be greater or equal to 0'
+        assert 0 <= valid_size < 1, 'Validation size must be in the range [0, 1)'
+        assert 0 < test_size < 1, 'Test size must be in the range (0, 1)'
+        assert valid_size + test_size < 1, 'Train size must be non null'
 
-        # We save the learning set as seen in the Workflow presentation
-        self.learning_set = dm.get_table(table_name)
+        # Public attributes
+        self.n_out_split = n_out_split
+        self.n_in_split = n_in_split
+        self.random_state = random_state
 
-        # We make sure that continuous variables are considered as continuous
-        self.learning_set[cont_cols] = ConT.to_float(self.learning_set[cont_cols])
+        # Public method
+        self.split = self.__define_split_function(test_size, valid_size)
 
-        # We save the continuous and categorical column names
-        self.cont_cols = cont_cols
-        self.cat_cols = cat_cols
-
-        # We save the target column name
-        self.target_col = target_col
-
-        # We save the dataset class constructor
-        self.dataset_constructor = PetaleDataset if to_dataset else PetaleDataframe
-
-    def __call__(self, k: int = 10, l: int = 1, split_cat: bool = True,
-                 valid_size: Union[int, float] = 0.20, test_size: Union[int, float] = 0.20,
-                 add_biases: bool = False) -> dict:
-
-        return self.create_train_and_test_datasets(k, l, split_cat, valid_size, test_size, add_biases)
-
-    def create_train_and_test_datasets(self, k: int = 10, l: int = 1, split_cat: bool = True,
-                                       valid_size: Union[int, float] = 0.20, test_size: Union[int, float] = 0.20,
-                                       add_biases: bool = False) -> dict:
+    def __call__(self, targets: Union[tensor, array, List[Any]]
+                 ) -> Dict[int, Dict[str, Union[List[int], Dict[str, List[int]]]]]:
         """
-        Creates the train and test PetaleDatasets from the df and the specified continuous and categorical columns
+        Returns lists of indexes to use as train, valid and test masks for outer and inner validation loops.
+        The proportion of each class is conserved within each split.
 
-        :param k: number of outer validation loops
-        :param l: number if inner validation loops
-        :param split_cat: boolean indicating if we want to split categorical variables from the continuous ones
-        :param valid_size: number of elements in the valid set (if 0 < valid < 1 we consider the parameter as a %)
-        :param test_size: number of elements in the test set (if 0 < test_size < 1 we consider the parameter as a %)
-        :param add_biases: boolean indicating if a column of ones should be added at the beginning of X_cont
-        :return: dictionary with all datasets
+        Args:
+            targets: sequence of float/int used for stratification
+
+        Returns: Dictionary of dictionaries with list of indexes.
+
+        Example:
+
+        {0: {'train': [..], 'valid': [..], 'test': [..], 'inner': {0: {'train': [..], 'valid': [..], 'test': [..] }}}
+
         """
 
-        # We initialize an empty dictionary to store the outer loops datasets
-        all_datasets = {}
+        # We initialize the dict that will contain the results and the list of indexes to use
+        masks, idx = {}, array(range(len(targets)))
 
-        # We create the datasets for the outer validation loops:
-        for i in range(k):
+        # We save a copy of targets in an array
+        targets_c = array(targets)
 
-            # We split the training and test data
-            train, test = split_train_test(self.learning_set, self.target_col, test_size)
-            train, valid = split_train_test(train, self.target_col, valid_size)
-            outer_dict = self.dataframes_to_datasets(train, valid, test, split_cat, add_biases)
+        for i in range(self.n_out_split):
 
-            # We add storage in the outer dict to save the inner loops datasets
-            outer_dict['inner'] = {}
+            # We create outer split masks
+            masks[i] = {**self.split(idx, targets_c), "inner": {}}
 
-            # We create the datasets for the inner validation loops
-            for j in range(l):
+            for j in range(self.n_in_split):
 
-                in_train, in_test = split_train_test(train, self.target_col, test_size)
-                in_train, in_valid = split_train_test(in_train, self.target_col, valid_size)
-                outer_dict['inner'][j] = self.dataframes_to_datasets(in_train, in_valid, in_test, split_cat, add_biases)
-                all_datasets[i] = outer_dict
+                # We create the inner split masks
+                masks[i]["inner"][j] = self.split(masks[i]["train"], targets_c)
 
-        return all_datasets
+        return masks
 
-    def dataframes_to_datasets(self, train: pd.DataFrame, valid: pd.DataFrame, test: pd.DataFrame,
-                               split_cat: bool = True, add_biases: bool = False) -> dict:
+    @staticmethod
+    def __define_split_function(test_size, valid_size) -> Callable:
         """
-        Turns three pandas dataframe into training, valid and test PetaleDatasets
+        Defines the split function according to the valid size
+        Args:
+            valid_size: percentage of data taken to create the validation indexes set
+            test_size: percentage of data taken to create the train indexes set
 
-        :param train: Pandas dataframe with training data
-        :param valid: Pandas dataframe with valid data
-        :param test: Pandas dataframe with test data
-        :param split_cat: boolean indicating if we want to split categorical variables from the continuous ones
-        :param add_biases: boolean indicating if a column of ones should be added at the beginning of X_cont
-        :return: dict
+        Returns: split function
         """
-        # We save the mean and the standard deviations of the continuous columns in train
-        mean, std = train[self.cont_cols].mean(), train[self.cont_cols].std()
+        if valid_size > 0:
 
-        # We save the mode of the categorical columns in train
-        mode = train[self.cat_cols].mode().iloc[0] if self.cat_cols is not None else None
+            # Split must extract train, valid and test masks
+            def split(idx: array, targets: array) -> Dict[str, array]:
+                remaining_idx, test_mask = train_test_split(idx, stratify=targets[idx], test_size=test_size)
+                train_mask, valid_mask = train_test_split(remaining_idx, stratify=targets[remaining_idx],
+                                                          test_size=valid_size)
 
-        # We create the train, valid and test datasets
-        train_ds = self.dataset_constructor(df=train, cont_cols=self.cont_cols, target=self.target_col,
-                                            cat_cols=self.cat_cols, split=split_cat, add_biases=add_biases)
-
-        # We save the encodings used if "ordinal" encoding was used
-        enc = train_ds.encodings if (split_cat and self.cat_cols is not None) else None
-
-        if valid is not None:
-            valid_ds = self.dataset_constructor(df=valid, cont_cols=self.cont_cols, target=self.target_col,
-                                                cat_cols=self.cat_cols, split=split_cat, mean=mean, std=std,
-                                                mode=mode, add_biases=add_biases, encodings=enc)
+                return {"train": train_mask, "valid": valid_mask, "test": test_mask}
         else:
-            valid_ds = None
+            # Split must extract train and test masks only
+            def split(idx: array, targets: array) -> Dict[str, array]:
+                train_mask, test_mask = train_test_split(idx, stratify=targets[idx], test_size=test_size)
 
-        test_ds = self.dataset_constructor(df=test, cont_cols=self.cont_cols, target=self.target_col,
-                                           cat_cols=self.cat_cols, split=split_cat, mean=mean, std=std,
-                                           mode=mode, add_biases=add_biases, encodings=enc)
+                return {"train": train_mask, "valid": None, "test": test_mask}
 
-        return {"train": train_ds, "valid": valid_ds, "test": test_ds}
+        return split
+
+    @staticmethod
+    def is_categorical(targets: Union[tensor, array, List[Any]]) -> bool:
+        """
+        Check if the number of unique values is greater than the quarter of the length of the targets sequence
+
+        Args:
+            targets: sequence of float/int used for stratification
+
+        Returns: bool
+        """
+        target_list_copy = list(targets)
+        return len(set(target_list_copy)) > 0.25*len(target_list_copy)
+
+    @staticmethod
+    def mimic_classes(targets: Union[tensor, array, List[Any]]) -> array:
+        """
+        Creates fake classes array out of real-valued targets sequence using quartiles
+        Args:
+            targets: sequence of float/int used for stratification
+
+        Returns: array with fake classes
+        """
+        return qcut(array(targets), 4, labels=False)
 
     @staticmethod
     def visualize_splits(datasets: dict) -> None:
@@ -151,106 +153,44 @@ class Sampler:
             print("#----------------------------------#")
 
 
-def get_warmup_sampler(dm: PetaleDataManager, to_dataset: bool = True):
-    """
-    Creates a Sampler for the WarmUp data table
-    :param dm: PetaleDataManager
-    :param to_dataset: bool indicating if we want a PetaleDataset (True) or a PetaleDataframe (False)
-    """
-    cont_cols = [WEIGHT, TDM6_HR_END, TDM6_DIST, DT, AGE, MVLPA]
-    return Sampler(dm, LEARNING_0, cont_cols, VO2R_MAX, to_dataset=to_dataset)
-
-
-def get_learning_one_sampler(dm: PetaleDataManager, to_dataset: bool = True, genes: Optional[str] = None):
-    """
-    Creates a Sampler for the L1 data table
-
-    :param dm: PetaleDataManager
-    :param to_dataset: bool indicating if we want a PetaleDataset (True) or a PetaleDataframe (False)
-    :param genes: str indicating if we want to consider no genes, significant genes or all genes
-    """
-    assert genes in GENES_CHOICES, f"Genes parameter must be in {GENES_CHOICES}"
-
-    # We save table name
-    table_name = LEARNING_1
-
-    # We save continuous columns
-    cont_cols = [AGE_AT_DIAGNOSIS, DT, DOX]
-
-    # We save the categorical columns
-    cat_cols = [SEX, RADIOTHERAPY_DOSE, DEX, BIRTH_AGE, BIRTH_WEIGHT]
-
-    if genes == SIGNIFICANT:
-        table_name = LEARNING_1_1
-        cat_cols = cat_cols + SIGNIFICANT_CHROM_POS
-
-    elif genes == ALL:
-        table_name = LEARNING_1_2
-        current_col_list = [PARTICIPANT, CARDIOMETABOLIC_COMPLICATIONS] + cont_cols + cat_cols
-        cat_cols = cat_cols + [c for c in dm.get_column_names(table_name) if
-                               c not in current_col_list]
-
-    return Sampler(dm, table_name, cont_cols, CARDIOMETABOLIC_COMPLICATIONS, cat_cols, to_dataset)
-
-
-def split_train_test(df: pd.DataFrame, target_col: str,
-                     test_size: Union[int, float] = 0.20,
-                     random_state: bool = None) -> Tuple[pd.DataFrame, Union[pd.DataFrame, None]]:
-    """
-    Split de training and testing data contained within a pandas dataframe
-    :param df: pandas dataframe
-    :param target_col: name of the target column
-    :param test_size: number of elements in the test set (if 0 < test_size < 1 we consider the parameter as a %)
-    :param random_state: seed for random number generator (does not overwrite global seed value)
-    :return: 2 pandas dataframe
-    """
-
-    if test_size > 0:
-
-        # Test and train split
-        test_data = stratified_sample(df, target_col, test_size, random_state=random_state)
-        train_data = df.drop(test_data.index)
-        return train_data, test_data
-
-    else:
-        return df, None
-
-
-def stratified_sample(df: pd.DataFrame, target_col: str, n: Union[int, float],
-                      quantiles: int = 4, random_state: Optional[int] = None) -> pd.DataFrame:
-    """
-    Proceeds to a stratified sampling of the original dataset based on the target variable
-
-    :param df: pandas dataframe
-    :param target_col: name of the column to use for stratified sampling
-    :param n: sample size, if 0 < n < 1 we consider n as a percentage of data to select
-    :param quantiles: number of quantiles to used if the target_col is continuous
-    :param random_state: seed for random number generator (does not overwrite global seed value)
-    :return: pandas dataframe
-    """
-    assert target_col in df.columns, 'Target column not part of the dataframe'
-    assert n > 0, 'n must be greater than 0'
-
-    # If n is a percentage we change it to a integer
-    if 0 < n < 1:
-        n = int(n*df.shape[0])
-
-    # We make a deep copy of the current dataframe
-    sample = df.copy()
-
-    # If the column on which we want to do a stratified sampling is continuous,
-    # we create another discrete column based on quantiles
-    if len(df[target_col].unique()) > 10:
-        sample["quantiles"] = pd.qcut(sample[target_col].astype(float), quantiles, labels=False)
-        target_col = "quantiles"
-
-    # We execute the sampling
-    sample = sample.groupby(target_col, group_keys=False).\
-        apply(lambda x: x.sample(int(np.rint(n*len(x)/len(sample))), random_state=random_state)).\
-        sample(frac=1, random_state=random_state)
-
-    sample = sample.drop(['quantiles'], axis=1, errors='ignore')
-
-    return sample
-
+# def get_warmup_sampler(dm: PetaleDataManager, to_dataset: bool = True):
+#     """
+#     Creates a Sampler for the WarmUp data table
+#     :param dm: PetaleDataManager
+#     :param to_dataset: bool indicating if we want a PetaleDataset (True) or a PetaleDataframe (False)
+#     """
+#     cont_cols = [WEIGHT, TDM6_HR_END, TDM6_DIST, DT, AGE, MVLPA]
+#     return Sampler(dm, LEARNING_0, cont_cols, VO2R_MAX, to_dataset=to_dataset)
+#
+#
+# def get_learning_one_sampler(dm: PetaleDataManager, to_dataset: bool = True, genes: Optional[str] = None):
+#     """
+#     Creates a Sampler for the L1 data table
+#
+#     :param dm: PetaleDataManager
+#     :param to_dataset: bool indicating if we want a PetaleDataset (True) or a PetaleDataframe (False)
+#     :param genes: str indicating if we want to consider no genes, significant genes or all genes
+#     """
+#     assert genes in GENES_CHOICES, f"Genes parameter must be in {GENES_CHOICES}"
+#
+#     # We save table name
+#     table_name = LEARNING_1
+#
+#     # We save continuous columns
+#     cont_cols = [AGE_AT_DIAGNOSIS, DT, DOX]
+#
+#     # We save the categorical columns
+#     cat_cols = [SEX, RADIOTHERAPY_DOSE, DEX, BIRTH_AGE, BIRTH_WEIGHT]
+#
+#     if genes == SIGNIFICANT:
+#         table_name = LEARNING_1_1
+#         cat_cols = cat_cols + SIGNIFICANT_CHROM_POS
+#
+#     elif genes == ALL:
+#         table_name = LEARNING_1_2
+#         current_col_list = [PARTICIPANT, CARDIOMETABOLIC_COMPLICATIONS] + cont_cols + cat_cols
+#         cat_cols = cat_cols + [c for c in dm.get_column_names(table_name) if
+#                                c not in current_col_list]
+#
+#     return Sampler(dm, table_name, cont_cols, CARDIOMETABOLIC_COMPLICATIONS, cat_cols, to_dataset)
 

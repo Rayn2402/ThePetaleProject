@@ -346,8 +346,8 @@ class PetaleRFDataset(CustomDataset):
         # We use the _init_ of the parent class CustomDataset
         super().__init__(df, target, cont_cols, cat_cols)
 
-    def __getitem__(self, idx) -> Series:
-        return self._x.iloc[idx]
+    def __getitem__(self, idx) -> Tuple[Series, array]:
+        return self._x.iloc[idx], self._y[idx]
 
     @property
     def x(self) -> DataFrame:

@@ -58,14 +58,14 @@ class Trainer(ABC):
 
         """
         # We make sure that a subprocess has been defined
-        assert self.subprocess_defined, "The parallelizable subprocess must be defined before use"
+        assert self._subprocess_defined, "The parallelizable subprocess must be defined before use"
 
         # We set the seed value
         if seed is not None:
             manual_seed(seed)
 
         # We train and test on each of the inner split
-        futures = [self.subprocess.remote(i) for i in range(n_splits)]
+        futures = [self._subprocess.remote(i) for i in range(n_splits)]
         scores = ray.get(futures)
 
         # We the mean of the scores divided by the standard deviation
@@ -304,7 +304,7 @@ class NNTrainer(Trainer):
         training_loss, valid_loss, training_score, valid_score = [], [], [], []
 
         # We init the update function
-        update_progress = self.update_progress_func(self._trial, verbose)
+        update_progress = self.update_progress_func(n_epochs=self.epochs, trial=self._trial, verbose=verbose)
 
         for epoch in range(self.epochs):
 
@@ -415,6 +415,29 @@ class NNTrainer(Trainer):
 
         # We send model to the proper device
         self._model.to(self._device)
+
+    @staticmethod
+    def update_progress_func(n_epochs: int, trial: Optional[Any], verbose: bool) -> Callable:
+        """
+        Defines a function that updates the training progress
+
+        Args:
+            n_epochs: number of epochs to execute
+            trial: trial object from optuna
+            verbose: True if we want to print progress
+
+        Returns: function
+
+        """
+        if trial is None and verbose:
+            def update_progress(epoch: int, mean_epoch_loss: float):
+                if (epoch + 1) % 5 == 0 or (epoch + 1) == n_epochs:
+                    print(f"Epoch {epoch + 1} - Loss : {round(mean_epoch_loss, 4)}")
+        else:
+            def update_progress(**kwargs):
+                pass
+
+        return update_progress
 
 
 class RFTrainer(Trainer):

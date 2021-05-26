@@ -27,6 +27,9 @@ class Metric(ABC):
             direction: "maximize" or "minimize"
             task_type: "regression" or "classification"
         """
+        # We call super init since we're using ABC
+        super().__init__()
+
         # Protected attributes
         self._direction = direction
         self._task_type = task_type

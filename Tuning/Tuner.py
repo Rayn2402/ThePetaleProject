@@ -154,12 +154,12 @@ class RFObjective:
         return score
 
 
-class Tuner(ABC):
+class Tuner:
     """
     Base of all objects used for hyperparameter tuning
     """
     def __init__(self, study_name: str, objective: Union[NNObjective, RFObjective], n_trials: int,
-                 save_hp_importance: Optional[bool] = False,
+                 save_hps_importance: Optional[bool] = False,
                  save_parallel_coordinates: Optional[bool] = False,
                  save_optimization_history: Optional[bool] = False,
                  path: Optional[str] = None, **kwargs):
@@ -190,7 +190,7 @@ class Tuner(ABC):
         # We set public attributes
         self.n_trials = n_trials
         self.path = path if path is not None else join("tuning_records", f"{strftime('%Y%m%d-%H%M%S')}")
-        self.save_hp_importance = save_hp_importance
+        self.save_hps_importance = save_hps_importance
         self.save_parallel_coordinates = save_parallel_coordinates
         self.save_optimization_history = save_optimization_history
 
@@ -209,8 +209,8 @@ class Tuner(ABC):
         set_verbosity(FATAL)  # We remove verbosity from loading bar
         self._study.optimize(self._objective, self.n_trials, show_progress_bar=verbose)
 
-        if self.save_hp_importance:
-            self.plot_hp_importance_graph()
+        if self.save_hps_importance:
+            self.plot_hps_importance_graph()
 
         if self.save_parallel_coordinates:
             self.plot_parallel_coordinates_graph()
@@ -219,13 +219,13 @@ class Tuner(ABC):
             self.plot_optimization_history_graph()
 
         # We extract the best hyperparameters and their importance
-        best_hps = self.get_best_hyperparams()
+        best_hps = self.get_best_hps()
         hps_importance = get_param_importances(self._study,
                                                evaluator=FanovaImportanceEvaluator(seed=HYPER_PARAMS_SEED))
 
         return best_hps, hps_importance
 
-    def plot_hp_importance_graph(self) -> None:
+    def plot_hps_importance_graph(self) -> None:
         """
         Plots the hyperparameters importance graph and save it in an html file
 
@@ -259,90 +259,88 @@ class Tuner(ABC):
         # We save the graph in a html file to have an interactive graph
         fig.write_image(join(self.path, "optimization_history.png"))
 
-    @abstractmethod
-    def get_best_hyperparams(self) -> Dict[str, Any]:
+    def get_best_hps(self) -> Dict[str, Any]:
         """
-        Abstract method to retrieve best hyperparameters
+        Retrieves the best hyperparameters found in the tuning
         """
-        raise NotImplementedError
+        return self._objective.extract_best_hps(self._study.best_trial)
 
 
-
-class NNTuner(Tuner):
-    def __init__(self, study_name, model_generator, datasets, hyper_params, l, n_trials, metric,
-                 direction="minimize", max_epochs=100, get_hyperparameters_importance=False,
-                 get_parallel_coordinate=False, get_optimization_history=False,
-                 early_stopping_activated=False, device="cpu", **kwargs):
-        """
-        Class that will be responsible of tuning Neural Networks
-
-        """
-        super().__init__(study_name=study_name, model_generator=model_generator, datasets=datasets,
-                         hyper_params=hyper_params, l=l, n_trials=n_trials, metric=metric,
-                         objective=NNObjective, max_epochs=max_epochs,
-                         early_stopping_activated=early_stopping_activated, direction=direction,
-                         get_hyperparameters_importance=get_hyperparameters_importance,
-                         get_parallel_coordinate=get_parallel_coordinate,
-                         get_optimization_history=get_optimization_history,
-                         device=device, **kwargs)
-
-    def get_best_hyperparams(self):
-        """
-        Method that returns the values of each hyper parameter
-        """
-
-        # we extract the best trial
-        best_trial = self.study.best_trial
-
-        # We extract the best architecture of the model
-        n_units = [key for key in best_trial.params.keys() if "n_units" in key]
-
-        n_layers = self.hyper_params[N_LAYERS][VALUE] if VALUE in self.hyper_params[N_LAYERS].keys() else\
-            best_trial.params[N_LAYERS]
-
-        if len(n_units) > 0:
-            layers = list(map(lambda n_unit: best_trial.params[n_unit], n_units))
-        else:
-            layers = [self.hyper_params[N_UNITS][VALUE] for i in range(n_layers)]
-
-        # We return the best hyperparameters
-        return {
-            LAYERS: layers,
-            DROPOUT: self.hyper_params[DROPOUT][VALUE] if VALUE in self.hyper_params[DROPOUT].keys() else best_trial.params[DROPOUT],
-            LR: self.hyper_params[LR][VALUE] if VALUE in self.hyper_params[LR].keys() else best_trial.params[LR],
-            BATCH_SIZE: self.hyper_params[BATCH_SIZE][VALUE] if VALUE in self.hyper_params[BATCH_SIZE].keys() else best_trial.params[BATCH_SIZE],
-            WEIGHT_DECAY: self.hyper_params[WEIGHT_DECAY][VALUE] if VALUE in self.hyper_params[WEIGHT_DECAY].keys() else best_trial.params[WEIGHT_DECAY],
-            ACTIVATION: self.hyper_params[ACTIVATION][VALUE] if VALUE in self.hyper_params[ACTIVATION].keys() else best_trial.params[ACTIVATION]
-        }
-
-
-class RFTuner(Tuner):
-    def __init__(self, study_name, model_generator, datasets, hyper_params, l, n_trials, metric,
-                 direction="minimize", get_hyperparameters_importance=False, get_parallel_coordinate=False,
-                 get_optimization_history=False, **kwargs):
-        """
-        Class that will be responsible of tuning Random Forests
-
-        """
-        super().__init__(study_name=study_name, model_generator=model_generator, datasets=datasets,
-                         hyper_params=hyper_params, l=l, n_trials=n_trials, metric=metric,
-                         objective=RFObjective, direction=direction,
-                         get_hyperparameters_importance=get_hyperparameters_importance,
-                         get_intermediate_values=get_parallel_coordinate,
-                         get_optimization_history=get_optimization_history, **kwargs)
-
-    def get_best_hyperparams(self):
-        """
-            Method that returns the values of each hyper parameter
-        """
-
-        # We extract the best trial
-        best_trial = self.study.best_trial
-
-        # We return the best hyperparameters
-        return {
-            N_ESTIMATORS: self.hyper_params[N_ESTIMATORS][VALUE] if VALUE in self.hyper_params[N_ESTIMATORS].keys() else best_trial.params[N_ESTIMATORS],
-            MAX_DEPTH: self.hyper_params[MAX_DEPTH][VALUE] if VALUE in self.hyper_params[MAX_DEPTH].keys() else best_trial.params[MAX_DEPTH],
-            MAX_SAMPLES: self.hyper_params[MAX_SAMPLES][VALUE] if VALUE in self.hyper_params[MAX_SAMPLES].keys() else best_trial.params[MAX_SAMPLES],
-            MAX_FEATURES: self.hyper_params[MAX_FEATURES][VALUE] if VALUE in self.hyper_params[MAX_FEATURES].keys() else best_trial.params[MAX_FEATURES],
-        }
+# class NNTuner(Tuner):
+#     def __init__(self, study_name, model_generator, datasets, hyper_params, l, n_trials, metric,
+#                  direction="minimize", max_epochs=100, get_hyperparameters_importance=False,
+#                  get_parallel_coordinate=False, get_optimization_history=False,
+#                  early_stopping_activated=False, device="cpu", **kwargs):
+#         """
+#         Class that will be responsible of tuning Neural Networks
+#
+#         """
+#         super().__init__(study_name=study_name, model_generator=model_generator, datasets=datasets,
+#                          hyper_params=hyper_params, l=l, n_trials=n_trials, metric=metric,
+#                          objective=NNObjective, max_epochs=max_epochs,
+#                          early_stopping_activated=early_stopping_activated, direction=direction,
+#                          get_hyperparameters_importance=get_hyperparameters_importance,
+#                          get_parallel_coordinate=get_parallel_coordinate,
+#                          get_optimization_history=get_optimization_history,
+#                          device=device, **kwargs)
+#
+#     def get_best_hyperparams(self):
+#         """
+#         Method that returns the values of each hyper parameter
+#         """
+#
+#         # we extract the best trial
+#         best_trial = self.study.best_trial
+#
+#         # We extract the best architecture of the model
+#         n_units = [key for key in best_trial.params.keys() if "n_units" in key]
+#
+#         n_layers = self.hyper_params[N_LAYERS][VALUE] if VALUE in self.hyper_params[N_LAYERS].keys() else\
+#             best_trial.params[N_LAYERS]
+#
+#         if len(n_units) > 0:
+#             layers = list(map(lambda n_unit: best_trial.params[n_unit], n_units))
+#         else:
+#             layers = [self.hyper_params[N_UNITS][VALUE] for i in range(n_layers)]
+#
+#         # We return the best hyperparameters
+#         return {
+#             LAYERS: layers,
+#             DROPOUT: self.hyper_params[DROPOUT][VALUE] if VALUE in self.hyper_params[DROPOUT].keys() else best_trial.params[DROPOUT],
+#             LR: self.hyper_params[LR][VALUE] if VALUE in self.hyper_params[LR].keys() else best_trial.params[LR],
+#             BATCH_SIZE: self.hyper_params[BATCH_SIZE][VALUE] if VALUE in self.hyper_params[BATCH_SIZE].keys() else best_trial.params[BATCH_SIZE],
+#             WEIGHT_DECAY: self.hyper_params[WEIGHT_DECAY][VALUE] if VALUE in self.hyper_params[WEIGHT_DECAY].keys() else best_trial.params[WEIGHT_DECAY],
+#             ACTIVATION: self.hyper_params[ACTIVATION][VALUE] if VALUE in self.hyper_params[ACTIVATION].keys() else best_trial.params[ACTIVATION]
+#         }
+#
+#
+# class RFTuner(Tuner):
+#     def __init__(self, study_name, model_generator, datasets, hyper_params, l, n_trials, metric,
+#                  direction="minimize", get_hyperparameters_importance=False, get_parallel_coordinate=False,
+#                  get_optimization_history=False, **kwargs):
+#         """
+#         Class that will be responsible of tuning Random Forests
+#
+#         """
+#         super().__init__(study_name=study_name, model_generator=model_generator, datasets=datasets,
+#                          hyper_params=hyper_params, l=l, n_trials=n_trials, metric=metric,
+#                          objective=RFObjective, direction=direction,
+#                          get_hyperparameters_importance=get_hyperparameters_importance,
+#                          get_intermediate_values=get_parallel_coordinate,
+#                          get_optimization_history=get_optimization_history, **kwargs)
+#
+#     def get_best_hyperparams(self):
+#         """
+#             Method that returns the values of each hyper parameter
+#         """
+#
+#         # We extract the best trial
+#         best_trial = self.study.best_trial
+#
+#         # We return the best hyperparameters
+#         return {
+#             N_ESTIMATORS: self.hyper_params[N_ESTIMATORS][VALUE] if VALUE in self.hyper_params[N_ESTIMATORS].keys() else best_trial.params[N_ESTIMATORS],
+#             MAX_DEPTH: self.hyper_params[MAX_DEPTH][VALUE] if VALUE in self.hyper_params[MAX_DEPTH].keys() else best_trial.params[MAX_DEPTH],
+#             MAX_SAMPLES: self.hyper_params[MAX_SAMPLES][VALUE] if VALUE in self.hyper_params[MAX_SAMPLES].keys() else best_trial.params[MAX_SAMPLES],
+#             MAX_FEATURES: self.hyper_params[MAX_FEATURES][VALUE] if VALUE in self.hyper_params[MAX_FEATURES].keys() else best_trial.params[MAX_FEATURES],
+#         }

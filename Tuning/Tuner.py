@@ -4,15 +4,22 @@ Authors : Mehdi Mitiche
 Files that contains the logic related to hyper parameters tuning
 
 """
-from optuna import create_study
-from optuna.samplers import TPESampler
-from optuna.pruners import NopPruner
-from optuna.importance import get_param_importances, FanovaImportanceEvaluator
-from optuna.visualization import plot_param_importances, plot_parallel_coordinate, plot_optimization_history
-from optuna.logging import FATAL, set_verbosity
-from Training.Trainer import NNTrainer, RFTrainer
+
+from abc import ABC, abstractmethod
+from Data.Datasets import PetaleNNDataset, PetaleRFDataset
 from Hyperparameters.constants import *
-import os
+from Models.ModelGenerator import NNModelGenerator, RFCModelGenerator
+from optuna import create_study
+from optuna.importance import get_param_importances, FanovaImportanceEvaluator
+from optuna.logging import FATAL, set_verbosity
+from optuna.pruners import NopPruner
+from optuna.samplers import TPESampler
+from optuna.visualization import plot_param_importances, plot_parallel_coordinate, plot_optimization_history
+from os.path import join
+from time import strftime
+from Training.Trainer import NNTrainer, RFTrainer
+from typing import Any, Dict, Optional, Union, Tuple
+from Utils.score_metrics import Metric
 
 
 class NNObjective:
@@ -147,140 +154,118 @@ class RFObjective:
         return score
 
 
-class Tuner:
-    def __init__(self, study_name, model_generator, datasets, hyper_params, l, n_trials, metric, objective,
-                 max_epochs=100, early_stopping_activated=False, direction="minimize", get_hyperparameters_importance=False,
-                 get_parallel_coordinate=False, get_optimization_history=False, path=None, device="cpu", **kwargs):
+class Tuner(ABC):
+    """
+    Base of all objects used for hyperparameter tuning
+    """
+    def __init__(self, study_name: str, objective: Union[NNObjective, RFObjective], n_trials: int,
+                 save_hp_importance: Optional[bool] = False,
+                 save_parallel_coordinates: Optional[bool] = False,
+                 save_optimization_history: Optional[bool] = False,
+                 path: Optional[str] = None, **kwargs):
         """
-                Class that will be responsible of the hyperparameters tuning
+        Sets all protected and public attributes
 
-                :param study_name: String that represents the name of the study
-                :param model_generator: Instance of the ModelGenerator class that will be responsible of generating
-                                        the model
-                :param datasets: Petale Dataset representing all the train and test sets to be used in the cross
-                                 validation
-                :param hyper_params: Dictionary containing information of the hyper parameter we want to tune
-                :param l: Number of folds to use in the internal random subsampling
-                :param metric: Function that takes the output of the model and the target and returns
-                               the metric we want to optimize
-                :param objective: Objective function to optimize with Optuna
-                :param max_epochs: Maximal number of epochs to do in training
-                :param early_stopping_activated: Indicate if early stopping is enabled when training
-                :param n_trials: Number of trials we want to perform
-                :param direction: String to specify if we want to maximize or minimize the value of the metric used
-                :param get_hyperparameters_importance: Bool to tell if we want to plot the hyperparameters
-                                                       importance graph
-                :param get_parallel_coordinate: Bool to tell if we want to plot the parallel_coordinate graph
-                :param get_optimization_history: Bool to tell if we want to plot the optimization history graph
-                :param path: String that represents the path to the folder where we want to save our graphs
-                :param device: "cpu" or "gpu"
+        Args:
+            study_name: name of the optuna study
+            n_trials: number of sets of hyperparameters tested
+            objective: objective function to optimize
+            save_hp_importance: True if we want to plot the hyperparameters importance graph after tuning
+            save_parallel_coordinates: True if we want to plot the parallel coordinates graph after tuning
+            save_optimization_history: True if we want to plot the optimization history graph after tuning
+            path: path of the directory used to store graphs created
+        """
+        # We call super init since we're using ABC
+        super().__init__()
 
-                """
+        # We set protected attributes
+        self._objective = objective
+        self._study = create_study(direction=self._objective.metric.direction,
+                                   study_name=study_name,
+                                   sampler=TPESampler(n_startup_trials=kwargs.get('n_startup_trials', 10),
+                                                      n_ei_candidates=kwargs.get('n_ei_candidates', 20),
+                                                      multivariate=True),
+                                   pruner=NopPruner())
 
-        # We look for keyword args
-        n_startup = kwargs.get('n_startup_trials', 10)
-        n_ei_candidates = kwargs.get('n_ei_candidates', 20)
-
-        # we create the study 
-        self.study = create_study(direction=direction, study_name=study_name,
-                                  sampler=TPESampler(n_startup_trials=n_startup,
-                                                     n_ei_candidates=n_ei_candidates,
-                                                     multivariate=True),
-                                  pruner=NopPruner())
-
-        assert not ((get_optimization_history or get_parallel_coordinate or get_hyperparameters_importance) and (
-                path is None)), "Path to the folder where save graphs must be specified "
-
-        # We save the inputs that will be used when tuning the hyper parameters
-        self.objective = objective
-        self.max_epochs = max_epochs
-        self.early_stopping = early_stopping_activated
+        # We set public attributes
         self.n_trials = n_trials
-        self.model_generator = model_generator
-        self.datasets = datasets
-        self.hyper_params = hyper_params
-        self.l = l
-        self.metric = metric
-        self.get_hyperparameters_importance = get_hyperparameters_importance
-        self.get_parallel_coordinate = get_parallel_coordinate
-        self.get_optimization_history = get_optimization_history
-        self.path = path
-        self.device = device
+        self.path = path if path is not None else join("tuning_records", f"{strftime('%Y%m%d-%H%M%S')}")
+        self.save_hp_importance = save_hp_importance
+        self.save_parallel_coordinates = save_parallel_coordinates
+        self.save_optimization_history = save_optimization_history
 
-    def tune(self, verbose=True):
+    def tune(self, verbose: bool = True) -> Tuple[Dict[str, Any], Dict[str, float]]:
         """
-        Method to call to tune the hyperparameters of a given model
+        Searches for the hyperparameters that optimize the objective function, using the TPE algorithm
 
-        :return: the result of the study containing the best trial and the best values of each hyper parameter
+        Args:
+            verbose: True if we want optuna to show a progress bar
+
+        Returns: best hyperarameters and hyperparameters' importance
+
         """
 
         # We perform the optimization
         set_verbosity(FATAL)  # We remove verbosity from loading bar
-        self.study.optimize(
-            self.objective(model_generator=self.model_generator,
-                           datasets=self.datasets,
-                           hyper_params=self.hyper_params,
-                           l=self.l, metric=self.metric, max_epochs=self.max_epochs,
-                           early_stopping_activated=self.early_stopping,
-                           device=self.device),
-            self.n_trials, n_jobs=1, show_progress_bar=verbose)
+        self._study.optimize(self._objective, self.n_trials, show_progress_bar=verbose)
 
-        if self.get_hyperparameters_importance:
-            # We plot the hyperparameters importance graph
-            self.plot_hyperparameters_importance_graph()
+        if self.save_hp_importance:
+            self.plot_hp_importance_graph()
 
-        if self.get_parallel_coordinate:
-            # We plot the parallel coordinate graph
-            self.plot_parallel_coordinate_graph()
+        if self.save_parallel_coordinates:
+            self.plot_parallel_coordinates_graph()
 
-        if self.get_optimization_history:
-            # We plot the optimization history graph
+        if self.save_optimization_history:
             self.plot_optimization_history_graph()
 
-        # We return the best hyper parameters and the hyperparameters importance
-        return self.get_best_hyperparams(), get_param_importances(study=self.study,
-                                                                  evaluator=FanovaImportanceEvaluator(
-                                                                      seed=HYPER_PARAMS_SEED))
+        # We extract the best hyperparameters and their importance
+        best_hps = self.get_best_hyperparams()
+        hps_importance = get_param_importances(self._study,
+                                               evaluator=FanovaImportanceEvaluator(seed=HYPER_PARAMS_SEED))
 
-    def get_best_hyperparams(self):
+        return best_hps, hps_importance
+
+    def plot_hp_importance_graph(self) -> None:
+        """
+        Plots the hyperparameters importance graph and save it in an html file
+
+        Returns: None
+        """
+        # We generate the hyperparameters importance graph with optuna
+        fig = plot_param_importances(self._study, evaluator=FanovaImportanceEvaluator(seed=HYPER_PARAMS_SEED))
+
+        # We save the graph in a html file to have an interactive graph
+        fig.write_image(join(self.path, "hp_importance.png"))
+
+    def plot_parallel_coordinates_graph(self) -> None:
+        """
+        Plots the parallel coordinates graph and save it in an html file
+        """
+
+        # We generate the parallel coordinate graph with optuna
+        fig = plot_parallel_coordinate(self._study)
+
+        # We save the graph in a html file to have an interactive graph
+        fig.write_image(join(self.path, "parallel_coordinates.png"))
+
+    def plot_optimization_history_graph(self) -> None:
+        """
+        Plots the optimization history graph and save it in a html file
+        """
+
+        # We generate the optimization history graph with optuna
+        fig = plot_optimization_history(self._study)
+
+        # We save the graph in a html file to have an interactive graph
+        fig.write_image(join(self.path, "optimization_history.png"))
+
+    @abstractmethod
+    def get_best_hyperparams(self) -> Dict[str, Any]:
         """
         Abstract method to retrieve best hyperparameters
         """
         raise NotImplementedError
 
-    def plot_hyperparameters_importance_graph(self):
-        """
-        Method to plot the hyper parameters graph and save it in a html file
-        """
-
-        # We generate the hyper parameters importance graph with optuna
-        fig = plot_param_importances(self.study, evaluator=FanovaImportanceEvaluator(
-            seed=HYPER_PARAMS_SEED))
-
-        # We save the graph in a html file to have an interactive graph
-        fig.write_image(os.path.join(self.path, "hyperparameters_importance.png"))
-
-    def plot_parallel_coordinate_graph(self):
-        """
-        Method to plot the parallel coordinate graph and save it in a html file
-        """
-
-        # We generate the parallel coordinate graph with optuna
-        fig = plot_parallel_coordinate(self.study)
-
-        # We save the graph in a html file to have an interactive graph
-        fig.write_image(os.path.join(self.path, "parallel_coordinate.png"))
-
-    def plot_optimization_history_graph(self):
-        """
-        Method to plot the optimization history graph and save it in a html file
-        """
-
-        # We generate the optimization history graph with optuna
-        fig = plot_optimization_history(self.study)
-
-        # We save the graph in a html file to have an interactive graph
-        fig.write_image(os.path.join(self.path, "optimization_history.png"))
 
 
 class NNTuner(Tuner):

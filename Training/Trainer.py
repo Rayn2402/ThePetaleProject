@@ -4,88 +4,90 @@ Authors : Mitiche
 Files that contains class related to the Trainer of the models
 
 """
-import torch
 import ray
+import torch
 
-from Training.EarlyStopping import EarlyStopping
-from torch.nn import Module
-from torch.utils.data import DataLoader
+from abc import ABC, abstractmethod
+from Data.Datasets import PetaleNNDataset, PetaleRFDataset
+from numpy import mean, std, array
+from pandas import DataFrame
+from sklearn.ensemble import RandomForestClassifier
 from torch import optim, manual_seed, cuda, tensor
 from torch import device as device_
-from torchcontrib.optim import SWA
-from numpy import mean, std, array
-from typing import Optional, Callable, Tuple, Any, Union
-from abc import ABC, abstractmethod
-from Data.Datasets import PetaleDataset, PetaleDataframe
-from pandas import DataFrame
+from torch.nn import Module
+from torch.utils.data import DataLoader, SubsetRandomSampler
+from Training.EarlyStopping import EarlyStopping
+from typing import Optional, Callable, Tuple, Any, Union, Dict, List
+from Utils.score_metrics import Metric
 from Utils.visualization import visualize_epoch_progression
 
 
 class Trainer(ABC):
-    def __init__(self, model: Optional[Any], metric: Optional[Callable], device: str = "cpu"):
+    """
+    Abstract class for the object that will train and evaluate a given model
+    """
+    def __init__(self, model: Optional[Any], metric: Optional[Metric], device: str = "cpu"):
         """
-        Creates a Trainer that will train and evaluate a given model.
+        Sets protected attributes
 
-        :param model: The model to be trained
-        :param device: The device where we want to run our training, this parameter can take two values : "cpu" or "gpu"
-        :param metric: Function that takes the output of the model and the target and returns  the metric we want
-                       to optimize
+        Args:
+            model: model to train
+            metric: callable metric we want to optimize (not used for backpropagation)
+            device: device used to run our training ("cpu" or "gpu")
         """
         # We call super init since we're using ABC
         super().__init__()
 
-        # We save the model in the attribute model
-        self.model = model
+        # We save protected attributes
+        self._model = model
+        self._device_type = device
+        self._device = device_("cuda:0" if cuda.is_available() and device == "gpu" else "cpu")
+        self._metric = metric
+        self._subprocess_defined = False
+        self._subprocess = None
 
-        # We save the attribute device
-        self.device_type = device
-
-        # We set the device
-        self.device = device_("cuda:0" if cuda.is_available() and device == "gpu" else "cpu")
-
-        # We save the metric
-        self.metric = metric
-
-        # We save the subprocess function for inner random subsampling
-        self.subprocess_defined = False
-        self.subprocess = None
-
-    def inner_random_subsampling(self, l: int = 5, seed: Optional[int] = None) -> float:
+    def inner_random_subsampling(self, n_splits: int, seed: Optional[int] = None) -> float:
         """
-        Method that will perform a random subsampling on the model
+        Performs multiple random subsamplings validation on the model
 
-        :param l: Number of random subsampling splits
-        :param seed: Starting point in generating random numbers
+        Args:
+            n_splits: number of random subsampling splits
+            seed: starting point to generate random numbers
 
-        :return: The score after performing the cross validation
+        Returns: mean of scores divided by their standard deviation
+
         """
         # We make sure that a subprocess has been defined
         assert self.subprocess_defined, "The parallelizable subprocess must be defined before use"
 
-        # Seed is left to None if fit is called by NNTuner
+        # We set the seed value
         if seed is not None:
             manual_seed(seed)
 
         # We train and test on each of the inner split
-        futures = [self.subprocess.remote(i) for i in range(l)]
+        futures = [self.subprocess.remote(i) for i in range(n_splits)]
         scores = ray.get(futures)
 
         # We the mean of the scores divided by the standard deviation
         standard_dev = 1 if len(scores) == 1 else std(scores)
         return mean(scores) / standard_dev
 
-    def define_subprocess(self, datasets: dict) -> None:
+    def define_subprocess(self, dataset: Union[PetaleNNDataset, PetaleRFDataset],
+                          masks: Dict[int, Dict[str, List[int]]]) -> None:
         """
-        Builds the subprocess function according to the datasets and the device
+        Builds the subprocess function according to the masks and the device
 
-        :param datasets: Dictionary of PetaleDatasets representing all the inner train, valid, and test sets
+        Args:
+            dataset: custom dataset on which we apply masks
+            masks: dict with list of indexes
+
         """
 
         # We inform the trainer that a subprocess has been defined
-        self.subprocess_defined = True
+        self._subprocess_defined = True
 
         # We build the subprocess according to the datasets
-        gpus = 0.10 if (self.device_type != "cpu") else 0
+        gpus = 0.10 if (self._device_type != "cpu") else 0
 
         @ray.remote(num_gpus=gpus)
         def subprocess(i: int) -> float:
@@ -94,172 +96,215 @@ class Trainer(ABC):
 
             :param i: Index of the random subsamples' splits on which to test hyperparameters selection
             """
-            # We the get the train, test, valid sets of the step we are currently in
-            train_set, test_set, valid_set = self.get_datasets(datasets[i])
+            # We the get the train, valid and test masks
+            train_mask, valid_mask, test_mask = masks[i]["train"], masks[i]["valid"], masks[i]["test"]
 
-            # we train our model with the train and valid sets
-            self.fit(train_set=train_set, val_set=valid_set)
+            # We update dataset's masks
+            dataset.update_masks(train_mask, valid_mask, test_mask)
 
-            # We extract x_cont, x_cat and target from the test set
-            x_cont, x_cat, target = self.extract_data(test_set)
+            # We train our model with the train and valid sets
+            self.fit(dataset=dataset)
+
+            # We extract x_cont, x_cat and targets from the test set
+            inputs, targets = self.extract_data(dataset[test_mask])
 
             # We get the predictions
-            predictions = self.predict(x_cont=x_cont, x_cat=x_cat, log_prob=True)
+            predictions = self.predict(**inputs, log_prob=True)
 
+            # We flatten the predictions array if we are doing regression
             if predictions.shape[1] == 1:
                 predictions = predictions.flatten()
 
             # We calculate the score with the help of the metric function
-            score = self.metric(predictions, target)
+            score = self._metric(predictions, targets)
 
-            # We save the score
+            # We save the scores
             return score
 
-        # We set the subprocess internal attribute (function)
-        self.subprocess = subprocess
+        # We set the subprocess internal method
+        self._subprocess = subprocess
 
     @abstractmethod
-    def update_trainer(self, **kwargs):
+    def extract_data(self, data: Tuple[Optional[Union[DataFrame, tensor]],
+                                       Optional[Union[DataFrame, tensor]], Union[array, tensor]]
+                     ) -> Tuple[Dict[str, Optional[Union[DataFrame, tensor]]], Union[array, tensor]]:
+        """
+        Abstract method that extracts data from a sliced dataset
+
+        Args:
+            data: sliced dataset/mini batch
+
+        Returns: continuous data, categorical data and targets
+
+        """
+
+        raise NotImplementedError
+
+    @abstractmethod
+    def fit(self, dataset: Union[PetaleNNDataset, PetaleRFDataset]) -> Optional[Tuple[tensor, tensor]]:
+        """
+        Abstract method to train and evaluate the model
+
+        Args:
+            dataset: custom dataset with masks already defined
+
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def predict(self, **kwargs) -> Union[tensor, array]:
+        """
+        Abstract method that returns predictions of a model
+        (log probabilities in case of classification and real-valued numbers in case of regression)
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def update_trainer(self, **kwargs) -> None:
         """
         Abstract method to update trainer internal attributes
         """
         raise NotImplementedError
 
-    @abstractmethod
-    def fit(self, train_set: Union[PetaleDataset, PetaleDataframe], val_set: Union[PetaleDataset, PetaleDataframe]):
-        """
-        Abstract method to train and evaluate the model
-
-        :param train_set: Training set
-        :param val_set: Validation set
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def predict(self, x_cont: Any, x_cat: Any, **kwargs):
-
-        """
-        Abstract method that return prediction of a model
-        (log probabilities in case of classification and real-valued number in case of regression)
-
-        :param x_cont: Tensor with continuous inputs
-        :param x_cat: Tensor with categorical ordinal encoding
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def extract_data(self, dataset: Union[PetaleDataset, PetaleDataframe], id: bool = False):
-        """
-        Abstract method to extract data from datasets
-
-        :param dataset: PetaleDataset or PetaleDataframe containing the data
-        :param id: Bool indicating if we want to extract the IDs or not
-        :return: Tuple containing the continuous data, categorical data, and the target
-        """
-        raise NotImplementedError
-
-    @staticmethod
-    def get_datasets(dataset_dictionary: dict) -> Tuple[Any, Optional[Any], Any]:
-        """
-        Method to extract the train, test, and valid sets
-
-        :param dataset_dictionary: Dictionary that contains the three sets
-
-        :return: Tuple containing the train, test, and valid sets
-        """
-        return dataset_dictionary["train"], dataset_dictionary["test"], dataset_dictionary["valid"]
-
 
 class NNTrainer(Trainer):
-    def __init__(self, model: Optional[Module], metric: Optional[Callable], lr: float,
-                 batch_size: int, weight_decay: float, epochs: int,
-                 early_stopping_activated: bool = False, patience: int = 10,
-                 device: str = "cpu", trial: Optional[Any] = None, seed: int = None):
+    """
+    Object that trains neural networks
+    """
+    def __init__(self, model: Optional[Module], metric: Optional[Callable],
+                 lr: float, batch_size: int, weight_decay: float, epochs: int,
+                 early_stopping_activated: bool = False, patience: int = 50,
+                 device: str = "cpu", trial: Optional[Any] = None):
         """
-        Creates a Trainer that will train and evaluate a Neural Network model.
+        Sets protected and public attributes
 
-        :param batch_size: Size of the batches to be used in the train data loader
-        :param lr: Learning rate
-        :param weight_decay: The L2 penalty
-        :param epochs: Number of epochs to train the training dataset
-        :param early_stopping_activated: Bool indicating if we want to early stop the training when the validation
-                                         loss stops decreasing
-        :param patience: Number of epochs without improvement allowed before early stopping
-        :param device: The device where we want to run our training, this parameter can take two values : "cpu" or "gpu"
-        :param model: Neural network model to be trained
-        :param seed: The starting point in generating random numbers
+        Args:
+            model: neural network model to train
+            metric: function to optimize (not used for back propagation)
+            lr: learning rate
+            batch_size: size of the batches created by the training data loader
+            weight_decay: L2 penalty
+            epochs: number of epochs
+            early_stopping_activated: True if we want to stop the training when the validation loss stops decreasing
+            patience: number of epochs without improvement allowed before early stopping
+            device: device used to run our training ("cpu" or "gpu")
+            trial: trial object defined by Optuna
         """
+        # We make sure that our model is a torch Module
+        assert isinstance(model, Module) or model is None, 'model must be a torch.nn.Module'
+
+        # We call parent's constructor
         super().__init__(model=model, metric=metric, device=device)
 
-        assert isinstance(model, Module) or model is None, 'model argument must inherit from torch.nn.Module'
-
-        # we save the attributes needed for training
+        # We save public attributes
         self.batch_size = batch_size
-        self.lr = lr
-        self.weight_decay = weight_decay
         self.epochs = epochs
         self.early_stopping_activated = early_stopping_activated
-        self.patience = patience
-        self.seed = seed
-        self.trial = trial
 
-    def update_progress_func(self, trial: Optional[Any], verbose: bool) -> Callable:
-        if trial is None and verbose:
-            def update_progress(epoch, mean_epoch_loss):
-                if (epoch + 1) % 5 == 0 or (epoch + 1) == self.epochs:
-                    print(f"Epoch {epoch + 1} - Loss : {round(mean_epoch_loss, 4)}")
-        else:
-            def update_progress(**kwargs):
-                pass
+        # We save protected attribute
+        self._trial = trial
+        self._lr = lr
+        self._weight_decay = weight_decay
+        self._optimizer = optim.Adam(params=self._model.parameters(), lr=lr, weight_decay=weight_decay)
+        self._early_stopper = EarlyStopping(patience=patience)
 
-        return update_progress
+        # We send model to the proper device
+        self._model.to(self._device)
 
-    def fit(self, train_set: PetaleDataset, val_set: PetaleDataset, verbose: bool = True, visualization: bool = False,
-            path: str = None) -> Tuple[tensor, tensor]:
+    def evaluate(self, dataset: PetaleNNDataset) -> Tuple[float, float, bool]:
         """
-        Method that will fit the model to the given data
+        Calculates the loss on the validation set using a single batch.
+        There will be no memory problem since our datasets are really small
 
-        :param train_set: Training set
-        :param val_set: Valid set
-        :param verbose: Determines if we want (True) to print progress or not (False)
-        :param visualization: Determines if we want (True) to visualize progress of the loss in the train and valid sets
-         or not (False)
-         :param path: Determines the path where to save the visualization plots
+        Args:
+            dataset: custom dataset with masks already defined
 
-        :return: Two tensors containing the training losses and the validation losses
+        Returns: validation epoch loss, validation epoch score and early stopping status
+
         """
-        assert not (self.trial is not None and self.metric is None), "If trial is not None, a metric must be defined"
-        assert self.model is not None, "Model must be set before training"
-        assert visualization is False or path is not None, "Path must be specified"
 
-        if self.seed is not None:
-            manual_seed(self.seed)
+        # Set model for validation
+        self._model.eval()
 
-        # The maximum value of the batch size is the size of the train set
-        if len(train_set) < self.batch_size:
-            self.batch_size = len(train_set)
+        with torch.no_grad():
 
-        # We create the train data loader
-        if len(train_set) % self.batch_size == 1:
-            train_loader = DataLoader(train_set, batch_size=self.batch_size, shuffle=True, drop_last=True)
+            # We extract the continuous data x_cont, the categorical data x_cat
+            # and the correct predictions y for the single batch
+            inputs, y = self.extract_data(dataset[dataset.valid_mask])
+
+            # We perform the forward pass: compute predicted outputs by passing inputs to the model
+            output = self._model(**inputs)
+
+            # We calculate the loss and the score
+            val_epoch_loss = self._model.loss(output, y).item()
+            score = self._metric(output, y)
+
+        # We early stopping status
+        if self.early_stopping_activated:
+            self._early_stopper(val_epoch_loss, self._model)
+
+            if self._early_stopper.early_stop:
+                self._model = self._early_stopper.get_best_model()
+                return val_epoch_loss, score, True
+
+        return val_epoch_loss, score, False
+
+    def extract_data(self, data: Tuple[Optional[tensor], Optional[tensor], tensor]
+                     ) -> Tuple[Dict[str, Optional[tensor]], tensor]:
+        """
+        Extracts data out of a slice of PetaleNNDataset
+
+        Args:
+            data: sliced PetaleNNDataset
+
+        Returns: Dict of shape {"x_cont": tensor, "x_cat": tensor} and tensor with targets
+
+        """
+        x_cont, x_cat, y = data
+        data = {k: v.to(self._device) for k, v in [("x_cont", x_cont), ("x_cat", x_cat)]}
+        return data, y.to(self._device)
+
+    def fit(self, dataset: PetaleNNDataset, verbose: bool = True,
+            visualization: bool = False, path: Optional[str] = None,
+            seed: Optional[int] = None) -> Tuple[tensor, tensor]:
+        """
+        Fits the model to the given data
+
+        Args:
+            dataset: custom dataset with masks already defined
+            verbose: True to print progress throughout the epochs
+            visualization: True to visualize the progress of the loss in the train and valid set throughout the epochs
+            path: emplacement to stores visualization plots
+            seed: seed value to have deterministic procedure
+
+        Returns: training losses, validation losses
+
+        """
+        assert not (self._trial is not None and self._metric is None), "If trial is not None, a metric must be defined"
+        assert self._model is not None, "Model must be set before training"
+        assert not visualization or path is not None, "Path must be specified"
+
+        # We set the seed value
+        if seed is not None:
+            manual_seed(seed)
+
+        # We validate the batch size
+        training_size = len(dataset.train_mask)
+        self.batch_size = min(training_size, self.batch_size)
+
+        # We create the training data loader
+        if training_size % self.batch_size == 1:
+            train_loader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True,
+                                      sampler=SubsetRandomSampler(dataset.train_mask), drop_last=True)
         else:
-            train_loader = DataLoader(train_set, batch_size=self.batch_size, shuffle=True)
+            train_loader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True,
+                                      sampler=SubsetRandomSampler(dataset.train_mask))
 
-        # We create the optimizer with SWA
-        base_optimizer = optim.Adam(params=self.model.parameters(), lr=self.lr, weight_decay=self.weight_decay)
-        optimizer = SWA(base_optimizer, swa_start=10, swa_freq=5)
-
-        # We initialize two empty lists to store the training loss and the validation loss
+        # We initialize empty lists to store losses and scores
         training_loss, valid_loss, training_score, valid_score = [], [], [], []
 
-        # We init the early stopping class
-        early_stopping = EarlyStopping(patience=self.patience)
-
         # We init the update function
-        update_progress = self.update_progress_func(self.trial, verbose)
-
-        # We send model to device
-        self.model.to(self.device)
+        update_progress = self.update_progress_func(self._trial, verbose)
 
         for epoch in range(self.epochs):
 
@@ -268,7 +313,7 @@ class NNTrainer(Trainer):
             ###################
 
             # We calculate training mean epoch loss on all batches
-            mean_epoch_loss, train_metric_score = self.train(train_loader, optimizer)
+            mean_epoch_loss, train_metric_score = self.train(train_loader)
             update_progress(epoch=epoch, mean_epoch_loss=mean_epoch_loss)
 
             # We record training loss and score
@@ -280,7 +325,7 @@ class NNTrainer(Trainer):
             ######################
 
             # We calculate validation epoch loss and save it
-            val_epoch_loss, val_metric_score, early_stop = self.evaluate(val_set, early_stopping)
+            val_epoch_loss, val_metric_score, early_stop = self.evaluate(dataset)
             valid_loss.append(val_epoch_loss)
             valid_score.append(val_metric_score)
 
@@ -288,55 +333,56 @@ class NNTrainer(Trainer):
                 break
 
         if visualization:
+
             # We plot the graph to visualize the training and validation loss
-            visualize_epoch_progression(tensor(training_loss), tensor(valid_loss), progression_type="loss", path=path)
+            visualize_epoch_progression(tensor(training_loss), tensor(valid_loss),
+                                        progression_type="loss", path=path)
+
             # We plot the graph to visualize the training and validation metric
-            visualize_epoch_progression(tensor(training_score), tensor(valid_score), progression_type="metric",
-                                        path=path)
+            visualize_epoch_progression(tensor(training_score), tensor(valid_score),
+                                        progression_type="metric", path=path)
 
         return tensor(training_loss), tensor(valid_loss)
 
-    def predict(self, x_cont: tensor, x_cat: tensor, **kwargs) -> tensor:
+    def predict(self, **kwargs) -> tensor:
+        """
+        Returns log probabilities in the case of an NNClassifier and
+        returns real-valued targets in the case of NNRegressor
+
+        Returns: (N, 1) or (N, C) tensor
 
         """
-        Returns log probabilities in the case of an NNClassifier
-        Returns real-valued targets in the case of NNRegressor
+        return self._model.predict(kwargs['x_cont'], kwargs['x_cat'], log_prob=kwargs['log_prob'])
 
-        :param x_cont: Tensor with continuous inputs
-        :param x_cat: Tensor with categorical ordinal encoding
-        :return: (N, 1) or (N, C) tensor
-        """
-
-        # We return the predictions
-        return self.model.predict(x_cont, x_cat, **kwargs)
-
-    def train(self, train_loader: DataLoader, optimizer: Any) -> float:
+    def train(self, train_loader: DataLoader) -> Tuple[float, float]:
         """
         Trains the model for a single epoch
 
-        :param train_loader: Training DataLoader
-        :param optimizer: PyTorch optimizer
-        :return: Mean epoch loss
+        Args:
+            train_loader: training DataLoader
+
+        Returns: mean epoch loss and mean epoch score
         """
 
-        # Prep model for training
-        self.model.train()
+        # We set model for training
+        self._model.train()
         epoch_loss, epoch_score = 0, 0
 
         for item in train_loader:
+
             # We extract the continuous data x_cont, the categorical data x_cat
             # and the correct predictions y
-            x_cont, x_cat, y = self.extract_batch(item)
+            inputs, y = self.extract_data(item)
 
             # We clear the gradients of all optimized variables
-            optimizer.zero_grad()
+            self._optimizer.zero_grad()
 
             # We perform the forward pass: compute predicted outputs by passing inputs to the model
-            output = self.model(x_cont=x_cont, x_cat=x_cat)
+            output = self._model(**inputs)
 
             # We calculate the loss and the score
-            loss = self.model.loss(output, y)
-            score = self.metric(output, y)
+            loss = self._model.loss(output, y)
+            score = self._metric(output, y)
             epoch_loss += loss.item()
             epoch_score += score
 
@@ -344,161 +390,82 @@ class NNTrainer(Trainer):
             loss.backward()
 
             # We perform a single optimization step (parameter update)
-            optimizer.step()
+            self._optimizer.step()
 
         return epoch_loss / len(train_loader), epoch_score / len(train_loader)
-
-    def evaluate(self, valid_set: PetaleDataset, early_stopper: EarlyStopping) -> float:
-
-        """
-        Calculates the loss on the validation set using a single batch
-        There will be no memory problem since our datasets are really small
-
-        :param valid_set: Validation set
-        :param early_stopper: EarlyStopping object
-        :return: Validation loss
-        """
-        # Prep model for validation
-        self.model.eval()
-
-        with torch.no_grad():
-
-            # We extract the continuous data x_cont, the categorical data x_cat
-            # and the correct predictions y for the single batch
-            x_cont, x_cat, y = self.extract_data(valid_set)
-
-            # We perform the forward pass: compute predicted outputs by passing inputs to the model
-            output = self.model(x_cont=x_cont, x_cat=x_cat)
-
-            # We calculate the loss and the score
-            val_epoch_loss = self.model.loss(output, y).item()
-            score = self.metric(output, y)
-
-        # We calculate a score for the current model
-        # score = self.metric(self.model.predict(x_cont=x_cont, x_cat=x_cat, log_prob=True), y)
-
-        # We look for early stopping
-        if self.early_stopping_activated:
-            early_stopper(val_epoch_loss, self.model)
-            if early_stopper.early_stop:
-                self.model = early_stopper.get_best_model()
-                return val_epoch_loss, score, early_stopper.early_stop
-
-        return val_epoch_loss, score, False
-
-    def extract_data(self, dataset: PetaleDataset, id: bool = False) -> Tuple[tensor, Optional[tensor], tensor]:
-        """
-        Method to extract the continuous data, categorical data, and the targets
-
-        :param dataset: PetaleDataset containing the data
-        :param id: Bool indicating if we want to extract the IDs or not
-
-        :return: Tuple containing the continuous data, categorical data, and the target
-        """
-        x_cont, y = dataset.X_cont, dataset.y
-
-        if dataset.X_cat is not None:
-            x_cat = dataset.X_cat
-
-            # We send all data to the device
-            x_cont, x_cat, y = x_cont.to(self.device), x_cat.to(self.device), y.to(self.device)
-        else:
-            x_cat = None
-
-            # We send all data to the device
-            x_cont, y = x_cont.to(self.device), y.to(self.device)
-
-        if id:
-            return dataset.IDs, x_cont, x_cat, y
-        else:
-            return x_cont, x_cat, y
-
-    def extract_batch(self, batch_list: list) -> Tuple[Any, Optional[Any], Any]:
-        """
-        Extracts the continuous data (X_cont), the categorical data (X_cat) and the ground truth (y)
-
-        :param batch_list: List containing a batch from dataloader
-        :return: 3 tensors or dataframes (X_cont, X_cat, y)
-        """
-
-        if len(batch_list) > 2:
-            x_cont, x_cat, y = batch_list
-            x_cont, x_cat, y = x_cont.to(self.device), x_cat.to(self.device), y.to(self.device)
-        else:
-            x_cont, y = batch_list
-            x_cont, y = x_cont.to(self.device), y.to(self.device)
-            x_cat = None
-
-        return x_cont, x_cat, y
 
     def update_trainer(self, **kwargs) -> None:
         """
         Updates the model, the weight decay, the batch size, the learning rate and the trial
         """
-        new_model = kwargs.get('model', self.model)
+        new_model = kwargs.get('model', self._model)
 
         assert isinstance(new_model, Module), 'model argument must inherit from torch.nn.Module'
 
-        self.model = kwargs.get('model', self.model)
-        self.weight_decay = kwargs.get('weight_decay', self.weight_decay)
+        # Update of public attributes
         self.batch_size = kwargs.get('batch_size', self.batch_size)
-        self.lr = kwargs.get('lr', self.lr)
-        self.trial = kwargs.get('trial', self.trial)
+
+        # Update of protected attributes
+        self._model = kwargs.get('model', self._model)
+        self._weight_decay = kwargs.get('weight_decay', self._weight_decay)
+        self._lr = kwargs.get('lr', self._lr)
+        self._trial = kwargs.get('trial', self._trial)
+        self._optimizer = optim.Adam(params=self._model.parameters(), lr=self._lr, weight_decay=self._weight_decay)
+        self._early_stopper = EarlyStopping(patience=self._early_stopper.patience)
+
+        # We send model to the proper device
+        self._model.to(self._device)
 
 
 class RFTrainer(Trainer):
-
-    def __init__(self, model: Module, metric: Optional[Callable]):
+    """
+    Object that trains random forest classifier
+    """
+    def __init__(self, model: RandomForestClassifier, metric: Metric):
         """
-        Creates a Trainer that will train and evaluate a Random Forest model.
+        Set protected attributes
 
-        :param model: the model to be trained
+        Args:
+            model: random forest classifier to train
+            metric: score metric to optimize
         """
         super().__init__(model=model, metric=metric)
 
-    def fit(self, train_set: PetaleDataframe, **kwargs) -> None:
+    def fit(self, dataset: PetaleRFDataset) -> None:
         """
-        Trains the model
+        Trains the classifier
 
-        :param train_set: Pandas dataframe containing the training set
+        Args:
+            dataset: custom dataset with masks already defined
+
+        Returns: None
         """
+        x, y = dataset[dataset.train_mask]
+        self._model.fit(x, y)
 
-        self.model.fit(train_set.X_cont, train_set.y)
-
-    def predict(self, x_cont: DataFrame, x_cat: Optional[DataFrame] = None, **kwargs) -> array:
+    def predict(self, **kwargs) -> array:
         """
-        Predict the log probabilites associated to each class
+        Predicts the log probabilities associated to each class
 
-        :param x_cont: Continuous inputs
-        :param x_cat: Categorical inputs
-        :return: 2D Numpy array (n_samples, n_classes) with log probabilities
+        Returns: 2D Numpy array (n_samples, n_classes) with log probabilities
+
         """
+        return self._model.predict(kwargs['x'])
 
-        # We return the log probabilities
-        return self.model.predict(x_cont)
-
-    def extract_data(self, dataset: PetaleDataframe, id: bool = False) -> Tuple[DataFrame, Optional[DataFrame], array]:
+    def extract_data(self, data: Tuple[DataFrame, array]) -> Tuple[Dict[str, DataFrame], array]:
         """
-        Method to extract the continuous data, categorical data, and the target
+        Simply returns the sliced dataframe in a dictionary
 
-        :param dataset: PetaleDataframe containing the data
-        :param id: Bool indicating if we want to extract the IDs or not
-        :return: Tuple containing the continuous data, categorical data, and the target
+        Args:
+            data: sliced PetaleRFDataset
+
+        Returns: x, y
         """
-        x_cont, y = dataset.X_cont, dataset.y
-
-        if dataset.X_cat is not None:
-            x_cat = dataset.X_cat
-        else:
-            x_cat = None
-
-        if id:
-            return dataset.IDs, x_cont, x_cat, y
-        else:
-            return x_cont, x_cat, y
+        x, y = data
+        return {'x': x}, y
 
     def update_trainer(self, **kwargs) -> None:
         """
-        Updates the model and the weight decay
+        Updates the model
         """
-        self.model = kwargs.get('model', self.model)
+        self._model = kwargs.get('model', self._model)

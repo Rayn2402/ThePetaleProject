@@ -18,8 +18,61 @@ from optuna.visualization import plot_param_importances, plot_parallel_coordinat
 from os.path import join
 from time import strftime
 from Training.Trainer import NNTrainer, RFTrainer
-from typing import Any, Dict, Optional, Union, Tuple
+from typing import Any, Dict, List, Optional, Union, Tuple
 from Utils.score_metrics import Metric
+
+
+class Objective(ABC):
+    """
+    Base class to create objective functions to use with the tuner
+    """
+    def __init__(self, model_generator: Union[NNModelGenerator, RFCModelGenerator],
+                 dataset: Union[PetaleNNDataset, PetaleRFDataset], masks: Dict[int, Dict[str, List[int]]],
+                 hps: Dict[str, Dict[str, Any]], device: str, metric: Metric, **kwargs):
+        """
+        Sets protected and public attributes
+
+        Args:
+            model_generator: callable object used to generate a model according to a set of hyperparameters
+            dataset: custom dataset containing the whole learning dataset needed for our evaluation
+            masks: dict with list of idx to use as train, valid and test masks
+            hps: dictionary with information on the hyperparameters we want to tune
+            device: "cpu" or "gpu"
+        """
+
+        # We set protected attributes
+        self._model_generator = model_generator
+        self._hps = hps
+        self._trainer = self._initialize_trainer(dataset, masks, metric, device=device, **kwargs)
+
+    @abstractmethod
+    def __call__(self, trial: Any) -> float:
+        """
+        Extracts hyperparameters suggested by optuna and executes "inner_random_subsampling" trainer function
+
+        Args:
+            trial: optuna trial
+
+        Returns: score associated to the set of hyperparameters
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def _initialize_trainer(self, dataset: Union[PetaleNNDataset, PetaleRFDataset],
+                            masks: Dict[int, Dict[str, List[int]]], metric: Metric,
+                            **kwargs) -> Union[NNTrainer, RFTrainer]:
+        """
+        Builds the appropriate trainer object
+        Args:
+            dataset: custom dataset containing the whole learning dataset needed for our evaluation
+            metric: callable metric we want to optimize (not used for backpropagation)
+            masks: dict with list of idx to use as train, valid and test masks
+
+        Returns: trainer object
+
+        """
+        raise NotImplementedError
+
 
 
 class NNObjective:

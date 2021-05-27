@@ -14,6 +14,7 @@ from optuna.importance import get_param_importances, FanovaImportanceEvaluator
 from optuna.logging import FATAL, set_verbosity
 from optuna.pruners import NopPruner
 from optuna.samplers import TPESampler
+from optuna.trial import Trial, FrozenTrial
 from optuna.visualization import plot_param_importances, plot_parallel_coordinate, plot_optimization_history
 from os.path import join
 from time import strftime
@@ -52,7 +53,7 @@ class Objective(ABC):
         return self._trainer.metric
 
     @abstractmethod
-    def __call__(self, trial: Any) -> float:
+    def __call__(self, trial: Trial) -> float:
         """
         Extracts hyperparameters suggested by optuna and executes "inner_random_subsampling" trainer's function
 
@@ -81,7 +82,7 @@ class Objective(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def extract_hps(self, trial: Any) -> Dict[str, Any]:
+    def extract_hps(self, trial: Trial) -> Dict[str, Any]:
         """
         Given an optuna trial, returns model hyperparameters in a dictionary
         with the appropriate keys
@@ -133,7 +134,7 @@ class NNObjective(Objective):
         self._get_lr = self._define_numerical_hp_getter(LR, UNIFORM)
         self._get_weight_decay = self._define_numerical_hp_getter(WEIGHT_DECAY, UNIFORM)
 
-    def __call__(self, trial: Any) -> float:
+    def __call__(self, trial: Trial) -> float:
         """
         Extracts hyperparameters suggested by optuna and executes "inner_random_subsampling" trainer's function
 
@@ -184,10 +185,10 @@ class NNObjective(Objective):
         Returns: function
         """
         if VALUE in self._hps[hp].keys():
-            def getter(trial: Any) -> str:
+            def getter(trial: Trial) -> str:
                 return self._hps[hp][VALUE]
         else:
-            def getter(trial: Any) -> str:
+            def getter(trial: Trial) -> str:
                 return trial.suggest_categorical(hp, self._hps[hp][VALUES])
 
         return getter
@@ -203,14 +204,14 @@ class NNObjective(Objective):
         Returns: function
         """
         if VALUE in self._hps[hp].keys():
-            def getter(trial: Any) -> Union[float, int]:
+            def getter(trial: Trial) -> Union[float, int]:
                 return self._hps[hp][VALUE]
         else:
             if suggest_function == INT:
-                def getter(trial: Any) -> Union[int]:
+                def getter(trial: Trial) -> Union[int]:
                     return trial.suggest_int(hp, self._hps[hp][MIN], self._hps[hp][MAX])
             else:
-                def getter(trial: Any) -> Union[float]:
+                def getter(trial: Trial) -> Union[float]:
                     return trial.suggest_uniform(hp, self._hps[hp][MIN], self._hps[hp][MAX])
 
         return getter
@@ -225,15 +226,40 @@ class NNObjective(Objective):
         n_units = self._hps[N_UNITS].get(VALUE, None)
 
         if n_units is not None:
-            def getter(trial: Any) -> List[int]:
+            def getter(trial: Trial) -> List[int]:
                 n_layers = get_n_layers(trial)
                 return [n_units]*n_layers
         else:
-            def getter(trial: Any) -> List[int]:
+            def getter(trial: Trial) -> List[int]:
                 n_layers = get_n_layers(trial)
                 return [trial.suggest_int(f"{N_UNITS}{i}", self._hps[N_UNITS][MIN],
                                           self._hps[N_UNITS][MAX]) for i in range(n_layers)]
         return getter
+
+    def extract_hps(self, trial: FrozenTrial) -> Dict[str, Any]:
+        """
+        Given an optuna trial, returns model hyperparameters in a dictionary
+        with the appropriate keys
+
+        Args:
+            trial: optuna frozen trial
+
+        Returns: dictionary with hyperparameters' values
+
+        """
+
+        # We extract the architecture of the model associated to the frozen trial
+        n_units = [key for key in trial.params.keys() if N_UNITS in key]
+        n_layers = self._hps[N_LAYERS].get(VALUE, trial.params[N_LAYERS])
+
+        if len(n_units) > 0:
+            layers = list(map(lambda n_unit: trial.params[n_unit], n_units))
+        else:
+            layers = [self._hps[N_UNITS][VALUE]]*n_layers
+
+        # We return the hyperparameters associated to the frozen trial
+        return {LAYERS: layers, **{hp: self._hps[hp].get(VALUE, trial.params[hp]) for
+                                   hp in [DROPOUT, LR, BATCH_SIZE, WEIGHT_DECAY, ACTIVATION]}}
 
     def _initialize_trainer(self, dataset: PetaleNNDataset,
                             masks: Dict[int, Dict[str, List[int]]],
@@ -453,29 +479,29 @@ class Tuner:
 #         Method that returns the values of each hyper parameter
 #         """
 #
-#         # we extract the best trial
-#         best_trial = self.study.best_trial
-#
-#         # We extract the best architecture of the model
-#         n_units = [key for key in best_trial.params.keys() if "n_units" in key]
-#
-#         n_layers = self.hyper_params[N_LAYERS][VALUE] if VALUE in self.hyper_params[N_LAYERS].keys() else\
-#             best_trial.params[N_LAYERS]
-#
-#         if len(n_units) > 0:
-#             layers = list(map(lambda n_unit: best_trial.params[n_unit], n_units))
-#         else:
-#             layers = [self.hyper_params[N_UNITS][VALUE] for i in range(n_layers)]
-#
-#         # We return the best hyperparameters
-#         return {
-#             LAYERS: layers,
-#             DROPOUT: self.hyper_params[DROPOUT][VALUE] if VALUE in self.hyper_params[DROPOUT].keys() else best_trial.params[DROPOUT],
-#             LR: self.hyper_params[LR][VALUE] if VALUE in self.hyper_params[LR].keys() else best_trial.params[LR],
-#             BATCH_SIZE: self.hyper_params[BATCH_SIZE][VALUE] if VALUE in self.hyper_params[BATCH_SIZE].keys() else best_trial.params[BATCH_SIZE],
-#             WEIGHT_DECAY: self.hyper_params[WEIGHT_DECAY][VALUE] if VALUE in self.hyper_params[WEIGHT_DECAY].keys() else best_trial.params[WEIGHT_DECAY],
-#             ACTIVATION: self.hyper_params[ACTIVATION][VALUE] if VALUE in self.hyper_params[ACTIVATION].keys() else best_trial.params[ACTIVATION]
-#         }
+        # # we extract the best trial
+        # best_trial = self.study.best_trial
+        #
+        # # We extract the best architecture of the model
+        # n_units = [key for key in best_trial.params.keys() if "n_units" in key]
+        #
+        # n_layers = self.hyper_params[N_LAYERS][VALUE] if VALUE in self.hyper_params[N_LAYERS].keys() else\
+        #     best_trial.params[N_LAYERS]
+        #
+        # if len(n_units) > 0:
+        #     layers = list(map(lambda n_unit: best_trial.params[n_unit], n_units))
+        # else:
+        #     layers = [self.hyper_params[N_UNITS][VALUE] for i in range(n_layers)]
+        #
+        # # We return the best hyperparameters
+        # return {
+        #     LAYERS: layers,
+        #     DROPOUT: self.hyper_params[DROPOUT][VALUE] if VALUE in self.hyper_params[DROPOUT].keys() else best_trial.params[DROPOUT],
+        #     LR: self.hyper_params[LR][VALUE] if VALUE in self.hyper_params[LR].keys() else best_trial.params[LR],
+        #     BATCH_SIZE: self.hyper_params[BATCH_SIZE][VALUE] if VALUE in self.hyper_params[BATCH_SIZE].keys() else best_trial.params[BATCH_SIZE],
+        #     WEIGHT_DECAY: self.hyper_params[WEIGHT_DECAY][VALUE] if VALUE in self.hyper_params[WEIGHT_DECAY].keys() else best_trial.params[WEIGHT_DECAY],
+        #     ACTIVATION: self.hyper_params[ACTIVATION][VALUE] if VALUE in self.hyper_params[ACTIVATION].keys() else best_trial.params[ACTIVATION]
+        # }
 #
 #
 # class RFTuner(Tuner):

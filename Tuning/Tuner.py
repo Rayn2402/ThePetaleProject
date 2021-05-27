@@ -277,7 +277,7 @@ class NNObjective(Objective):
         """
         # Trainer's initialization
         trainer = NNTrainer(model=None, batch_size=None, lr=None, epochs=kwargs['n_epochs'],
-                            weight_decay=None, metric=metric, trial=None,
+                            weight_decay=None, metric=metric, in_trial=True,
                             early_stopping=kwargs['early_stopping'],
                             device=kwargs['device'])
 

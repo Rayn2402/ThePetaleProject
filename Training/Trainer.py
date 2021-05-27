@@ -46,6 +46,10 @@ class Trainer(ABC):
         self._subprocess_defined = False
         self._subprocess = None
 
+    @property
+    def metric(self) -> Metric:
+        return self._metric
+
     def inner_random_subsampling(self, n_splits: int, seed: Optional[int] = None) -> float:
         """
         Performs multiple random subsamplings validation on the model
@@ -172,8 +176,9 @@ class NNTrainer(Trainer):
     Object that trains neural networks
     """
     def __init__(self, model: Optional[Module], metric: Optional[Callable],
-                 lr: float, batch_size: int, weight_decay: float, epochs: int,
-                 early_stopping_activated: bool = False, patience: int = 50,
+                 lr: Optional[float], batch_size: Optional[int],
+                 weight_decay: Optional[float], epochs: int,
+                 early_stopping: bool = False, patience: int = 50,
                  device: str = "cpu", trial: Optional[Any] = None):
         """
         Sets protected and public attributes
@@ -185,7 +190,7 @@ class NNTrainer(Trainer):
             batch_size: size of the batches created by the training data loader
             weight_decay: L2 penalty
             epochs: number of epochs
-            early_stopping_activated: True if we want to stop the training when the validation loss stops decreasing
+            early_stopping: True if we want to stop the training when the validation loss stops decreasing
             patience: number of epochs without improvement allowed before early stopping
             device: device used to run our training ("cpu" or "gpu")
             trial: trial object defined by Optuna
@@ -199,7 +204,7 @@ class NNTrainer(Trainer):
         # We save public attributes
         self.batch_size = batch_size
         self.epochs = epochs
-        self.early_stopping_activated = early_stopping_activated
+        self.early_stopping = early_stopping
 
         # We save protected attribute
         self._trial = trial
@@ -240,7 +245,7 @@ class NNTrainer(Trainer):
             score = self._metric(output, y)
 
         # We early stopping status
-        if self.early_stopping_activated:
+        if self.early_stopping:
             self._early_stopper(val_epoch_loss, self._model)
 
             if self._early_stopper.early_stop:

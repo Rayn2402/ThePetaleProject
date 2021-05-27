@@ -52,6 +52,47 @@ class Objective(ABC):
     def metric(self) -> Metric:
         return self._trainer.metric
 
+    def _define_categorical_hp_getter(self, hp: str) -> Callable:
+        """
+        Builds function to properly extract categorical hyperparameters suggestions
+
+        Args:
+            hp: name of an hyperparameter
+
+        Returns: function
+        """
+        if VALUE in self._hps[hp].keys():
+            def getter(trial: Trial) -> str:
+                return self._hps[hp][VALUE]
+        else:
+            def getter(trial: Trial) -> str:
+                return trial.suggest_categorical(hp, self._hps[hp][VALUES])
+
+        return getter
+
+    def _define_numerical_hp_getter(self, hp: str, suggest_function: str) -> Callable:
+        """
+        Builds function to properly extract numerical hyperparameters suggestions
+
+        Args:
+            hp: name of an hyperparameter
+            suggest_function: optuna suggest function
+
+        Returns: function
+        """
+        if VALUE in self._hps[hp].keys():
+            def getter(trial: Trial) -> Union[float, int]:
+                return self._hps[hp][VALUE]
+        else:
+            if suggest_function == INT:
+                def getter(trial: Trial) -> Union[int]:
+                    return trial.suggest_int(hp, self._hps[hp][MIN], self._hps[hp][MAX])
+            else:
+                def getter(trial: Trial) -> Union[float]:
+                    return trial.suggest_uniform(hp, self._hps[hp][MIN], self._hps[hp][MAX])
+
+        return getter
+
     @abstractmethod
     def __call__(self, trial: Trial) -> float:
         """
@@ -82,7 +123,7 @@ class Objective(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def extract_hps(self, trial: Trial) -> Dict[str, Any]:
+    def extract_hps(self, trial: FrozenTrial) -> Dict[str, Any]:
         """
         Given an optuna trial, returns model hyperparameters in a dictionary
         with the appropriate keys
@@ -98,7 +139,7 @@ class Objective(ABC):
 
 class NNObjective(Objective):
     """
-    Neural Networks' objective function to optimize with hyperparameters
+    Neural Networks' objective function used to optimize hyperparameters
     """
 
     def __init__(self, model_generator: NNModelGenerator,
@@ -126,7 +167,7 @@ class NNObjective(Objective):
         super().__init__(model_generator, dataset, masks, hps, device,
                          metric, n_epochs=n_epochs, early_stopping=early_stopping)
 
-        # We set protected methods to extract hyperparameter suggestions
+        # We set protected methods to extract hyperparameters' suggestions
         self._get_activation = self._define_categorical_hp_getter(ACTIVATION)
         self._get_batch_size = self._define_numerical_hp_getter(BATCH_SIZE, INT)
         self._get_dropout = self._define_numerical_hp_getter(DROPOUT, UNIFORM)
@@ -174,47 +215,6 @@ class NNObjective(Objective):
 
         # We return the score
         return score
-
-    def _define_categorical_hp_getter(self, hp: str) -> Callable:
-        """
-        Builds function to properly extract categorical hyperparameters suggestions
-
-        Args:
-            hp: name of an hyperparameter
-
-        Returns: function
-        """
-        if VALUE in self._hps[hp].keys():
-            def getter(trial: Trial) -> str:
-                return self._hps[hp][VALUE]
-        else:
-            def getter(trial: Trial) -> str:
-                return trial.suggest_categorical(hp, self._hps[hp][VALUES])
-
-        return getter
-
-    def _define_numerical_hp_getter(self, hp: str, suggest_function: str) -> Callable:
-        """
-        Builds function to properly extract numerical hyperparameters suggestions
-
-        Args:
-            hp: name of an hyperparameter
-            suggest_function: optuna suggest function
-
-        Returns: function
-        """
-        if VALUE in self._hps[hp].keys():
-            def getter(trial: Trial) -> Union[float, int]:
-                return self._hps[hp][VALUE]
-        else:
-            if suggest_function == INT:
-                def getter(trial: Trial) -> Union[int]:
-                    return trial.suggest_int(hp, self._hps[hp][MIN], self._hps[hp][MAX])
-            else:
-                def getter(trial: Trial) -> Union[float]:
-                    return trial.suggest_uniform(hp, self._hps[hp][MIN], self._hps[hp][MAX])
-
-        return getter
 
     def _define_layers_getter(self) -> Callable:
         """
@@ -287,61 +287,96 @@ class NNObjective(Objective):
         return trainer
 
 
-class RFObjective:
-    def __init__(self, model_generator, datasets, hyper_params, l, metric, **kwargs):
+class RFObjective(Objective):
+    """
+    Random Forests' objective function used to optimize hyperparameters
+    """
+    def __init__(self, model_generator: Union[NNModelGenerator, RFCModelGenerator],
+                 dataset: Union[PetaleNNDataset, PetaleRFDataset], masks: Dict[int, Dict[str, List[int]]],
+                 hps: Dict[str, Dict[str, Any]], device: str, metric: Metric):
         """
-        Class that will represent the objective function for tuning Random Forests
+        Sets protected and public attributes
 
-
-        :param model_generator: instance of the ModelGenerator class that will be responsible of generating the model
-        :param datasets: Datasets representing all the train and test sets to be used in the cross validation
-        :param hyper_params: Dictionary containing information of the hyper parameter we want to tune
-        :param l: Number of folds to use in the internal random subsampling
-        :param metric: Function that takes the output of the model and the target and returns the metric we want
-        to optimize
-
-        :return: Value of the metric after performing a k fold cross validation on the model with a subset of the
-        given hyper parameter
+        Args:
+            model_generator: callable object used to generate a model according to a set of hyperparameters
+            dataset: custom dataset containing the whole learning dataset needed for our evaluation
+            masks: dict with list of idx to use as train, valid and test masks
+            hps: dictionary with information on the hyperparameters we want to tune
+            device: "cpu" or "gpu"
+            metric: callable metric we want to optimize (not used for backpropagation)
         """
+        # We make sure that all hyperparameters needed are in hps dict
+        for hp in [N_ESTIMATORS, MAX_DEPTH, MAX_FEATURES, MAX_SAMPLES]:
+            assert hp in hps.keys(), f"{hp} is missing from hps dictionary"
 
-        # We save the inputs that will be used when calling the class
-        self.model_generator = model_generator
-        self.hyper_params = hyper_params
-        self.l = l
-        self.trainer = RFTrainer(model=None, metric=metric)
-        self.trainer.define_subprocess(datasets)
+        # We call parent's constructor
+        super().__init__(model_generator, dataset, masks, hps, device, metric)
+
+        # We set protected methods to extract hyperparameters' suggestions
+        self._get_max_depth = self._define_numerical_hp_getter(MAX_DEPTH, INT)
+        self._get_max_features = self._define_numerical_hp_getter(MAX_FEATURES, UNIFORM)
+        self._get_max_samples = self._define_numerical_hp_getter(MAX_SAMPLES, UNIFORM)
+        self._get_n_estimator = self._define_numerical_hp_getter(N_ESTIMATORS, INT)
 
     def __call__(self, trial):
-        hyper_params = self.hyper_params
 
-        # We choose the number of estimators used un the training
-        n_estimators = hyper_params[N_ESTIMATORS][VALUE] if VALUE in hyper_params[N_ESTIMATORS].keys() else \
-            trial.suggest_int(N_ESTIMATORS, hyper_params[N_ESTIMATORS][MIN], hyper_params[N_ESTIMATORS][MAX])
+        # We pick the number of estimators used in the training
+        n_estimators = self._get_n_estimator(trial)
 
-        # We choose the maximum depth of the trees
-        max_depth = hyper_params[MAX_DEPTH][VALUE] if VALUE in hyper_params[MAX_DEPTH].keys() else\
-            trial.suggest_int(MAX_DEPTH, hyper_params[MAX_DEPTH][MIN], hyper_params[MAX_DEPTH][MAX])
+        # We pick a value for the maximum depth of the trees
+        max_depth = self._get_max_depth(trial)
 
-        # We choose a value for the max features to consider in each split
-        max_features = hyper_params[MAX_FEATURES][VALUE] if VALUE in hyper_params[MAX_FEATURES].keys() else \
-            trial.suggest_uniform(MAX_FEATURES, hyper_params[MAX_FEATURES][MIN], hyper_params[MAX_FEATURES][MAX])
+        # We pick a value for the max features to consider in each split
+        max_features = self._get_max_features(trial)
 
-        # We choose a value for the max samples to train for each tree
-        max_samples = hyper_params[MAX_SAMPLES][VALUE] if VALUE in hyper_params[MAX_SAMPLES].keys() else\
-            trial.suggest_uniform(MAX_SAMPLES, hyper_params[MAX_SAMPLES][MIN], hyper_params[MAX_SAMPLES][MAX])
+        # We pick a value for the max samples to train for each tree
+        max_samples = self._get_max_samples(trial)
 
         # We define the model with the suggested set of hyper parameters
-        model = self.model_generator(n_estimators=n_estimators, max_features=max_features,
-                                     max_depth=max_depth, max_samples=max_samples)
+        model = self._model_generator(n_estimators=n_estimators, max_features=max_features,
+                                      max_depth=max_depth, max_samples=max_samples)
 
-        # We create the trainer that will train our model
-        self.trainer.update_trainer(model=model)
+        # We update the trainer that will train our model
+        self._trainer.update_trainer(model=model)
 
         # We perform a cross validation to evaluate the model
-        score = self.trainer.inner_random_subsampling(l=self.l)
+        score = self._trainer.inner_random_subsampling(self._n_splits)
 
         # We return the score
         return score
+
+    def extract_hps(self, trial: FrozenTrial) -> Dict[str, Any]:
+        """
+        Given an optuna trial, returns model hyperparameters in a dictionary
+        with the appropriate keys
+
+        Args:
+            trial: optuna frozen trial
+
+        Returns: dictionary with hyperparameters' values
+
+        """
+        return {hp: self._hps[hp].get(VALUE, trial.params[hp]) for
+                hp in [N_ESTIMATORS, MAX_DEPTH, MAX_SAMPLES, MAX_FEATURES]}
+
+    def _initialize_trainer(self, dataset: PetaleRFDataset,
+                            masks: Dict[int, Dict[str, List[int]]], metric: Metric,
+                            **kwargs) -> RFTrainer:
+        """
+        Initializes an RFTrainer object
+
+        Args:
+            dataset: custom dataset containing the whole learning dataset needed for our evaluation
+            masks: dict with list of idx to use as train, valid and test masks
+            metric: callable metric we want to optimize (not used for backpropagation)
+
+        Returns: trainer object
+
+        """
+        trainer = RFTrainer(model=None, metric=metric)
+        trainer.define_subprocess(dataset, masks)
+
+        return trainer
 
 
 class Tuner:
@@ -454,83 +489,3 @@ class Tuner:
 
         # We save the graph in a html file to have an interactive graph
         fig.write_image(join(self.path, "optimization_history.png"))
-
-
-# class NNTuner(Tuner):
-#     def __init__(self, study_name, model_generator, datasets, hyper_params, l, n_trials, metric,
-#                  direction="minimize", max_epochs=100, get_hyperparameters_importance=False,
-#                  get_parallel_coordinate=False, get_optimization_history=False,
-#                  early_stopping_activated=False, device="cpu", **kwargs):
-#         """
-#         Class that will be responsible of tuning Neural Networks
-#
-#         """
-#         super().__init__(study_name=study_name, model_generator=model_generator, datasets=datasets,
-#                          hyper_params=hyper_params, l=l, n_trials=n_trials, metric=metric,
-#                          objective=NNObjective, max_epochs=max_epochs,
-#                          early_stopping_activated=early_stopping_activated, direction=direction,
-#                          get_hyperparameters_importance=get_hyperparameters_importance,
-#                          get_parallel_coordinate=get_parallel_coordinate,
-#                          get_optimization_history=get_optimization_history,
-#                          device=device, **kwargs)
-#
-#     def get_best_hyperparams(self):
-#         """
-#         Method that returns the values of each hyper parameter
-#         """
-#
-        # # we extract the best trial
-        # best_trial = self.study.best_trial
-        #
-        # # We extract the best architecture of the model
-        # n_units = [key for key in best_trial.params.keys() if "n_units" in key]
-        #
-        # n_layers = self.hyper_params[N_LAYERS][VALUE] if VALUE in self.hyper_params[N_LAYERS].keys() else\
-        #     best_trial.params[N_LAYERS]
-        #
-        # if len(n_units) > 0:
-        #     layers = list(map(lambda n_unit: best_trial.params[n_unit], n_units))
-        # else:
-        #     layers = [self.hyper_params[N_UNITS][VALUE] for i in range(n_layers)]
-        #
-        # # We return the best hyperparameters
-        # return {
-        #     LAYERS: layers,
-        #     DROPOUT: self.hyper_params[DROPOUT][VALUE] if VALUE in self.hyper_params[DROPOUT].keys() else best_trial.params[DROPOUT],
-        #     LR: self.hyper_params[LR][VALUE] if VALUE in self.hyper_params[LR].keys() else best_trial.params[LR],
-        #     BATCH_SIZE: self.hyper_params[BATCH_SIZE][VALUE] if VALUE in self.hyper_params[BATCH_SIZE].keys() else best_trial.params[BATCH_SIZE],
-        #     WEIGHT_DECAY: self.hyper_params[WEIGHT_DECAY][VALUE] if VALUE in self.hyper_params[WEIGHT_DECAY].keys() else best_trial.params[WEIGHT_DECAY],
-        #     ACTIVATION: self.hyper_params[ACTIVATION][VALUE] if VALUE in self.hyper_params[ACTIVATION].keys() else best_trial.params[ACTIVATION]
-        # }
-#
-#
-# class RFTuner(Tuner):
-#     def __init__(self, study_name, model_generator, datasets, hyper_params, l, n_trials, metric,
-#                  direction="minimize", get_hyperparameters_importance=False, get_parallel_coordinate=False,
-#                  get_optimization_history=False, **kwargs):
-#         """
-#         Class that will be responsible of tuning Random Forests
-#
-#         """
-#         super().__init__(study_name=study_name, model_generator=model_generator, datasets=datasets,
-#                          hyper_params=hyper_params, l=l, n_trials=n_trials, metric=metric,
-#                          objective=RFObjective, direction=direction,
-#                          get_hyperparameters_importance=get_hyperparameters_importance,
-#                          get_intermediate_values=get_parallel_coordinate,
-#                          get_optimization_history=get_optimization_history, **kwargs)
-#
-#     def get_best_hyperparams(self):
-#         """
-#             Method that returns the values of each hyper parameter
-#         """
-#
-#         # We extract the best trial
-#         best_trial = self.study.best_trial
-#
-#         # We return the best hyperparameters
-#         return {
-#             N_ESTIMATORS: self.hyper_params[N_ESTIMATORS][VALUE] if VALUE in self.hyper_params[N_ESTIMATORS].keys() else best_trial.params[N_ESTIMATORS],
-#             MAX_DEPTH: self.hyper_params[MAX_DEPTH][VALUE] if VALUE in self.hyper_params[MAX_DEPTH].keys() else best_trial.params[MAX_DEPTH],
-#             MAX_SAMPLES: self.hyper_params[MAX_SAMPLES][VALUE] if VALUE in self.hyper_params[MAX_SAMPLES].keys() else best_trial.params[MAX_SAMPLES],
-#             MAX_FEATURES: self.hyper_params[MAX_FEATURES][VALUE] if VALUE in self.hyper_params[MAX_FEATURES].keys() else best_trial.params[MAX_FEATURES],
-#         }

@@ -145,7 +145,7 @@ class Trainer(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def fit(self, dataset: Union[PetaleNNDataset, PetaleRFDataset]) -> Optional[Tuple[tensor, tensor]]:
+    def fit(self, dataset: Union[PetaleNNDataset, PetaleRFDataset], **kwargs) -> Optional[Tuple[tensor, tensor]]:
         """
         Abstract method to train and evaluate the model
 
@@ -457,7 +457,7 @@ class RFTrainer(Trainer):
         """
         super().__init__(model=model, metric=metric)
 
-    def fit(self, dataset: PetaleRFDataset) -> None:
+    def fit(self, dataset: PetaleRFDataset, **kwargs) -> None:
         """
         Trains the classifier
 

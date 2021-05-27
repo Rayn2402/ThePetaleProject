@@ -179,7 +179,7 @@ class NNTrainer(Trainer):
                  lr: Optional[float], batch_size: Optional[int],
                  weight_decay: Optional[float], epochs: int,
                  early_stopping: bool = False, patience: int = 50,
-                 device: str = "cpu", trial: Optional[Any] = None):
+                 device: str = "cpu", in_trial: bool = False):
         """
         Sets protected and public attributes
 
@@ -193,7 +193,7 @@ class NNTrainer(Trainer):
             early_stopping: True if we want to stop the training when the validation loss stops decreasing
             patience: number of epochs without improvement allowed before early stopping
             device: device used to run our training ("cpu" or "gpu")
-            trial: trial object defined by Optuna
+            in_trial: True, if the trainer is instantiate from an objective function
         """
         # We make sure that our model is a torch Module
         assert isinstance(model, Module) or model is None, 'model must be a torch.nn.Module'
@@ -207,11 +207,11 @@ class NNTrainer(Trainer):
         self.early_stopping = early_stopping
 
         # We save protected attribute
-        self._trial = trial
-        self._lr = lr
-        self._weight_decay = weight_decay
-        self._optimizer = optim.Adam(params=self._model.parameters(), lr=lr, weight_decay=weight_decay)
         self._early_stopper = EarlyStopping(patience=patience)
+        self._in_trial = in_trial
+        self._lr = lr
+        self._optimizer = optim.Adam(params=self._model.parameters(), lr=lr, weight_decay=weight_decay)
+        self._weight_decay = weight_decay
 
         # We send model to the proper device
         self._model.to(self._device)
@@ -285,7 +285,6 @@ class NNTrainer(Trainer):
         Returns: training losses, validation losses
 
         """
-        assert not (self._trial is not None and self._metric is None), "If trial is not None, a metric must be defined"
         assert self._model is not None, "Model must be set before training"
         assert not visualization or path is not None, "Path must be specified"
 
@@ -309,7 +308,7 @@ class NNTrainer(Trainer):
         training_loss, valid_loss, training_score, valid_score = [], [], [], []
 
         # We init the update function
-        update_progress = self.update_progress_func(n_epochs=self.epochs, trial=self._trial, verbose=verbose)
+        update_progress = self.update_progress_func(n_epochs=self.epochs, in_trial=self._in_trial, verbose=verbose)
 
         for epoch in range(self.epochs):
 
@@ -414,7 +413,6 @@ class NNTrainer(Trainer):
         self._model = kwargs.get('model', self._model)
         self._weight_decay = kwargs.get('weight_decay', self._weight_decay)
         self._lr = kwargs.get('lr', self._lr)
-        self._trial = kwargs.get('trial', self._trial)
         self._optimizer = optim.Adam(params=self._model.parameters(), lr=self._lr, weight_decay=self._weight_decay)
         self._early_stopper = EarlyStopping(patience=self._early_stopper.patience)
 
@@ -422,19 +420,19 @@ class NNTrainer(Trainer):
         self._model.to(self._device)
 
     @staticmethod
-    def update_progress_func(n_epochs: int, trial: Optional[Any], verbose: bool) -> Callable:
+    def update_progress_func(n_epochs: int, in_trial: bool, verbose: bool) -> Callable:
         """
         Defines a function that updates the training progress
 
         Args:
             n_epochs: number of epochs to execute
-            trial: trial object from optuna
+            in_trial: True, if the trainer is instantiate from an objective function
             verbose: True if we want to print progress
 
         Returns: function
 
         """
-        if trial is None and verbose:
+        if in_trial and verbose:
             def update_progress(epoch: int, mean_epoch_loss: float):
                 if (epoch + 1) % 5 == 0 or (epoch + 1) == n_epochs:
                     print(f"Epoch {epoch + 1} - Loss : {round(mean_epoch_loss, 4)}")
@@ -449,7 +447,7 @@ class RFTrainer(Trainer):
     """
     Object that trains random forest classifier
     """
-    def __init__(self, model: RandomForestClassifier, metric: Metric):
+    def __init__(self, model: Optional[RandomForestClassifier], metric: Metric):
         """
         Set protected attributes
 
@@ -468,6 +466,9 @@ class RFTrainer(Trainer):
 
         Returns: None
         """
+
+        assert self._model is not None, "Model must be set before training"
+
         x, y = dataset[dataset.train_mask]
         self._model.fit(x, y)
 

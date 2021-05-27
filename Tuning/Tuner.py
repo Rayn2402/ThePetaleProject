@@ -18,7 +18,7 @@ from optuna.visualization import plot_param_importances, plot_parallel_coordinat
 from os.path import join
 from time import strftime
 from Training.Trainer import NNTrainer, RFTrainer
-from typing import Any, Dict, List, Optional, Union, Tuple
+from typing import Any, Callable, Dict, List, Optional, Union, Tuple
 from Utils.score_metrics import Metric
 
 
@@ -38,17 +38,23 @@ class Objective(ABC):
             masks: dict with list of idx to use as train, valid and test masks
             hps: dictionary with information on the hyperparameters we want to tune
             device: "cpu" or "gpu"
+            metric: callable metric we want to optimize (not used for backpropagation)
         """
 
         # We set protected attributes
-        self._model_generator = model_generator
         self._hps = hps
+        self._model_generator = model_generator
+        self._n_splits = len(masks.keys())
         self._trainer = self._initialize_trainer(dataset, masks, metric, device=device, **kwargs)
+
+    @property
+    def metric(self) -> Metric:
+        return self._trainer.metric
 
     @abstractmethod
     def __call__(self, trial: Any) -> float:
         """
-        Extracts hyperparameters suggested by optuna and executes "inner_random_subsampling" trainer function
+        Extracts hyperparameters suggested by optuna and executes "inner_random_subsampling" trainer's function
 
         Args:
             trial: optuna trial
@@ -63,6 +69,7 @@ class Objective(ABC):
                             **kwargs) -> Union[NNTrainer, RFTrainer]:
         """
         Builds the appropriate trainer object
+
         Args:
             dataset: custom dataset containing the whole learning dataset needed for our evaluation
             metric: callable metric we want to optimize (not used for backpropagation)
@@ -73,81 +80,185 @@ class Objective(ABC):
         """
         raise NotImplementedError
 
-
-
-class NNObjective:
-    def __init__(self, model_generator, datasets, hyper_params, l, metric,
-                 max_epochs, device, early_stopping_activated=False):
+    @abstractmethod
+    def extract_hps(self, trial: Any) -> Dict[str, Any]:
         """
-        Class that will represent the objective function for tuning Neural networks
-        
-        :param model_generator: Instance of the ModelGenerator class that will be responsible of generating the model
-        :param datasets: Datasets representing all the train and test sets to be used in the cross validation
-        :param hyper_params: Dictionary containing information of the hyper parameter we want to tune
-        :param l: Number of folds to use in the internal random subsampling
-        :param metric: Function that takes the output of the model and the target
-                       and returns the metric we want to optimize
-        :param max_epochs: the maximum number of epochs to do in training
+        Given an optuna trial, returns model hyperparameters in a dictionary
+        with the appropriate keys
+
+        Args:
+            trial: optuna frozen trial
+
+        Returns: dictionary with hyperparameters' values
+
+        """
+        raise NotImplementedError
 
 
-        :return: the value of the metric after performing a k-fold cross validation
-                 on the model with a subset of the given hyper parameter
+class NNObjective(Objective):
+    """
+    Neural Networks' objective function to optimize with hyperparameters
+    """
+
+    def __init__(self, model_generator: NNModelGenerator,
+                 dataset: PetaleNNDataset, masks: Dict[int, Dict[str, List[int]]],
+                 hps: Dict[str, Dict[str, Any]], device: str, metric: Metric,
+                 n_epochs: int, early_stopping: bool = True):
+        """
+        Sets protected attributes
+
+        Args:
+            model_generator: callable object used to generate a model according to a set of hyperparameters
+            dataset: custom dataset containing the whole learning dataset needed for our evaluation
+            masks: dict with list of idx to use as train, valid and test masks
+            hps: dictionary with information on the hyperparameters we want to tune
+            device: "cpu" or "gpu"
+            metric: callable metric we want to optimize (not used for backpropagation)
+            n_epochs: number of epochs
+            early_stopping: True if we want to stop the training when the validation loss stops decreasing
+        """
+        # We make sure that all hyperparameters needed are in hps dict
+        for hp in [N_LAYERS, N_UNITS, DROPOUT, BATCH_SIZE, LR, WEIGHT_DECAY, ACTIVATION]:
+            assert hp in hps.keys(), f"{hp} is missing from hps dictionary"
+
+        # We call parent's constructor
+        super().__init__(model_generator, dataset, masks, hps, device,
+                         metric, n_epochs=n_epochs, early_stopping=early_stopping)
+
+        # We set protected methods to extract hyperparameter suggestions
+        self._get_activation = self._define_categorical_hp_getter(ACTIVATION)
+        self._get_batch_size = self._define_numerical_hp_getter(BATCH_SIZE, INT)
+        self._get_dropout = self._define_numerical_hp_getter(DROPOUT, UNIFORM)
+        self._get_layers = self._define_layers_getter()
+        self._get_lr = self._define_numerical_hp_getter(LR, UNIFORM)
+        self._get_weight_decay = self._define_numerical_hp_getter(WEIGHT_DECAY, UNIFORM)
+
+    def __call__(self, trial: Any) -> float:
+        """
+        Extracts hyperparameters suggested by optuna and executes "inner_random_subsampling" trainer's function
+
+        Args:
+            trial: optuna trial
+
+        Returns: score associated to the set of hyperparameters
         """
 
-        # we save the inputs that will be used when calling the class
-        self.model_generator = model_generator
-        self.hyper_params = hyper_params
-        self.l = l
-        self.trainer = NNTrainer(model=None, batch_size=None, lr=None, epochs=max_epochs,
-                                 weight_decay=None, metric=metric, trial=None,
-                                 early_stopping_activated=early_stopping_activated,
-                                 device=device)
-        self.trainer.define_subprocess(datasets)
+        # We pick a number of layers and the number of nodes in each hidden layer
+        layers = self._get_layers(trial)
 
-    def __call__(self, trial):
-        hyper_params = self.hyper_params
+        # We pick the dropout probability
+        p = self._get_dropout(trial)
 
-        # We choose a number of hidden layers
-        n_layers = hyper_params[N_LAYERS][VALUE] if VALUE in hyper_params[N_LAYERS].keys() else \
-            trial.suggest_int(N_LAYERS, hyper_params[N_LAYERS][MIN], hyper_params[N_LAYERS][MAX])
+        # We pick a value for the batch size
+        batch_size = self._get_batch_size(trial)
 
-        # We choose a number of node in each hidden layer
-        layers = [hyper_params[N_UNITS][VALUE] if VALUE in hyper_params[N_UNITS].keys() else
-            trial.suggest_int(f"{N_UNITS}{i}", hyper_params[N_UNITS][MIN], hyper_params[N_UNITS][MAX])
-            for i in range(n_layers)]
+        # We pick a value for the learning rate
+        lr = self._get_lr(trial)
 
-        # We choose the dropout probability
-        p = hyper_params[DROPOUT][VALUE] if VALUE in hyper_params[DROPOUT].keys() else \
-            trial.suggest_uniform(DROPOUT, hyper_params[DROPOUT][MIN],hyper_params[DROPOUT][MAX])
+        # We pick a value for the weight decay
+        weight_decay = self._get_weight_decay(trial)
 
-        # We choose a value for the batch size used in the training
-        batch_size = hyper_params[BATCH_SIZE][VALUE] if VALUE in hyper_params[BATCH_SIZE].keys() else \
-            trial.suggest_int(BATCH_SIZE, hyper_params[BATCH_SIZE][MIN], hyper_params[BATCH_SIZE][MAX])
-
-        # We choose a value for the learning rate
-        lr = hyper_params[LR][VALUE] if VALUE in hyper_params[LR].keys() else\
-            trial.suggest_uniform(LR, hyper_params[LR][MIN], hyper_params[LR][MAX])
-
-        # We choose a value for the weight decay used in the training
-        weight_decay = hyper_params[WEIGHT_DECAY][VALUE] if VALUE in hyper_params[WEIGHT_DECAY].keys() else\
-            trial.suggest_uniform(WEIGHT_DECAY, hyper_params[WEIGHT_DECAY][MIN], hyper_params[WEIGHT_DECAY][MAX])
-
-        # We choose a type of activation function for the network
-        activation = hyper_params[ACTIVATION][VALUE] if VALUE in hyper_params[ACTIVATION].keys() else \
-            trial.suggest_categorical(ACTIVATION, hyper_params[ACTIVATION][VALUES])
+        # We pick a type of activation function for the network
+        activation = self._get_activation(trial)
 
         # We define the model with the suggested set of hyper parameters
-        model = self.model_generator(layers=layers, dropout=p, activation=activation)
+        model = self._model_generator(layers=layers, dropout=p, activation=activation)
 
         # We update the Trainer to train our model
-        self.trainer.update_trainer(model=model, weight_decay=weight_decay, batch_size=batch_size,
-                                    lr=lr, trial=trial)
+        self._trainer.update_trainer(model=model, weight_decay=weight_decay,
+                                     batch_size=batch_size, lr=lr, trial=trial)
 
         # We perform a k fold cross validation to evaluate the model
-        score = self.trainer.inner_random_subsampling(l=self.l)
+        score = self._trainer.inner_random_subsampling(self._n_splits)
 
         # We return the score
         return score
+
+    def _define_categorical_hp_getter(self, hp: str) -> Callable:
+        """
+        Builds function to properly extract categorical hyperparameters suggestions
+
+        Args:
+            hp: name of an hyperparameter
+
+        Returns: function
+        """
+        if VALUE in self._hps[hp].keys():
+            def getter(trial: Any) -> str:
+                return self._hps[hp][VALUE]
+        else:
+            def getter(trial: Any) -> str:
+                return trial.suggest_categorical(hp, self._hps[hp][VALUES])
+
+        return getter
+
+    def _define_numerical_hp_getter(self, hp: str, suggest_function: str) -> Callable:
+        """
+        Builds function to properly extract numerical hyperparameters suggestions
+
+        Args:
+            hp: name of an hyperparameter
+            suggest_function: optuna suggest function
+
+        Returns: function
+        """
+        if VALUE in self._hps[hp].keys():
+            def getter(trial: Any) -> Union[float, int]:
+                return self._hps[hp][VALUE]
+        else:
+            if suggest_function == INT:
+                def getter(trial: Any) -> Union[int]:
+                    return trial.suggest_int(hp, self._hps[hp][MIN], self._hps[hp][MAX])
+            else:
+                def getter(trial: Any) -> Union[float]:
+                    return trial.suggest_uniform(hp, self._hps[hp][MIN], self._hps[hp][MAX])
+
+        return getter
+
+    def _define_layers_getter(self) -> Callable:
+        """
+        Builds function to properly extract layers composition suggestion
+
+        Returns: function
+        """
+        get_n_layers = self._define_numerical_hp_getter(N_LAYERS, INT)
+        n_units = self._hps[N_UNITS].get(VALUE, None)
+
+        if n_units is not None:
+            def getter(trial: Any) -> List[int]:
+                n_layers = get_n_layers(trial)
+                return [n_units]*n_layers
+        else:
+            def getter(trial: Any) -> List[int]:
+                n_layers = get_n_layers(trial)
+                return [trial.suggest_int(f"{N_UNITS}{i}", self._hps[N_UNITS][MIN],
+                                          self._hps[N_UNITS][MAX]) for i in range(n_layers)]
+        return getter
+
+    def _initialize_trainer(self, dataset: PetaleNNDataset,
+                            masks: Dict[int, Dict[str, List[int]]],
+                            metric: Metric, **kwargs) -> NNTrainer:
+        """
+        Initializes an NNTrainer object
+
+        Args:
+            dataset: custom dataset containing the whole learning dataset needed for our evaluation
+            masks: dict with list of idx to use as train, valid and test masks
+            metric: callable metric we want to optimize (not used for backpropagation)
+
+        Returns: trainer object
+
+        """
+        # Trainer's initialization
+        trainer = NNTrainer(model=None, batch_size=None, lr=None, epochs=kwargs['n_epochs'],
+                            weight_decay=None, metric=metric, trial=None,
+                            early_stopping=kwargs['early_stopping'],
+                            device=kwargs['device'])
+
+        # Trainer's parallel process definition
+        trainer.define_subprocess(dataset, masks)
+
+        return trainer
 
 
 class RFObjective:
@@ -247,6 +358,12 @@ class Tuner:
         self.save_parallel_coordinates = save_parallel_coordinates
         self.save_optimization_history = save_optimization_history
 
+    def get_best_hps(self) -> Dict[str, Any]:
+        """
+        Retrieves the best hyperparameters found in the tuning
+        """
+        return self._objective.extract_hps(self._study.best_trial)
+
     def tune(self, verbose: bool = True) -> Tuple[Dict[str, Any], Dict[str, float]]:
         """
         Searches for the hyperparameters that optimize the objective function, using the TPE algorithm
@@ -311,12 +428,6 @@ class Tuner:
 
         # We save the graph in a html file to have an interactive graph
         fig.write_image(join(self.path, "optimization_history.png"))
-
-    def get_best_hps(self) -> Dict[str, Any]:
-        """
-        Retrieves the best hyperparameters found in the tuning
-        """
-        return self._objective.extract_best_hps(self._study.best_trial)
 
 
 # class NNTuner(Tuner):

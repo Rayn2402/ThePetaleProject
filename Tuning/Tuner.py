@@ -29,7 +29,7 @@ class Objective(ABC):
     """
     def __init__(self, model_generator: Union[NNModelGenerator, RFCModelGenerator],
                  dataset: Union[PetaleNNDataset, PetaleRFDataset], masks: Dict[int, Dict[str, List[int]]],
-                 hps: Dict[str, Dict[str, Any]], device: str, metric: Metric, **kwargs):
+                 hps: Dict[str, Dict[str, Any]], device: str, metric: Metric, needed_hps: List[str], **kwargs):
         """
         Sets protected and public attributes
 
@@ -40,7 +40,11 @@ class Objective(ABC):
             hps: dictionary with information on the hyperparameters we want to tune
             device: "cpu" or "gpu"
             metric: callable metric we want to optimize (not used for backpropagation)
+            needed_hps: list of hyperparameters that needs to be in the hps dictionary
         """
+        # We validate the given hyperparameters
+        for hp in needed_hps:
+            assert hp in hps.keys(), f"'{hp}' is missing from hps dictionary"
 
         # We set protected attributes
         self._hps = hps
@@ -159,13 +163,11 @@ class NNObjective(Objective):
             n_epochs: number of epochs
             early_stopping: True if we want to stop the training when the validation loss stops decreasing
         """
-        # We make sure that all hyperparameters needed are in hps dict
-        for hp in [N_LAYERS, N_UNITS, DROPOUT, BATCH_SIZE, LR, WEIGHT_DECAY, ACTIVATION]:
-            assert hp in hps.keys(), f"{hp} is missing from hps dictionary"
 
         # We call parent's constructor
         super().__init__(model_generator, dataset, masks, hps, device,
-                         metric, n_epochs=n_epochs, early_stopping=early_stopping)
+                         metric, n_epochs=n_epochs, early_stopping=early_stopping,
+                         needed_hps=[N_LAYERS, N_UNITS, DROPOUT, BATCH_SIZE, LR, WEIGHT_DECAY, ACTIVATION])
 
         # We set protected methods to extract hyperparameters' suggestions
         self._get_activation = self._define_categorical_hp_getter(ACTIVATION)
@@ -305,12 +307,10 @@ class RFObjective(Objective):
             device: "cpu" or "gpu"
             metric: callable metric we want to optimize (not used for backpropagation)
         """
-        # We make sure that all hyperparameters needed are in hps dict
-        for hp in [N_ESTIMATORS, MAX_DEPTH, MAX_FEATURES, MAX_SAMPLES]:
-            assert hp in hps.keys(), f"{hp} is missing from hps dictionary"
 
         # We call parent's constructor
-        super().__init__(model_generator, dataset, masks, hps, device, metric)
+        super().__init__(model_generator, dataset, masks, hps, device, metric,
+                         needed_hps=[N_ESTIMATORS, MAX_DEPTH, MAX_FEATURES, MAX_SAMPLES])
 
         # We set protected methods to extract hyperparameters' suggestions
         self._get_max_depth = self._define_numerical_hp_getter(MAX_DEPTH, INT)

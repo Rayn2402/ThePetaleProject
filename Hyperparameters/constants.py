@@ -5,6 +5,11 @@ This file is used to store useful constants related to hyperparameters name
 # HYPERPARAMETERS IMPORTANCE SEED
 HYPER_PARAMS_SEED = 2021
 
+# SUGGESTION FUNCTIONS
+INT = "int"
+UNIFORM = "uniform"
+CATEGORICAL = "categorical"
+
 # NN HYPERPARAMETERS
 LR = "lr"
 BATCH_SIZE = "batch_size"

@@ -11,11 +11,12 @@ import os
 import pickle
 
 from abc import ABC, abstractmethod
-from numpy import std, min, max, mean, median, arange, argmax
+from numpy import std, min, max, mean, median, arange, argmax, array
 from Recording.constants import *
 from sklearn.ensemble import RandomForestClassifier
+from torch import tensor
 from torch.nn import Module
-from typing import Any, Dict, Union
+from typing import Any, Dict, List, Union
 
 
 class Recorder(ABC):
@@ -137,6 +138,22 @@ class Recorder(ABC):
         """
         # We save the score of the given metric
         self._data[METRICS][metric] = round(score, 6)
+
+    @abstractmethod
+    def record_predictions(self, ids: List[str], predictions: Union[array, tensor],
+                           target: Union[array, tensor]) -> None:
+        """
+        Save the predictions of a given model for each patient ids
+
+        Args:
+            ids: patient/participant ids
+            predictions: predicted class or regression value
+            target: target value
+
+        Returns: None
+
+        """
+        raise NotImplementedError
 
 
 class NNRecorder(Recorder):

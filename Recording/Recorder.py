@@ -37,7 +37,7 @@ class Recorder(ABC):
         self._data = {NAME: evaluation_name, INDEX: index,
                       DATA_INFO: {}, HYPERPARAMETERS: {},
                       HYPERPARAMETER_IMPORTANCE: {}, METRICS: {},
-                      COEFFICIENT: {}}
+                      COEFFICIENT: {}, RESULTS: {}}
 
         self._path = os.path.join(recordings_path, evaluation_name, f"Split_{index}")
 
@@ -158,53 +158,69 @@ class Recorder(ABC):
 
 class NNRecorder(Recorder):
     """
-        Class that will be responsible of saving all the data about our experiments with Neural networks
+    Recorder responsible of saving all the data about our experiments with Neural networks
     """
+    def __init__(self, evaluation_name: str, index: int, recordings_path: str):
+        """
+        Sets protected attributes
 
-    def __init__(self, evaluation_name, index, recordings_path):
+        Args:
+            evaluation_name: name of the evaluation
+            index: index of the outer split
+            recordings_path: path leading to where we want to save the results
+        """
         super().__init__(evaluation_name=evaluation_name, index=index, recordings_path=recordings_path)
 
-    def record_predictions(self, ids, predictions, target):
+    def record_predictions(self, ids: List[str], predictions: tensor, target: tensor) -> None:
         """
-        Method to call to save the predictions of a neural network after an experiments
+        Save the predictions of a neural network model for each patient ids
 
-        :param ids: The ids of the patients with the predicted data
-        :param predictions: The calculated predictions to save
-        :param target: The real values
+        Args:
+            ids: patient/participant ids
+            predictions: predicted class or regression value
+            target: target value
+
+        Returns: None
 
         """
-
-        if RESULTS not in self.data.keys():
-            self.data[RESULTS] = {}
-
         # We save the predictions
-        for i, id in enumerate(ids):
-            self.data[RESULTS][id] = {
-                PREDICTION: predictions[i].item() if len(predictions[i].shape) == 0 else predictions[i].tolist(),
-                TARGET: target[i].item()}
+        for j, id_ in enumerate(ids):
+            self._data[RESULTS][id_] = {
+                PREDICTION: predictions[j].item() if len(predictions[j].shape) == 0 else predictions[j].tolist(),
+                TARGET: target[j].item()}
 
 
 class RFRecorder(Recorder):
     """
-        Class that will be responsible of saving all the data about our experiments with Random Forest
+    Recorder responsible of saving all the data about our experiments with Random Forest
     """
 
-    def __init__(self, evaluation_name, index, recordings_path):
+    def __init__(self, evaluation_name: str, index: int, recordings_path: str):
+        """
+        Sets protected attributes
+
+        Args:
+            evaluation_name: name of the evaluation
+            index: index of the outer split
+            recordings_path: path leading to where we want to save the results
+        """
         super().__init__(evaluation_name=evaluation_name, index=index, recordings_path=recordings_path)
 
-    def record_predictions(self, ids, predictions, target):
+    def record_predictions(self, ids: List[str], predictions: array, target: array) -> None:
         """
-        :param ids: The ids of the patients with the predicted data
-        :param predictions: The calculated predictions to save
-        :param target: The real values
+        Save the predictions of a random forest model for each patient ids
+
+        Args:
+            ids: patient/participant ids
+            predictions: predicted class or regression value
+            target: target value
+
+        Returns: None
 
         """
-        if RESULTS not in self.data.keys():
-            self.data[RESULTS] = {}
-
         # We save the predictions
-        for i, id in enumerate(ids):
-            self.data[RESULTS][id] = {PREDICTION: predictions[i], TARGET: target[i]}
+        for j, id_ in enumerate(ids):
+            self._data[RESULTS][id_] = {PREDICTION: predictions[j], TARGET: target[j]}
 
 
 def get_evaluation_recap(evaluation_name, recordings_path):
@@ -214,8 +230,8 @@ def get_evaluation_recap(evaluation_name, recordings_path):
     :param evaluation_name: The name of the evaluation
     :param recordings_path: the path to the recordings folder where we want to save the data
     """
-    assert os.path.exists(os.path.join(recordings_path, "Recordings", evaluation_name)), "Evaluation not found"
-    path = os.path.join(recordings_path, "Recordings", evaluation_name)
+    assert os.path.exists(os.path.join(recordings_path, evaluation_name)), "Evaluation not found"
+    path = os.path.join(recordings_path, evaluation_name)
     json_file = "records.json"
     folders = next(os.walk(path))[1]
     data = {
@@ -323,7 +339,7 @@ def plot_hyperparameter_importance_chart(evaluation_name, recordings_path):
     :param recordings_path: the path to the recordings folder where we want to save the data
 
     """
-    path = os.path.join(recordings_path, "Recordings", evaluation_name)
+    path = os.path.join(recordings_path, evaluation_name)
     json_file = "general.json"
 
     # We get the content of the json file

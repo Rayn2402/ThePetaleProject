@@ -1,167 +1,170 @@
 """
 Authors : Mehdi Mitiche
+          Nicolas Raymond
 
 File that contains the class related to the evaluation of the models
 
 """
-from Training.Trainer import NNTrainer, RFTrainer
-from Tuning.Tuner import NNTuner, RFTuner
-from torch import manual_seed
-from numpy.random import seed as np_seed
-from Hyperparameters.constants import *
-from Recording.Recorder import NNRecorder, RFRecorder, compare_prediction_recordings, get_evaluation_recap, plot_hyperparameter_importance_chart
-from os import path, mkdir, makedirs
-from shutil import rmtree
 import ray
-from typing import Callable, Optional
+
+from abc import ABC, abstractmethod
+from Data.Datasets import PetaleNNDataset, PetaleRFDataset
+from Hyperparameters.constants import *
+from Models.ModelGenerator import NNModelGenerator, RFCModelGenerator
+from numpy.random import seed as np_seed
+from os import path, makedirs
+from Recording.Recorder import NNRecorder, RFRecorder,\
+    compare_prediction_recordings, get_evaluation_recap, plot_hyperparameter_importance_chart
+from sklearn.ensemble import RandomForestClassifier
+from time import strftime
+from torch import manual_seed
+from torch.nn import Module
+from Training.Trainer import NNTrainer, RFTrainer
+from Tuning.Tuner import Tuner, NNObjective, RFObjective
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from Utils.score_metrics import Metric
 
 
-class Evaluator:
-    def __init__(self, evaluation_name: str, model_generator: Callable, sampler: Callable, hyper_params: dict,
-                 n_trials: int, optimization_metric: Callable,
-                 evaluation_metrics: dict, k: int, l: int = 1, direction: str = "minimize", seed: Optional[int]=None,
-                 get_hyperparameters_importance: Optional[bool] = False,
-                 get_parallel_coordinate: Optional[bool] = False,
-                 get_optimization_history: Optional[bool] = False, device: Optional[str] = "cpu",
-                 recordings_path: Optional[str] = ""):
+class Evaluator(ABC):
+    """
+    Abstract class representing the skeleton of the objects used for model evaluation
+    """
+
+    def __init__(self, model_generator: Union[NNModelGenerator, RFCModelGenerator],
+                 dataset: Union[PetaleNNDataset, PetaleRFDataset], masks: Dict[int, Dict[str, List[int]]],
+                 hps: Dict[str, Dict[str, Any]], n_trials: int, optimization_metric: Metric,
+                 evaluation_metrics: Dict[str, Metric], seed: Optional[int] = None, device: Optional[str] = "cpu",
+                 recordings_path: Optional[str] = "Recordings", evaluation_name: Optional[str] = None,
+                 save_hps_importance: Optional[bool] = False,
+                 save_parallel_coordinates: Optional[bool] = False,
+                 save_optimization_history: Optional[bool] = False):
         """
-        Class that will be responsible of the evaluation of the model
+        Set protected and public attributes of the abstract class
 
-        :param evaluation_name: String that represents the name of the evaluation
-        :param model_generator: Instance of the ModelGenerator class that will be responsible of generating the model
-        :param sampler: Sampler object that will be called to perform the stratified sampling to get all the train
-                        and test set for both the inner and the outer training
-        :param hyper_params: Dictionary containing information of the hyper parameter we want to tune
-        :param optimization_metric: Function that takes the output of the model and the target and returns  the metric
-                                    we want to optimize
-        :param evaluation_metrics:  Dictionary where keys represent name of metrics and values represent
-                                    the function that will be used to calculate the score of
-                                    the associated metric
-        :param k: Number of folds to use in the outer random subsampling
-        :param l: Number of folds to use in the internal random subsampling
-        :param n_trials: Number of trials we want to perform
-        :param direction: Direction to specify if we want to maximize or minimize the value of the metric used
-        :param seed: Starting point in generating random numbers
-        :param get_hyperparameters_importance: Bool to tell if we want to plot the hyperparameters importance graph
-                                               after tuning the hyper parameters
-        :param get_parallel_coordinate: Bool to tell if we want to plot the parallel coordinate graph after tuning
-        the hyper parameters
-        :param get_optimization_history: Bool to tell if we want to plot the optimization history graph
-         the hyper parameters
-        :param device: "cpu" or "gpu"
-        :param recordings_path: the path to the recordings folder where we want to save the data
-
-
-
+        Args:
+            model_generator: callable object used to generate a model according to a set of hyperparameters
+            dataset: custom dataset containing the whole learning dataset needed for our evaluation
+            masks: dict with list of idx to use as train, valid and test masks
+            hps: dictionary with information on the hyperparameters we want to tune
+            n_trials: number of hyperparameters sets sampled within each inner validation loop
+            optimization_metric: function that hyperparameters must optimize
+            evaluation_metrics: dict where keys are names of metrics and values are functions
+                                that will be used to calculate the score of the associated metric
+                                on the test sets of the outer loops
+            seed: random state used for reproducibility
+            device: "cpu" or "gpu"
+            recordings_path: path where recording files will be saved
+            evaluation_name: name of the results file saved at the recordings_path
+            save_hps_importance: True if we want to plot the hyperparameters importance graph after tuning
+            save_parallel_coordinates: True if we want to plot the parallel coordinates graph after tuning
+            save_optimization_history: True if we want to plot the optimization history graph after tuning
         """
 
-        # we save the inputs that will be used when tuning the hyper parameters
-        self.evaluation_name = evaluation_name
-        self.n_trials = n_trials
-        self.model_generator = model_generator
-        self.sampler = sampler
-        self.k = k
-        self.l = l
-        self.hyper_params = hyper_params
-        self.optimization_metric = optimization_metric
-        self.evaluation_metrics = evaluation_metrics
-        self.direction = direction
-        self.seed = seed
-        self.get_hyperparameters_importance = get_hyperparameters_importance
-        self.get_parallel_coordinate = get_parallel_coordinate
-        self.get_optimization_history = get_optimization_history
-        self.recordings_path = recordings_path
+        # We look if a file with the same evaluation name exists
+        if evaluation_name is not None:
+            assert not path.exists(path.join(recordings_path, evaluation_name)), \
+                "Evaluation with this name already exists"
+        else:
+            makedirs(recordings_path, exist_ok=True)
+            evaluation_name = f"{strftime('%Y%m%d-%H%M%S')}"
 
-        assert not(path.exists(path.join("Recordings", self.evaluation_name))),\
-            "Evaluation with this name already exists"
-
+        # We check the availability of the device choice
         assert device == "cpu" or device == "gpu", "Device must be 'cpu' or 'gpu'"
 
-        self.device = device
+        # We set protected attributes
+        self._dataset = dataset
+        self._device = device
+        self._hps = hps
+        self._masks = masks
+        self._tuner = Tuner(n_trials=n_trials,
+                            save_hps_importance=save_hps_importance,
+                            save_parallel_coordinates=save_parallel_coordinates,
+                            save_optimization_history=save_optimization_history)
 
-    def nested_cross_valid(self, **kwargs):
-        """
-        Method to call when we want to perform a nested cross validation to evaluate a model
+        # We set the public attributes
+        self.evaluation_name = evaluation_name
+        self.model_generator = model_generator
+        self.optimization_metric = optimization_metric
+        self.evaluation_metrics = evaluation_metrics
+        self.seed = seed
+        self.recordings_path = recordings_path
 
-        :return: List containing the scores of the model after performing a nested cross validation
+    def nested_cross_valid(self) -> None:
         """
-        # we set the seed for the sampling
+        Performs nested subsampling validations to evaluate a model and saves results
+        in specific files using a recorder
+
+        Returns: None
+
+        """
+
+        # We set the seed for the nested cross valid procedure
         if self.seed is not None:
             np_seed(self.seed)
-
-        # We get all the train, test, inner train, qnd inner test sets with our sampler
-        all_datasets = self.sampler(k=self.k, l=self.l)
-
-        # we set the seed for the complete nested cross valid operation
-        if self.seed is not None:
             manual_seed(self.seed)
 
-        # We create the recording folder and the folder where the recordings of this evaluation will be stored
-        makedirs(path.join(self.recordings_path, "Recordings", self.evaluation_name), exist_ok=True)
-
-        # We execute the outter loop
+        # We execute the outer loop
         ray.init()
-        for k in range(self.k):
+        for k, v in self._masks.items():
 
-            # We extract the datasets
-            train_set, test_set, valid_set = self.get_datasets(all_datasets[k])
+            # We extract the masks
+            train_mask, valid_mask, test_mask, in_masks = v["train"], v["valid"], v["test"], v["inner"]
 
             # We create the Recorder object to save the result of this experience
-            recorder = self.create_recorder(index=k)
+            recorder = self._create_recorder(idx=k)
 
             # We record the data count
-            recorder.record_data_info("train_set", len(train_set))
-            recorder.record_data_info("valid_set", len(valid_set))
-            recorder.record_data_info("test_set", len(test_set))
+            for name, mask in [("train_set", train_mask), ("valid_set", valid_mask), ("test_set", test_mask)]:
+                recorder.record_data_info(name, len(mask))
 
-            # We create the tuner to perform the hyperparameters optimization
+            # We update the tuner to perform the hyperparameters optimization
             print(f"\nHyperparameter tuning started - K = {k}\n")
-            tuner = self.create_tuner(datasets=all_datasets[k]["inner"], index=k, **kwargs)
+            self._tuner.update_tuner(study_name=f"{self.evaluation_name}_{k}", objective=self._create_objective())
 
             # We perform the hyper parameters tuning to get the best hyper parameters
-            best_hyper_params, hyper_params_importance = tuner.tune()
-            print(f"\nHyperparameter tuning done - K = {k}\n")
+            best_hps, hps_importance = self._tuner.tune()
 
             # We save the hyperparameters
-            recorder.record_hyperparameters(best_hyper_params)
+            print(f"\nHyperparameter tuning done - K = {k}\n")
+            recorder.record_hyperparameters(best_hps)
 
             # We save the hyperparameters importance
-            recorder.record_hyperparameters_importance(hyper_params_importance)
+            recorder.record_hyperparameters_importance(hps_importance)
 
-            # We create our model with the best hyper parameters
-            model = self.create_model(best_hyper_params=best_hyper_params)
-
-            # We create a trainer to train the model
-            trainer = self.create_trainer(model=model, best_hyper_params=best_hyper_params)
+            # We create a model and a trainer with the best hyper parameters
+            model, trainer = self._create_model_and_trainer(best_hps)
 
             # We train our model with the best hyper parameters
             print(f"\nFinal model training - K = {k}\n")
-            trainer.fit(train_set=train_set, val_set=valid_set, visualization=True,
-                        path=path.join(self.recordings_path, "Recordings", self.evaluation_name, f"Split_{k}"))
+            self._dataset.update_masks(train_mask=train_mask, valid_mask=valid_mask, test_mask=test_mask)
+            trainer.fit(dataset=self._dataset, visualization=True,
+                        path=path.join(self.recordings_path, self.evaluation_name, f"Split_{k}"))
 
             # We save the trained model
             recorder.record_model(model=model)
 
             # We extract x_cont, x_cat and target from the test set
-            ids, x_cont, x_cat, target = trainer.extract_data(test_set, id=True)
+            inputs, targets = trainer.extract_data(self._dataset[test_mask])
+            ids = [self._dataset.ids[i] for i in test_mask]
 
             # We get the predictions
-            predictions = trainer.predict(x_cont, x_cat, log_prob=True)
+            predictions = trainer.predict(**inputs, log_prob=True)
 
             if predictions.shape[1] == 1:
                 predictions = predictions.flatten()
 
             # We save the predictions
-            recorder.record_predictions(predictions=predictions, ids=ids, target=target)
+            recorder.record_predictions(predictions=predictions, ids=ids, target=targets)
 
+            # We save the scores associated to the different evaluation metric
             for metric_name, f in self.evaluation_metrics.items():
-                # We save the scores
-                recorder.record_scores(score=f(predictions, target), metric=metric_name)
+                recorder.record_scores(score=f(predictions, targets), metric=metric_name)
 
             # We save all the data collected in a file
             recorder.generate_file()
 
-            compare_prediction_recordings(evaluations=[self.evaluation_name], split_index=k, recording_path=self.recordings_path )
+            compare_prediction_recordings(evaluations=[self.evaluation_name],
+                                          split_index=k, recording_path=self.recordings_path)
 
         # We save the evaluation recap
         get_evaluation_recap(evaluation_name=self.evaluation_name, recordings_path=self.recordings_path)
@@ -169,185 +172,193 @@ class Evaluator:
         # We save the hyperparameters plot
         plot_hyperparameter_importance_chart(evaluation_name=self.evaluation_name, recordings_path=self.recordings_path)
 
-    def create_recorder(self, index):
+    @abstractmethod
+    def _create_model_and_trainer(self, best_hps: Dict[str, Any]
+                                  ) -> Tuple[Union[RandomForestClassifier, Module], Union[NNTrainer, RFTrainer]]:
         """
-        Abstract methods to create recorder
+        Returns a model built according to the best hyperparameters given and a trainer
 
-        :param index: index of the outter random subsampling loop
+        Args:
+            best_hps: hyperparameters to use in order to build the model
+
+        Returns: model and trainer
         """
         raise NotImplementedError
 
-    def create_tuner(self, datasets, index, **kwargs):
-        raise NotImplementedError
-
-    def create_model(self, best_hyper_params):
-        raise NotImplementedError
-
-    def create_trainer(self, model, **kwargs):
-        raise NotImplementedError
-
-    @staticmethod
-    def get_datasets(dataset_dictionary):
+    @abstractmethod
+    def _create_objective(self) -> Union[NNObjective, RFObjective]:
         """
-        Method to extract the train, test, and valid sets
+        Creates an adapted objective function to pass to our tuner
 
-        :param dataset_dictionary: Dictionary that contains the three sets
-
-
-        :return: Tuple containing the train, test, and valid sets
+        Returns: objective function
         """
-        return dataset_dictionary["train"], dataset_dictionary["test"], dataset_dictionary["valid"]
+        raise NotImplementedError
+
+    @abstractmethod
+    def _create_recorder(self, idx: int) -> Union[NNRecorder, RFRecorder]:
+        """
+        Creates a recorder object adapted to our model
+
+        Args:
+            idx: index of outer loop
+
+        Returns: recorder object
+
+        """
+        raise NotImplementedError
 
 
 class NNEvaluator(Evaluator):
 
-    def __init__(self, evaluation_name, model_generator, sampler, hyper_params, n_trials, optimization_metric,
-                 evaluation_metrics, k, l=1, max_epochs=100, direction="minimize", seed=None,
-                 get_hyperparameters_importance=False, get_parallel_coordinate=False,
-                 get_optimization_history=False, device="cpu", early_stopping_activated=False, recordings_path=""):
-        """
-        Class that will be responsible of the evaluation of the Neural Networks models
-
-        :param max_epochs: the maximum number of epochs to do in training
-
-        """
-        super().__init__(model_generator=model_generator, sampler=sampler, hyper_params=hyper_params, n_trials=n_trials,
-                         optimization_metric=optimization_metric, evaluation_metrics=evaluation_metrics, k=k, l=l,
-                         direction=direction, seed=seed,
-                         get_hyperparameters_importance=get_hyperparameters_importance,
-                         get_parallel_coordinate=get_parallel_coordinate,
-                         get_optimization_history=get_optimization_history,
-                         evaluation_name=evaluation_name, device=device, recordings_path=recordings_path)
-
-        self.max_epochs = max_epochs
-        self.early_stopping_activated = early_stopping_activated
-
-    def nested_cross_valid(self, **kwargs):
-
-        # We create the checkpoints folder where the early stopper will save the models
-        if self.early_stopping_activated and not path.exists(path.join("checkpoints")):
-            mkdir(path.join("checkpoints"))
-
-        super().nested_cross_valid(**kwargs)
-
-        # We delete the files created to save the checkpoints of our model by the early stopper
-        if path.exists(path.join("checkpoints")):
-            rmtree(path.join("checkpoints"))
-
-    def create_tuner(self, datasets, index, **kwargs):
-        """
-        Method to create the Tuner object that will be used in the hyper parameters tuning
-
-        :param datasets: List that contains all the inner train, inner test, amd inner valid sets
-        :param index: The index of the split
+    def __init__(self, model_generator: NNModelGenerator, dataset: PetaleNNDataset,
+                 masks: Dict[int, Dict[str, List[int]]], hps: Dict[str, Dict[str, Any]], n_trials: int,
+                 optimization_metric: Metric, evaluation_metrics: Dict[str, Metric], max_epochs: int,
+                 early_stopping: bool, seed: Optional[int] = None, device: Optional[str] = "cpu",
+                 recordings_path: Optional[str] = "Recordings", evaluation_name: Optional[str] = None,
+                 save_hps_importance: Optional[bool] = False,
+                 save_parallel_coordinates: Optional[bool] = False,
+                 save_optimization_history: Optional[bool] = False):
 
         """
+        Set protected and public attributes of the abstract class
 
-        return NNTuner(model_generator=self.model_generator, datasets=datasets,
-                       hyper_params=self.hyper_params, n_trials=self.n_trials,
-                       metric=self.optimization_metric, device=self.device, direction=self.direction, l=self.l,
-                       max_epochs=self.max_epochs, study_name=f"{self.evaluation_name}_{index}",
-                       get_parallel_coordinate=self.get_parallel_coordinate,
-                       get_hyperparameters_importance=self.get_hyperparameters_importance,
-                       get_optimization_history=self.get_optimization_history,
-                       early_stopping_activated=self.early_stopping_activated,
-                       path=path.join(self.recordings_path, "Recordings", self.evaluation_name, f"Split_{index}"), **kwargs)
-
-    def create_model(self, best_hyper_params):
+        Args:
+            model_generator: callable object used to generate a model according to a set of hyperparameters
+            dataset: custom dataset containing the whole learning dataset needed for our evaluation
+            masks: dict with list of idx to use as train, valid and test masks
+            hps: dictionary with information on the hyperparameters we want to tune
+            n_trials: number of hyperparameters sets sampled within each inner validation loop
+            optimization_metric: function that hyperparameters must optimize
+            evaluation_metrics: dict where keys are names of metrics and values are functions
+                                that will be used to calculate the score of the associated metric
+                                on the test sets of the outer loops
+            max_epochs: maximal number of epochs that a trainer can execute with or without early stopping
+            early_stopping: True if we want to use early stopping
+            seed: random state used for reproducibility
+            device: "cpu" or "gpu"
+            recordings_path: path where recording files will be saved
+            evaluation_name: name of the results file saved at the recordings_path
+            save_hps_importance: True if we want to plot the hyperparameters importance graph after tuning
+            save_parallel_coordinates: True if we want to plot the parallel coordinates graph after tuning
+            save_optimization_history: True if we want to plot the optimization history graph after tuning
         """
-        Method to create the Model
 
-        :param best_hyper_params: List that contains a set of hyper parameters used in the creation of the neural
-                                  network model
+        # We call parent's constructor
+        super().__init__(model_generator, dataset, masks, hps, n_trials, optimization_metric,
+                         evaluation_metrics, seed, device, recordings_path, evaluation_name,
+                         save_hps_importance, save_parallel_coordinates, save_optimization_history)
+
+        # We set other protected attribute
+        self._max_epochs = max_epochs
+        self._early_stopping = early_stopping
+
+    def _create_model_and_trainer(self, best_hps: Dict[str, Any]) -> Tuple[Module, NNTrainer]:
         """
-        return self.model_generator(layers=best_hyper_params[LAYERS], dropout=best_hyper_params[DROPOUT],
-                                    activation=best_hyper_params[ACTIVATION])
+        Creates a neural networks and a its trainer using the best hyperparameters
 
-    def create_trainer(self, model, **kwargs):
+        Args:
+            best_hps: dictionary of hyperparameters
+
+        Returns: model and trainer
         """
-        Method to create a trainer object that will be used to train of our model
+        model = self.model_generator(layers=best_hps[LAYERS], dropout=best_hps[DROPOUT], activation=[ACTIVATION])
+        trainer = NNTrainer(model=model, metric=self.optimization_metric, lr=best_hps[LR],
+                            batch_size=best_hps[BATCH_SIZE], weight_decay=best_hps[WEIGHT_DECAY],
+                            epochs=self._max_epochs, early_stopping=self._early_stopping,
+                            device=self._device, in_trial=False)
 
-        :param model: The Neural Network model we want to train
+        return model, trainer
+
+    def _create_objective(self) -> NNObjective:
         """
-        assert 'best_hyper_params' in kwargs.keys(), 'best_hyper_params argument missing'
+        Creates an objective function adapted to neural networks
 
-        best_hyper_params = kwargs['best_hyper_params']
-
-        return NNTrainer(model, epochs=self.max_epochs, batch_size=best_hyper_params[BATCH_SIZE],
-                         lr=best_hyper_params[LR], weight_decay=best_hyper_params[WEIGHT_DECAY],
-                         metric=self.optimization_metric, device=self.device,
-                         early_stopping_activated=self.early_stopping_activated)
-
-    def create_recorder(self, index):
+        Returns: objective function
         """
-        Method to create a Recorder to save data about experiments
+        return NNObjective(model_generator=self.model_generator, dataset=self._dataset, masks=self._masks,
+                           hps=self._hps, device=self._device, metric=self.optimization_metric,
+                           n_epochs=self._max_epochs, early_stopping=self._early_stopping)
 
-        :param index: The index of the split
+    def _create_recorder(self, idx: int) -> NNRecorder:
         """
-        return NNRecorder(evaluation_name=self.evaluation_name, index=index, recordings_path=self.recordings_path)
+        Creates a recorder adapted to neural networks
+
+        Args:
+            idx: index of outer loop
+
+        Returns: recorder
+        """
+        return NNRecorder(evaluation_name=self.evaluation_name, index=idx, recordings_path=self.recordings_path)
 
 
 class RFEvaluator(Evaluator):
 
-    def __init__(self, evaluation_name, model_generator, sampler, hyper_params, n_trials, optimization_metric,
-                 evaluation_metrics, k, l=1, direction="minimize", seed=None, get_hyperparameters_importance=False,
-                 get_parallel_coordinate=False, get_optimization_history=False, recordings_path=""):
+    def __init__(self, model_generator: RFCModelGenerator, dataset: PetaleRFDataset,
+                 masks: Dict[int, Dict[str, List[int]]], hps: Dict[str, Dict[str, Any]],
+                 n_trials: int, optimization_metric: Metric, evaluation_metrics: Dict[str, Metric],
+                 seed: Optional[int] = None, device: Optional[str] = "cpu",
+                 recordings_path: Optional[str] = "Recordings", evaluation_name: Optional[str] = None,
+                 save_hps_importance: Optional[bool] = False,
+                 save_parallel_coordinates: Optional[bool] = False,
+                 save_optimization_history: Optional[bool] = False):
         """
-        Class that will be responsible of the evaluation of the Random Forest models
+        Set protected and public attributes of the abstract class
 
+        Args:
+            model_generator: callable object used to generate a model according to a set of hyperparameters
+            dataset: custom dataset containing the whole learning dataset needed for our evaluation
+            masks: dict with list of idx to use as train, valid and test masks
+            hps: dictionary with information on the hyperparameters we want to tune
+            n_trials: number of hyperparameters sets sampled within each inner validation loop
+            optimization_metric: function that hyperparameters must optimize
+            evaluation_metrics: dict where keys are names of metrics and values are functions
+                                that will be used to calculate the score of the associated metric
+                                on the test sets of the outer loops
+            seed: random state used for reproducibility
+            device: "cpu" or "gpu"
+            recordings_path: path where recording files will be saved
+            evaluation_name: name of the results file saved at the recordings_path
+            save_hps_importance: True if we want to plot the hyperparameters importance graph after tuning
+            save_parallel_coordinates: True if we want to plot the parallel coordinates graph after tuning
+            save_optimization_history: True if we want to plot the optimization history graph after tuning
         """
+        # We call parent's constructor
+        super().__init__(model_generator, dataset, masks, hps, n_trials, optimization_metric,
+                         evaluation_metrics, seed, device, recordings_path, evaluation_name,
+                         save_hps_importance, save_parallel_coordinates, save_optimization_history)
 
-        super().__init__(model_generator=model_generator, sampler=sampler, hyper_params=hyper_params, n_trials=n_trials,
-                         optimization_metric=optimization_metric, evaluation_metrics=evaluation_metrics, k=k, l=l,
-                         direction=direction, seed=seed, get_parallel_coordinate=get_parallel_coordinate,
-                         get_hyperparameters_importance=get_hyperparameters_importance,
-                         get_optimization_history=get_optimization_history,
-                         evaluation_name=evaluation_name, device="cpu",recordings_path=recordings_path)
-
-    def create_tuner(self, datasets, index, **kwargs):
+    def _create_model_and_trainer(self, best_hps: Dict[str, Any]) -> Tuple[RandomForestClassifier, RFTrainer]:
         """
-        Method to create the Tuner object that will be used in the hyper parameters tuning
+        Creates a random forest classifier and its trainer according to the best hyperparameters
 
-        :param datasets: List that contains all the inner train, inner test, amd inner valid sets
-        :param index: The index of the split
+        Args:
+            best_hps: dictionary of hyperparameters
 
+        Returns: model and trainer
         """
-        return RFTuner(study_name=f"{self.evaluation_name}_{index}", model_generator=self.model_generator,
-                       datasets=datasets, hyper_params=self.hyper_params, n_trials=self.n_trials,
-                       metric=self.optimization_metric, device="cpu", direction=self.direction, l=self.l,
-                       get_hyperparameters_importance=self.get_hyperparameters_importance,
-                       get_parallel_coordinate=self.get_parallel_coordinate,
-                       get_optimization_history=self.get_optimization_history,
-                       path=path.join(self.recordings_path, "Recordings", self.evaluation_name, f"Split_{index}"), **kwargs
-                       )
+        model = self.model_generator(n_estimators=best_hps[N_ESTIMATORS], max_features=best_hps[MAX_FEATURES],
+                                     max_depth=best_hps[MAX_DEPTH], max_samples=best_hps[MAX_SAMPLES])
 
-    def create_model(self, best_hyper_params):
+        trainer = RFTrainer(model=model, metric=self.optimization_metric)
+
+        return model, trainer
+
+    def _create_objective(self) -> RFObjective:
         """
-        Method to create the Model
+        Creates an objective function adapted to random forest classifier
 
-        :param best_hyper_params: List that contains a set of hyper parameter used in the creation of the Random
-                                  Forest model
-
+        Returns: objective function
         """
-        return self.model_generator(n_estimators=best_hyper_params[N_ESTIMATORS],
-                                    max_features=best_hyper_params[MAX_FEATURES],
-                                    max_depth=best_hyper_params[MAX_DEPTH],
-                                    max_samples=best_hyper_params[MAX_SAMPLES])
+        return RFObjective(model_generator=self.model_generator, dataset=self._dataset,
+                           masks=self._masks, hps=self._hps, device=self._device, metric=self.optimization_metric)
 
-    def create_trainer(self, model, **kwargs):
+    def _create_recorder(self, idx: int) -> RFRecorder:
         """
-        Method to create a trainer object that will be used to train of our model
+        Creates a recorder adapted to random forest classifier
 
-        :param model: The Random Forest model we want to train
+        Args:
+            idx: index of outer loop
 
+        Returns: recorder
         """
-
-        return RFTrainer(model=model, metric=self.optimization_metric)
-
-    def create_recorder(self, index):
-        """
-        Method to create a Recorder to save data about experiments
-
-        :param index: The index of the split
-        """
-        return RFRecorder(evaluation_name=self.evaluation_name, index=index, recordings_path=self.recordings_path)
+        return RFRecorder(evaluation_name=self.evaluation_name, index=idx, recordings_path=self.recordings_path)

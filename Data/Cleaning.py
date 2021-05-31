@@ -1,4 +1,7 @@
 """
+Authors : Nicolas Raymond
+          Mehdi Mitiche
+
 This file stores the class DataCleaner used remove invalid rows and columns from learning dataframes
 """
 

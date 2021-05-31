@@ -1,5 +1,6 @@
 """
 Authors : Mehdi Mitiche
+          Nicolas Raymond
 
 Files that contains the logic related to hyper parameters tuning
 

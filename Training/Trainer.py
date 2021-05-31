@@ -1,5 +1,6 @@
 """
-Authors : Mitiche
+Authors : Mehdi Mitiche
+          Nicolas Raymond
 
 Files that contains class related to the Trainer of the models
 

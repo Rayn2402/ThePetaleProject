@@ -1,115 +1,142 @@
 """
 Authors : Mehdi Mitiche
+          Nicolas Raymond
 
 Files that contains the logic to save the results of the experiments
 
 """
+import json
+import matplotlib.pyplot as plt
 import os
 import pickle
-import json
-from torch.nn import Softmax
+
+from abc import ABC, abstractmethod
 from numpy import std, min, max, mean, median, arange, argmax
-import matplotlib.pyplot as plt
 from Recording.constants import *
+from sklearn.ensemble import RandomForestClassifier
+from torch.nn import Module
+from typing import Any, Dict, Union
 
 
-class Recorder:
-    def __init__(self, evaluation_name, index, recordings_path):
+class Recorder(ABC):
+    """
+    Skeleton of the recorder objects used save results of the experiments
+    """
+    def __init__(self, evaluation_name: str, index: int, recordings_path: str):
         """
-        Class that will be responsible of saving all the data about our experiments
+        Sets protected attributes
 
-        :param evaluation_name: String that represents the name of the evaluation
-        :param index: The number of the split
-        :param recordings_path: the path to the recordings folder where we want to save the data
+        Args:
+            evaluation_name: name of the evaluation
+            index: index of the outer split
+            recordings_path: path leading to where we want to save the results
         """
-        folder_name = f"Split_{index}"
+
+        # We store the protected attributes
+        self._data = {NAME: evaluation_name, INDEX: index,
+                      DATA_INFO: {}, HYPERPARAMETERS: {},
+                      HYPERPARAMETER_IMPORTANCE: {}, METRICS: {},
+                      COEFFICIENT: {}}
+
+        self._path = os.path.join(recordings_path, evaluation_name, f"Split_{index}")
 
         # We create the folder where the information will be saved
-        os.makedirs(os.path.join(recordings_path, "Recordings", evaluation_name, folder_name), exist_ok=True)
+        os.makedirs(self._path, exist_ok=True)
 
-        self.path = os.path.join(recordings_path, "Recordings", evaluation_name, folder_name)
-        self.data = {NAME: evaluation_name, INDEX: index}
-        self.evaluation_name = evaluation_name
-
-    def record_model(self, model):
+    def generate_file(self) -> None:
         """
-        Method to call to save a model with pickle
+        Save the protected dictionary into a json file
 
-        :param model: The model to save
+        Returns: None
+
         """
+        # We save all the data collected in a json file
+        filepath = os.path.join(self._path, "records.json")
+        with open(filepath, "w") as file:
+            json.dump(self._data, file, indent=True)
 
-        # We save the model with pickle
-        filepath = os.path.join(self.path, "model.sav")
-        pickle.dump(model, open(filepath, "wb"))
-
-    def record_data_info(self, data_name, data):
-        if DATA_INFO not in self.data.keys():
-            self.data[DATA_INFO] = {}
-
-        self.data[DATA_INFO][data_name] = data
-
-    def record_hyperparameters(self, hyperparameters):
+    def record_coefficient(self, name: str, value: float) -> None:
         """
-        Method to call to save the hyperparameters
+        Saves the value associated to a coefficient (used for linear regression)
 
-        :param hyperparameters: Python dictionary containing the hyperparameters to save
+        Args:
+            name: name of the variable associated to the coefficient
+            value: valut of the coefficient
+
+        Returns: None
         """
-        if HYPERPARAMETERS not in self.data.keys():
-            self.data[HYPERPARAMETERS] = {}
+        self._data[COEFFICIENT][name] = value
 
+    def record_data_info(self, data_name: str, data: Any) -> None:
+        """
+        Records the specific value "data" associated to the variable "data_name" in
+        the protected dictionary
+
+        Args:
+            data_name: name of the variable for which we want to save a specific information
+            data: value we want to store
+
+        Returns: None
+
+        """
+        self._data[DATA_INFO][data_name] = data
+
+    def record_hyperparameters(self, hyperparameters: Dict[str, Any]) -> None:
+        """
+        Saves the hyperparameters in the protected dictionary
+
+        Args:
+            hyperparameters: dictionary of hyperparameters and their value
+
+        Returns: None
+
+        """
         # We save all the hyperparameters
         for key in hyperparameters.keys():
-            self.data[HYPERPARAMETERS][key] = round(hyperparameters[key], 6) if \
+            self._data[HYPERPARAMETERS][key] = round(hyperparameters[key], 6) if \
                 isinstance(hyperparameters[key], float) else hyperparameters[key]
 
-    def record_hyperparameters_importance(self, hyperparameter_importance):
+    def record_hyperparameters_importance(self, hyperparameter_importance: Dict[str, float]) -> None:
         """
-        Method to call to save the hyperparameter importance
+        Saves the hyperparameters' importance in the protected dictionary
 
-        :param hyperparameter_importance: Python dictionary containing the hyperparameters importance to save
+        Args:
+            hyperparameter_importance: dictionary of hyperparameters and their importance
+
+        Returns: None
+
         """
-        if HYPERPARAMETER_IMPORTANCE not in self.data.keys():
-            self.data[HYPERPARAMETER_IMPORTANCE] = {}
-
-        # We save all the hyperparameter importance
+        # We save all the hyperparameters importance
         for key in hyperparameter_importance.keys():
-            self.data[HYPERPARAMETER_IMPORTANCE][key] = round(hyperparameter_importance[key], 4) if \
-                isinstance(hyperparameter_importance[key], float) else hyperparameter_importance[key]
+            self._data[HYPERPARAMETER_IMPORTANCE][key] = round(hyperparameter_importance[key], 4)
 
-    def record_scores(self, score, metric):
+    def record_model(self, model: Union[Module, RandomForestClassifier]) -> None:
         """
-        Method to call to save the scores of an experiments
+        Saves a model using pickle
 
-        :param score: The calculated score of a specific metric
-        :param metric: The name of the metric to save
+        Args:
+            model: model to save
+
+        Returns: None
+
         """
-        if METRICS not in self.data.keys():
-            self.data[METRICS] = {}
+        # We save the model with pickle
+        filepath = os.path.join(self._path, "model.sav")
+        pickle.dump(model, open(filepath, "wb"))
+
+    def record_scores(self, score: float, metric: str) -> None:
+        """
+        Saves the score associated to a metric
+
+        Args:
+            score: float
+            metric: name of the metric
+
+        Returns: None
+
+        """
         # We save the score of the given metric
-        self.data[METRICS][metric] = round(score, 6)
-
-    def record_coefficient(self, name, value):
-        """
-        Method to call to save the coefficient of a model
-
-        :param name: The name of the coefficient
-        :param value: The value of the coefficient
-        """
-
-        if COEFFICIENT not in self.data.keys():
-            self.data[COEFFICIENT] = {}
-
-        self.data[COEFFICIENT][name] = value
-
-    def generate_file(self):
-        """
-        Method to call to save the predictions of a model after an experiments
-        """
-
-        # We save all the data collected in a json file
-        filepath = os.path.join(self.path, "records.json")
-        with open(filepath, "w") as file:
-            json.dump(self.data, file, indent=True)
+        self._data[METRICS][metric] = round(score, 6)
 
 
 class NNRecorder(Recorder):

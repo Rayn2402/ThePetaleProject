@@ -10,7 +10,7 @@ table in the database.
      - SEX
      - AGE AT DIAGNOSIS
      - DURATION OF TREATMENT (DT)
-     - RADIOTHERAPY DOSE
+     - RADIOTHERAPY DOSE (0; >0)
      - DOX DOSE
      - DEX (0; >0, <=Med; >Med) where Med is the median without 0's
      - GESTATIONAL AGE AT BIRTH (<37w, >=37w, NaN)
@@ -77,7 +77,10 @@ if __name__ == '__main__':
     AbsTimeLapse(df_general_2, DT, DATE_OF_DIAGNOSIS, DATE_OF_TREATMENT_END)
 
     # We adjust the column "Radiotherapy dose" because it is null if "Radiotherapy?" column equals 0
-    df_general_2.loc[df_general_2[RADIOTHERAPY] == '0.0', RADIOTHERAPY_DOSE] = 0
+    df_general_2.loc[df_general_2[RADIOTHERAPY] == '0.0', RADIOTHERAPY_DOSE] = "0"
+
+    # We change "Radiotherapy dose" to be two categories "0" or ">0"
+    df_general_2.loc[df_general_2[RADIOTHERAPY_DOSE] != "0", RADIOTHERAPY_DOSE] = ">0"
 
     # We delete unnecessary variables from the dataframe
     df_general_2 = df_general_2.drop([RADIOTHERAPY, DATE_OF_DIAGNOSIS,

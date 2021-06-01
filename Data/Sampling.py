@@ -4,9 +4,10 @@ Author : Nicolas Raymond
 This file contains the Sampler class used to separate test sets from train sets
 """
 
+from itertools import product
 from numpy import array
 from numpy.random import seed
-from pandas import qcut
+from pandas import qcut, DataFrame
 from sklearn.model_selection import train_test_split
 from torch import tensor
 from typing import List, Union, Optional, Dict, Any, Tuple, Callable
@@ -156,6 +157,39 @@ class RandomStratifiedSampler:
                 print(f"{k+1}.{k1} -> Train {len(v1['train'])} - Valid {len(valid)} -"
                       f" Test {len(v1['test'])}")
             print("#----------------------------------#")
+
+
+def generate_multitask_class(df: DataFrame, target_columns: List[str]
+                             ) -> Tuple[array, Dict[int, tuple]]:
+    """
+    Generates single array of class labels using all possible combinations of unique values
+    contained within target_columns.
+
+    For example, for 3 binary columns we will generate 2^3 = 8 different class labels and assign them
+    to the respective rows.
+
+    Args:
+        df: dataframe with items to classify
+        target_columns: names of the columns to use for multitask learning
+
+    Returns: array with labels, dict with the meaning of each label
+    """
+    # We extract unique values of each target column
+    possible_targets = [list(df[target].unique()) for target in target_columns]
+
+    # We generate all possible combinations of these unique values and assign them a label
+    labels_dict = {combination: i for i, combination in enumerate(product(*possible_targets))}
+
+    # We associate labels to the items in the dataframe
+    item_labels_union = list(zip(*[df[t].values for t in target_columns]))
+    multitask_labels = array([labels_dict[item] for item in item_labels_union])
+
+    # We rearrange labels_dict for visualization purpose
+    labels_dict = {v: k for k, v in labels_dict.items()}
+
+    return tensor(multitask_labels), labels_dict
+
+
 
 
 # def get_warmup_sampler(dm: PetaleDataManager, to_dataset: bool = True):

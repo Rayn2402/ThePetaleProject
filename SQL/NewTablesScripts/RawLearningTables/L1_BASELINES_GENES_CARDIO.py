@@ -23,38 +23,33 @@ if __name__ == '__main__':
 
     # We save the variables needed from BASELINES and COMPLICATIONS table
     base_vars = [PARTICIPANT, SEX, AGE_AT_DIAGNOSIS, DT, RADIOTHERAPY_DOSE,
-                 DOX, DEX, BIRTH_AGE, BIRTH_WEIGHT, CARDIOMETABOLIC_COMPLICATIONS]
+                 DOX, DEX, BIRTH_AGE, BIRTH_WEIGHT, CARDIOMETABOLIC_COMPLICATIONS,
+                 BONE_COMPLICATIONS, NEUROCOGNITIVE_COMPLICATIONS, COMPLICATIONS]
 
-    # We retrieve the tables needed
+    # We retrieve the baselines variables needed
     baselines_df = data_manager.get_table(BASE_FEATURES_AND_COMPLICATIONS, base_vars)
 
-    for record, genes, new_table in [("BASELINES_CARDIO", None, LEARNING_1),
-                                     ("BASELINES_GENES_CARDIO", GENES_12, LEARNING_1_1),
-                                     ("BASELINES_ALLGENES_CARDIO", ALLGENES, LEARNING_1_2)]:
+    # We retrieve the complete genes table
+    genes_df = data_manager.get_table(ALLGENES)
 
-        # Initialization of data cleaner
-        data_cleaner = DataCleaner(join(CLEANING_RECORDS, record), column_thresh=COLUMN_REMOVAL_THRESHOLD,
-                                   row_thresh=ROW_REMOVAL_THRESHOLD, outlier_alpha=OUTLIER_ALPHA)
+    # Initialization of data cleaner
+    data_cleaner = DataCleaner(join(CLEANING_RECORDS, "BASELINES_ALLGENES_COMPLICATIONS"),
+                               column_thresh=COLUMN_REMOVAL_THRESHOLD, row_thresh=ROW_REMOVAL_THRESHOLD,
+                               outlier_alpha=OUTLIER_ALPHA)
+    # We concatenate the tables
+    complete_df = pd.merge(genes_df, baselines_df, on=[PARTICIPANT], how=INNER)
 
-        if genes is not None:
-            genes_df = data_manager.get_table(genes)
+    # We look at the missing data
+    get_missing_update(complete_df)
 
-            # We concatenate the tables
-            complete_df = pd.merge(genes_df, baselines_df, on=[PARTICIPANT], how=INNER)
-        else:
-            complete_df = baselines_df
+    # We remove rows and columns with too many missing values and stores other cleaning suggestions
+    complete_df = data_cleaner(complete_df)
 
-        # We look at the missing data
-        get_missing_update(complete_df)
+    # We look at the missing data
+    get_missing_update(complete_df)
 
-        # We remove rows and columns with too many missing values and stores other cleaning suggestions
-        complete_df = data_cleaner(complete_df)
+    # We create the dictionary needed to create the table
+    types = {c: TYPES.get(c, CATEGORICAL_TYPE) for c in list(complete_df.columns)}
 
-        # We look at the missing data
-        get_missing_update(complete_df)
-
-        # We create the dictionary needed to create the table
-        types = {c: TYPES.get(c, CATEGORICAL_TYPE) for c in list(complete_df.columns)}
-    
-        # We create the RAW learning table
-        data_manager.create_and_fill_table(complete_df, f"{new_table}_{RAW}", types, primary_key=[PARTICIPANT])
+    # We create the RAW learning table
+    data_manager.create_and_fill_table(complete_df, f"{LEARNING_1}_{RAW}", types, primary_key=[PARTICIPANT])

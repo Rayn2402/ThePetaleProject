@@ -29,6 +29,7 @@ from SQL.DataManagement.Helpers import AbsTimeLapse, get_missing_update
 from SQL.constants import *
 from numpy import select
 from numpy import minimum as npmin
+from numpy import nan_to_num
 import pandas as pd
 
 if __name__ == '__main__':
@@ -68,10 +69,17 @@ if __name__ == '__main__':
 
     """ GENERAL 2 DATA HANDLING """
     # We combine metabolic and cardio complications
-    cardio_metabolic = (df_general_2[METABOLIC_COMPLICATIONS].astype(float) +
-                        df_general_2[CARDIAC_COMPLICATIONS].astype(float)).to_numpy()
+    cardio_metabolic = (nan_to_num(df_general_2[METABOLIC_COMPLICATIONS].astype(float).to_numpy()) +
+                        nan_to_num(df_general_2[CARDIAC_COMPLICATIONS].astype(float).to_numpy()))
 
     df_general_2[CARDIOMETABOLIC_COMPLICATIONS] = npmin(cardio_metabolic, 1)
+
+    # We combine all complications to create a single overall complication
+    complications = (cardio_metabolic +
+                     nan_to_num(df_general_2[BONE_COMPLICATIONS].astype(float).to_numpy()) +
+                     nan_to_num(df_general_2[NEUROCOGNITIVE_COMPLICATIONS].astype(float).to_numpy()))
+
+    df_general_2[COMPLICATIONS] = npmin(complications, 1)
 
     # We add a new column "Duration of treatment" (DT) (years)
     AbsTimeLapse(df_general_2, DT, DATE_OF_DIAGNOSIS, DATE_OF_TREATMENT_END)

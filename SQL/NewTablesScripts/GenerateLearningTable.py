@@ -1,8 +1,8 @@
 """
 Authors : Nicolas Raymond
 
-This file contains the procedure to execute in order to obtain "L0_WARMUP and L0_WARMUP_HOLDOUT".
-This table is used to reproduce 6MWT experiment with a more complex model.
+This file contains the procedure to execute in order to obtain official learning table
+from a RAW table
 """
 
 import argparse
@@ -16,10 +16,12 @@ parent_parent = os.path.abspath(os.path.join(parent_dir_path, os.pardir))
 sys.path.insert(0, parent_parent)
 
 
+from Data.Datasets import PetaleRFDataset
+from Data.Sampling import RandomStratifiedSampler
 from pandas import read_csv
 from sklearn.model_selection import train_test_split
 from SQL.DataManagement.Utils import initialize_petale_data_manager
-from SQL.DataManagement.Helpers import fill_id
+from SQL.DataManagement.Helpers import fill_id, retrieve_numerical
 from SQL.constants import *
 
 
@@ -30,7 +32,7 @@ def argument_parser():
     # Create a parser
     parser = argparse.ArgumentParser(usage='\n python GenerateLearningTable.py [raw_table] [outliers_csv]',
                                      description="This program enables to remove participants from raw"
-                                                 "learning table.")
+                                                 " learning table.")
 
     parser.add_argument('-rt', '--raw_table', type=str,
                         help=f"Name of the raw learning table (ex. 'L0_WARMUP')")
@@ -82,10 +84,15 @@ if __name__ == '__main__':
     # We remove the ids
     df = df.loc[~df[PARTICIPANT].isin(list(outliers_ids[PARTICIPANT].values)), :]
 
-    # We extract an holdout set from the whole dataframe
-    learning_idx, hold_out_idx = train_test_split(list(range(df.shape[0])), stratify=df[args.target_column].values,
-                                                  test_size=args.holdout_size, random_state=args.seed)
-
+    # We extract an holdout set from the whole dataframe using a sampler
+    cont_cols = list(retrieve_numerical(df, []).columns.values)
+    cat_cols = [c for c in df.columns.values if c not in [PARTICIPANT] + cont_cols]
+    dataset = PetaleRFDataset(df, args.target_column, cont_cols=cont_cols, cat_cols=cat_cols)
+    rss = RandomStratifiedSampler(dataset, n_out_split=1, n_in_split=0,
+                                  valid_size=0, test_size=args.holdout_size,
+                                  random_state=args.seed, patience=1000)
+    masks = rss()
+    learning_idx, hold_out_idx = masks[0]["train"], masks[0]["test"]
     learning_df, hold_out_df = df.iloc[learning_idx, :], df.iloc[hold_out_idx, :]
 
     # We create the dictionary needed to create the table
@@ -94,3 +101,4 @@ if __name__ == '__main__':
     # We create the tables
     data_manager.create_and_fill_table(learning_df, args.new_table, types, primary_key=[PARTICIPANT])
     data_manager.create_and_fill_table(hold_out_df, f"{args.new_table}_HOLDOUT", types, primary_key=[PARTICIPANT])
+    print("\nTables created!")

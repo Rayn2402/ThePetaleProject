@@ -12,7 +12,7 @@ from pandas import DataFrame, Series
 from SQL.constants import *
 from torch.utils.data import Dataset
 from torch import from_numpy, tensor
-from typing import Optional, List, Callable, Tuple, Union, Any
+from typing import Optional, List, Callable, Tuple, Union, Any, Dict
 
 
 class CustomDataset(ABC):
@@ -52,8 +52,8 @@ class CustomDataset(ABC):
         self.cont_cols = cont_cols
         self.cat_cols = cat_cols
 
-        # We set two "getter" method to get modes and encodings of categorical columns
-        self._get_modes, self._get_encodings = self._define_categorical_stats_getter(cat_cols)
+        # We set a "getter" method to get modes categorical columns and also extract encodings
+        self._get_modes, self._encodings = self._define_categorical_stats_getter(cat_cols)
 
         # We set a "getter" method to get mu ans std of continuous columns
         self._get_mu_and_std = self._define_numerical_stats_getter(cont_cols)
@@ -88,7 +88,7 @@ class CustomDataset(ABC):
     def y(self) -> Union[tensor, array]:
         return self._y
 
-    def _current_train_stats(self) -> Tuple[Optional[Series], Optional[Series], Optional[Series], Optional[dict]]:
+    def _current_train_stats(self) -> Tuple[Optional[Series], Optional[Series], Optional[Series]]:
         """
         Returns the current statistics and encodings related to the training data
         """
@@ -98,9 +98,8 @@ class CustomDataset(ABC):
         # We compute the current values of mu, std, modes and encodings
         mu, std = self._get_mu_and_std(train_data)
         modes = self._get_modes(train_data)
-        enc = self._get_encodings(train_data)
 
-        return mu, std, modes, enc
+        return mu, std, modes
 
     def _define_categorical_data_setter(self, cat_cols: Optional[List[str]] = None) -> Callable:
         """
@@ -115,28 +114,27 @@ class CustomDataset(ABC):
         else:
             return self._categorical_setter
 
-    def _define_categorical_stats_getter(self, cat_cols: Optional[List[str]] = None) -> Tuple[Callable, Callable]:
+    def _define_categorical_stats_getter(self, cat_cols: Optional[List[str]] = None
+                                         ) -> Tuple[Callable, Dict[str, Dict[str, int]]]:
         """
-        Defines the function used to extract the modes of categorical columns and defines the function
-        to extract encodings of the categorical columns in a dataframe
+        Defines the function used to extract the modes of categorical columns
         """
         if cat_cols is None:
             def get_modes(df: Optional[DataFrame]) -> None:
                 return None
 
-            def get_encodings(df: Optional[DataFrame]) -> None:
-                return None
+            encodings = None
         else:
             # Make sure that categorical data in the original dataframe is in the correct format
             self._original_data[cat_cols] = self._original_data[cat_cols].astype('category')
 
+            # We extract ordinal encodings
+            encodings = {c: {v: k for k, v in enumerate(self._original_data[c].cat.categories)} for c in cat_cols}
+
             def get_modes(df: DataFrame) -> Series:
                 return df[cat_cols].mode().iloc[0]
 
-            def get_encodings(df: DataFrame) -> dict:
-                return {c: {v: k for k, v in enumerate(df[c].cat.categories)} for c in cat_cols}
-
-        return get_modes, get_encodings
+        return get_modes, encodings
 
     def _define_numerical_data_setter(self, cont_cols: Optional[List[str]] = None) -> Callable:
         """
@@ -177,11 +175,11 @@ class CustomDataset(ABC):
         self._train_mask, self._valid_mask, self._test_mask = train_mask, valid_mask, test_mask
 
         # We compute the current values of mu, std, modes and encodings
-        mu, std, modes, enc = self._current_train_stats()
+        mu, std, modes = self._current_train_stats()
 
         # We update the data that will be available via __get_item__
         self._set_numerical(mu, std)
-        self._set_categorical(modes, enc)
+        self._set_categorical(modes)
 
     @abstractmethod
     def _numerical_setter(self, mu: Series, std: Series) -> None:
@@ -193,7 +191,7 @@ class CustomDataset(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def _categorical_setter(self, modes: Series, enc: dict) -> None:
+    def _categorical_setter(self, modes: Series) -> None:
         """
         Fill missing values of categorical data according to the modes in the training set and
         then encodes categories using the same encoding as in the training set.
@@ -256,19 +254,20 @@ class PetaleNNDataset(CustomDataset, Dataset):
     def x_cat(self) -> Optional[tensor]:
         return self._x_cat
 
-    def _categorical_setter(self, modes: Series, enc: dict) -> None:
+    def _categorical_setter(self, modes: Series) -> None:
         """
         Fill missing values of categorical data according to the modes in the training set and
         then encodes categories using the same ordinal encoding as in the training set.
 
         Args:
             modes: modes of the categorical column according to the training mask
-            enc: ordinal encodings used for categorical columns according to the training mask
 
         Returns: None
         """
         # We apply an ordinal encoding to categorical columns
-        temporary_df, _ = preprocess_categoricals(self._original_data[self.cat_cols].copy(), mode=modes, encodings=enc)
+        temporary_df, _ = preprocess_categoricals(self._original_data[self.cat_cols].copy(),
+                                                  mode=modes, encodings=self._encodings)
+
         self._x_cat = from_numpy(temporary_df.values).float()
 
     def _define_item_getter(self, cont_cols: Optional[List[str]] = None,
@@ -353,20 +352,19 @@ class PetaleRFDataset(CustomDataset):
     def x(self) -> DataFrame:
         return self._x
 
-    def _categorical_setter(self, modes: Series, enc: dict) -> None:
+    def _categorical_setter(self, modes: Series) -> None:
         """
         Fill missing values of categorical data according to the modes in the training set and
         then encodes categories using the same ordinal encoding as in the training set.
 
         Args:
             modes: modes of the categorical column according to the training mask
-            enc: ordinal encodings used for categorical columns according to the training mask
 
         Returns: None
         """
         # We apply an ordinal encoding to categorical columns
         self._x[self.cat_cols], _ = preprocess_categoricals(self._original_data[self.cat_cols].copy(),
-                                                            mode=modes, encodings=enc)
+                                                            mode=modes, encodings=self._encodings)
 
     def _initialize_targets(self, target: str) -> array:
         """

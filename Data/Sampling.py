@@ -175,7 +175,7 @@ class RandomStratifiedSampler:
             subset_df = self.__dataset.x.iloc[mask]
 
             # # We check if all numerical values are not extreme outliers according to the train mask
-            for cont_col, (q1, q3, minimum, maximum) in train_quantiles.items():
+            for cont_col, (q1, q3) in train_quantiles.items():
                 iqr = q3 - q1
                 other_min, other_max = (subset_df[cont_col].min(), subset_df[cont_col].max())
                 if other_min < q1 - 3*iqr or other_max > q3 + 3*iqr:

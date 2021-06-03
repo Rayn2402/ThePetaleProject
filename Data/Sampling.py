@@ -13,6 +13,8 @@ from sklearn.model_selection import train_test_split
 from torch import tensor
 from typing import List, Union, Optional, Dict, Any, Tuple, Callable
 
+TRAIN, VALID, TEST, INNER = "train", "valid", "test", "inner"
+MASK_TYPES = [TRAIN, VALID, TEST]
 SIGNIFICANT, ALL = "significant", "all"
 GENES_CHOICES = [None, SIGNIFICANT, ALL]
 
@@ -24,7 +26,7 @@ class RandomStratifiedSampler:
     """
     def __init__(self, dataset: PetaleRFDataset,
                  n_out_split: int, n_in_split: int, valid_size: float = 0.20, test_size: float = 0.20,
-                 random_state: Optional[int] = None, patience: int = 100):
+                 random_state: Optional[int] = None, alpha: int = 4, patience: int = 100):
         """
         Set private and public attributes of the sampler
 
@@ -33,6 +35,7 @@ class RandomStratifiedSampler:
             n_in_split: number of inner splits to produce
             valid_size: percentage of data taken to create the validation indexes set
             test_size: percentage of data taken to create the train indexes set
+            alpha: IQR multiplier used to check numerical variable range validity of the masks created
             patience: number of tries that the sampler has to make a single valid split
         """
         assert n_out_split > 0, 'Number of outer split must be greater than 0'
@@ -45,6 +48,7 @@ class RandomStratifiedSampler:
         self.__dataset = dataset
 
         # Public attributes
+        self.alpha = alpha
         self.n_out_split = n_out_split
         self.n_in_split = n_in_split
         self.patience = patience
@@ -86,12 +90,15 @@ class RandomStratifiedSampler:
         for i in range(self.n_out_split):
 
             # We create outer split masks
-            masks[i] = {**self.split(idx, targets_c), "inner": {}}
+            masks[i] = {**self.split(idx, targets_c), INNER: {}}
 
             for j in range(self.n_in_split):
 
                 # We create the inner split masks
-                masks[i]["inner"][j] = self.split(masks[i]["train"], targets_c)
+                masks[i][INNER][j] = self.split(masks[i][TRAIN], targets_c)
+
+        # We turn arrays of idx into lists of idx
+        self.serialize_masks(masks)
 
         return masks
 
@@ -122,7 +129,8 @@ class RandomStratifiedSampler:
                     nb_tries_remaining -= 1
 
                 assert mask_ok, "The sampler could not find a proper train, valid and test split"
-                return {"train": train_mask, "valid": valid_mask, "test": test_mask}
+
+                return {TRAIN: train_mask, VALID: valid_mask, TEST: test_mask}
         else:
             # Split must extract train and test masks only
             def split(idx: array, targets: array) -> Dict[str, array]:
@@ -138,7 +146,7 @@ class RandomStratifiedSampler:
                     nb_tries_remaining -= 1
 
                 assert mask_ok, "The sampler could not find a proper train, valid split"
-                return {"train": train_mask, "valid": None, "test": test_mask}
+                return {TRAIN: train_mask, VALID: None, TEST: test_mask}
 
         return split
 
@@ -174,11 +182,11 @@ class RandomStratifiedSampler:
             # We extract the subset
             subset_df = self.__dataset.x.iloc[mask]
 
-            # # We check if all numerical values are not extreme outliers according to the train mask
+            # We check if all numerical values are not extreme outliers according to the train mask
             for cont_col, (q1, q3) in train_quantiles.items():
                 iqr = q3 - q1
                 other_min, other_max = (subset_df[cont_col].min(), subset_df[cont_col].max())
-                if other_min < q1 - 3*iqr or other_max > q3 + 3*iqr:
+                if other_min < q1 - self.alpha*iqr or other_max > q3 + self.alpha*iqr:
                     # print("Numerical range not satisfied")
                     return False
 
@@ -217,6 +225,24 @@ class RandomStratifiedSampler:
         return qcut(array(targets), 4, labels=False)
 
     @staticmethod
+    def serialize_masks(masks: Dict[int, Dict[str, Union[array, Dict[str, array]]]]) -> None:
+        """
+        Turns all numpy arrays of idx into lists of idx
+
+        Args:
+            masks: dictionary of masks
+
+        Returns: None
+
+        """
+        for k, v in masks.items():
+            for t1 in MASK_TYPES:
+                masks[k][t1] = v[t1].tolist() if v[t1] is not None else None
+            for in_k, in_v in masks[k][INNER].items():
+                for t2 in MASK_TYPES:
+                    masks[k][INNER][in_k][t2] = in_v[t2].tolist() if in_v[t2] is not None else None
+
+    @staticmethod
     def visualize_splits(datasets: dict) -> None:
         """
         Details the data splits for the experiment
@@ -229,7 +255,7 @@ class RandomStratifiedSampler:
             print(f"Outer :")
             valid = v['valid'] if v['valid'] is not None else []
             print(f"Train {len(v['train'])} - Valid {len(valid)} - Test {len(v['test'])}")
-            print("Inner")
+            print(INNER)
             for k1, v1 in v['inner'].items():
                 valid = v1['valid'] if v1['valid'] is not None else []
                 print(f"{k+1}.{k1} -> Train {len(v1['train'])} - Valid {len(valid)} -"
@@ -265,6 +291,8 @@ def generate_multitask_labels(df: DataFrame, target_columns: List[str]) -> Tuple
     labels_dict = {v: k for k, v in labels_dict.items()}
 
     return tensor(multitask_labels), labels_dict
+
+
 
 
 # def get_warmup_sampler(dm: PetaleDataManager, to_dataset: bool = True):

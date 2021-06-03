@@ -12,13 +12,16 @@ from Data.Cleaning import DataCleaner
 from os.path import join
 import pandas as pd
 
-data_cleaner = DataCleaner(join(CLEANING_RECORDS, "WARMUP"), column_thresh=COLUMN_REMOVAL_THRESHOLD,
-                           row_thresh=ROW_REMOVAL_THRESHOLD, outlier_alpha=OUTLIER_ALPHA)
 
 if __name__ == '__main__':
 
     # We build a PetaleDataManager that will help interacting with PETALE database
     data_manager = initialize_petale_data_manager()
+
+    # We build a data cleaner
+    data_cleaner = DataCleaner(join(CLEANING_RECORDS, "WARMUP"), column_thresh=COLUMN_REMOVAL_THRESHOLD,
+                               row_thresh=ROW_REMOVAL_THRESHOLD, outlier_alpha=OUTLIER_ALPHA,
+                               min_n_per_cat=MIN_N_PER_CAT, max_cat_percentage=MAX_CAT_PERCENTAGE)
 
     # We save the variables needed from GENERALS
     GEN_vars = [PARTICIPANT, AGE, WEIGHT, DT, MVLPA, VO2R_MAX]

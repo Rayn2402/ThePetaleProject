@@ -35,7 +35,8 @@ if __name__ == '__main__':
     # Initialization of data cleaner
     data_cleaner = DataCleaner(join(CLEANING_RECORDS, "BASELINES_ALLGENES_COMPLICATIONS"),
                                column_thresh=COLUMN_REMOVAL_THRESHOLD, row_thresh=ROW_REMOVAL_THRESHOLD,
-                               outlier_alpha=OUTLIER_ALPHA)
+                               outlier_alpha=OUTLIER_ALPHA, min_n_per_cat=MIN_N_PER_CAT,
+                               max_cat_percentage=MAX_CAT_PERCENTAGE)
     # We concatenate the tables
     complete_df = pd.merge(genes_df, baselines_df, on=[PARTICIPANT], how=INNER)
 

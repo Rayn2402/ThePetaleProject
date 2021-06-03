@@ -49,7 +49,7 @@ class DataCleaner:
     MAHALANOBIS = "Mahalanobis"
 
     def __init__(self, records_path: str, column_thresh: float = 0.15, row_thresh: float = 0.20,
-                 outlier_alpha: float = 1.5, min_n_per_cat: int = 6, max_cat_percentage: float = 0.95,
+                 outlier_alpha: float = 1.5, min_n_per_cat: int = 8, max_cat_percentage: float = 0.95,
                  qchi2_mahalanobis_cutoff: float = 0.975, figure_format: str = 'png'):
         """
         Class constructor

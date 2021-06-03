@@ -6,6 +6,7 @@ This file contains the Sampler class used to separate test sets from train sets
 
 from Data.Datasets import PetaleRFDataset
 from itertools import product
+from json import load
 from numpy import array
 from numpy.random import seed
 from pandas import qcut, DataFrame
@@ -293,6 +294,42 @@ def generate_multitask_labels(df: DataFrame, target_columns: List[str]) -> Tuple
     return tensor(multitask_labels), labels_dict
 
 
+def extract_masks(file_path: str, k: int = 20, l: int = 20
+                  ) -> Dict[int, Dict[str, Union[List[int], Dict[str, List[int]]]]]:
+    """
+    Extract masks saved in json file
+
+    Args:
+        file_path: path of json file containing the masks
+        k: number of outer loops to extract
+        l: number of inner loops to extract
+
+    Returns: masks
+    """
+    # Opening JSON file
+    f = open(file_path)
+
+    # Extract complete masks
+    all_masks = load(f)
+
+    # Extraction of masks subset
+    masks = {}
+    for i in map(str, range(k)):
+        int_i = int(i)
+        masks[int_i] = {}
+        for t in MASK_TYPES:
+            masks[int_i][t] = all_masks[i][t]
+        masks[int_i][INNER] = {}
+        for j in map(str, range(l)):
+            int_j = int(j)
+            masks[int_i][INNER][int_j] = {}
+            for t in MASK_TYPES:
+                masks[int_i][INNER][int_j][t] = all_masks[i][INNER][j][t]
+
+    # Closing file
+    f.close()
+
+    return masks
 
 
 # def get_warmup_sampler(dm: PetaleDataManager, to_dataset: bool = True):

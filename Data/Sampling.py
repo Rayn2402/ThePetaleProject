@@ -4,13 +4,15 @@ Author : Nicolas Raymond
 This file contains the Sampler class used to separate test sets from train sets
 """
 
-from Data.Datasets import PetaleRFDataset
+from Data.Datasets import PetaleRFDataset, PetaleNNDataset
 from itertools import product
 from json import load
 from numpy import array
 from numpy.random import seed
 from pandas import qcut, DataFrame
 from sklearn.model_selection import train_test_split
+from SQL.constants import *
+from SQL.DataManagement.Utils import PetaleDataManager
 from torch import tensor
 from typing import List, Union, Optional, Dict, Any, Tuple, Callable
 
@@ -330,6 +332,25 @@ def extract_masks(file_path: str, k: int = 20, l: int = 20
     f.close()
 
     return masks
+
+
+def get_warmup_data(data_manager: PetaleDataManager
+                    ) -> Tuple[DataFrame, str, Optional[List[str]], Optional[List[str]]]:
+    """
+    Extract dataframe needed to proceed to warmup experiments and turn it into a dataset
+
+    Args:
+        data_manager: data manager to communicate with the database
+
+    Returns: dataframe, target, continuous columns, categorical columns
+    """
+    # We save the name of continuous columns in a list
+    cont_cols = [WEIGHT, TDM6_HR_END, TDM6_DIST, DT, AGE, MVLPA]
+
+    # We extract the dataframe
+    df = data_manager.get_table(LEARNING_0, columns=[VO2R_MAX] + cont_cols)
+
+    return df, VO2R_MAX, cont_cols, None
 
 
 # def get_warmup_sampler(dm: PetaleDataManager, to_dataset: bool = True):

@@ -19,7 +19,8 @@ from typing import List, Union, Optional, Dict, Any, Tuple, Callable
 TRAIN, VALID, TEST, INNER = "train", "valid", "test", "inner"
 MASK_TYPES = [TRAIN, VALID, TEST]
 SIGNIFICANT, ALL = "significant", "all"
-GENES_CHOICES = [None, SIGNIFICANT, ALL]
+GENES_CHOICES = [SIGNIFICANT, ALL]
+COMPLICATIONS_CHOICES = [CARDIOMETABOLIC_COMPLICATIONS, BONE_COMPLICATIONS, NEUROCOGNITIVE_COMPLICATIONS, COMPLICATIONS]
 
 
 class RandomStratifiedSampler:
@@ -351,6 +352,52 @@ def get_warmup_data(data_manager: PetaleDataManager
     df = data_manager.get_table(LEARNING_0, columns=[VO2R_MAX] + cont_cols)
 
     return df, VO2R_MAX, cont_cols, None
+
+
+def get_learning_one_data(data_manager: PetaleDataManager, baselines: bool,
+                          complications: str, genes: Optional[str] = None
+                          ) -> Tuple[DataFrame, Optional[List[str]], Optional[List[str]]]:
+    """
+    Extract dataframe needed to proceed to learning one experiments and turn it into a dataset
+
+    Args:
+        data_manager: data manager to communicate with the database
+        baselines: True if we want to include baselines variables
+        complications: one complication choice among :
+         - CARDIOMETABOLIC_COMPLICATIONS
+         - BONE_COMPLICATIONS
+         - NEUROCOGNITIVE_COMPLICATIONS
+         - COMPLICATIONS
+        genes: one choice among (None, "significant", "all")
+
+    Returns: dataframe, continuous columns, categorical columns
+    """
+    assert complications in COMPLICATIONS_CHOICES, f"complications value must be in {COMPLICATIONS_CHOICES}"
+
+    # We initialize empty lists for continuous and categorical columns
+    cont_cols, cat_cols = [], []
+
+    # We check for baselines
+    if baselines:
+        cont_cols += [AGE_AT_DIAGNOSIS, DT, DOX]
+        cat_cols += [SEX, RADIOTHERAPY_DOSE, DEX, BIRTH_AGE, BIRTH_WEIGHT]
+
+    # We check for genes
+    if genes is not None:
+        assert genes in GENES_CHOICES, f"genes value must be in {GENES_CHOICES}"
+        if genes == SIGNIFICANT:
+            cat_cols += SIGNIFICANT_CHROM_POS
+        else:
+            cat_cols += ALL_CHROM_POS
+
+    # We extract the dataframe
+    df = data_manager.get_table(LEARNING_1, columns=[complications] + cont_cols + cat_cols)
+
+    # We change format of columns list if they are empty
+    cont_cols = cont_cols if len(cont_cols) > 0 else None
+    cat_cols = cat_cols if len(cat_cols) > 0 else None
+
+    return df, cont_cols, cat_cols
 
 
 # def get_warmup_sampler(dm: PetaleDataManager, to_dataset: bool = True):

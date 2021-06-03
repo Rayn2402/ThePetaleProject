@@ -19,7 +19,6 @@ sys.path.insert(0, parent_parent)
 from Data.Datasets import PetaleRFDataset
 from Data.Sampling import RandomStratifiedSampler
 from pandas import read_csv
-from sklearn.model_selection import train_test_split
 from SQL.DataManagement.Utils import initialize_petale_data_manager
 from SQL.DataManagement.Helpers import fill_id, retrieve_numerical
 from SQL.constants import *
@@ -30,30 +29,34 @@ def argument_parser():
     This function defines a parser to enable user to easily experiment different models
     """
     # Create a parser
-    parser = argparse.ArgumentParser(usage='\n python GenerateLearningTable.py [raw_table] [outliers_csv]',
+    parser = argparse.ArgumentParser(usage='\n python generate_learning_tables.py [raw_table] [new_table]'
+                                           ' [target_column] [outliers_csv]',
                                      description="This program enables to remove participants from raw"
                                                  " learning table.")
 
     parser.add_argument('-rt', '--raw_table', type=str,
-                        help=f"Name of the raw learning table (ex. 'L0_WARMUP')")
+                        help="Name of the raw learning table (ex. 'L0_WARMUP')")
 
     parser.add_argument('-nt', '--new_table', type=str,
-                        help=f"Name of the new table created")
+                        help="Name of the new table created")
 
     parser.add_argument('-ocsv', '--outliers_csv', type=str,
-                        help=f"Path of the csv file containing participant ids to remove")
+                        help="Path of the csv file containing participant ids to remove")
 
     parser.add_argument('-sep', '--csv_separator', type=str, default=",",
-                        help=f"Separation character used in the csv file")
+                        help="Separation character used in the csv file")
 
     parser.add_argument('-tc', '--target_column', type=str,
-                        help=f"Name of the column to use as target")
+                        help="Name of the column to use as target")
 
     parser.add_argument('-s', '--seed', type=int, default=SEED,
-                        help=f"Seed value used to create holdout set")
+                        help="Seed value used to create holdout set")
 
     parser.add_argument('-hs', '--holdout_size', type=float, default=0.10,
-                        help=f"Percentage of data to use as holdout set")
+                        help="Percentage of data to use as holdout set")
+
+    parser.add_argument('-a', '--alpha', type=float, default=SAMPLING_OUTLIER_ALPHA,
+                        help="IQR multiplier used to check numerical variable range validity of the holdout created")
 
     args = parser.parse_args()
 
@@ -68,11 +71,11 @@ def argument_parser():
 
 if __name__ == '__main__':
 
-    # We build a PetaleDataManager that will help interacting with PETALE database
-    data_manager = initialize_petale_data_manager()
-
     # We retrieve parser's arguments
     args = argument_parser()
+
+    # We build a PetaleDataManager that will help interacting with PETALE database
+    data_manager = initialize_petale_data_manager()
 
     # We retrieve the raw table needed
     df = data_manager.get_table(args.raw_table)
@@ -86,11 +89,11 @@ if __name__ == '__main__':
 
     # We extract an holdout set from the whole dataframe using a sampler
     cont_cols = list(retrieve_numerical(df, []).columns.values)
-    cat_cols = [c for c in df.columns.values if c not in [PARTICIPANT] + cont_cols]
+    cat_cols = [c for c in df.columns.values if c not in [PARTICIPANT, args.target_column] + cont_cols]
     dataset = PetaleRFDataset(df, args.target_column, cont_cols=cont_cols, cat_cols=cat_cols)
     rss = RandomStratifiedSampler(dataset, n_out_split=1, n_in_split=0,
                                   valid_size=0, test_size=args.holdout_size,
-                                  random_state=args.seed, patience=1000)
+                                  random_state=args.seed, alpha=SAMPLING_OUTLIER_ALPHA)
     masks = rss()
     learning_idx, hold_out_idx = masks[0]["train"], masks[0]["test"]
     learning_df, hold_out_df = df.iloc[learning_idx, :], df.iloc[hold_out_idx, :]

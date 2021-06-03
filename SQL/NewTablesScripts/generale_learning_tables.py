@@ -93,7 +93,7 @@ if __name__ == '__main__':
     dataset = PetaleRFDataset(df, args.target_column, cont_cols=cont_cols, cat_cols=cat_cols)
     rss = RandomStratifiedSampler(dataset, n_out_split=1, n_in_split=0,
                                   valid_size=0, test_size=args.holdout_size,
-                                  random_state=args.seed, alpha=SAMPLING_OUTLIER_ALPHA)
+                                  random_state=args.seed, alpha=args.alpha)
     masks = rss()
     learning_idx, hold_out_idx = masks[0]["train"], masks[0]["test"]
     learning_df, hold_out_df = df.iloc[learning_idx, :], df.iloc[hold_out_idx, :]

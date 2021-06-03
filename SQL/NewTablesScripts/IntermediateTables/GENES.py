@@ -69,11 +69,12 @@ if __name__ == '__main__':
             top_common_snps_df, top_rare_snps_df = None, None
 
         # For both dataframes we execute some preprocessing to enable
-        common_df = pivot_snp_dataframe(common_df, top_common_snps_df)
-        rare_df = pivot_snp_dataframe(rare_df, top_rare_snps_df)
+        common_df_copy = pivot_snp_dataframe(common_df.copy(), top_common_snps_df)
+        rare_df_copy = pivot_snp_dataframe(rare_df.copy(), top_rare_snps_df)
 
         # We concat both dataframes
-        gen_df = merge(common_df, rare_df, on=[PARTICIPANT], how=INNER)
+        gen_df = merge(common_df_copy, rare_df_copy, on=[PARTICIPANT], how=INNER, suffixes=('', '_y'))
+        gen_df.drop(list(gen_df.filter(regex='_y$')), axis=1, inplace=True)
         get_missing_update(gen_df)
 
         # We create types dictionary to create the official table

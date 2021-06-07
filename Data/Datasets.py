@@ -344,7 +344,7 @@ class PetaleRFDataset(CustomDataset):
         """
 
         # We set protected attributes to None before they get initialized in the CustomDataset constructor
-        self._x = df.copy()
+        self._x = df.drop([PARTICIPANT, target], axis=1).copy()
 
         # We use the _init_ of the parent class CustomDataset
         super().__init__(df, target, cont_cols, cat_cols)

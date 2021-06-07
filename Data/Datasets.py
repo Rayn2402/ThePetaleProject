@@ -69,6 +69,10 @@ class CustomDataset(ABC):
         return self._n
 
     @property
+    def encodings(self) -> Dict[str, Dict[str, int]]:
+        return self._encodings
+
+    @property
     def ids(self) -> List[str]:
         return self._ids
 

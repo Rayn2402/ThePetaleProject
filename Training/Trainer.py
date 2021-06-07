@@ -299,10 +299,10 @@ class NNTrainer(Trainer):
 
         # We create the training data loader
         if training_size % self.batch_size == 1:
-            train_loader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True,
+            train_loader = DataLoader(dataset, batch_size=self.batch_size,
                                       sampler=SubsetRandomSampler(dataset.train_mask), drop_last=True)
         else:
-            train_loader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True,
+            train_loader = DataLoader(dataset, batch_size=self.batch_size,
                                       sampler=SubsetRandomSampler(dataset.train_mask))
 
         # We initialize empty lists to store losses and scores
@@ -433,7 +433,7 @@ class NNTrainer(Trainer):
         Returns: function
 
         """
-        if in_trial and verbose:
+        if not in_trial and verbose:
             def update_progress(epoch: int, mean_epoch_loss: float):
                 if (epoch + 1) % 5 == 0 or (epoch + 1) == n_epochs:
                     print(f"Epoch {epoch + 1} - Loss : {round(mean_epoch_loss, 4)}")
@@ -480,7 +480,7 @@ class RFTrainer(Trainer):
         Returns: 2D Numpy array (n_samples, n_classes) with log probabilities
 
         """
-        return self._model.predict(kwargs['x'])
+        return self._model.predict_log_proba(kwargs['x'])
 
     def extract_data(self, data: Tuple[DataFrame, array]) -> Tuple[Dict[str, DataFrame], array]:
         """

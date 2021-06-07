@@ -8,6 +8,7 @@ from typing import Union, Optional
 from torch import tensor, sum, long
 from matplotlib import pyplot as plt
 from numpy import array
+from numpy import sum as npsum
 from sklearn.manifold import TSNE
 from os.path import join
 
@@ -35,6 +36,11 @@ def compare_predictions(preds: tensor, targets: tensor, title: Union[str, None] 
     plt.close()
 
 
+def format_to_percentage(pct, values):
+    absolute = int(round(pct/100.*npsum(values)))
+    return "{:.1f}%".format(pct, absolute)
+
+
 def visualize_class_distribution(targets: Union[tensor, array], label_names: dict, title: Optional[str] = None) -> None:
     """
     Shows a pie chart with classes distribution
@@ -50,14 +56,21 @@ def visualize_class_distribution(targets: Union[tensor, array], label_names: dic
     labels = [f"{k} ({v})" for k, v in label_counts.items()]
 
     # Pie chart, where the slices will be ordered and plotted counter-clockwise:
-    fig1, ax1 = plt.subplots()
-    ax1.pie(label_counts.values(), labels=labels, autopct='%1.1f%%', shadow=True, startangle=90)
-    ax1.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+    fig, ax = plt.subplots()
+    wedges, texts, autotexts = ax.pie(label_counts.values(), textprops=dict(color="w"), startangle=90,
+                                      autopct=lambda pct: format_to_percentage(pct, list(label_counts.values())))
+    ax.legend(wedges, labels,
+              title="Labels",
+              loc="center right",
+              bbox_to_anchor=(0.1, 0.5, 0, 0),
+              prop={"size": 8})
+
+    plt.setp(autotexts, size=8, weight="bold")
 
     if title is not None:
-        ax1.set_title(title)
+        ax.set_title(title)
 
-    fig1.tight_layout()
+    fig.tight_layout()
     plt.show()
 
 

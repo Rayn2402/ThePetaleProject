@@ -185,24 +185,51 @@ class Sensitivity(Metric):
     """
     Callable class that compute classes' sensitivity using confusion matrix
     """
-    def __init__(self, reduction: str = "mean"):
+    def __init__(self, nb_classes: int, reduction: str = "mean"):
         """
         Sets the protected reduction method
 
         Args:
+            nb_classes: number of class in the classification problem
             reduction: "mean" for mean classes' sensitivity or "geometric_mean"
                        for geometric mean of classes' sensitivity
         """
         assert reduction in [MEAN, GEO_MEAN], f"Reduction must be in {[MEAN, GEO_MEAN]}"
         super().__init__(MAXIMIZE, CLASSIFICATION)
 
+        # We set the number of classes to build the confusions matrix
+        self.nb_classes = nb_classes
+
         if reduction == "mean":
             self._reduction = mean
         else:
             self._reduction = lambda x: pow(prod(x), exponent=x.shape[0])
 
-    @staticmethod
-    def get_confusion_matrix(pred: tensor, targets: tensor) -> tensor:
+    def __call__(self, pred: tensor, targets: tensor) -> float:
+        """
+        Returns the classes' sensitivity
+
+        Args:
+            pred: (N,C) tensor with log probabilities
+            targets: (N,) tensor
+
+        Returns: float
+        """
+        # We get confusion matrix
+        conf_mat = self.get_confusion_matrix(pred, targets)
+
+        # We first get true positives
+        tp = conf_mat.diag()
+
+        # We then get false negatives (row sums of items of diagonal)
+        fn = (conf_mat * (ones(conf_mat.shape)-eye(conf_mat.shape[0]))).sum(axis=1)
+
+        # We compute class sensitivity
+        sensitivity = tp / (tp+fn)
+
+        return self._reduction(sensitivity).item()
+
+    def get_confusion_matrix(self, pred: tensor, targets: tensor) -> tensor:
         """
         Returns the confusion matrix
 
@@ -218,9 +245,8 @@ class Sensitivity(Metric):
         pred = argmax(pred, 1)
         targets = targets.long()
 
-        # We extract the number of possible class and initialize and empty confusion matrix
-        nb_classes = unique(targets).shape[0]
-        conf_matrix = zeros(nb_classes, nb_classes)
+        # We initialize an empty confusion matrix
+        conf_matrix = zeros(self.nb_classes, self.nb_classes)
 
         # We fill the confusion matrix
         for t, p in zip(targets, pred):
@@ -228,46 +254,22 @@ class Sensitivity(Metric):
 
         return conf_matrix
 
-    def __call__(self, pred: tensor, targets: tensor) -> float:
-        """
-        Returns the classes' sensitivity
-
-        Args:
-            pred: (N,C) tensor with log probabilities
-            targets: (N,) tensor
-
-        Returns: float
-        """
-
-        # We get confusion matrix
-        conf_mat = self.get_confusion_matrix(pred, targets)
-
-        # We first get true positives
-        tp = conf_mat.diag()
-
-        # We then get false negatives (row sums of items of diagonal)
-        fn = (conf_mat * (ones(conf_mat.shape)-eye(conf_mat.shape[0]))).sum(axis=1)
-
-        # We compute class sensitivity
-        sensitivity = tp / (tp+fn)
-
-        return self._reduction(sensitivity).item()
-
 
 class SensitivityCrossEntropyRatio(Metric):
     """
     Callable class that computes the sensitivity/cross_entropy ratio
     """
-    def __init__(self, reduction: str = "mean"):
+    def __init__(self, nb_classes: int, reduction: str = "mean"):
         """
-        Sets the sensitivity and cross entropy protected attributes
+        Sets the protected reduction method
 
         Args:
+            nb_classes: number of class in the classification problem
             reduction: "mean" for mean classes' sensitivity or "geometric_mean"
                        for geometric mean of classes' sensitivity
         """
         super().__init__(MAXIMIZE, CLASSIFICATION)
-        self._sensitivity = Sensitivity(reduction)
+        self._sensitivity = Sensitivity(nb_classes, reduction)
         self._cross_entropy = CrossEntropyLoss(reduction)
 
     def __call__(self, pred: tensor, targets: tensor) -> float:

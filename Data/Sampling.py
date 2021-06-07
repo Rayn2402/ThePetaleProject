@@ -306,7 +306,7 @@ def extract_masks(file_path: str, k: int = 20, l: int = 20
 
 
 def get_learning_one_data(data_manager: PetaleDataManager, baselines: bool,
-                          complications: str, genes: Optional[str] = None
+                          complications: List[str], genes: Optional[str] = None
                           ) -> Tuple[DataFrame, Optional[List[str]], Optional[List[str]]]:
     """
     Extract dataframe needed to proceed to learning one experiments and turn it into a dataset
@@ -323,7 +323,8 @@ def get_learning_one_data(data_manager: PetaleDataManager, baselines: bool,
 
     Returns: dataframe, continuous columns, categorical columns
     """
-    assert complications in COMPLICATIONS_CHOICES, f"complications value must be in {COMPLICATIONS_CHOICES}"
+    for c in complications:
+        assert c in COMPLICATIONS_CHOICES, f"complications values must be in {COMPLICATIONS_CHOICES}"
 
     # We initialize empty lists for continuous and categorical columns
     cont_cols, cat_cols = [], []
@@ -342,7 +343,7 @@ def get_learning_one_data(data_manager: PetaleDataManager, baselines: bool,
             cat_cols += ALL_CHROM_POS
 
     # We extract the dataframe
-    df = data_manager.get_table(LEARNING_1, columns=[complications] + cont_cols + cat_cols)
+    df = data_manager.get_table(LEARNING_1, columns=[PARTICIPANT] + complications + cont_cols + cat_cols)
 
     # We change format of columns list if they are empty
     cont_cols = cont_cols if len(cont_cols) > 0 else None
@@ -378,7 +379,7 @@ def generate_multitask_labels(df: DataFrame, target_columns: List[str]) -> Tuple
     # We rearrange labels_dict for visualization purpose
     labels_dict = {v: k for k, v in labels_dict.items()}
 
-    return tensor(multitask_labels), labels_dict
+    return multitask_labels, labels_dict
 
 
 def get_warmup_data(data_manager: PetaleDataManager
@@ -395,7 +396,7 @@ def get_warmup_data(data_manager: PetaleDataManager
     cont_cols = [WEIGHT, TDM6_HR_END, TDM6_DIST, DT, AGE, MVLPA]
 
     # We extract the dataframe
-    df = data_manager.get_table(LEARNING_0, columns=[VO2R_MAX] + cont_cols)
+    df = data_manager.get_table(LEARNING_0, columns=[PARTICIPANT, VO2R_MAX] + cont_cols)
 
     return df, VO2R_MAX, cont_cols, None
 

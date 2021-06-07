@@ -267,36 +267,6 @@ class RandomStratifiedSampler:
             print("#----------------------------------#")
 
 
-def generate_multitask_labels(df: DataFrame, target_columns: List[str]) -> Tuple[array, Dict[int, tuple]]:
-    """
-    Generates single array of class labels using all possible combinations of unique values
-    contained within target_columns.
-
-    For example, for 3 binary columns we will generate 2^3 = 8 different class labels and assign them
-    to the respective rows.
-
-    Args:
-        df: dataframe with items to classify
-        target_columns: names of the columns to use for multitask learning
-
-    Returns: array with labels, dict with the meaning of each label
-    """
-    # We extract unique values of each target column
-    possible_targets = [list(df[target].unique()) for target in target_columns]
-
-    # We generate all possible combinations of these unique values and assign them a label
-    labels_dict = {combination: i for i, combination in enumerate(product(*possible_targets))}
-
-    # We associate labels to the items in the dataframe
-    item_labels_union = list(zip(*[df[t].values for t in target_columns]))
-    multitask_labels = array([labels_dict[item] for item in item_labels_union])
-
-    # We rearrange labels_dict for visualization purpose
-    labels_dict = {v: k for k, v in labels_dict.items()}
-
-    return tensor(multitask_labels), labels_dict
-
-
 def extract_masks(file_path: str, k: int = 20, l: int = 20
                   ) -> Dict[int, Dict[str, Union[List[int], Dict[str, List[int]]]]]:
     """
@@ -333,25 +303,6 @@ def extract_masks(file_path: str, k: int = 20, l: int = 20
     f.close()
 
     return masks
-
-
-def get_warmup_data(data_manager: PetaleDataManager
-                    ) -> Tuple[DataFrame, str, Optional[List[str]], Optional[List[str]]]:
-    """
-    Extract dataframe needed to proceed to warmup experiments and turn it into a dataset
-
-    Args:
-        data_manager: data manager to communicate with the database
-
-    Returns: dataframe, target, continuous columns, categorical columns
-    """
-    # We save the name of continuous columns in a list
-    cont_cols = [WEIGHT, TDM6_HR_END, TDM6_DIST, DT, AGE, MVLPA]
-
-    # We extract the dataframe
-    df = data_manager.get_table(LEARNING_0, columns=[VO2R_MAX] + cont_cols)
-
-    return df, VO2R_MAX, cont_cols, None
 
 
 def get_learning_one_data(data_manager: PetaleDataManager, baselines: bool,
@@ -400,44 +351,51 @@ def get_learning_one_data(data_manager: PetaleDataManager, baselines: bool,
     return df, cont_cols, cat_cols
 
 
-# def get_warmup_sampler(dm: PetaleDataManager, to_dataset: bool = True):
-#     """
-#     Creates a Sampler for the WarmUp data table
-#     :param dm: PetaleDataManager
-#     :param to_dataset: bool indicating if we want a PetaleDataset (True) or a PetaleDataframe (False)
-#     """
-#     cont_cols = [WEIGHT, TDM6_HR_END, TDM6_DIST, DT, AGE, MVLPA]
-#     return Sampler(dm, LEARNING_0, cont_cols, VO2R_MAX, to_dataset=to_dataset)
-#
-#
-# def get_learning_one_sampler(dm: PetaleDataManager, to_dataset: bool = True, genes: Optional[str] = None):
-#     """
-#     Creates a Sampler for the L1 data table
-#
-#     :param dm: PetaleDataManager
-#     :param to_dataset: bool indicating if we want a PetaleDataset (True) or a PetaleDataframe (False)
-#     :param genes: str indicating if we want to consider no genes, significant genes or all genes
-#     """
-#     assert genes in GENES_CHOICES, f"Genes parameter must be in {GENES_CHOICES}"
-#
-#     # We save table name
-#     table_name = LEARNING_1
-#
-#     # We save continuous columns
-#     cont_cols = [AGE_AT_DIAGNOSIS, DT, DOX]
-#
-#     # We save the categorical columns
-#     cat_cols = [SEX, RADIOTHERAPY_DOSE, DEX, BIRTH_AGE, BIRTH_WEIGHT]
-#
-#     if genes == SIGNIFICANT:
-#         table_name = LEARNING_1_1
-#         cat_cols = cat_cols + SIGNIFICANT_CHROM_POS
-#
-#     elif genes == ALL:
-#         table_name = LEARNING_1_2
-#         current_col_list = [PARTICIPANT, CARDIOMETABOLIC_COMPLICATIONS] + cont_cols + cat_cols
-#         cat_cols = cat_cols + [c for c in dm.get_column_names(table_name) if
-#                                c not in current_col_list]
-#
-#     return Sampler(dm, table_name, cont_cols, CARDIOMETABOLIC_COMPLICATIONS, cat_cols, to_dataset)
+def generate_multitask_labels(df: DataFrame, target_columns: List[str]) -> Tuple[array, Dict[int, tuple]]:
+    """
+    Generates single array of class labels using all possible combinations of unique values
+    contained within target_columns.
+
+    For example, for 3 binary columns we will generate 2^3 = 8 different class labels and assign them
+    to the respective rows.
+
+    Args:
+        df: dataframe with items to classify
+        target_columns: names of the columns to use for multitask learning
+
+    Returns: array with labels, dict with the meaning of each label
+    """
+    # We extract unique values of each target column
+    possible_targets = [list(df[target].unique()) for target in target_columns]
+
+    # We generate all possible combinations of these unique values and assign them a label
+    labels_dict = {combination: i for i, combination in enumerate(product(*possible_targets))}
+
+    # We associate labels to the items in the dataframe
+    item_labels_union = list(zip(*[df[t].values for t in target_columns]))
+    multitask_labels = array([labels_dict[item] for item in item_labels_union])
+
+    # We rearrange labels_dict for visualization purpose
+    labels_dict = {v: k for k, v in labels_dict.items()}
+
+    return tensor(multitask_labels), labels_dict
+
+
+def get_warmup_data(data_manager: PetaleDataManager
+                    ) -> Tuple[DataFrame, str, Optional[List[str]], Optional[List[str]]]:
+    """
+    Extract dataframe needed to proceed to warmup experiments and turn it into a dataset
+
+    Args:
+        data_manager: data manager to communicate with the database
+
+    Returns: dataframe, target, continuous columns, categorical columns
+    """
+    # We save the name of continuous columns in a list
+    cont_cols = [WEIGHT, TDM6_HR_END, TDM6_DIST, DT, AGE, MVLPA]
+
+    # We extract the dataframe
+    df = data_manager.get_table(LEARNING_0, columns=[VO2R_MAX] + cont_cols)
+
+    return df, VO2R_MAX, cont_cols, None
 

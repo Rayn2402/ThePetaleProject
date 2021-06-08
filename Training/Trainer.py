@@ -10,7 +10,7 @@ import torch
 
 from abc import ABC, abstractmethod
 from Data.Datasets import PetaleNNDataset, PetaleRFDataset
-from numpy import mean, std, array
+from numpy import mean, std, array, log
 from pandas import DataFrame
 from sklearn.ensemble import RandomForestClassifier
 from torch import optim, manual_seed, cuda, tensor
@@ -456,6 +456,8 @@ class RFTrainer(Trainer):
     """
     Object that trains random forest classifier
     """
+    EPS = 1*10**(-4)  # constant for log probabilities adjustment
+
     def __init__(self, model: Optional[RandomForestClassifier], metric: Metric):
         """
         Set protected attributes
@@ -481,16 +483,26 @@ class RFTrainer(Trainer):
         x, y = dataset[dataset.train_mask]
         self._model.fit(x, y)
 
-    def predict(self, **kwargs) -> array:
+    def predict(self, **kwargs) -> tensor:
         """
         Predicts the log probabilities associated to each class
 
         Returns: 2D Numpy array (n_samples, n_classes) with log probabilities
 
         """
-        return self._model.predict_log_proba(kwargs['x'])
+        # We compute probabilities
+        prob = self._model.predict_proba(kwargs['x'])
 
-    def extract_data(self, data: Tuple[DataFrame, array]) -> Tuple[Dict[str, DataFrame], array]:
+        # We make a little adjustment to avoid computation error with log probabilities
+        prob[prob == 0] = self.EPS
+        prob[prob == 1] = 1 - self.EPS
+
+        # We compute the log of probabilities
+        prob = log(prob)
+
+        return tensor(prob)
+
+    def extract_data(self, data: Tuple[DataFrame, array]) -> Tuple[Dict[str, DataFrame], tensor]:
         """
         Simply returns the sliced dataframe in a dictionary
 
@@ -500,7 +512,7 @@ class RFTrainer(Trainer):
         Returns: x, y
         """
         x, y = data
-        return {'x': x}, y
+        return {'x': x}, tensor(y)
 
     def update_trainer(self, **kwargs) -> None:
         """

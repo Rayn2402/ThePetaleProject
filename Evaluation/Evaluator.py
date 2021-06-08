@@ -79,7 +79,8 @@ class Evaluator(ABC):
         self._tuner = Tuner(n_trials=n_trials,
                             save_hps_importance=save_hps_importance,
                             save_parallel_coordinates=save_parallel_coordinates,
-                            save_optimization_history=save_optimization_history)
+                            save_optimization_history=save_optimization_history,
+                            path=recordings_path)
 
         # We set the public attributes
         self.evaluation_name = evaluation_name

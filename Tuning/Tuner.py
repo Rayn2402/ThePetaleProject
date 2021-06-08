@@ -512,17 +512,21 @@ class Tuner:
 
         return best_hps, hps_importance
 
-    def update_tuner(self, study_name: str, objective: Union[NNObjective, RFObjective]) -> None:
+    def update_tuner(self, study_name: str, objective: Union[NNObjective, RFObjective],
+                     saving_path: Optional[str] = None) -> None:
         """
         Sets study and objective protected attributes
 
         Args:
             study_name: name of the optuna study
             objective: objective function to optimize
+            saving_path: path where the tuning details will be stored
 
         Returns: None
 
         """
-        self._study = self._new_study(study_name)
         self._objective = objective
+        self._study = self._new_study(study_name)
+        self.path = saving_path if saving_path is not None else self.path
+
 

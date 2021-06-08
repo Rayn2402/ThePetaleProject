@@ -13,8 +13,8 @@ from Hyperparameters.constants import *
 from Models.ModelGenerator import NNModelGenerator, RFCModelGenerator
 from numpy.random import seed as np_seed
 from os import path, makedirs
-from Recording.Recorder import NNRecorder, RFRecorder,\
-    compare_prediction_recordings, get_evaluation_recap, plot_hyperparameter_importance_chart
+from Recording.Recorder import Recorder, compare_prediction_recordings,\
+    get_evaluation_recap, plot_hyperparameter_importance_chart
 from sklearn.ensemble import RandomForestClassifier
 from time import strftime
 from torch import manual_seed
@@ -115,7 +115,7 @@ class Evaluator(ABC):
             train_mask, valid_mask, test_mask, in_masks = v["train"], v["valid"], v["test"], v["inner"]
 
             # We create the Recorder object to save the result of this experience
-            recorder = self._create_recorder(idx=k)
+            recorder = Recorder(evaluation_name=self.evaluation_name, index=k, recordings_path=self.recordings_path)
 
             # We save the saving path
             saving_path = path.join(self.recordings_path, self.evaluation_name, f"Split_{k}")
@@ -202,19 +202,6 @@ class Evaluator(ABC):
         """
         raise NotImplementedError
 
-    @abstractmethod
-    def _create_recorder(self, idx: int) -> Union[NNRecorder, RFRecorder]:
-        """
-        Creates a recorder object adapted to our model
-
-        Args:
-            idx: index of outer loop
-
-        Returns: recorder object
-
-        """
-        raise NotImplementedError
-
 
 class NNEvaluator(Evaluator):
 
@@ -288,17 +275,6 @@ class NNEvaluator(Evaluator):
                            hps=self._hps, device=self._device, metric=self.optimization_metric,
                            n_epochs=self._max_epochs, early_stopping=self._early_stopping)
 
-    def _create_recorder(self, idx: int) -> NNRecorder:
-        """
-        Creates a recorder adapted to neural networks
-
-        Args:
-            idx: index of outer loop
-
-        Returns: recorder
-        """
-        return NNRecorder(evaluation_name=self.evaluation_name, index=idx, recordings_path=self.recordings_path)
-
 
 class RFEvaluator(Evaluator):
 
@@ -360,14 +336,3 @@ class RFEvaluator(Evaluator):
         """
         return RFObjective(model_generator=self.model_generator, dataset=self._dataset,
                            masks=self._masks, hps=self._hps, device=self._device, metric=self.optimization_metric)
-
-    def _create_recorder(self, idx: int) -> RFRecorder:
-        """
-        Creates a recorder adapted to random forest classifier
-
-        Args:
-            idx: index of outer loop
-
-        Returns: recorder
-        """
-        return RFRecorder(evaluation_name=self.evaluation_name, index=idx, recordings_path=self.recordings_path)

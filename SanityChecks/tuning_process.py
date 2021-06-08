@@ -47,14 +47,15 @@ RF_HPS = {
         MAX: 120,
     },
     MAX_FEATURES: {
-        VALUE: "auto"
+        MIN: .8,
+        MAX: 1,
     },
     MAX_SAMPLES: {
         MIN: .6,
         MAX: .8,
     },
     MAX_DEPTH: {
-        VALUE: None
+        VALUE: 50
     }
 }
 

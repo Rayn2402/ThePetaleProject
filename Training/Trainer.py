@@ -211,11 +211,14 @@ class NNTrainer(Trainer):
         self._early_stopper = EarlyStopping(patience=patience)
         self._in_trial = in_trial
         self._lr = lr
-        self._optimizer = optim.Adam(params=self._model.parameters(), lr=lr, weight_decay=weight_decay)
         self._weight_decay = weight_decay
 
-        # We send model to the proper device
-        self._model.to(self._device)
+        # We send model to the proper device and set optimizer protected attribute if it is not None
+        if model is not None:
+            self._optimizer = optim.Adam(params=self._model.parameters(), lr=lr, weight_decay=weight_decay)
+            self._model.to(self._device)
+        else:
+            self._optimizer = None
 
     def evaluate(self, dataset: PetaleNNDataset) -> Tuple[float, float, bool]:
         """

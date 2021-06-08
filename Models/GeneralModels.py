@@ -1,130 +1,187 @@
 """
 Authors : Mehdi Mitiche
+          Nicolas Raymond
 
 This file stores the two classes of Neural Networks models : 
-NNRegressor which is a model to preform regression
-NNClassifier which is a model to perform classification
+    - NNRegressor which is a model to preform regression
+    - NNClassifier which is a model to perform classification
 """
 
-from torch import cat, nn, no_grad, argmax
+from abc import ABC, abstractmethod
+from torch import cat, nn, no_grad, argmax, tensor
 from torch.nn import Module, ModuleList, Embedding, Linear, MSELoss, BatchNorm1d, Dropout, Sequential, CrossEntropyLoss
 from torch.nn.functional import log_softmax
-from typing import List, Optional
+from typing import Callable, List, Optional
 
 
-class NNModel(Module):
-    def __init__(self, num_cont_col: int, output_size: int, layers: List[int], activation:str, dropout: float = 0.4,
-                 cat_sizes: Optional[List[int]] = None):
+class NNModel(ABC, Module):
+    """
+    Neural Network model with entity embedding
+    """
+    def __init__(self, output_size: int, layers: List[int], activation: str, criterion: Callable,
+                 dropout: float = 0, num_cont_col: Optional[int] = None, cat_sizes: Optional[List[int]] = None):
+
         """
-        Creates a Neural Network model, entity embedding
-        is performed on the categorical data if cat_sizes is not null
+        Builds the layers of the model and sets the criterion
 
-        :param num_cont_col: the number of continuous columns we have
-        :param output_size: the number of nodes in the last layer of the neural network or the the number of classes
-        :param layers: a list to represent the number of hidden layers and the number of units in each layer
-        :param activation: the activation function to be used by the model
-        :param dropout: a fraction representing the probability of dropout
-        :param cat_sizes: list of integer representing the size of each categorical column
+        Args:
+            output_size: the number of nodes in the last layer of the neural network
+
+            layers: list with number of units in each hidden layer
+            criterion: loss function of our model
+            activation: activation function
+            dropout: probability of dropout
+            num_cont_col: number of numerical continuous columns
+            (equal to number of class in the case of classification)
+            cat_sizes: list of integer representing the size of each categorical column
         """
-        super(NNModel, self).__init__()
+        assert num_cont_col is not None and cat_sizes is not None, "There must be continuous columns" \
+                                                                   " or categorical columns"
+
+        # We call parents' constructors
+        Module.__init__(self)
+        ABC.__init__(self)
+
+        # We set criterion
+        self._criterion = criterion
+
+        # We initialize the input_size
+        input_size = num_cont_col if num_cont_col is not None else 0
+
+        # We set the embedding layers
         if cat_sizes is not None:
 
-            # we generate the embedding sizes ( this part will be optimized )
-            embedding_sizes = [(cat_size, min(50, (cat_size + 1) // 2)) for cat_size in cat_sizes]
+            # We generate the embedding sizes
+            embedding_sizes = [(cat_size, cat_size) for cat_size in cat_sizes]
 
-            # we create the Embeddings layers
-            self.embedding_layers = ModuleList([Embedding(num_embedding, embedding_dim) for
-                                                num_embedding, embedding_dim in embedding_sizes])
+            # We create the embedding layers
+            self._embedding_layers = ModuleList([Embedding(num_embedding, embedding_dim) for
+                                                 num_embedding, embedding_dim in embedding_sizes])
+            # We sum the length of all embeddings
+            input_size += sum(cat_sizes)
 
-            # we get the number of our categorical data after the embedding ( we sum the embeddings dims)
-            num_cat_col = sum((embedding_dim for num_embedding, embedding_dim in embedding_sizes))
-
-            # the number of entries to our linear layer
-            input_size = num_cat_col + num_cont_col
-        else:
-            # the number of entries to our linear layer
-            input_size = num_cont_col
-
-        # we initialize an empty list that will contain all the layers of our model
+        # We initialize an empty list that will contain all the layers of our model
         all_layers = []
 
-        # we create the different layers of our model : Linear --> ReLU --> Batch Normalization --> Dropout
+        # We create the different layers of our model : Linear --> Activation --> Batch Normalization --> Dropout
         for i in layers:
-            # Linear Layer
             all_layers.append(Linear(input_size, i))
-            # Activation function
             all_layers.append(getattr(nn, activation)())
-            # batch normalization
             all_layers.append(BatchNorm1d(i))
-            # dropout layer
             all_layers.append(Dropout(dropout))
             input_size = i
 
-        # we define the output layer
+        # We define the output layer
         if len(layers) == 0:
             all_layers.append(Linear(input_size, output_size))
         else:
             all_layers.append(Linear(layers[-1], output_size))
 
-        # we save all our layers in self.layers
-        self.layers = Sequential(*all_layers)
+        # We save all our layers in self.layers
+        self._layers = Sequential(*all_layers)
 
-    def forward(self, x_cont, x_cat=None):
-        embeddings = []
+    def forward(self, x_cont: Optional[tensor], x_cat: Optional[tensor]) -> tensor:
+        """
+        Executes the forward pass
+
+        Args:
+            x_cont: tensor with continuous inputs
+            x_cat: tensor with categorical ordinal encodings
+
+        Returns: tensor with values of the node from the last layer
+
+        """
+
+        # We initialize list of tensors to concatenate
+        x = [x_cont] if x_cont is not None else []
+
         if x_cat is not None:
 
-            # we perform the entity embedding
-            for i, e in enumerate(self.embedding_layers):
+            embeddings = []
+
+            # We perform entity embeddings
+            for i, e in enumerate(self._embedding_layers):
                 embeddings.append(e(x_cat[:, i].long()))
 
-            # we concatenate all the embeddings
-            x = cat(embeddings, 1)
+            # We concatenate all the embeddings
+            x.append(cat(embeddings, 1))
 
-            # we concatenate categorical and continuous data after performing the  entity embedding
-            x = cat([x, x_cont], 1)
-        else:
-            x = x_cont
-        return self.layers(x)
+        # We concatenate all inputs
+        x = cat(x, 1)
 
-    def predict(self, x_cont, x_cat=None):
+        return self._layers(x)
+
+    @abstractmethod
+    def loss(self, pred: tensor, y: tensor) -> tensor:
         """
-        Abstract method for model prediction function
+        Applies transformation to input tensors and call the criterion
 
-        :param x_cont: tensor with continuous inputs
-        :param x_cat: tensor with categorical ordinal encoding
+        Args:
+            pred: prediction of the models
+            y: targets
+
+        Returns: tensor with loss value
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def predict(self, x_cont: Optional[tensor], x_cat: Optional[tensor], **kwargs) -> tensor:
+        """
+        Returns the outputs of the model
+
+        Args:
+            x_cont: tensor with continuous inputs
+            x_cat: tensor with categorical ordinal encodings
+
+        Returns: tensor with regression values or probabilities (not normalized probabilities)
         """
         raise NotImplementedError
 
 
 class NNRegressor(NNModel):
+    """
+    Neural Network dedicated to regression
+    """
+    def __init__(self, layers: List[int], activation: str, dropout: float = 0,
+                 num_cont_col: Optional[int] = None, cat_sizes: Optional[List[int]] = None):
 
-    def __init__(self, num_cont_col: int, layers: List[int], activation: str, dropout:float = 0.4,
-                 cat_sizes:Optional[List[int]]=None):
-        """Creates a Neural Network model that perform a regression with predicting real values, entity embedding is
-        performed on the data if cat_sizes is not null
-
-        :param num_cont_col: the number of continuous columns we have
-        :param layers: a list to represent the number of hidden layers and the number of units in each layer
-        :param activation: the activation function to be used by the model
-        :param dropout: a fraction representing the probability of dropout
-        :param cat_sizes: list of integer representing the size of each categorical column
         """
-        super().__init__(num_cont_col=num_cont_col, output_size=1, layers=layers, activation=activation,
-                         dropout=dropout, cat_sizes=cat_sizes)
+        Builds layers and set criterion
 
-        # we define the criterion for that model
-        self.criterion = MSELoss()
+        Args:
+            layers: list with number of units in each hidden layer
+            activation: activation function
+            dropout: probability of dropout
+            num_cont_col: number of numerical continuous columns
+             (equal to number of class in the case of classification)
+            cat_sizes: list of integer representing the size of each categorical column
+        """
 
-    def loss(self, pred, y):
-        return self.criterion(pred.flatten(), y.float())
+        # We call parent's constructor
+        super().__init__(output_size=1, layers=layers, activation=activation,
+                         criterion=MSELoss(), dropout=dropout, num_cont_col=num_cont_col, cat_sizes=cat_sizes)
 
-    def predict(self, x_cont, x_cat=None, **kwargs):
+    def loss(self, pred: tensor, y: tensor) -> tensor:
+        """
+        Applies transformation to input tensors and call the criterion
+
+        Args:
+            pred: prediction of the models
+            y: targets
+
+        Returns: tensor with loss value
+        """
+        return self._criterion(pred.flatten(), y.float())
+
+    def predict(self, x_cont: Optional[tensor], x_cat: Optional[tensor], **kwargs):
         """
         Returns the real-valued predictions
 
-        :param x_cont: tensor with continuous inputs
-        :param x_cat: tensor with categorical ordinal encoding
-        :return: (N, 1) tensor
+        Args:
+            x_cont: tensor with continuous inputs
+            x_cat: tensor with categorical ordinal encodings
+
+        Returns: tensor with regression values
         """
 
         # We turn in eval mode
@@ -138,41 +195,56 @@ class NNRegressor(NNModel):
 
 
 class NNClassifier(NNModel):
-    def __init__(self, num_cont_col: int, output_size: int, layers: List[int], activation: str, dropout: float = 0.4,
-                 cat_sizes: Optional[List[int]]=None):
-        """ Creates a Neural Network model that perform a regression With predicting real values, entity embedding is
-        performed on the data if cat_sizes is not null
-        :param num_cont_col: the number of continuous columns we have
-        :param output_size: the number of nodes in the last layer of the neural network or the the number of classes
-        :param layers: a list to represent the number of hidden layers and the number of units in each layer
-        :param activation: the activation function to be used by the model
-        :param dropout: a fraction representing the probability of dropout
-        :param cat_sizes: list of integer representing
-        the size of each categorical column
+    """
+    Neural Network dedicated to classification
+    """
+    def __init__(self, output_size: int, layers: List[int], activation: str,
+                 dropout: float = 0, num_cont_col: Optional[int] = None, cat_sizes: Optional[List[int]] = None):
+
         """
-        super().__init__(num_cont_col=num_cont_col, output_size=output_size, layers=layers, activation=activation,
-                         dropout=dropout,
-                         cat_sizes=cat_sizes)
+        Builds the layers of the model and sets the criterion
 
-        # we define the criterion for that model
-        self.criterion = CrossEntropyLoss()
+        Args:
+            output_size: the number of nodes in the last layer of the neural network
 
-    def loss(self, pred, y):
-        return self.criterion(pred, y.long())
-
-    def predict(self, x_cont, x_cat=None, **kwargs):
+            layers: list with number of units in each hidden layer
+            activation: activation function
+            dropout: probability of dropout
+            num_cont_col: number of numerical continuous columns
+            (equal to number of class in the case of classification)
+            cat_sizes: list of integer representing the size of each categorical column
         """
-        Returns the log probabilities related to each class if log_prob = True,
-        else it returns the classes predicted
+        # We call parent's constructor
+        super().__init__(output_size=output_size, layers=layers, activation=activation, criterion=CrossEntropyLoss(),
+                         dropout=dropout, num_cont_col=num_cont_col, cat_sizes=cat_sizes)
 
-        :param x_cont: tensor with continuous inputs
-        :param x_cat: tensor with categorical ordinal encoding
-        :return: (N, C) tensor
+    def loss(self, pred: tensor, y: tensor) -> tensor:
         """
+        Applies transformation to input tensors and call the criterion
+
+        Args:
+            pred: prediction of the models
+            y: targets
+
+        Returns: tensor with loss value
+        """
+        return self._criterion(pred, y.long())
+
+    def predict(self, x_cont: Optional[tensor], x_cat: Optional[tensor], **kwargs) -> tensor:
+        """
+        Returns the outputs of the model
+
+        Args:
+            x_cont: tensor with continuous inputs
+            x_cat: tensor with categorical ordinal encodings
+
+        Returns: tensor with regression values or probabilities (not normalized probabilities)
+        """
+
         # We turn in eval mode
         self.eval()
 
-        # We execute a forward pass
+        # We execute a forward pass and get the log probabilities if needed
         with no_grad():
             output = self.forward(x_cont, x_cat)
             if kwargs.get("log_prob", False):

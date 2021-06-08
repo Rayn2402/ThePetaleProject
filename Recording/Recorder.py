@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 import os
 import pickle
 
-from abc import ABC, abstractmethod
 from numpy import std, min, max, mean, median, arange, argmax, array
 from Recording.constants import *
 from sklearn.ensemble import RandomForestClassifier
@@ -19,9 +18,9 @@ from torch.nn import Module
 from typing import Any, Dict, List, Union
 
 
-class Recorder(ABC):
+class Recorder:
     """
-    Skeleton of the recorder objects used save results of the experiments
+    Recorder objects used save results of the experiments
     """
     def __init__(self, evaluation_name: str, index: int, recordings_path: str):
         """
@@ -139,9 +138,8 @@ class Recorder(ABC):
         # We save the score of the given metric
         self._data[METRICS][metric] = round(score, 6)
 
-    @abstractmethod
-    def record_predictions(self, ids: List[str], predictions: Union[array, tensor],
-                           target: Union[array, tensor]) -> None:
+    def record_predictions(self, ids: List[str], predictions: tensor,
+                           target: tensor) -> None:
         """
         Save the predictions of a given model for each patient ids
 
@@ -153,74 +151,18 @@ class Recorder(ABC):
         Returns: None
 
         """
-        raise NotImplementedError
-
-
-class NNRecorder(Recorder):
-    """
-    Recorder responsible of saving all the data about our experiments with Neural networks
-    """
-    def __init__(self, evaluation_name: str, index: int, recordings_path: str):
-        """
-        Sets protected attributes
-
-        Args:
-            evaluation_name: name of the evaluation
-            index: index of the outer split
-            recordings_path: path leading to where we want to save the results
-        """
-        super().__init__(evaluation_name=evaluation_name, index=index, recordings_path=recordings_path)
-
-    def record_predictions(self, ids: List[str], predictions: tensor, target: tensor) -> None:
-        """
-        Save the predictions of a neural network model for each patient ids
-
-        Args:
-            ids: patient/participant ids
-            predictions: predicted class or regression value
-            target: target value
-
-        Returns: None
-
-        """
+        print(target[0].item())
         # We save the predictions
-        for j, id_ in enumerate(ids):
-            self._data[RESULTS][id_] = {
-                PREDICTION: predictions[j].item() if len(predictions[j].shape) == 0 else predictions[j].tolist(),
-                TARGET: target[j].item()}
-
-
-class RFRecorder(Recorder):
-    """
-    Recorder responsible of saving all the data about our experiments with Random Forest
-    """
-
-    def __init__(self, evaluation_name: str, index: int, recordings_path: str):
-        """
-        Sets protected attributes
-
-        Args:
-            evaluation_name: name of the evaluation
-            index: index of the outer split
-            recordings_path: path leading to where we want to save the results
-        """
-        super().__init__(evaluation_name=evaluation_name, index=index, recordings_path=recordings_path)
-
-    def record_predictions(self, ids: List[str], predictions: array, target: array) -> None:
-        """
-        Save the predictions of a random forest model for each patient ids
-
-        Args:
-            ids: patient/participant ids
-            predictions: predicted class or regression value
-            target: target value
-
-        Returns: None
-
-        """
-        # We save the predictions
-        for j, id_ in enumerate(ids):
-            self._data[RESULTS][id_] = {PREDICTION: predictions[j], TARGET: target[j]}
+        if len(predictions.shape) == 0:
+            for j, id_ in enumerate(ids):
+                self._data[RESULTS][id_] = {
+                    PREDICTION: predictions[j].item(),
+                    TARGET: target[j].item()}
+        else:
+            for j, id_ in enumerate(ids):
+                self._data[RESULTS][id_] = {
+                    PREDICTION: predictions[j].tolist(),
+                    TARGET: target[j].item()}
 
 
 def get_evaluation_recap(evaluation_name, recordings_path):

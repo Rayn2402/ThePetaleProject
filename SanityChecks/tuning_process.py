@@ -37,7 +37,7 @@ NN_HPS = {
         VALUE: "ReLU"
     },
     WEIGHT_DECAY: {
-        VALUE: 0.05
+        VALUE: 0.1
     }
 }
 

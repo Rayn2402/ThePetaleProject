@@ -151,7 +151,6 @@ class Recorder:
         Returns: None
 
         """
-        print(target[0].item())
         # We save the predictions
         if len(predictions.shape) == 0:
             for j, id_ in enumerate(ids):

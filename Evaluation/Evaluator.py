@@ -104,8 +104,11 @@ class Evaluator(ABC):
             np_seed(self.seed)
             manual_seed(self.seed)
 
+        # We initialize ray if it is not initialized yet
+        if not ray.is_initialized():
+            ray.init()
+
         # We execute the outer loop
-        ray.init()
         for k, v in self._masks.items():
 
             # We extract the masks

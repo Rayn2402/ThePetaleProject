@@ -79,7 +79,8 @@ class Evaluator(ABC):
         self._tuner = Tuner(n_trials=n_trials,
                             save_hps_importance=save_hps_importance,
                             save_parallel_coordinates=save_parallel_coordinates,
-                            save_optimization_history=save_optimization_history)
+                            save_optimization_history=save_optimization_history,
+                            path=path.join(recordings_path, evaluation_name))
 
         # We set the public attributes
         self.evaluation_name = evaluation_name
@@ -113,13 +114,18 @@ class Evaluator(ABC):
             # We create the Recorder object to save the result of this experience
             recorder = self._create_recorder(idx=k)
 
+            # We save the saving path
+            saving_path = path.join(self.recordings_path, self.evaluation_name, f"Split_{k}")
+
             # We record the data count
             for name, mask in [("train_set", train_mask), ("valid_set", valid_mask), ("test_set", test_mask)]:
                 recorder.record_data_info(name, len(mask))
 
             # We update the tuner to perform the hyperparameters optimization
             print(f"\nHyperparameter tuning started - K = {k}\n")
-            self._tuner.update_tuner(study_name=f"{self.evaluation_name}_{k}", objective=self._create_objective())
+            self._tuner.update_tuner(study_name=f"{self.evaluation_name}_{k}",
+                                     objective=self._create_objective(),
+                                     saving_path=saving_path)
 
             # We perform the hyper parameters tuning to get the best hyper parameters
             best_hps, hps_importance = self._tuner.tune()
@@ -137,8 +143,7 @@ class Evaluator(ABC):
             # We train our model with the best hyper parameters
             print(f"\nFinal model training - K = {k}\n")
             self._dataset.update_masks(train_mask=train_mask, valid_mask=valid_mask, test_mask=test_mask)
-            trainer.fit(dataset=self._dataset, visualization=True,
-                        path=path.join(self.recordings_path, self.evaluation_name, f"Split_{k}"))
+            trainer.fit(dataset=self._dataset, visualization=True, path=saving_path)
 
             # We save the trained model
             recorder.record_model(model=model)
@@ -261,7 +266,8 @@ class NNEvaluator(Evaluator):
 
         Returns: model and trainer
         """
-        model = self.model_generator(layers=best_hps[LAYERS], dropout=best_hps[DROPOUT], activation=[ACTIVATION])
+        model = self.model_generator(layers=best_hps[LAYERS], dropout=best_hps[DROPOUT],
+                                     activation=best_hps[ACTIVATION])
         trainer = NNTrainer(model=model, metric=self.optimization_metric, lr=best_hps[LR],
                             batch_size=best_hps[BATCH_SIZE], weight_decay=best_hps[WEIGHT_DECAY],
                             epochs=self._max_epochs, early_stopping=self._early_stopping,

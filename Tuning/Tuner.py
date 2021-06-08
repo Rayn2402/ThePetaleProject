@@ -5,6 +5,7 @@ Authors : Mehdi Mitiche
 Files that contains the logic related to hyper parameters tuning
 
 """
+import ray
 
 from abc import ABC, abstractmethod
 from Data.Datasets import PetaleNNDataset, PetaleRFDataset
@@ -18,6 +19,7 @@ from optuna.samplers import TPESampler
 from optuna.study import Study
 from optuna.trial import Trial, FrozenTrial
 from optuna.visualization import plot_param_importances, plot_parallel_coordinate, plot_optimization_history
+from os import makedirs
 from os.path import join
 from time import strftime
 from Training.Trainer import NNTrainer, RFTrainer
@@ -254,7 +256,7 @@ class NNObjective(Objective):
 
         # We extract the architecture of the model associated to the frozen trial
         n_units = [key for key in trial.params.keys() if N_UNITS in key]
-        n_layers = self._hps[N_LAYERS].get(VALUE, trial.params[N_LAYERS])
+        n_layers = self._hps[N_LAYERS].get(VALUE, trial.params.get(N_LAYERS))
 
         if len(n_units) > 0:
             layers = list(map(lambda n_unit: trial.params[n_unit], n_units))
@@ -262,7 +264,7 @@ class NNObjective(Objective):
             layers = [self._hps[N_UNITS][VALUE]]*n_layers
 
         # We return the hyperparameters associated to the frozen trial
-        return {LAYERS: layers, **{hp: self._hps[hp].get(VALUE, trial.params[hp]) for
+        return {LAYERS: layers, **{hp: self._hps[hp].get(VALUE, trial.params.get(hp)) for
                                    hp in [DROPOUT, LR, BATCH_SIZE, WEIGHT_DECAY, ACTIVATION]}}
 
     def _initialize_trainer(self, dataset: PetaleNNDataset,
@@ -279,6 +281,10 @@ class NNObjective(Objective):
         Returns: trainer object
 
         """
+        # We initialize ray if it is not initialized yet
+        if not ray.is_initialized():
+            ray.init()
+
         # Trainer's initialization
         trainer = NNTrainer(model=None, batch_size=None, lr=None, epochs=kwargs['n_epochs'],
                             weight_decay=None, metric=metric, in_trial=True,
@@ -358,7 +364,7 @@ class RFObjective(Objective):
         Returns: dictionary with hyperparameters' values
 
         """
-        return {hp: self._hps[hp].get(VALUE, trial.params[hp]) for
+        return {hp: self._hps[hp].get(VALUE, trial.params.get(hp)) for
                 hp in [N_ESTIMATORS, MAX_DEPTH, MAX_SAMPLES, MAX_FEATURES]}
 
     def _initialize_trainer(self, dataset: PetaleRFDataset,
@@ -416,6 +422,9 @@ class Tuner:
         self.save_hps_importance = save_hps_importance
         self.save_parallel_coordinates = save_parallel_coordinates
         self.save_optimization_history = save_optimization_history
+
+        # We make sure that the path given exists
+        makedirs(self.path)
 
     def _new_study(self, study_name: str) -> Study:
         """
@@ -478,7 +487,7 @@ class Tuner:
         Args:
             verbose: True if we want optuna to show a progress bar
 
-        Returns: best hyperarameters and hyperparameters' importance
+        Returns: best hyperparameters and hyperparameters' importance
 
         """
         assert (self._study is not None and self._objective is not None), "study and objective must be defined"

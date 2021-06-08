@@ -8,7 +8,7 @@ File that contains class related to the Early Stopping
 import numpy as np
 from torch import save, load
 from uuid import uuid4
-from os import path, makedirs
+from os import path, makedirs, remove
 from torch.nn import Module
 
 
@@ -28,7 +28,7 @@ class EarlyStopping:
         self.counter = 0
         self.best_model = None
         self.val_loss_min = np.inf
-        self.file_name = f"{uuid4()}.pt"
+        self.file_path = path.join(self.FOLDER, f"{uuid4()}.pt")
 
         makedirs(self.FOLDER, exist_ok=True)
 
@@ -51,6 +51,12 @@ class EarlyStopping:
             self.save_checkpoint(val_loss, model)
             self.counter = 0
 
+    def remove_checkpoint(self):
+        """
+        Removes the checkpoint file
+        """
+        remove(self.file_path)
+
     def save_checkpoint(self, val_loss: float, model: Module) -> None:
         """
         Saves the best model and stores the validation loss of that model
@@ -58,7 +64,7 @@ class EarlyStopping:
         :param val_loss: the valid loss of the model to save.
         :param model: the model to save.
         """
-        save(model, path.join("checkpoints", self.file_name))
+        save(model, self.file_path)
         self.val_loss_min = val_loss
 
     def get_best_model(self) -> Module:
@@ -67,4 +73,4 @@ class EarlyStopping:
 
         :return: nn.Module
         """
-        return load(path.join(self.FOLDER, self.file_name))
+        return load(self.file_path)

@@ -206,9 +206,9 @@ class NNTrainer(Trainer):
         self.batch_size = batch_size
         self.epochs = epochs
         self.early_stopping = early_stopping
+        self.patience = patience
 
         # We save protected attribute
-        self._early_stopper = EarlyStopping(patience=patience)
         self._in_trial = in_trial
         self._lr = lr
         self._weight_decay = weight_decay
@@ -220,12 +220,13 @@ class NNTrainer(Trainer):
         else:
             self._optimizer = None
 
-    def evaluate(self, dataset: PetaleNNDataset) -> Tuple[float, float, bool]:
+    def evaluate(self, dataset: PetaleNNDataset, early_stopper: EarlyStopping) -> Tuple[float, float, bool]:
         """
         Calculates the loss on the validation set using a single batch.
         There will be no memory problem since our datasets are really small
 
         Args:
+            early_stopper: early stopping object created in the fit function
             dataset: custom dataset with masks already defined
 
         Returns: validation epoch loss, validation epoch score and early stopping status
@@ -250,10 +251,10 @@ class NNTrainer(Trainer):
 
         # We early stopping status
         if self.early_stopping:
-            self._early_stopper(val_epoch_loss, self._model)
+            early_stopper(val_epoch_loss, self._model)
 
-            if self._early_stopper.early_stop:
-                self._model = self._early_stopper.get_best_model()
+            if early_stopper.early_stop:
+                self._model = early_stopper.get_best_model()
                 return val_epoch_loss, score, True
 
         return val_epoch_loss, score, False
@@ -314,6 +315,9 @@ class NNTrainer(Trainer):
         # We init the update function
         update_progress = self.update_progress_func(n_epochs=self.epochs, in_trial=self._in_trial, verbose=verbose)
 
+        # We set an early stopper
+        early_stopper = EarlyStopping(self.patience) if self.early_stopping else None
+
         for epoch in range(self.epochs):
 
             ###################
@@ -333,7 +337,7 @@ class NNTrainer(Trainer):
             ######################
 
             # We calculate validation epoch loss and save it
-            val_epoch_loss, val_metric_score, early_stop = self.evaluate(dataset)
+            val_epoch_loss, val_metric_score, early_stop = self.evaluate(dataset, early_stopper)
             valid_loss.append(val_epoch_loss)
             valid_score.append(val_metric_score)
 
@@ -418,7 +422,6 @@ class NNTrainer(Trainer):
         self._weight_decay = kwargs.get('weight_decay', self._weight_decay)
         self._lr = kwargs.get('lr', self._lr)
         self._optimizer = optim.Adam(params=self._model.parameters(), lr=self._lr, weight_decay=self._weight_decay)
-        self._early_stopper = EarlyStopping(patience=self._early_stopper.patience)
 
         # We send model to the proper device
         self._model.to(self._device)

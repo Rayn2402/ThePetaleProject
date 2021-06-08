@@ -353,6 +353,8 @@ class NNTrainer(Trainer):
             # We plot the graph to visualize the training and validation metric
             visualize_epoch_progression(tensor(training_score), tensor(valid_score),
                                         progression_type="metric", path=path)
+        if self.early_stopping:
+            early_stopper.remove_checkpoint()
 
         return tensor(training_loss), tensor(valid_loss)
 

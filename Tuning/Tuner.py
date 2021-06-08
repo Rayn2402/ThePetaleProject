@@ -424,7 +424,7 @@ class Tuner:
         self.save_optimization_history = save_optimization_history
 
         # We make sure that the path given exists
-        makedirs(self.path)
+        makedirs(self.path, exist_ok=True)
 
     def _new_study(self, study_name: str) -> Study:
         """

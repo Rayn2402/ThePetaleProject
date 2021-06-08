@@ -62,7 +62,7 @@ class Recorder(ABC):
 
         Args:
             name: name of the variable associated to the coefficient
-            value: valut of the coefficient
+            value: value of the coefficient
 
         Returns: None
         """
@@ -390,7 +390,7 @@ def compare_prediction_recordings(evaluations, split_index, recording_path=""):
     assert len(evaluations) <= 3, "maximum number of evaluations exceeded"
 
     # We create the paths to recoding files
-    paths = [os.path.join(recording_path, "Recordings", evaluation, f"Split_{split_index}", "records.json") for
+    paths = [os.path.join(recording_path, evaluation, f"Split_{split_index}", "records.json") for
              evaluation in evaluations]
 
     all_data = []
@@ -457,6 +457,6 @@ def compare_prediction_recordings(evaluations, split_index, recording_path=""):
     plt.title("visualization of the predictions and the ground truth")
 
     # We save the plot
-    plt.savefig(os.path.join(recording_path, "Recordings", evaluations[0], f"Split_{split_index}",
+    plt.savefig(os.path.join(recording_path, evaluations[0], f"Split_{split_index}",
                              f"""comparison_{"_".join(evaluations)}.png"""))
     plt.close()

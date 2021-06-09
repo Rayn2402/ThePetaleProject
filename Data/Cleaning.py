@@ -152,19 +152,24 @@ class DataCleaner:
             # We identify the possible categories
             categories = [cat for cat in df[c].unique() if cat is not nan]
 
-            # If one category does not satisfy the threshold we save a warning in the records
-            # and change the value for NaN.
+            # If one category does not satisfy the min_n_per_cat threshold
+            # we save a warning in the records and change the value for NaN.
+            cat_counts = {}
             for cat in categories:
 
-                n = df.loc[df[c] == cat].shape[0]
-                p = n/df.shape[0]
-
-                if n < self.__min_n_per_cat:
-                    warning = self.__return_categorical_warning(cat, n)
+                cat_counts[cat] = df.loc[df[c] == cat].shape[0]
+                if cat_counts[cat] < self.__min_n_per_cat:
+                    warning = self.__return_categorical_warning(cat, cat_counts[cat])
                     self.__update_single_column_records(c, warning)
                     df.loc[df[c] == cat, [c]] = nan
 
-                elif p > self.__max_cat_percentage:
+            # If one category does not satisfy the max_cat_percentage threshold
+            # we remove the column (NaNs are included in categories count)
+            nb_nan = df.loc[df[c] == nan].shape[0]
+            for cat in categories:
+
+                p = (cat_counts[cat] + nb_nan)/df.shape[0]
+                if p > self.__max_cat_percentage:
                     warning = self.__return_categorical_warning(cat, p, min_warning=False)
                     self.__update_single_column_records(c, warning)
                     to_remove.append(c)

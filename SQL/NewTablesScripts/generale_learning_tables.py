@@ -35,7 +35,7 @@ def argument_parser():
                                                  " learning table.")
 
     parser.add_argument('-rt', '--raw_table', type=str,
-                        help="Name of the raw learning table (ex. 'L0_WARMUP')")
+                        help="Name of the raw learning table (ex. 'L0_WARMUP_RAW')")
 
     parser.add_argument('-nt', '--new_table', type=str,
                         help="Name of the new table created")
@@ -44,19 +44,20 @@ def argument_parser():
                         help="Path of the csv file containing participant ids to remove")
 
     parser.add_argument('-sep', '--csv_separator', type=str, default=",",
-                        help="Separation character used in the csv file")
+                        help="Separation character used in the csv file (default = ',')")
 
     parser.add_argument('-tc', '--target_column', type=str,
                         help="Name of the column to use as target")
 
     parser.add_argument('-s', '--seed', type=int, default=SEED,
-                        help="Seed value used to create holdout set")
+                        help=f"Seed value used to create holdout set (default = {SEED})")
 
     parser.add_argument('-hs', '--holdout_size', type=float, default=0.10,
-                        help="Percentage of data to use as holdout set")
+                        help="Percentage of data to use as holdout set (default = 0.1)")
 
     parser.add_argument('-a', '--alpha', type=float, default=SAMPLING_OUTLIER_ALPHA,
-                        help="IQR multiplier used to check numerical variable range validity of the holdout created")
+                        help=f"IQR multiplier used to check numerical variable range"
+                             f" validity of the holdout created (default = {SAMPLING_OUTLIER_ALPHA})")
 
     args = parser.parse_args()
 

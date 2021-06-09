@@ -4,7 +4,7 @@ Author : Nicolas Raymond
 This file contains the Sampler class used to separate test sets from train sets
 """
 
-from Data.Datasets import PetaleRFDataset, PetaleNNDataset
+from Data.Datasets import PetaleRFDataset
 from itertools import product
 from json import load
 from numpy import array
@@ -82,6 +82,7 @@ class RandomStratifiedSampler:
         """
         # We set targets to use for stratification
         targets = self.__dataset.y if stratify is None else stratify
+        targets = targets if not self.is_categorical(targets) else self.mimic_classes(targets)
 
         # We set the random state
         if self.random_state is not None:

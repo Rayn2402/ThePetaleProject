@@ -38,6 +38,8 @@ if __name__ == '__main__':
                                outlier_alpha=OUTLIER_ALPHA, min_n_per_cat=MIN_N_PER_CAT,
                                max_cat_percentage=MAX_CAT_PERCENTAGE)
     # We concatenate the tables
+    print(f"Removed participant : "
+          f"{[p for p in list(baselines_df[PARTICIPANT].values) if p not in list(genes_df[PARTICIPANT].values)]}")
     complete_df = pd.merge(genes_df, baselines_df, on=[PARTICIPANT], how=INNER)
 
     # We look at the missing data

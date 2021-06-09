@@ -41,12 +41,14 @@ if __name__ == '__main__':
     complete_df = pd.merge(genes_df, baselines_df, on=[PARTICIPANT], how=INNER)
 
     # We look at the missing data
+    print(f"n_cols : {len(complete_df.columns)}")
     get_missing_update(complete_df)
 
     # We remove rows and columns with too many missing values and stores other cleaning suggestions
     complete_df = data_cleaner(complete_df)
 
     # We look at the missing data
+    print(f"n_cols : {len(complete_df.columns)}")
     get_missing_update(complete_df)
 
     # We create the dictionary needed to create the table

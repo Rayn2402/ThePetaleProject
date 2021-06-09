@@ -7,3 +7,4 @@ SQL/NewTablesScripts/csv_files
 SQL/NewTablesScripts/CleaningRecords
 __pycache__
 *.pt
+*.json

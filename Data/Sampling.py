@@ -14,6 +14,7 @@ from sklearn.model_selection import train_test_split
 from SQL.constants import *
 from SQL.DataManagement.Utils import PetaleDataManager
 from torch import tensor
+from tqdm import tqdm
 from typing import List, Union, Optional, Dict, Any, Tuple, Callable
 
 TRAIN, VALID, TEST, INNER = "train", "valid", "test", "inner"
@@ -50,6 +51,7 @@ class RandomStratifiedSampler:
 
         # Private attributes
         self.__dataset = dataset
+        self.__unique_encodings = {k: list(v.values()) for k, v in self.__dataset.encodings.items()}
 
         # Public attributes
         self.alpha = alpha
@@ -91,15 +93,18 @@ class RandomStratifiedSampler:
         # We save a copy of targets in an array
         targets_c = array(targets)
 
-        for i in range(self.n_out_split):
+        with tqdm(total=(self.n_out_split + self.n_out_split*self.n_in_split)) as bar:
+            for i in range(self.n_out_split):
 
-            # We create outer split masks
-            masks[i] = {**self.split(idx, targets_c), INNER: {}}
+                # We create outer split masks
+                masks[i] = {**self.split(idx, targets_c), INNER: {}}
+                bar.update()
 
-            for j in range(self.n_in_split):
+                for j in range(self.n_in_split):
 
-                # We create the inner split masks
-                masks[i][INNER][j] = self.split(masks[i][TRAIN], targets_c)
+                    # We create the inner split masks
+                    masks[i][INNER][j] = self.split(masks[i][TRAIN], targets_c)
+                    bar.update()
 
         # We turn arrays of idx into lists of idx
         self.serialize_masks(masks)
@@ -133,7 +138,6 @@ class RandomStratifiedSampler:
                     nb_tries_remaining -= 1
 
                 assert mask_ok, "The sampler could not find a proper train, valid and test split"
-
                 return {TRAIN: train_mask, VALID: valid_mask, TEST: test_mask}
         else:
             # Split must extract train and test masks only
@@ -160,7 +164,7 @@ class RandomStratifiedSampler:
         Valid if categorical and numerical variables of other masks are out of the range of train mask
 
         Args:
-            train_mask: idx to use for training
+            train_mask: List of idx to use for training
             test_mask: list of idx to use for test
             valid_mask: list of idx to use for validation
 
@@ -172,10 +176,13 @@ class RandomStratifiedSampler:
         # We extract train dataframe
         train_df = self.__dataset.x.iloc[train_mask]
 
-        # We save unique values of categorical columns
-        unique_train_cats = {c: list(train_df[c].unique()) for c in self.__dataset.cat_cols}
+        # We check if all categories of categorical columns are in the training set
+        for cat, values in self.__unique_encodings.items():
+            for c in train_df[cat].unique():
+                if c not in values:
+                    return False
 
-        # # We save min and max of each numerical columns
+        # We save q1 and q3 of each numerical columns
         train_quantiles = {c: (train_df[c].quantile(0.25), train_df[c].quantile(0.75))
                            for c in self.__dataset.cont_cols}
 
@@ -191,16 +198,7 @@ class RandomStratifiedSampler:
                 iqr = q3 - q1
                 other_min, other_max = (subset_df[cont_col].min(), subset_df[cont_col].max())
                 if other_min < q1 - self.alpha*iqr or other_max > q3 + self.alpha*iqr:
-                    # print("Numerical range not satisfied")
                     return False
-
-            # We check if all categories seen in the other mask is present in the train mask
-            for cat_col, values in unique_train_cats.items():
-                unique_other_cats = list(subset_df[cat_col].unique())
-                for c in unique_other_cats:
-                    if c not in values:
-                        # print(f"Category {c} of variable {cat_col} not in the train set")
-                        return False
 
             return True
 

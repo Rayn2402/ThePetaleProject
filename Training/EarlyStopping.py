@@ -48,7 +48,7 @@ class EarlyStopping:
         # if the score is better than the best score saved we update the best model
         else:
             self.val_loss_min = val_loss
-            self.save_checkpoint(val_loss, model)
+            save(model, self.file_path)
             self.counter = 0
 
     def remove_checkpoint(self):
@@ -56,16 +56,6 @@ class EarlyStopping:
         Removes the checkpoint file
         """
         remove(self.file_path)
-
-    def save_checkpoint(self, val_loss: float, model: Module) -> None:
-        """
-        Saves the best model and stores the validation loss of that model
-        
-        :param val_loss: the valid loss of the model to save.
-        :param model: the model to save.
-        """
-        save(model, self.file_path)
-        self.val_loss_min = val_loss
 
     def get_best_model(self) -> Module:
         """

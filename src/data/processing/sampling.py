@@ -51,7 +51,10 @@ class RandomStratifiedSampler:
 
         # Private attributes
         self.__dataset = dataset
-        self.__unique_encodings = {k: list(v.values()) for k, v in self.__dataset.encodings.items()}
+        if self.__dataset.encodings is not None:
+            self.__unique_encodings = {k: list(v.values()) for k, v in self.__dataset.encodings.items()}
+        else:
+            self.__unique_encodings = {}
 
         # Public attributes
         self.alpha = alpha

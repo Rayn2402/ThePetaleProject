@@ -1,10 +1,10 @@
 missing_data
 missing_data_charts
-DescriptiveAnalyses/stats
-DescriptiveAnalyses/charts
-.idea
+descriptive_analyses/stats
+descriptive_analyses/charts
 SQL/NewTablesScripts/CleaningRecords
 __pycache__
+.idea
 *.pt
 *.json
 *.csv

@@ -13,7 +13,7 @@ PENALTY_COEFFICIENTS = ['0.0', '0.001', '0.005', '0.01', '0.05', '0.1']
 DEGREES = ['1', '2', '3']
 FILE = str(join(Paths.WARMUP_EXPERIMENTS_SCRIPTS.value, "polynomial_regression.py"))
 CMDS = ['python3', FILE, '-a', *PENALTY_COEFFICIENTS, '-b', *PENALTY_COEFFICIENTS,
-        '-d', *DEGREES, '-k', '20']
+        '-d', *DEGREES, '-k', '20', '-s', *SEEDS]
 
 
 if __name__ == '__main__':

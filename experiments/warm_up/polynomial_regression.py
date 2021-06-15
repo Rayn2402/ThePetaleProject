@@ -5,7 +5,6 @@ This file is used to evaluate linear models in a regression context
 import argparse
 import ray
 import sys
-from copy import deepcopy
 from os.path import dirname, realpath
 
 sys.path.append(dirname(dirname(dirname(realpath(__file__)))))

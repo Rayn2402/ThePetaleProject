@@ -111,7 +111,7 @@ class CustomDataset(ABC):
         Defines the function used to set categorical data after masks update
         """
         if cat_cols is None:
-            def set_categorical(modes: Optional[Series], enc: Optional[dict]) -> None:
+            def set_categorical(modes: Optional[Series]) -> None:
                 pass
 
             return set_categorical

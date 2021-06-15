@@ -22,4 +22,6 @@ class Paths(Enum):
     DESC_CHARTS: str = os.path.join(DESC_RECORDS, "charts")
     DESC_STATS: str = os.path.join(DESC_RECORDS, "stats")
     EXPERIMENTS_RECORDS: str = os.path.join(RECORDS, "experiments")
+    EXPERIMENTS_SCRIPTS: str = os.path.join(PROJECT_DIR, "experiments")
+    WARMUP_EXPERIMENTS_SCRIPTS: str = os.path.join(EXPERIMENTS_SCRIPTS, "warm_up")
 

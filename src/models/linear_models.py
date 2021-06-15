@@ -14,7 +14,7 @@ class LinearRegressor:
     """
     Linear regression using the analytical solution with MSE loss
     """
-    def __init__(self, input_size: int, beta: int = 0):
+    def __init__(self, input_size: int, beta: float = 0):
         """
         Sets the weights tensor (input_size, 1) and the L2 penalty
 

@@ -6,39 +6,73 @@ LinearRegressor which is the class that will represent the analytical solution a
 GDLinearRegressor which is the class that will represent the model of the linear regression with gradient descent
 """
 
-from torch import randn, matmul, cat, inverse, transpose, eye
+from torch import randn, matmul, cat, inverse, transpose, eye, tensor
 from torch.nn import Module, ModuleList, Embedding, Linear, MSELoss
 
 
 class LinearRegressor:
-
-    def __init__(self, input_size, lambda_value=0):
+    """
+    Linear regression using the analytical solution with MSE loss
+    """
+    def __init__(self, input_size: int, beta: int = 0):
         """
-        Creates a model that give us the analytical solution of the  linear regression 
-        :param input_size: the number of features we have
-        :param lambda_value: (number) The lambda value used in the regularization
+        Sets the weights tensor (input_size, 1) and the L2 penalty
+
+        Args:
+            input_size: number of column in the input matrix
+            beta: L2 penalty coefficient
         """
 
-        # we initialize the weights with random numbers
-        self.W = randn(input_size, 1)
-        self.lambda_value = lambda_value
+        # We set the private attributes
+        self.__w = randn(input_size, 1)
+        self.__beta = beta
 
-    def train(self, x, y):
+    @property
+    def w(self):
+        return self.__w
+
+    @property
+    def beta(self):
+        return self.__beta
+
+    def fit(self, x: tensor, y: tensor) -> None:
+        """
+        Computes the optimal weights using the analytical solution
+
+        Args:
+            x: input tensor (N, input_size)
+            y: targets (N, 1)
+
+        Returns: None
+
+        """
         # we find weights using the analytical solution formula of the linear regression
-        self.W = matmul(matmul(inverse((matmul(transpose(x, 0, 1), x) +
-                                        eye(x.shape[1]) * self.lambda_value)), transpose(x, 0, 1)), y)
+        self.__w = matmul(matmul(inverse((matmul(transpose(x, 0, 1), x) +
+                                          eye(x.shape[1]) * self.__beta)), transpose(x, 0, 1)), y)
 
-    def predict(self, x):
+    def loss(self, x: tensor, y: tensor) -> float:
         """
-        function that returns the predictions of a given data
-        """
-        return matmul(x, self.W)
+        Returns the MSE loss associated to the input and the targets
 
-    def loss(self, x, target):
+        Args:
+            x: input tensor (N, input_size)
+            y: targets (N, 1)
+
+        Returns: MSE loss
+
         """
-        function that evaluates the model by returning the error of the prediction of a given data
+        return ((self.predict(x) - y) ** 2).mean().item()
+
+    def predict(self, x: tensor) -> tensor:
         """
-        return ((self.predict(x) - target) ** 2).mean().item()
+        Multiplies the input tensor with the weight tensor
+        Args:
+            x: input tensor (N, input_size)
+
+        Returns: tensor with predictions
+
+        """
+        return matmul(x, self.__w)
 
 
 class GDLinearRegressor(Module):

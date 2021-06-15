@@ -21,4 +21,5 @@ class Paths(Enum):
     DESC_RECORDS: str = os.path.join(RECORDS, "descriptive_analyses")
     DESC_CHARTS: str = os.path.join(DESC_RECORDS, "charts")
     DESC_STATS: str = os.path.join(DESC_RECORDS, "stats")
+    EXPERIMENTS_RECORDS: str = os.path.join(RECORDS, "experiments")
 

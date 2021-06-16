@@ -6,15 +6,16 @@ File that contains class related to the Early Stopping
 """
 
 import numpy as np
-from torch import save, load
-from uuid import uuid4
+
+
 from os import path, makedirs, remove
+from settings.paths import Paths
+from torch import save, load
 from torch.nn import Module
+from uuid import uuid4
 
 
 class EarlyStopping:
-
-    FOLDER = "checkpoints"
 
     def __init__(self, patience: int):
 
@@ -28,9 +29,7 @@ class EarlyStopping:
         self.counter = 0
         self.best_model = None
         self.val_loss_min = np.inf
-        self.file_path = path.join(self.FOLDER, f"{uuid4()}.pt")
-
-        makedirs(self.FOLDER, exist_ok=True)
+        self.file_path = path.join(Paths.CHECKPOINTS, f"{uuid4()}.pt")
 
     def __call__(self, val_loss: float, model: Module) -> None:
         """

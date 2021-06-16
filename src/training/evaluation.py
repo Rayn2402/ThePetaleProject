@@ -8,6 +8,7 @@ File that contains the class related to the evaluation of the models
 import ray
 
 from abc import ABC, abstractmethod
+from settings.paths import Paths
 from src.data.processing.datasets import PetaleNNDataset, PetaleRFDataset
 from src.training.enums import *
 from src.models.models_generation import NNModelGenerator, RFCModelGenerator
@@ -33,8 +34,8 @@ class Evaluator(ABC):
     def __init__(self, model_generator: Union[NNModelGenerator, RFCModelGenerator],
                  dataset: Union[PetaleNNDataset, PetaleRFDataset], masks: Dict[int, Dict[str, List[int]]],
                  hps: Dict[str, Dict[str, Any]], n_trials: int, optimization_metric: Metric,
-                 evaluation_metrics: Dict[str, Metric], seed: Optional[int] = None, device: Optional[str] = "cpu",
-                 recordings_path: Optional[str] = "Recordings", evaluation_name: Optional[str] = None,
+                 evaluation_metrics: Dict[str, Metric], seed: Optional[int] = None,
+                 device: Optional[str] = "cpu", evaluation_name: Optional[str] = None,
                  save_hps_importance: Optional[bool] = False,
                  save_parallel_coordinates: Optional[bool] = False,
                  save_optimization_history: Optional[bool] = False):
@@ -53,7 +54,6 @@ class Evaluator(ABC):
                                 on the test sets of the outer loops
             seed: random state used for reproducibility
             device: "cpu" or "gpu"
-            recordings_path: path where recording files will be saved
             evaluation_name: name of the results file saved at the recordings_path
             save_hps_importance: True if we want to plot the hyperparameters importance graph after tuning
             save_parallel_coordinates: True if we want to plot the parallel coordinates graph after tuning
@@ -62,10 +62,10 @@ class Evaluator(ABC):
 
         # We look if a file with the same evaluation name exists
         if evaluation_name is not None:
-            assert not path.exists(path.join(recordings_path, evaluation_name)), \
+            assert not path.exists(path.join(Paths.EXPERIMENTS_RECORDS, evaluation_name)), \
                 "Evaluation with this name already exists"
         else:
-            makedirs(recordings_path, exist_ok=True)
+            makedirs(Paths.EXPERIMENTS_RECORDS, exist_ok=True)
             evaluation_name = f"{strftime('%Y%m%d-%H%M%S')}"
 
         # We check the availability of the device choice
@@ -80,7 +80,7 @@ class Evaluator(ABC):
                             save_hps_importance=save_hps_importance,
                             save_parallel_coordinates=save_parallel_coordinates,
                             save_optimization_history=save_optimization_history,
-                            path=recordings_path)
+                            path=Paths.EXPERIMENTS_RECORDS)
 
         # We set the public attributes
         self.evaluation_name = evaluation_name
@@ -88,7 +88,6 @@ class Evaluator(ABC):
         self.optimization_metric = optimization_metric
         self.evaluation_metrics = evaluation_metrics
         self.seed = seed
-        self.recordings_path = recordings_path
 
     def nested_cross_valid(self) -> None:
         """
@@ -115,10 +114,11 @@ class Evaluator(ABC):
             train_mask, valid_mask, test_mask, in_masks = v["train"], v["valid"], v["test"], v["inner"]
 
             # We create the Recorder object to save the result of this experience
-            recorder = Recorder(evaluation_name=self.evaluation_name, index=k, recordings_path=self.recordings_path)
+            recorder = Recorder(evaluation_name=self.evaluation_name, index=k,
+                                recordings_path=Paths.EXPERIMENTS_RECORDS)
 
             # We save the saving path
-            saving_path = path.join(self.recordings_path, self.evaluation_name, f"Split_{k}")
+            saving_path = path.join(Paths.EXPERIMENTS_RECORDS, self.evaluation_name, f"Split_{k}")
 
             # We record the data count
             for name, mask in [("train_set", train_mask), ("valid_set", valid_mask), ("test_set", test_mask)]:
@@ -172,13 +172,14 @@ class Evaluator(ABC):
             recorder.generate_file()
 
             compare_prediction_recordings(evaluations=[self.evaluation_name],
-                                          split_index=k, recording_path=self.recordings_path)
+                                          split_index=k, recording_path=Paths.EXPERIMENTS_RECORDS)
 
         # We save the evaluation recap
-        get_evaluation_recap(evaluation_name=self.evaluation_name, recordings_path=self.recordings_path)
+        get_evaluation_recap(evaluation_name=self.evaluation_name, recordings_path=Paths.EXPERIMENTS_RECORDS)
 
         # We save the hyperparameters plot
-        plot_hyperparameter_importance_chart(evaluation_name=self.evaluation_name, recordings_path=self.recordings_path)
+        plot_hyperparameter_importance_chart(evaluation_name=self.evaluation_name,
+                                             recordings_path=Paths.EXPERIMENTS_RECORDS)
 
     @abstractmethod
     def _create_model_and_trainer(self, best_hps: Dict[str, Any]
@@ -208,8 +209,8 @@ class NNEvaluator(Evaluator):
     def __init__(self, model_generator: NNModelGenerator, dataset: PetaleNNDataset,
                  masks: Dict[int, Dict[str, List[int]]], hps: Dict[str, Dict[str, Any]], n_trials: int,
                  optimization_metric: Metric, evaluation_metrics: Dict[str, Metric], max_epochs: int,
-                 early_stopping: bool, seed: Optional[int] = None, device: Optional[str] = "cpu",
-                 recordings_path: Optional[str] = "Recordings", evaluation_name: Optional[str] = None,
+                 early_stopping: bool, seed: Optional[int] = None,
+                 device: Optional[str] = "cpu", evaluation_name: Optional[str] = None,
                  save_hps_importance: Optional[bool] = False,
                  save_parallel_coordinates: Optional[bool] = False,
                  save_optimization_history: Optional[bool] = False):
@@ -231,7 +232,6 @@ class NNEvaluator(Evaluator):
             early_stopping: True if we want to use early stopping
             seed: random state used for reproducibility
             device: "cpu" or "gpu"
-            recordings_path: path where recording files will be saved
             evaluation_name: name of the results file saved at the recordings_path
             save_hps_importance: True if we want to plot the hyperparameters importance graph after tuning
             save_parallel_coordinates: True if we want to plot the parallel coordinates graph after tuning
@@ -240,7 +240,7 @@ class NNEvaluator(Evaluator):
 
         # We call parent's constructor
         super().__init__(model_generator, dataset, masks, hps, n_trials, optimization_metric,
-                         evaluation_metrics, seed, device, recordings_path, evaluation_name,
+                         evaluation_metrics, seed, device, evaluation_name,
                          save_hps_importance, save_parallel_coordinates, save_optimization_history)
 
         # We set other protected attribute
@@ -284,7 +284,7 @@ class RFEvaluator(Evaluator):
                  masks: Dict[int, Dict[str, List[int]]], hps: Dict[str, Dict[str, Any]],
                  n_trials: int, optimization_metric: Metric, evaluation_metrics: Dict[str, Metric],
                  seed: Optional[int] = None, device: Optional[str] = "cpu",
-                 recordings_path: Optional[str] = "Recordings", evaluation_name: Optional[str] = None,
+                 evaluation_name: Optional[str] = None,
                  save_hps_importance: Optional[bool] = False,
                  save_parallel_coordinates: Optional[bool] = False,
                  save_optimization_history: Optional[bool] = False):
@@ -303,7 +303,6 @@ class RFEvaluator(Evaluator):
                                 on the test sets of the outer loops
             seed: random state used for reproducibility
             device: "cpu" or "gpu"
-            recordings_path: path where recording files will be saved
             evaluation_name: name of the results file saved at the recordings_path
             save_hps_importance: True if we want to plot the hyperparameters importance graph after tuning
             save_parallel_coordinates: True if we want to plot the parallel coordinates graph after tuning
@@ -311,7 +310,7 @@ class RFEvaluator(Evaluator):
         """
         # We call parent's constructor
         super().__init__(model_generator, dataset, masks, hps, n_trials, optimization_metric,
-                         evaluation_metrics, seed, device, recordings_path, evaluation_name,
+                         evaluation_metrics, seed, device, evaluation_name,
                          save_hps_importance, save_parallel_coordinates, save_optimization_history)
 
     def _create_model_and_trainer(self, best_hps: Dict[str, Any]) -> Tuple[RandomForestClassifier, RFTrainer]:

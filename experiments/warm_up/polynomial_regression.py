@@ -13,7 +13,7 @@ from settings.paths import Paths
 from sklearn.linear_model import ElasticNet
 from sklearn.preprocessing import PolynomialFeatures
 from src.data.extraction.data_management import PetaleDataManager
-from src.data.extraction.constants import SEED
+from src.data.extraction.constants import SEED, MVLPA
 from src.data.processing.datasets import PetaleRFDataset
 from src.data.processing.sampling import TRAIN, TEST, get_warmup_data, RandomStratifiedSampler
 from src.models.linear_models import LinearRegressor
@@ -43,6 +43,8 @@ def argument_parser():
                         help=f"List of seeds (default = [{SEED}])")
     parser.add_argument('-u', '--user', type=str, default='rayn2402',
                         help="Valid username for petale database")
+    parser.add_argument('-m', '--mvlpa', default=False, action='store_true',
+                        help='Indicates if we want to consider MVLPA feature')
 
     arguments = parser.parse_args()
 
@@ -55,12 +57,13 @@ def argument_parser():
     return arguments
 
 
-def build_run(dataset: PetaleRFDataset, masks: Dict[int, Dict[str, List[int]]]) -> Callable:
+def build_run(dataset: PetaleRFDataset, masks: Dict[int, Dict[str, List[int]]], mvlpa: bool = True) -> Callable:
     """
     Builds an experiment that can be used by ray
     Args:
         dataset: dataset with inputs and regression targets
         masks: dictionary with list of idx to use for training and testing
+        mvlpa: True if we want to include moderate-to-vigorous leisure physical activity feature
 
     Returns: run_polynomial_regression function
     """
@@ -113,7 +116,11 @@ def build_run(dataset: PetaleRFDataset, masks: Dict[int, Dict[str, List[int]]]) 
                 model_name = "linearreg"
 
             # Recorder initialization
-            evaluation_name = f"{model_name}_{seed}_{alpha}_{beta}_{degree}"
+            if mvlpa:
+                evaluation_name = f"{model_name}_mvlpa_{seed}_{alpha}_{beta}_{degree}"
+            else:
+                evaluation_name = f"{model_name}_{seed}_{alpha}_{beta}_{degree}"
+
             recorder = Recorder(evaluation_name=evaluation_name,
                                 index=k, recordings_path=Paths.EXPERIMENTS_RECORDS.value)
 
@@ -159,6 +166,9 @@ if __name__ == '__main__':
     # Generation of dataset
     data_manager = PetaleDataManager(args.user)
     df, target, cont_cols, _ = get_warmup_data(data_manager)
+    if not args.mvlpa:
+        df = df.drop([MVLPA], axis=1)
+        cont_cols = [c for c in cont_cols if c != MVLPA]
     dataset_ = PetaleRFDataset(df, target, cont_cols, cat_cols=None)
 
     # Experiments run
@@ -166,7 +176,7 @@ if __name__ == '__main__':
         manual_seed(seed)
         sampler = RandomStratifiedSampler(dataset_, n_out_split=k, n_in_split=0, valid_size=0)
         masks_ = sampler()
-        run = build_run(dataset=dataset_, masks=masks_)
+        run = build_run(dataset=dataset_, masks=masks_, mvlpa=args.mvlpa)
         futures = [run.remote(alpha=input_[0], beta=input_[1], degree=input_[2]) for i, input_ in enumerate(input_sets)]
         ray.get(futures)
 

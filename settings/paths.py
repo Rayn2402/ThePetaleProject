@@ -12,6 +12,7 @@ class Paths:
     Paths of important folder and files
     """
     PROJECT_DIR: str = dirname(dirname(__file__))
+    CHECKPOINTS: str = join(PROJECT_DIR, "checkpoints")
     CSV_FILES: str = join(PROJECT_DIR, "csv")
     HYPERPARAMETERS: str = join(PROJECT_DIR, "hps")
     MASKS: str = join(PROJECT_DIR, "masks")

@@ -30,7 +30,7 @@ if __name__ == '__main__':
                                                     complications=[CARDIOMETABOLIC_COMPLICATIONS])
 
     # Extraction of masks
-    masks = extract_masks(join(Paths.MASKS.value, "l1_masks.json"), k=1, l=10)
+    masks = extract_masks(join(Paths.MASKS, "l1_masks.json"), k=1, l=10)
     inner_masks = masks[0]["inner"]
     train_mask, valid_mask, test_mask = masks[0]["train"], masks[0]["valid"], masks[0]["test"]
 

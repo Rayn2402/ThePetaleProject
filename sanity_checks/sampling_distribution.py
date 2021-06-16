@@ -34,7 +34,7 @@ if __name__ == '__main__':
                                                                    NEUROCOGNITIVE_COMPLICATIONS,
                                                                    COMPLICATIONS])
     # Extraction of masks
-    masks = extract_masks(join(Paths.MASKS.value, "l1_masks.json"), k=1, l=0)
+    masks = extract_masks(join(Paths.MASKS, "l1_masks.json"), k=1, l=0)
 
     # Creation of a dataset
     dataset = PetaleRFDataset(df, COMPLICATIONS, cont_cols, cat_cols)

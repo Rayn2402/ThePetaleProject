@@ -10,7 +10,7 @@ from os.path import join, realpath, dirname
 if __name__ == '__main__':
 
     # Imports specific to project
-    # sys.path.append(dirname(dirname(realpath(__file__))))
+    sys.path.append(dirname(dirname(realpath(__file__))))
     from sanity_checks.hps import NN_HPS, RF_HPS
     from settings.paths import Paths
     from src.data.processing.datasets import PetaleNNDataset, PetaleRFDataset
@@ -29,7 +29,7 @@ if __name__ == '__main__':
     df, cont_cols, cat_cols = get_learning_one_data(manager, baselines=True,
                                                     complications=[NEUROCOGNITIVE_COMPLICATIONS])
     # Extraction of masks
-    masks = extract_masks(join(Paths.MASKS.value, "l1_masks.json"), k=2, l=10)
+    masks = extract_masks(join(Paths.MASKS, "l1_masks.json"), k=2, l=10)
 
     # Initialization of the optimization metric
     metric = CrossEntropyLoss()

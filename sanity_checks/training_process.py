@@ -31,7 +31,7 @@ if __name__ == '__main__':
                                                     complications=[CARDIOMETABOLIC_COMPLICATIONS])
 
     # Extraction of masks
-    masks = extract_masks(join(Paths.MASKS.value, "l1_masks.json"), k=1, l=0)
+    masks = extract_masks(join(Paths.MASKS, "l1_masks.json"), k=1, l=0)
     train_mask, valid_mask, test_mask = masks[0]["train"], masks[0]["valid"], masks[0]["test"]
 
     """
@@ -71,7 +71,6 @@ if __name__ == '__main__':
     # We check the accuracy on the test set
     test_x_cont, test_x_cat, test_y = nn_dataset[nn_dataset.test_mask]
     log_prob = trainer.predict(x_cont=test_x_cont, x_cat=test_x_cat, log_prob=True)
-    print(log_prob)
     acc = metric(log_prob, test_y)
     print(f"\nNN accuracy : {acc}")
 

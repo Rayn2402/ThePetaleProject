@@ -34,7 +34,7 @@ def drawBarhChart(data_y, data_x, label_y, label_x, title, filename, foldername)
     plt.title(title, fontsize=15)
 
     # saving the chart in a file in the folder missing_data_charts
-    directory = join(Paths.DESC_CHARTS.value, foldername)
+    directory = join(Paths.DESC_CHARTS, foldername)
     makedirs(directory, exist_ok=True)
     plt.savefig(join(directory, f"{filename}.png"))
     plt.close()
@@ -75,7 +75,7 @@ def drawBinaryGroupedBarChart(data_x, group_1, group_2, label_x, label_y, title,
     plt.legend()
 
     # saving the chart in a file in the folder missing_data_charts
-    directory = join(Paths.DESC_CHARTS.value, foldername)
+    directory = join(Paths.DESC_CHARTS, foldername)
     makedirs(directory, exist_ok=True)
     plt.savefig(join(directory, f"{filename}.png"))
     plt.close()
@@ -101,7 +101,7 @@ def drawHistogram(data, label_x, title, filename, foldername):
     plt.title(title, fontsize=15)
 
     # saving the chart in a file in teh folder missing_data_charts
-    directory = join(Paths.DESC_CHARTS.value, foldername)
+    directory = join(Paths.DESC_CHARTS, foldername)
     makedirs(directory, exist_ok=True)
     plt.savefig(join(directory, f"{filename}.png"))
     plt.close()

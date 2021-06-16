@@ -10,7 +10,7 @@ from os.path import join, realpath, dirname
 if __name__ == '__main__':
 
     # Imports specific to project
-    sys.path.append(dirname(dirname(realpath(__file__))))
+    # sys.path.append(dirname(dirname(realpath(__file__))))
     from sanity_checks.hps import NN_HPS, RF_HPS
     from settings.paths import Paths
     from src.data.processing.datasets import PetaleNNDataset, PetaleRFDataset

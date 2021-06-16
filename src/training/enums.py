@@ -22,7 +22,7 @@ class NeuralNetsHP:
 
     def __iter__(self):
         return iter([self.LR, self.BATCH_SIZE, self.N_LAYERS, self.N_UNITS,
-                     self.DROPOUT, self.ACTIVATION, self.WEIGHT_DECAY, self.LAYERS])
+                     self.DROPOUT, self.ACTIVATION, self.WEIGHT_DECAY])
 
 
 class RandomForestsHP:

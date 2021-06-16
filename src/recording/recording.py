@@ -13,7 +13,7 @@ import pickle
 from numpy import std, min, max, mean, median, arange, argmax
 from src.recording.constants import *
 from sklearn.ensemble import RandomForestClassifier
-from torch import tensor
+from torch import tensor, save
 from torch.nn import Module
 from typing import Any, Dict, List, Union
 
@@ -120,9 +120,13 @@ class Recorder:
         Returns: None
 
         """
-        # We save the model with pickle
-        filepath = os.path.join(self._path, "model.sav")
-        pickle.dump(model, open(filepath, "wb"))
+        # If the model is a torch module with save it using torch
+        if isinstance(model, Module):
+            save(model, os.path.join(self._path, "model.pt"))
+        else:
+            # We save the model with pickle
+            filepath = os.path.join(self._path, "model.sav")
+            pickle.dump(model, open(filepath, "wb"))
 
     def record_scores(self, score: float, metric: str) -> None:
         """

@@ -79,7 +79,7 @@ def save_stats_file(table_name, file_name, df, index=False, header=True):
     :return: string
     """
     # We save the file_path
-    directory = os.path.join(Paths.DESC_STATS.value, table_name)
+    directory = os.path.join(Paths.DESC_STATS, table_name)
     os.makedirs(directory, exist_ok=True)
     file_path = os.path.join(directory, f"{file_name}.csv")
 

@@ -3,13 +3,11 @@ This file is used to store useful constants related to models' hyperparameters
 and optuna's suggestion functions.
 """
 
-from enum import Enum
-
 # HYPERPARAMETERS IMPORTANCE SEED
 HYPER_PARAMS_SEED = 2021
 
 
-class NeuralNetsHP(Enum):
+class NeuralNetsHP:
     """
     Stores neural networks possible hyperparameters
     """
@@ -22,8 +20,12 @@ class NeuralNetsHP(Enum):
     WEIGHT_DECAY: str = "weight_decay"
     LAYERS: str = "layers"
 
+    def __iter__(self):
+        return iter([self.LR, self.BATCH_SIZE, self.N_LAYERS, self.N_UNITS,
+                     self.DROPOUT, self.ACTIVATION, self.WEIGHT_DECAY, self.LAYERS])
 
-class RandomForestsHP(Enum):
+
+class RandomForestsHP:
     """
     Stores random forests possible hyperparameters
     """
@@ -32,8 +34,11 @@ class RandomForestsHP(Enum):
     MAX_FEATURES: str = "max_features"
     MAX_SAMPLES: str = "max_samples"
 
+    def __iter__(self):
+        return iter([self.N_ESTIMATORS, self.MAX_DEPTH, self.MAX_FEATURES, self.MAX_SAMPLES])
 
-class SuggestionFunctions(Enum):
+
+class SuggestFunctions:
     """
     Stores possible types of suggestion functions
     """
@@ -42,7 +47,7 @@ class SuggestionFunctions(Enum):
     CATEGORICAL: str = "categorical"
 
 
-class Range(Enum):
+class Range:
     """
     Stores possible hyperparameters' range types
     """

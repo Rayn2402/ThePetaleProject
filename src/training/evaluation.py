@@ -9,7 +9,7 @@ import ray
 
 from abc import ABC, abstractmethod
 from src.data.processing.datasets import PetaleNNDataset, PetaleRFDataset
-from src.training.constants import *
+from src.training.enums import *
 from src.models.models_generation import NNModelGenerator, RFCModelGenerator
 from numpy.random import seed as np_seed
 from os import path, makedirs
@@ -256,10 +256,12 @@ class NNEvaluator(Evaluator):
 
         Returns: model and trainer
         """
-        model = self.model_generator(layers=best_hps[LAYERS], dropout=best_hps[DROPOUT],
-                                     activation=best_hps[ACTIVATION])
-        trainer = NNTrainer(model=model, metric=self.optimization_metric, lr=best_hps[LR],
-                            batch_size=best_hps[BATCH_SIZE], weight_decay=best_hps[WEIGHT_DECAY],
+        model = self.model_generator(layers=best_hps[NeuralNetsHP.LAYERS],
+                                     dropout=best_hps[NeuralNetsHP.DROPOUT],
+                                     activation=best_hps[NeuralNetsHP.ACTIVATION])
+        trainer = NNTrainer(model=model, metric=self.optimization_metric, lr=best_hps[NeuralNetsHP.LR],
+                            batch_size=best_hps[NeuralNetsHP.BATCH_SIZE],
+                            weight_decay=best_hps[NeuralNetsHP.WEIGHT_DECAY],
                             epochs=self._max_epochs, early_stopping=self._early_stopping,
                             device=self._device, in_trial=False)
 
@@ -321,8 +323,10 @@ class RFEvaluator(Evaluator):
 
         Returns: model and trainer
         """
-        model = self.model_generator(n_estimators=best_hps[N_ESTIMATORS], max_features=best_hps[MAX_FEATURES],
-                                     max_depth=best_hps[MAX_DEPTH], max_samples=best_hps[MAX_SAMPLES])
+        model = self.model_generator(n_estimators=best_hps[RandomForestsHP.N_ESTIMATORS],
+                                     max_features=best_hps[RandomForestsHP.MAX_FEATURES],
+                                     max_depth=best_hps[RandomForestsHP.MAX_DEPTH],
+                                     max_samples=best_hps[RandomForestsHP.MAX_SAMPLES])
 
         trainer = RFTrainer(model=model, metric=self.optimization_metric)
 

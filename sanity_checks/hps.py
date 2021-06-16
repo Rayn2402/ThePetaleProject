@@ -2,49 +2,49 @@
  File used to store hyperparameters used for sanity checks
 """
 
-from src.training.constants import *
+from src.training.enums import *
 
 NN_HPS = {
-    LR: {
-        MIN: 1e-2,
-        MAX: 1e-1
+    NeuralNetsHP.LR: {
+        Range.MIN: 1e-2,
+        Range.MAX: 1e-1
     },
-    BATCH_SIZE: {
-        VALUE: 50
+    NeuralNetsHP.BATCH_SIZE: {
+        Range.VALUE: 50
     },
-    N_LAYERS: {
-        MIN: 1,
-        MAX: 3,
+    NeuralNetsHP.N_LAYERS: {
+        Range.MIN: 1,
+        Range.MAX: 3,
     },
-    N_UNITS: {
-        MIN: 2,
-        MAX: 5,
+    NeuralNetsHP.N_UNITS: {
+        Range.MIN: 2,
+        Range.MAX: 5,
     },
-    DROPOUT: {
-        VALUE: 0
+    NeuralNetsHP.DROPOUT: {
+        Range.VALUE: 0
     },
-    ACTIVATION: {
-        VALUE: "ReLU"
+    NeuralNetsHP.ACTIVATION: {
+        Range.VALUE: "ReLU"
     },
-    WEIGHT_DECAY: {
-        VALUE: 0.1
+    NeuralNetsHP.WEIGHT_DECAY: {
+        Range.VALUE: 0.1
     }
 }
 
 RF_HPS = {
-    N_ESTIMATORS: {
-        MIN: 80,
-        MAX: 120,
+    RandomForestsHP.N_ESTIMATORS: {
+        Range.MIN: 80,
+        Range.MAX: 120,
     },
-    MAX_FEATURES: {
-        MIN: .8,
-        MAX: 1,
+    RandomForestsHP.MAX_FEATURES: {
+        Range.MIN: .8,
+        Range.MAX: 1,
     },
-    MAX_SAMPLES: {
-        MIN: .6,
-        MAX: .8,
+    RandomForestsHP.MAX_SAMPLES: {
+        Range.MIN: .6,
+        Range.MAX: .8,
     },
-    MAX_DEPTH: {
-        VALUE: 50
+    RandomForestsHP.MAX_DEPTH: {
+        Range.VALUE: 50
     }
 }

@@ -9,7 +9,7 @@ import ray
 
 from abc import ABC, abstractmethod
 from src.data.processing.datasets import PetaleNNDataset, PetaleRFDataset
-from src.training.constants import *
+from src.training.enums import *
 from src.models.models_generation import NNModelGenerator, RFCModelGenerator
 from optuna import create_study
 from optuna.importance import get_param_importances, FanovaImportanceEvaluator
@@ -69,12 +69,12 @@ class Objective(ABC):
 
         Returns: function
         """
-        if VALUE in self._hps[hp].keys():
+        if Range.VALUE in self._hps[hp].keys():
             def getter(trial: Trial) -> str:
-                return self._hps[hp][VALUE]
+                return self._hps[hp][Range.VALUE]
         else:
             def getter(trial: Trial) -> str:
-                return trial.suggest_categorical(hp, self._hps[hp][VALUES])
+                return trial.suggest_categorical(hp, self._hps[hp][Range.VALUES])
 
         return getter
 
@@ -88,16 +88,16 @@ class Objective(ABC):
 
         Returns: function
         """
-        if VALUE in self._hps[hp].keys():
+        if Range.VALUE in self._hps[hp].keys():
             def getter(trial: Trial) -> Union[float, int]:
-                return self._hps[hp][VALUE]
+                return self._hps[hp][Range.VALUE]
         else:
-            if suggest_function == INT:
+            if suggest_function == SuggestFunctions.INT:
                 def getter(trial: Trial) -> Union[int]:
-                    return trial.suggest_int(hp, self._hps[hp][MIN], self._hps[hp][MAX])
+                    return trial.suggest_int(hp, self._hps[hp][Range.MIN], self._hps[hp][Range.MAX])
             else:
                 def getter(trial: Trial) -> Union[float]:
-                    return trial.suggest_uniform(hp, self._hps[hp][MIN], self._hps[hp][MAX])
+                    return trial.suggest_uniform(hp, self._hps[hp][Range.MIN], self._hps[hp][Range.MAX])
 
         return getter
 
@@ -171,15 +171,15 @@ class NNObjective(Objective):
         # We call parent's constructor
         super().__init__(model_generator, dataset, masks, hps, device,
                          metric, n_epochs=n_epochs, early_stopping=early_stopping,
-                         needed_hps=[N_LAYERS, N_UNITS, DROPOUT, BATCH_SIZE, LR, WEIGHT_DECAY, ACTIVATION])
+                         needed_hps=list(NeuralNetsHP()))
 
         # We set protected methods to extract hyperparameters' suggestions
-        self._get_activation = self._define_categorical_hp_getter(ACTIVATION)
-        self._get_batch_size = self._define_numerical_hp_getter(BATCH_SIZE, INT)
-        self._get_dropout = self._define_numerical_hp_getter(DROPOUT, UNIFORM)
+        self._get_activation = self._define_categorical_hp_getter(NeuralNetsHP.ACTIVATION)
+        self._get_batch_size = self._define_numerical_hp_getter(NeuralNetsHP.BATCH_SIZE, SuggestFunctions.INT)
+        self._get_dropout = self._define_numerical_hp_getter(NeuralNetsHP.DROPOUT, SuggestFunctions.UNIFORM)
         self._get_layers = self._define_layers_getter()
-        self._get_lr = self._define_numerical_hp_getter(LR, UNIFORM)
-        self._get_weight_decay = self._define_numerical_hp_getter(WEIGHT_DECAY, UNIFORM)
+        self._get_lr = self._define_numerical_hp_getter(NeuralNetsHP.LR, SuggestFunctions.UNIFORM)
+        self._get_weight_decay = self._define_numerical_hp_getter(NeuralNetsHP.WEIGHT_DECAY, SuggestFunctions.UNIFORM)
 
     def __call__(self, trial: Trial) -> float:
         """
@@ -228,8 +228,8 @@ class NNObjective(Objective):
 
         Returns: function
         """
-        get_n_layers = self._define_numerical_hp_getter(N_LAYERS, INT)
-        n_units = self._hps[N_UNITS].get(VALUE, None)
+        get_n_layers = self._define_numerical_hp_getter(NeuralNetsHP.N_LAYERS, SuggestFunctions.INT)
+        n_units = self._hps[NeuralNetsHP.N_UNITS].get(Range.VALUE, None)
 
         if n_units is not None:
             def getter(trial: Trial) -> List[int]:
@@ -238,8 +238,8 @@ class NNObjective(Objective):
         else:
             def getter(trial: Trial) -> List[int]:
                 n_layers = get_n_layers(trial)
-                return [trial.suggest_int(f"{N_UNITS}{i}", self._hps[N_UNITS][MIN],
-                                          self._hps[N_UNITS][MAX]) for i in range(n_layers)]
+                return [trial.suggest_int(f"{NeuralNetsHP.N_UNITS}{i}", self._hps[NeuralNetsHP.N_UNITS][Range.MIN],
+                                          self._hps[NeuralNetsHP.N_UNITS][Range.MAX]) for i in range(n_layers)]
         return getter
 
     def extract_hps(self, trial: FrozenTrial) -> Dict[str, Any]:
@@ -255,17 +255,18 @@ class NNObjective(Objective):
         """
 
         # We extract the architecture of the model associated to the frozen trial
-        n_units = [key for key in trial.params.keys() if N_UNITS in key]
-        n_layers = self._hps[N_LAYERS].get(VALUE, trial.params.get(N_LAYERS))
+        n_units = [key for key in trial.params.keys() if NeuralNetsHP.N_UNITS in key]
+        n_layers = self._hps[NeuralNetsHP.N_LAYERS].get(Range.VALUE, trial.params.get(NeuralNetsHP.N_LAYERS))
 
         if len(n_units) > 0:
             layers = list(map(lambda n_unit: trial.params[n_unit], n_units))
         else:
-            layers = [self._hps[N_UNITS][VALUE]]*n_layers
+            layers = [self._hps[NeuralNetsHP.N_UNITS][Range.VALUE]]*n_layers
 
         # We return the hyperparameters associated to the frozen trial
-        return {LAYERS: layers, **{hp: self._hps[hp].get(VALUE, trial.params.get(hp)) for
-                                   hp in [DROPOUT, LR, BATCH_SIZE, WEIGHT_DECAY, ACTIVATION]}}
+        return {NeuralNetsHP.LAYERS: layers, **{hp: self._hps[hp].get(Range.VALUE, trial.params.get(hp)) for
+                                                hp in NeuralNetsHP() if
+                                                (hp not in [NeuralNetsHP.N_UNITS, NeuralNetsHP.N_LAYERS])}}
 
     def _initialize_trainer(self, dataset: PetaleNNDataset,
                             masks: Dict[int, Dict[str, List[int]]],
@@ -318,13 +319,13 @@ class RFObjective(Objective):
 
         # We call parent's constructor
         super().__init__(model_generator, dataset, masks, hps, device, metric,
-                         needed_hps=[N_ESTIMATORS, MAX_DEPTH, MAX_FEATURES, MAX_SAMPLES])
+                         needed_hps=list(RandomForestsHP()))
 
         # We set protected methods to extract hyperparameters' suggestions
-        self._get_max_depth = self._define_numerical_hp_getter(MAX_DEPTH, INT)
-        self._get_max_features = self._define_numerical_hp_getter(MAX_FEATURES, UNIFORM)
-        self._get_max_samples = self._define_numerical_hp_getter(MAX_SAMPLES, UNIFORM)
-        self._get_n_estimator = self._define_numerical_hp_getter(N_ESTIMATORS, INT)
+        self._get_max_depth = self._define_numerical_hp_getter(RandomForestsHP.MAX_DEPTH, SuggestFunctions.INT)
+        self._get_max_features = self._define_numerical_hp_getter(RandomForestsHP.MAX_FEATURES, SuggestFunctions.UNIFORM)
+        self._get_max_samples = self._define_numerical_hp_getter(RandomForestsHP.MAX_SAMPLES, SuggestFunctions.UNIFORM)
+        self._get_n_estimator = self._define_numerical_hp_getter(RandomForestsHP.N_ESTIMATORS, SuggestFunctions.INT)
 
     def __call__(self, trial):
 
@@ -364,8 +365,8 @@ class RFObjective(Objective):
         Returns: dictionary with hyperparameters' values
 
         """
-        return {hp: self._hps[hp].get(VALUE, trial.params.get(hp)) for
-                hp in [N_ESTIMATORS, MAX_DEPTH, MAX_SAMPLES, MAX_FEATURES]}
+        return {hp: self._hps[hp].get(Range.VALUE, trial.params.get(hp)) for
+                hp in RandomForestsHP()}
 
     def _initialize_trainer(self, dataset: PetaleRFDataset,
                             masks: Dict[int, Dict[str, List[int]]], metric: Metric,

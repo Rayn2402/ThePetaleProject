@@ -6,6 +6,25 @@ File that contains the class that will be responsible of generating the model wh
 """
 
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import ElasticNet
+
+
+class ElasticNetGenerator:
+    """
+    Object responsible of generating ElasticNet related to a set of hps
+    """
+    def __call__(self, alpha: float, beta: float):
+        """
+        Creates an ElasticNet model from sklearn
+
+        Args:
+            alpha: L1 penalty coefficient
+            beta: L2 penalty coefficient
+
+        Returns: elasticnet model
+        """
+        l1_ratio = alpha / (alpha + beta)
+        return ElasticNet(alpha=alpha, l1_ratio=l1_ratio, fit_intercept=False, max_iter=5000)
 
 
 class NNModelGenerator:

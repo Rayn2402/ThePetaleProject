@@ -38,6 +38,15 @@ class RandomForestsHP:
         return iter([self.N_ESTIMATORS, self.MAX_DEPTH, self.MAX_FEATURES, self.MAX_SAMPLES])
 
 
+class ElasticNetHP:
+    """
+    Stores ElasticNet possible hyperparameters
+    """
+    ALPHA: str = "alpha"
+    BETA: str = "beta"
+    DEGREE: str = "degree"
+
+
 class SuggestFunctions:
     """
     Stores possible types of suggestion functions

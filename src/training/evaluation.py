@@ -239,11 +239,13 @@ class NNEvaluator(Evaluator):
             save_parallel_coordinates: True if we want to plot the parallel coordinates graph after tuning
             save_optimization_history: True if we want to plot the optimization history graph after tuning
         """
-
         # We call parent's constructor
-        super().__init__(model_generator, dataset, masks, hps, n_trials, optimization_metric,
-                         evaluation_metrics, seed, device, evaluation_name,
-                         save_hps_importance, save_parallel_coordinates, save_optimization_history)
+        super().__init__(model_generator=model_generator, dataset=dataset, masks=masks,
+                         hps=hps, n_trials=n_trials, optimization_metric=optimization_metric,
+                         evaluation_metrics=evaluation_metrics, seed=seed, device=device,
+                         evaluation_name=evaluation_name, save_hps_importance=save_hps_importance,
+                         save_parallel_coordinates=save_parallel_coordinates,
+                         save_optimization_history=save_optimization_history)
 
         # We set other protected attribute
         self._max_epochs = max_epochs
@@ -261,6 +263,7 @@ class NNEvaluator(Evaluator):
         model = self.model_generator(layers=best_hps[NeuralNetsHP.LAYERS],
                                      dropout=best_hps[NeuralNetsHP.DROPOUT],
                                      activation=best_hps[NeuralNetsHP.ACTIVATION])
+
         trainer = NNTrainer(model=model, metric=self.optimization_metric, lr=best_hps[NeuralNetsHP.LR],
                             batch_size=best_hps[NeuralNetsHP.BATCH_SIZE],
                             weight_decay=best_hps[NeuralNetsHP.WEIGHT_DECAY],
@@ -285,8 +288,7 @@ class RFEvaluator(Evaluator):
     def __init__(self, model_generator: RFCModelGenerator, dataset: PetaleRFDataset,
                  masks: Dict[int, Dict[str, List[int]]], hps: Dict[str, Dict[str, Any]],
                  n_trials: int, optimization_metric: Metric, evaluation_metrics: Dict[str, Metric],
-                 seed: Optional[int] = None, device: Optional[str] = "cpu",
-                 evaluation_name: Optional[str] = None,
+                 seed: Optional[int] = None, evaluation_name: Optional[str] = None,
                  save_hps_importance: Optional[bool] = False,
                  save_parallel_coordinates: Optional[bool] = False,
                  save_optimization_history: Optional[bool] = False):
@@ -304,16 +306,17 @@ class RFEvaluator(Evaluator):
                                 that will be used to calculate the score of the associated metric
                                 on the test sets of the outer loops
             seed: random state used for reproducibility
-            device: "cpu" or "gpu"
             evaluation_name: name of the results file saved at the recordings_path
             save_hps_importance: True if we want to plot the hyperparameters importance graph after tuning
             save_parallel_coordinates: True if we want to plot the parallel coordinates graph after tuning
             save_optimization_history: True if we want to plot the optimization history graph after tuning
         """
         # We call parent's constructor
-        super().__init__(model_generator, dataset, masks, hps, n_trials, optimization_metric,
-                         evaluation_metrics, seed, device, evaluation_name,
-                         save_hps_importance, save_parallel_coordinates, save_optimization_history)
+        super().__init__(model_generator=model_generator, dataset=dataset, masks=masks,
+                         hps=hps, n_trials=n_trials, optimization_metric=optimization_metric,
+                         evaluation_metrics=evaluation_metrics, seed=seed, evaluation_name=evaluation_name,
+                         save_hps_importance=save_hps_importance, save_parallel_coordinates=save_parallel_coordinates,
+                         save_optimization_history=save_optimization_history)
 
     def _create_model_and_trainer(self, best_hps: Dict[str, Any]) -> Tuple[RandomForestClassifier, RFTrainer]:
         """
@@ -340,4 +343,4 @@ class RFEvaluator(Evaluator):
         Returns: objective function
         """
         return RFObjective(model_generator=self.model_generator, dataset=self._dataset,
-                           masks=self._masks, hps=self._hps, device=self._device, metric=self.optimization_metric)
+                           masks=self._masks, hps=self._hps, metric=self.optimization_metric)

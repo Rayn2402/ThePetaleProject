@@ -33,7 +33,8 @@ class Objective(ABC):
     """
     def __init__(self, model_generator: Union[NNModelGenerator, RFCModelGenerator],
                  dataset: Union[PetaleNNDataset, PetaleRFDataset], masks: Dict[int, Dict[str, List[int]]],
-                 hps: Dict[str, Dict[str, Any]], device: str, metric: Metric, needed_hps: List[str], **kwargs):
+                 hps: Dict[str, Dict[str, Any]], metric: Metric, needed_hps: List[str],
+                 device: str = "cpu",  **kwargs):
         """
         Sets protected and public attributes
 
@@ -145,6 +146,29 @@ class Objective(ABC):
         raise NotImplementedError
 
 
+# class ElasticNetObjective(Objective):
+#     """
+#     ElasticNet's objective function
+#     """
+#     def __init__(self, model_generator: Union[NNModelGenerator, RFCModelGenerator],
+#                  dataset: Union[PetaleNNDataset, PetaleRFDataset], masks: Dict[int, Dict[str, List[int]]],
+#                  hps: Dict[str, Dict[str, Any]], metric: Metric, needed_hps: List[str], **kwargs):
+#         """
+#         Sets protected and public attributes
+#
+#         Args:
+#             model_generator: callable object used to generate a model according to a set of hyperparameters
+#             dataset: custom dataset containing the whole learning dataset needed for our evaluation
+#             masks: dict with list of idx to use as train, valid and test masks
+#             hps: dictionary with information on the hyperparameters we want to tune
+#             device: "cpu" or "gpu"
+#             metric: callable metric we want to optimize (not used for backpropagation)
+#             needed_hps: list of hyperparameters that needs to be in the hps dictionary
+#         """
+#         # We call parent's constructor
+#         super().__init__(model_generator, dataset, masks, hps, "cpu", metric)
+#
+
 class NNObjective(Objective):
     """
     Neural Networks' objective function used to optimize hyperparameters
@@ -167,11 +191,10 @@ class NNObjective(Objective):
             n_epochs: number of epochs
             early_stopping: True if we want to stop the training when the validation loss stops decreasing
         """
-
         # We call parent's constructor
-        super().__init__(model_generator, dataset, masks, hps, device,
-                         metric, n_epochs=n_epochs, early_stopping=early_stopping,
-                         needed_hps=list(NeuralNetsHP()))
+        super().__init__(model_generator=model_generator, dataset=dataset, masks=masks,
+                         hps=hps, metric=metric, needed_hps=list(NeuralNetsHP()), device=device,
+                         n_epochs=n_epochs, early_stopping=early_stopping)
 
         # We set protected methods to extract hyperparameters' suggestions
         self._get_activation = self._define_categorical_hp_getter(NeuralNetsHP.ACTIVATION)
@@ -300,7 +323,7 @@ class RFObjective(Objective):
     """
     def __init__(self, model_generator: Union[NNModelGenerator, RFCModelGenerator],
                  dataset: Union[PetaleNNDataset, PetaleRFDataset], masks: Dict[int, Dict[str, List[int]]],
-                 hps: Dict[str, Dict[str, Any]], device: str, metric: Metric):
+                 hps: Dict[str, Dict[str, Any]], metric: Metric):
         """
         Sets protected and public attributes
 
@@ -309,13 +332,12 @@ class RFObjective(Objective):
             dataset: custom dataset containing the whole learning dataset needed for our evaluation
             masks: dict with list of idx to use as train, valid and test masks
             hps: dictionary with information on the hyperparameters we want to tune
-            device: "cpu" or "gpu"
             metric: callable metric we want to optimize (not used for backpropagation)
         """
 
         # We call parent's constructor
-        super().__init__(model_generator, dataset, masks, hps, device, metric,
-                         needed_hps=list(RandomForestsHP()))
+        super().__init__(model_generator=model_generator, dataset=dataset, masks=masks,
+                         hps=hps, metric=metric, needed_hps=list(RandomForestsHP()))
 
         # We set protected methods to extract hyperparameters' suggestions
         self._get_max_depth = self._define_numerical_hp_getter(RandomForestsHP.MAX_DEPTH, SuggestFunctions.INT)

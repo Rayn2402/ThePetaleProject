@@ -22,7 +22,7 @@ from torch import manual_seed
 from torch.nn import Module
 from src.training.training import NNTrainer, RFTrainer
 from src.training.tuning import Tuner, NNObjective, RFObjective
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from src.utils.score_metrics import Metric
 
 
@@ -31,7 +31,7 @@ class Evaluator(ABC):
     Abstract class representing the skeleton of the objects used for model evaluation
     """
 
-    def __init__(self, model_generator: Union[NNModelGenerator, RFCModelGenerator],
+    def __init__(self, model_generator: Callable,
                  dataset: Union[PetaleNNDataset, PetaleRFDataset], masks: Dict[int, Dict[str, List[int]]],
                  hps: Dict[str, Dict[str, Any]], n_trials: int, optimization_metric: Metric,
                  evaluation_metrics: Dict[str, Metric], seed: Optional[int] = None,
@@ -285,9 +285,9 @@ class NNEvaluator(Evaluator):
 
 class RFEvaluator(Evaluator):
 
-    def __init__(self, model_generator: RFCModelGenerator, dataset: PetaleRFDataset,
-                 masks: Dict[int, Dict[str, List[int]]], hps: Dict[str, Dict[str, Any]],
-                 n_trials: int, optimization_metric: Metric, evaluation_metrics: Dict[str, Metric],
+    def __init__(self, dataset: PetaleRFDataset, masks: Dict[int, Dict[str, List[int]]],
+                 hps: Dict[str, Dict[str, Any]], n_trials: int, optimization_metric: Metric,
+                 evaluation_metrics: Dict[str, Metric],
                  seed: Optional[int] = None, evaluation_name: Optional[str] = None,
                  save_hps_importance: Optional[bool] = False,
                  save_parallel_coordinates: Optional[bool] = False,
@@ -296,7 +296,6 @@ class RFEvaluator(Evaluator):
         Set protected and public attributes of the abstract class
 
         Args:
-            model_generator: callable object used to generate a model according to a set of hyperparameters
             dataset: custom dataset containing the whole learning dataset needed for our evaluation
             masks: dict with list of idx to use as train, valid and test masks
             hps: dictionary with information on the hyperparameters we want to tune
@@ -312,7 +311,7 @@ class RFEvaluator(Evaluator):
             save_optimization_history: True if we want to plot the optimization history graph after tuning
         """
         # We call parent's constructor
-        super().__init__(model_generator=model_generator, dataset=dataset, masks=masks,
+        super().__init__(model_generator=RandomForestClassifier, dataset=dataset, masks=masks,
                          hps=hps, n_trials=n_trials, optimization_metric=optimization_metric,
                          evaluation_metrics=evaluation_metrics, seed=seed, evaluation_name=evaluation_name,
                          save_hps_importance=save_hps_importance, save_parallel_coordinates=save_parallel_coordinates,

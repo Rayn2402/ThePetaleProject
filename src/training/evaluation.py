@@ -103,9 +103,8 @@ class Evaluator(ABC):
             np_seed(self.seed)
             manual_seed(self.seed)
 
-        # We initialize ray if it is not initialized yet
-        if not ray.is_initialized():
-            ray.init()
+        # We initialize ray
+        ray.init()
 
         # We execute the outer loop
         for k, v in self._masks.items():
@@ -180,6 +179,9 @@ class Evaluator(ABC):
         # We save the hyperparameters plot
         plot_hyperparameter_importance_chart(evaluation_name=self.evaluation_name,
                                              recordings_path=Paths.EXPERIMENTS_RECORDS)
+
+        # We shutdown ray
+        ray.shutdown()
 
     @abstractmethod
     def _create_model_and_trainer(self, best_hps: Dict[str, Any]

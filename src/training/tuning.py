@@ -282,10 +282,6 @@ class NNObjective(Objective):
         Returns: trainer object
 
         """
-        # We initialize ray if it is not initialized yet
-        if not ray.is_initialized():
-            ray.init()
-
         # Trainer's initialization
         trainer = NNTrainer(model=None, batch_size=None, lr=None, epochs=kwargs['n_epochs'],
                             weight_decay=None, metric=metric, in_trial=True,
@@ -493,6 +489,9 @@ class Tuner:
         """
         assert (self._study is not None and self._objective is not None), "study and objective must be defined"
 
+        # We check ray status
+        ray_already_init = self._check_ray_status()
+
         # We perform the optimization
         set_verbosity(FATAL)  # We remove verbosity from loading bar
         self._study.optimize(self._objective, self.n_trials, show_progress_bar=verbose)
@@ -510,6 +509,10 @@ class Tuner:
         best_hps = self.get_best_hps()
         hps_importance = get_param_importances(self._study,
                                                evaluator=FanovaImportanceEvaluator(seed=HYPER_PARAMS_SEED))
+
+        # We shutdown ray it has been initialized in this function
+        if not ray_already_init:
+            ray.shutdown()
 
         return best_hps, hps_importance
 
@@ -529,5 +532,20 @@ class Tuner:
         self._objective = objective
         self._study = self._new_study(study_name)
         self.path = saving_path if saving_path is not None else self.path
+
+    @staticmethod
+    def _check_ray_status() -> bool:
+        """
+        Checks if ray was already initialized and initialize it if it's not
+
+        Returns: True if yes
+        """
+        # We initialize ray if it is not initialized yet
+        ray_was_init = True
+        if not ray.is_initialized():
+            ray_was_init = False
+            ray.init()
+
+        return ray_was_init
 
 

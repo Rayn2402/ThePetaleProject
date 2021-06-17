@@ -46,6 +46,9 @@ class ElasticNetHP:
     BETA: str = "beta"
     DEGREE: str = "degree"
 
+    def __iter__(self):
+        return iter([self.ALPHA, self.BETA, self.DEGREE])
+
 
 class SuggestFunctions:
     """

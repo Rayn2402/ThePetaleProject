@@ -51,6 +51,10 @@ class Trainer(ABC):
     def metric(self) -> Metric:
         return self._metric
 
+    @property
+    def model(self) -> Any:
+        return self._model
+
     def inner_random_subsampling(self, n_splits: int, seed: Optional[int] = None) -> float:
         """
         Performs multiple random subsamplings validation on the model

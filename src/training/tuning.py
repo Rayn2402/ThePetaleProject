@@ -8,9 +8,6 @@ Files that contains the logic related to hyper parameters tuning
 import ray
 
 from abc import ABC, abstractmethod
-from src.data.processing.datasets import PetaleNNDataset, PetaleRFDataset
-from src.training.enums import *
-from src.models.models_generation import NNModelGenerator, RFCModelGenerator
 from optuna import create_study
 from optuna.importance import get_param_importances, FanovaImportanceEvaluator
 from optuna.logging import FATAL, set_verbosity
@@ -21,18 +18,22 @@ from optuna.trial import Trial, FrozenTrial
 from optuna.visualization import plot_param_importances, plot_parallel_coordinate, plot_optimization_history
 from os import makedirs
 from os.path import join
+from src.data.processing.datasets import CustomDataset, \
+    PetaleRFDataset, PetaleNNDataset, PetaleLinearModelDataset
+from src.models.models_generation import ElasticNetGenerator, RFCModelGenerator, NNModelGenerator
+from src.training.enums import *
+from src.training.training import Trainer, NNTrainer, RFTrainer, ElasticNetTrainer
 from time import strftime
-from src.training.training import NNTrainer, RFTrainer
-from typing import Any, Callable, Dict, List, Optional, Union, Tuple
 from src.utils.score_metrics import Metric
+from typing import Any, Callable, Dict, List, Optional, Union, Tuple
 
 
 class Objective(ABC):
     """
     Base class to create objective functions to use with the tuner
     """
-    def __init__(self, model_generator: Union[NNModelGenerator, RFCModelGenerator],
-                 dataset: Union[PetaleNNDataset, PetaleRFDataset], masks: Dict[int, Dict[str, List[int]]],
+    def __init__(self, model_generator: Callable,
+                 dataset: CustomDataset, masks: Dict[int, Dict[str, List[int]]],
                  hps: Dict[str, Dict[str, Any]], metric: Metric, needed_hps: List[str],
                  device: str = "cpu",  **kwargs):
         """
@@ -115,9 +116,9 @@ class Objective(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def _initialize_trainer(self, dataset: Union[PetaleNNDataset, PetaleRFDataset],
+    def _initialize_trainer(self, dataset: CustomDataset,
                             masks: Dict[int, Dict[str, List[int]]], metric: Metric,
-                            **kwargs) -> Union[NNTrainer, RFTrainer]:
+                            **kwargs) -> Trainer:
         """
         Builds the appropriate trainer object
 
@@ -146,28 +147,88 @@ class Objective(ABC):
         raise NotImplementedError
 
 
-# class ElasticNetObjective(Objective):
-#     """
-#     ElasticNet's objective function
-#     """
-#     def __init__(self, model_generator: Union[NNModelGenerator, RFCModelGenerator],
-#                  dataset: Union[PetaleNNDataset, PetaleRFDataset], masks: Dict[int, Dict[str, List[int]]],
-#                  hps: Dict[str, Dict[str, Any]], metric: Metric, needed_hps: List[str], **kwargs):
-#         """
-#         Sets protected and public attributes
-#
-#         Args:
-#             model_generator: callable object used to generate a model according to a set of hyperparameters
-#             dataset: custom dataset containing the whole learning dataset needed for our evaluation
-#             masks: dict with list of idx to use as train, valid and test masks
-#             hps: dictionary with information on the hyperparameters we want to tune
-#             device: "cpu" or "gpu"
-#             metric: callable metric we want to optimize (not used for backpropagation)
-#             needed_hps: list of hyperparameters that needs to be in the hps dictionary
-#         """
-#         # We call parent's constructor
-#         super().__init__(model_generator, dataset, masks, hps, "cpu", metric)
-#
+class ElasticNetObjective(Objective):
+    """
+    ElasticNet's objective function
+    """
+
+    def __init__(self, model_generator: ElasticNetGenerator,
+                 dataset: PetaleLinearModelDataset, masks: Dict[int, Dict[str, List[int]]],
+                 hps: Dict[str, Dict[str, Any]], metric: Metric):
+        """
+        Sets protected and public attributes
+
+        Args:
+            model_generator: callable object used to generate a model according to a set of hyperparameters
+            dataset: custom dataset containing the whole learning dataset needed for our evaluation
+            masks: dict with list of idx to use as train, valid and test masks
+            hps: dictionary with information on the hyperparameters we want to tune
+            metric: callable metric we want to optimize (not used for backpropagation)
+        """
+        # We call parent's constructor
+        super().__init__(model_generator=model_generator, dataset=dataset, masks=masks,
+                         hps=hps, metric=metric, needed_hps=list(ElasticNetHP()))
+
+        self._get_alpha = self._define_numerical_hp_getter(ElasticNetHP.ALPHA, SuggestFunctions.UNIFORM)
+        self._get_beta = self._define_numerical_hp_getter(ElasticNetHP.BETA, SuggestFunctions.UNIFORM)
+
+    def __call__(self, trial: Trial) -> float:
+        """
+        Extracts hyperparameters suggested by optuna and executes "inner_random_subsampling" trainer's function
+
+        Args:
+            trial: optuna trial
+
+        Returns: score associated to the set of hyperparameters
+        """
+        # We pick alpha (L1 penalty coefficient)
+        alpha = self._get_alpha(trial)
+
+        # We pick beta (L2 penalty coefficient)
+        beta = self._get_beta(trial)
+
+        # We create the model with the suggested set of hyperparameters
+        model = self._model_generator(alpha=alpha, beta=beta)
+
+        # We update the trainer
+        self._trainer.update_trainer(model=model)
+
+        # We perform a k fold random subsampling to evaluate the model
+        score = self._trainer.inner_random_subsampling(self._n_splits)
+
+        return score
+
+    def _initialize_trainer(self, dataset: PetaleLinearModelDataset, masks: Dict[int, Dict[str, List[int]]],
+                            metric: Metric, **kwargs) -> ElasticNetTrainer:
+        """
+        Builds an ElasticNetTrainer and define its subprocess
+
+        Args:
+            dataset: custom dataset containing the whole learning dataset needed for our evaluation
+            metric: callable metric we want to optimize (not used for backpropagation)
+            masks: dict with list of idx to use as train, valid and test masks
+
+        Returns: trainer object
+        """
+        trainer = ElasticNetTrainer(model=None, metric=metric)
+        trainer.define_subprocess(dataset, masks)
+
+        return trainer
+
+    def extract_hps(self, trial: FrozenTrial) -> Dict[str, Any]:
+        """
+        Given an optuna trial, returns model hyperparameters in a dictionary
+        with the appropriate keys
+
+        Args:
+            trial: optuna frozen trial
+
+        Returns: dictionary with hyperparameters' values
+
+        """
+        return {hp: self._hps[hp].get(Range.VALUE, trial.params.get(hp)) for
+                hp in ElasticNetHP()}
+
 
 class NNObjective(Objective):
     """
@@ -239,7 +300,7 @@ class NNObjective(Objective):
         self._trainer.update_trainer(model=model, weight_decay=weight_decay,
                                      batch_size=batch_size, lr=lr, trial=trial)
 
-        # We perform a k fold cross validation to evaluate the model
+        # We perform a k fold random subsampling to evaluate the model
         score = self._trainer.inner_random_subsampling(self._n_splits)
 
         # We return the score
@@ -264,6 +325,31 @@ class NNObjective(Objective):
                 return [trial.suggest_int(f"{NeuralNetsHP.N_UNITS}{i}", self._hps[NeuralNetsHP.N_UNITS][Range.MIN],
                                           self._hps[NeuralNetsHP.N_UNITS][Range.MAX]) for i in range(n_layers)]
         return getter
+
+    def _initialize_trainer(self, dataset: PetaleNNDataset,
+                            masks: Dict[int, Dict[str, List[int]]],
+                            metric: Metric, **kwargs) -> NNTrainer:
+        """
+        Initializes an NNTrainer object
+
+        Args:
+            dataset: custom dataset containing the whole learning dataset needed for our evaluation
+            masks: dict with list of idx to use as train, valid and test masks
+            metric: callable metric we want to optimize (not used for backpropagation)
+
+        Returns: trainer object
+
+        """
+        # Trainer's initialization
+        trainer = NNTrainer(model=None, batch_size=None, lr=None, epochs=kwargs['n_epochs'],
+                            weight_decay=None, metric=metric, in_trial=True,
+                            early_stopping=kwargs['early_stopping'],
+                            device=kwargs['device'])
+
+        # Trainer's parallel process definition
+        trainer.define_subprocess(dataset, masks)
+
+        return trainer
 
     def extract_hps(self, trial: FrozenTrial) -> Dict[str, Any]:
         """
@@ -291,38 +377,13 @@ class NNObjective(Objective):
                                                 hp in NeuralNetsHP() if
                                                 (hp not in [NeuralNetsHP.N_UNITS, NeuralNetsHP.N_LAYERS])}}
 
-    def _initialize_trainer(self, dataset: PetaleNNDataset,
-                            masks: Dict[int, Dict[str, List[int]]],
-                            metric: Metric, **kwargs) -> NNTrainer:
-        """
-        Initializes an NNTrainer object
-
-        Args:
-            dataset: custom dataset containing the whole learning dataset needed for our evaluation
-            masks: dict with list of idx to use as train, valid and test masks
-            metric: callable metric we want to optimize (not used for backpropagation)
-
-        Returns: trainer object
-
-        """
-        # Trainer's initialization
-        trainer = NNTrainer(model=None, batch_size=None, lr=None, epochs=kwargs['n_epochs'],
-                            weight_decay=None, metric=metric, in_trial=True,
-                            early_stopping=kwargs['early_stopping'],
-                            device=kwargs['device'])
-
-        # Trainer's parallel process definition
-        trainer.define_subprocess(dataset, masks)
-
-        return trainer
-
 
 class RFObjective(Objective):
     """
     Random Forests' objective function used to optimize hyperparameters
     """
-    def __init__(self, model_generator: Union[NNModelGenerator, RFCModelGenerator],
-                 dataset: Union[PetaleNNDataset, PetaleRFDataset], masks: Dict[int, Dict[str, List[int]]],
+    def __init__(self, model_generator: RFCModelGenerator,
+                 dataset: PetaleRFDataset, masks: Dict[int, Dict[str, List[int]]],
                  hps: Dict[str, Dict[str, Any]], metric: Metric):
         """
         Sets protected and public attributes
@@ -366,25 +427,11 @@ class RFObjective(Objective):
         # We update the trainer that will train our model
         self._trainer.update_trainer(model=model)
 
-        # We perform a cross validation to evaluate the model
+        # We perform a k fold random subsampling to evaluate the model
         score = self._trainer.inner_random_subsampling(self._n_splits)
 
         # We return the score
         return score
-
-    def extract_hps(self, trial: FrozenTrial) -> Dict[str, Any]:
-        """
-        Given an optuna trial, returns model hyperparameters in a dictionary
-        with the appropriate keys
-
-        Args:
-            trial: optuna frozen trial
-
-        Returns: dictionary with hyperparameters' values
-
-        """
-        return {hp: self._hps[hp].get(Range.VALUE, trial.params.get(hp)) for
-                hp in RandomForestsHP()}
 
     def _initialize_trainer(self, dataset: PetaleRFDataset,
                             masks: Dict[int, Dict[str, List[int]]], metric: Metric,
@@ -405,6 +452,21 @@ class RFObjective(Objective):
 
         return trainer
 
+
+
+    def extract_hps(self, trial: FrozenTrial) -> Dict[str, Any]:
+        """
+        Given an optuna trial, returns model hyperparameters in a dictionary
+        with the appropriate keys
+
+        Args:
+            trial: optuna frozen trial
+
+        Returns: dictionary with hyperparameters' values
+
+        """
+        return {hp: self._hps[hp].get(Range.VALUE, trial.params.get(hp)) for
+                hp in RandomForestsHP()}
 
 class Tuner:
     """

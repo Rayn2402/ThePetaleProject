@@ -8,8 +8,9 @@ Files that contains class related to Datasets
 from abc import ABC, abstractmethod
 from src.data.processing.preprocessing import preprocess_continuous, preprocess_categoricals
 from dgl import heterograph
-from numpy import array
+from numpy import array, concatenate
 from pandas import DataFrame, Series
+from sklearn.preprocessing import PolynomialFeatures
 from src.data.extraction.constants import *
 from torch.utils.data import Dataset
 from torch import from_numpy, tensor
@@ -273,12 +274,12 @@ class PetaleNNDataset(CustomDataset, Dataset):
         temporary_df, _ = preprocess_categoricals(self._original_data[self.cat_cols].copy(),
                                                   mode=modes, encodings=self._encodings)
 
-        self._x_cat = from_numpy(temporary_df.values).float()
+        self._x_cat = from_numpy(temporary_df.to_numpy(dtype=float)).long()
 
     def _define_item_getter(self, cont_cols: Optional[List[str]] = None,
                             cat_cols: Optional[List[str]] = None) -> Callable:
         """
-        Defines the function that must be used by __get_item__ in order to get an item data
+        Defines the function that must be used by __get_item__ in order to get data
         Args:
             cont_cols: list of column names associated with continuous data
             cat_cols: list of column names associated with categorical data
@@ -309,7 +310,7 @@ class PetaleNNDataset(CustomDataset, Dataset):
         Returns: tensor
         """
         temporary_df = self._original_data[target].astype(float)
-        return from_numpy(temporary_df.values).float().flatten()
+        return from_numpy(temporary_df.to_numpy(dtype=float)).float().flatten()
 
     def _numerical_setter(self, mu: Series, std: Series) -> None:
         """
@@ -325,7 +326,7 @@ class PetaleNNDataset(CustomDataset, Dataset):
         """
         # We fill missing with means and normalize the data
         temporary_df = preprocess_continuous(self._original_data[self.cont_cols].copy(), mu, std)
-        self._x_cont = from_numpy(temporary_df.values).float()
+        self._x_cont = from_numpy(temporary_df.to_numpy(dtype=float)).float()
 
 
 class PetaleRFDataset(CustomDataset):
@@ -380,7 +381,7 @@ class PetaleRFDataset(CustomDataset):
 
         Returns: tensor
         """
-        return self._original_data[target].astype(float).values
+        return self._original_data[target].to_numpy(dtype=float)
 
     def _numerical_setter(self, mu: Series, std: Series) -> None:
         """
@@ -398,9 +399,109 @@ class PetaleRFDataset(CustomDataset):
         self._x[self.cont_cols] = preprocess_continuous(self._original_data[self.cont_cols].copy(), mu, std)
 
 
+class PetaleLinearModelDataset(CustomDataset):
+    """
+    Dataset used to train and test our linear models from sklearn
+    """
+
+    def __init__(self, df: DataFrame, target: str,
+                 cont_cols: Optional[List[str]] = None, cat_cols: Optional[List[str]] = None,
+                 polynomial_degree: int = 1, include_bias: bool = True):
+        """
+        Sets protected and public attributes of our custom dataset class
+
+        Args:
+            df: dataframe with the original data
+            target: name of the column with the targets
+            cont_cols: list of column names associated with continuous data
+            cat_cols: list of column names associated with categorical data
+            polynomial_degree: degree of polynomial basis function to apply to the data
+            include_bias: True if we want to include bias to the original data
+        """
+        # We set the protected attributes
+        self._x_cont, self._x_cat = None, None
+        self._basis_function = PolynomialFeatures(degree=polynomial_degree, include_bias=include_bias)
+
+        # We use the _init_ of the parent class PetaleRFDataset
+        super().__init__(df, target, cont_cols, cat_cols)
+
+        # We define the item getter function
+        self._item_getter = self._define_item_getter(cont_cols, cat_cols)
+
+    def __getitem__(self, idx) -> Tuple[array, array]:
+        return self._item_getter(idx)
+
+    def _categorical_setter(self, modes: Series) -> None:
+        """
+        Fill missing values of categorical data according to the modes in the training set and
+        then encodes categories using the same ordinal encoding as in the training set.
+
+        Args:
+            modes: modes of the categorical column according to the training mask
+
+        Returns: None
+        """
+        # We apply an ordinal encoding to categorical columns
+        temporary_df, _ = preprocess_categoricals(self._original_data[self.cat_cols].copy(),
+                                                  mode=modes, encodings=self._encodings)
+
+        self._x_cat = temporary_df.to_numpy(dtype=int)
+
+    def _define_item_getter(self, cont_cols: Optional[List[str]] = None,
+                            cat_cols: Optional[List[str]] = None) -> Callable:
+        """
+        Defines the function that must be used by __get_item__ in order to get data
+        Args:
+            cont_cols: list of column names associated with continuous data
+            cat_cols: list of column names associated with categorical data
+
+        Returns: item_getter function
+        """
+        if cont_cols is None:
+            def item_getter(idx: Any) -> Tuple[array, array]:
+                return self._x_cat[idx, :], self._y[idx]
+
+        elif cat_cols is None:
+            def item_getter(idx: Any) -> Tuple[array, array]:
+                return self._x_cont[idx, :], self._y[idx]
+
+        else:
+            def item_getter(idx: Any) -> Tuple[array, array]:
+                return concatenate((self._x_cont[idx, :], self._x_cat[idx, :]), axis=1), self._y[idx]
+
+        return item_getter
+
+    def _initialize_targets(self, target: str) -> array:
+        """
+        Saves targets values in a numpy array
+
+        Args:
+            target: name of the column with the targets
+
+        Returns: tensor
+        """
+        return self._original_data[target].to_numpy(dtype=float)
+
+    def _numerical_setter(self, mu: Series, std: Series) -> None:
+        """
+        Fills missing values of numerical continuous data according according to the means of the
+        training set and then normalize continuous data using the means and the standard
+        deviations of the training set.
+
+        Args:
+            mu: means of the numerical column according to the training mask
+            std: standard deviations of the numerical column according to the training mask
+
+        Returns: None
+        """
+        # We fill missing with means and normalize the data
+        temporary_df = preprocess_continuous(self._original_data[self.cont_cols].copy(), mu, std)
+        self._x_cont = self._basis_function.fit_transform(temporary_df.to_numpy(dtype=float))
+
+
 class PetaleGNNDataset(PetaleRFDataset):
     """
-    Dataset used to train, valid and tests our Graph Neural Network
+    Dataset used to train, valid and test our Graph Neural Network
     """
 
     def __init__(self, df: DataFrame, target: str,

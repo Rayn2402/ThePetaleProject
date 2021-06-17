@@ -23,7 +23,7 @@ if __name__ == '__main__':
     data_manager = initialize_petale_data_manager()
 
     # We build the pandas dataframe
-    invalid_ids = read_csv(join(Paths.CSV_FILES.value, f"{INVALID_ID_TABLE}.csv"))
+    invalid_ids = read_csv(join(Paths.CSV_FILES, f"{INVALID_ID_TABLE}.csv"))
     invalid_ids[PARTICIPANT] = invalid_ids[PARTICIPANT].astype('string').apply(fill_id)
 
     # We create and fill the table in the database

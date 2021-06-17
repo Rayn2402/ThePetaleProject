@@ -21,7 +21,7 @@ if __name__ == '__main__':
     data_manager = initialize_petale_data_manager()
 
     # We build the pandas dataframe
-    df = read_csv(join(Paths.CSV_FILES.value, f"{DEX_DOX_TABLE}.csv"), sep=";")
+    df = read_csv(join(Paths.CSV_FILES, f"{DEX_DOX_TABLE}.csv"), sep=";")
 
     # We create and fill the table in the database
     data_manager.create_and_fill_table(df, DEX_DOX_TABLE,

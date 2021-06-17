@@ -38,7 +38,7 @@ if __name__ == '__main__':
     genes_df = data_manager.get_table(ALLGENES)
 
     # Initialization of data cleaner
-    data_cleaner = DataCleaner(join(Paths.CLEANING_RECORDS.value, "BASELINES_ALLGENES_COMPLICATIONS"),
+    data_cleaner = DataCleaner(join(Paths.CLEANING_RECORDS, "BASELINES_ALLGENES_COMPLICATIONS"),
                                column_thresh=COLUMN_REMOVAL_THRESHOLD, row_thresh=ROW_REMOVAL_THRESHOLD,
                                outlier_alpha=OUTLIER_ALPHA, min_n_per_cat=MIN_N_PER_CAT,
                                max_cat_percentage=MAX_CAT_PERCENTAGE)
@@ -62,4 +62,4 @@ if __name__ == '__main__':
     types = {c: TYPES.get(c, CATEGORICAL_TYPE) for c in list(complete_df.columns)}
 
     # We create the RAW learning table
-    # data_manager.create_and_fill_table(complete_df, f"{LEARNING_1}_{RAW}", types, primary_key=[PARTICIPANT])
+    data_manager.create_and_fill_table(complete_df, f"{LEARNING_1}_{RAW}", types, primary_key=[PARTICIPANT])

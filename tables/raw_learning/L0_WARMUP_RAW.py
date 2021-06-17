@@ -25,7 +25,7 @@ if __name__ == '__main__':
     data_manager = initialize_petale_data_manager()
 
     # We build a data cleaner
-    data_cleaner = DataCleaner(join(Paths.CLEANING_RECORDS.value, "WARMUP"), column_thresh=COLUMN_REMOVAL_THRESHOLD,
+    data_cleaner = DataCleaner(join(Paths.CLEANING_RECORDS, "WARMUP"), column_thresh=COLUMN_REMOVAL_THRESHOLD,
                                row_thresh=ROW_REMOVAL_THRESHOLD, outlier_alpha=OUTLIER_ALPHA,
                                min_n_per_cat=MIN_N_PER_CAT, max_cat_percentage=MAX_CAT_PERCENTAGE)
 
@@ -65,6 +65,6 @@ if __name__ == '__main__':
     types[VO2R_MAX] = TYPES[VO2R_MAX]
 
     # We create the RAW learning table
-    # data_manager.create_and_fill_table(complete_df, f"{LEARNING_0}_{RAW}", types, primary_key=[PARTICIPANT])
+    data_manager.create_and_fill_table(complete_df, f"{LEARNING_0}_{RAW}", types, primary_key=[PARTICIPANT])
 
 

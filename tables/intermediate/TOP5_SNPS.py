@@ -23,7 +23,7 @@ if __name__ == '__main__':
     dm = initialize_petale_data_manager()
 
     # We build the pandas dataframe containing the TOP5 most significantly associated SNPS
-    top_snps_df = read_csv(join(Paths.CSV_FILES.value, f"{TOP5_SNPS_ID}.csv"))
+    top_snps_df = read_csv(join(Paths.CSV_FILES, f"{TOP5_SNPS_ID}.csv"))
 
     # We load SNPs tables from the database
     common_df = dm.get_table(SIGNIFICANT_COMMON_SNPS_ID)

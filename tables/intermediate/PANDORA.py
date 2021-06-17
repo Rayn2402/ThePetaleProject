@@ -23,7 +23,7 @@ if __name__ == '__main__':
     data_manager = initialize_petale_data_manager()
 
     # We build the pandas dataframe
-    df = read_csv(join(Paths.CSV_FILES.value, f"{PETALE_PANDORA}.csv"))
+    df = read_csv(join(Paths.CSV_FILES, f"{PETALE_PANDORA}.csv"))
 
     # We modify data in the "Reference name" column to only keep the part after the last "-"
     df[REF_NAME] = df[REF_NAME].apply(lambda x: x.split("-")[-1].lstrip('0'))

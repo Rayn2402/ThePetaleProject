@@ -31,7 +31,7 @@ if __name__ == '__main__':
     data_manager = initialize_petale_data_manager()
 
     # We build the pandas dataframe
-    IDs = read_csv(join(Paths.CSV_FILES.value, f"{VO2_ID_TABLE}.csv"))
+    IDs = read_csv(join(Paths.CSV_FILES, f"{VO2_ID_TABLE}.csv"))
     IDs[PARTICIPANT] = IDs[PARTICIPANT].astype('string').apply(fill_id)
 
     # We create and fill the table in the database

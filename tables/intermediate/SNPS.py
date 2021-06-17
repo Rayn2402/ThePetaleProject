@@ -50,4 +50,4 @@ if __name__ == '__main__':
 
     # We build SNPS_RARE and SNPS_COMMON tables
     for t in [SNPS_RARE, SNPS_COMMON]:
-        build_snp_table(Paths.CSV_FILES.value, t, dm)
+        build_snp_table(Paths.CSV_FILES, t, dm)

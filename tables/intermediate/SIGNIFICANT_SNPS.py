@@ -24,7 +24,7 @@ if __name__ == '__main__':
     for t in [SIGNIFICANT_COMMON_SNPS_ID, SIGNIFICANT_RARE_SNPS_ID]:
 
         # We build the pandas dataframe
-        df = read_csv(join(Paths.CSV_FILES.value, f"{t}.csv"))
+        df = read_csv(join(Paths.CSV_FILES, f"{t}.csv"))
 
         # We remove duplicate rows
         df = df.drop_duplicates()

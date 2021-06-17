@@ -498,6 +498,17 @@ class PetaleLinearModelDataset(CustomDataset):
         temporary_df = preprocess_continuous(self._original_data[self.cont_cols].copy(), mu, std)
         self._x_cont = self._basis_function.fit_transform(temporary_df.to_numpy(dtype=float))
 
+    def update_basis_function(self, degree: int, bias: bool) -> None:
+        """
+        Updates the polynomial basis function
+        Args:
+            degree: degree of the polynomial features
+            bias: True if we want to include bias in the data
+
+        Returns: None
+        """
+        self._basis_function = PolynomialFeatures(degree=degree, include_bias=bias)
+
 
 class PetaleGNNDataset(PetaleRFDataset):
     """

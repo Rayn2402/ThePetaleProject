@@ -5,7 +5,6 @@ File that contains the class that will be responsible of generating the model wh
 
 """
 
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import ElasticNet
 
 

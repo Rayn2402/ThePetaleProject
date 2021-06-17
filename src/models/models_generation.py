@@ -60,18 +60,3 @@ class NNModelGenerator:
             # the case when the model need the parameter output size
             return self.modelClass(num_cont_col=self.num_cont_col, cat_sizes=self.cat_sizes,
                                    output_size=self.output_size, layers=layers, dropout=dropout, activation=activation)
-
-
-class RFCModelGenerator:
-    def __call__(self, n_estimators=100, max_features="auto", max_depth=None, max_samples=None):
-        """
-        Class that will be responsible of generating the Random Forest classifier
-
-        :param n_estimators: Number of trees in the forest
-        :param max_features: Fraction of features to consider when looking for the best split
-        :param max_depth: Maximum depth of the tree
-        :param max_samples: Fraction of samples to draw from the dataset to train each tree
-
-        """
-        return RandomForestClassifier(n_estimators=n_estimators, max_features=max_features, max_depth=max_depth,
-                                      max_samples=max_samples)

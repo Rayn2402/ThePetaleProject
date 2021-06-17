@@ -9,7 +9,7 @@ import ray
 import torch
 
 from abc import ABC, abstractmethod
-from src.data.processing.datasets import PetaleNNDataset, PetaleRFDataset, PetaleLinearModelDataset
+from src.data.processing.datasets import CustomDataset, PetaleNNDataset, PetaleRFDataset, PetaleLinearModelDataset
 from numpy import mean, std, array, log
 from pandas import DataFrame
 from src.training.early_stopping import EarlyStopping
@@ -82,7 +82,7 @@ class Trainer(ABC):
         standard_dev = 1 if len(scores) == 1 else std(scores)
         return mean(scores) / standard_dev
 
-    def define_subprocess(self, dataset: Union[PetaleNNDataset, PetaleRFDataset],
+    def define_subprocess(self, dataset: CustomDataset,
                           masks: Dict[int, Dict[str, List[int]]]) -> None:
         """
         Builds the subprocess function according to the masks and the device
@@ -151,7 +151,7 @@ class Trainer(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def fit(self, dataset: Union[PetaleNNDataset, PetaleRFDataset], **kwargs) -> Optional[Tuple[tensor, tensor]]:
+    def fit(self, dataset: CustomDataset, **kwargs) -> Optional[Tuple[tensor, tensor]]:
         """
         Abstract method to train and evaluate the model
 

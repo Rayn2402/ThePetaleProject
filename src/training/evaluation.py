@@ -149,7 +149,7 @@ class Evaluator(ABC):
             trainer.fit(dataset=self._dataset, visualization=True, path=saving_path)
 
             # We save the trained model
-            recorder.record_model(model=model)
+            recorder.record_model(model=trainer.model)
 
             # We extract x_cont, x_cat and target from the test set
             inputs, targets = trainer.extract_data(self._dataset[test_mask])

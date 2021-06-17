@@ -9,18 +9,19 @@ import ray
 import torch
 
 from abc import ABC, abstractmethod
-from src.data.processing.datasets import PetaleNNDataset, PetaleRFDataset
+from src.data.processing.datasets import PetaleNNDataset, PetaleRFDataset, PetaleLinearModelDataset
 from numpy import mean, std, array, log
 from pandas import DataFrame
+from src.training.early_stopping import EarlyStopping
+from src.utils.score_metrics import Metric
+from src.utils.visualization import visualize_epoch_progression
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import ElasticNet
 from torch import optim, manual_seed, cuda, tensor
 from torch import device as device_
 from torch.nn import Module
 from torch.utils.data import DataLoader, SubsetRandomSampler
-from src.training.early_stopping import EarlyStopping
 from typing import Optional, Callable, Tuple, Any, Union, Dict, List
-from src.utils.score_metrics import Metric
-from src.utils.visualization import visualize_epoch_progression
 
 
 class Trainer(ABC):
@@ -33,7 +34,7 @@ class Trainer(ABC):
 
         Args:
             model: model to train
-            metric: callable metric we want to optimize (not used for backpropagation)
+            metric: callable metric we want to optimize with the hps
             device: device used to run our training ("cpu" or "gpu")
         """
         # We call super init since we're using ABC
@@ -114,7 +115,7 @@ class Trainer(ABC):
             # We train our model with the train and valid sets
             self.fit(dataset=dataset)
 
-            # We extract x_cont, x_cat and targets from the test set
+            # We extract inputs and targets from the test set
             inputs, targets = self.extract_data(dataset[test_mask])
 
             # We get the predictions
@@ -176,6 +177,64 @@ class Trainer(ABC):
         raise NotImplementedError
 
 
+class ElasticNetTrainer(Trainer):
+    """
+    Object in charge of elasticnet training combining L1 and L2 penalty
+    """
+    def __init__(self, model: Optional[ElasticNet], metric: Optional[Metric]):
+        """
+        Sets protected and public attributes
+
+        Args:
+            model: elasticnet model from sklearn
+            metric: callable metric we want to optimize with the hps
+        """
+        # We call parent's constructor
+        super().__init__(model=model, metric=metric)
+
+    def extract_data(self, data: Tuple[array, array]) -> Tuple[Dict[str, array], tensor]:
+        """
+        Returns a dictionary with the input features and the targets in a tensor
+
+        Args:
+            data: sliced PetaleLinearModelDataset
+
+        Returns: x, y
+        """
+        x, y = data
+        return {'x': x}, tensor(y)
+
+    def fit(self, dataset: PetaleLinearModelDataset, **kwargs) -> None:
+        """
+        Trains the linear model
+
+        Args:
+            dataset: custom dataset with masks already defined
+
+        Returns: None
+        """
+
+        assert self._model is not None, "Model must be set before training"
+
+        x, y = dataset[dataset.train_mask]
+        self._model.fit(x, y)
+
+    def predict(self, **kwargs) -> tensor:
+        """
+        Returns real-valued targets predictions
+
+        Returns: (N, 1) tensor
+
+        """
+        return self._model.predict(kwargs['x'])
+
+    def update_trainer(self, **kwargs) -> None:
+        """
+        Updates the model
+        """
+        self._model = kwargs.get('model', self._model)
+
+
 class NNTrainer(Trainer):
     """
     Object that trains neural networks
@@ -190,7 +249,7 @@ class NNTrainer(Trainer):
 
         Args:
             model: neural network model to train
-            metric: function to optimize (not used for back propagation)
+            metric: callable metric we want to optimize with the hps
             lr: learning rate
             batch_size: size of the batches created by the training data loader
             weight_decay: L2 penalty
@@ -468,9 +527,21 @@ class RFTrainer(Trainer):
 
         Args:
             model: random forest classifier to train
-            metric: score metric to optimize
+            metric: callable metric we want to optimize with the hps
         """
         super().__init__(model=model, metric=metric)
+
+    def extract_data(self, data: Tuple[DataFrame, array]) -> Tuple[Dict[str, DataFrame], tensor]:
+        """
+        Simply returns the sliced dataframe in a dictionary
+
+        Args:
+            data: sliced PetaleRFDataset
+
+        Returns: x, y
+        """
+        x, y = data
+        return {'x': x}, tensor(y)
 
     def fit(self, dataset: PetaleRFDataset, **kwargs) -> None:
         """
@@ -505,18 +576,6 @@ class RFTrainer(Trainer):
         prob = log(prob)
 
         return tensor(prob)
-
-    def extract_data(self, data: Tuple[DataFrame, array]) -> Tuple[Dict[str, DataFrame], tensor]:
-        """
-        Simply returns the sliced dataframe in a dictionary
-
-        Args:
-            data: sliced PetaleRFDataset
-
-        Returns: x, y
-        """
-        x, y = data
-        return {'x': x}, tensor(y)
 
     def update_trainer(self, **kwargs) -> None:
         """

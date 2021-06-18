@@ -143,7 +143,8 @@ class NNRegressor(NNModel):
     Neural Network dedicated to regression
     """
     def __init__(self, layers: List[int], activation: str, dropout: float = 0,
-                 num_cont_col: Optional[int] = None, cat_sizes: Optional[List[int]] = None):
+                 num_cont_col: Optional[int] = None, cat_sizes: Optional[List[int]] = None,
+                 **kwargs):
 
         """
         Builds layers and set criterion
@@ -155,6 +156,7 @@ class NNRegressor(NNModel):
             num_cont_col: number of numerical continuous columns
              (equal to number of class in the case of classification)
             cat_sizes: list of integer representing the size of each categorical column
+            kwargs: argument used to avoid problem in NNModelGenerator class
         """
 
         # We call parent's constructor

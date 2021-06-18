@@ -18,13 +18,14 @@ from optuna.trial import Trial, FrozenTrial
 from optuna.visualization import plot_param_importances, plot_parallel_coordinate, plot_optimization_history
 from os import makedirs
 from os.path import join
+from sklearn.ensemble import RandomForestClassifier
 from src.data.processing.datasets import CustomDataset, \
     PetaleRFDataset, PetaleNNDataset, PetaleLinearModelDataset
-from src.models.models_generation import ElasticNetGenerator, RFCModelGenerator, NNModelGenerator
+from src.models.models_generation import NNModelGenerator, build_elasticnet
 from src.training.enums import *
 from src.training.training import Trainer, NNTrainer, RFTrainer, ElasticNetTrainer
-from time import strftime
 from src.utils.score_metrics import Metric
+from time import strftime
 from typing import Any, Callable, Dict, List, Optional, Union, Tuple
 
 
@@ -32,15 +33,13 @@ class Objective(ABC):
     """
     Base class to create objective functions to use with the tuner
     """
-    def __init__(self, model_generator: Callable,
-                 dataset: CustomDataset, masks: Dict[int, Dict[str, List[int]]],
+    def __init__(self, dataset: CustomDataset, masks: Dict[int, Dict[str, List[int]]],
                  hps: Dict[str, Dict[str, Any]], metric: Metric, needed_hps: List[str],
                  device: str = "cpu",  **kwargs):
         """
         Sets protected and public attributes
 
         Args:
-            model_generator: callable object used to generate a model according to a set of hyperparameters
             dataset: custom dataset containing the whole learning dataset needed for our evaluation
             masks: dict with list of idx to use as train, valid and test masks
             hps: dictionary with information on the hyperparameters we want to tune
@@ -54,7 +53,6 @@ class Objective(ABC):
 
         # We set protected attributes
         self._hps = hps
-        self._model_generator = model_generator
         self._n_splits = len(masks.keys())
         self._trainer = self._initialize_trainer(dataset, masks, metric, device=device, **kwargs)
 
@@ -152,22 +150,19 @@ class ElasticNetObjective(Objective):
     ElasticNet's objective function
     """
 
-    def __init__(self, model_generator: ElasticNetGenerator,
-                 dataset: PetaleLinearModelDataset, masks: Dict[int, Dict[str, List[int]]],
+    def __init__(self, dataset: PetaleLinearModelDataset, masks: Dict[int, Dict[str, List[int]]],
                  hps: Dict[str, Dict[str, Any]], metric: Metric):
         """
         Sets protected and public attributes
 
         Args:
-            model_generator: callable object used to generate a model according to a set of hyperparameters
             dataset: custom dataset containing the whole learning dataset needed for our evaluation
             masks: dict with list of idx to use as train, valid and test masks
             hps: dictionary with information on the hyperparameters we want to tune
             metric: callable metric we want to optimize (not used for backpropagation)
         """
         # We call parent's constructor
-        super().__init__(model_generator=model_generator, dataset=dataset, masks=masks,
-                         hps=hps, metric=metric, needed_hps=list(ElasticNetHP()))
+        super().__init__(dataset=dataset, masks=masks, hps=hps, metric=metric, needed_hps=list(ElasticNetHP()))
 
         self._get_alpha = self._define_numerical_hp_getter(ElasticNetHP.ALPHA, SuggestFunctions.UNIFORM)
         self._get_beta = self._define_numerical_hp_getter(ElasticNetHP.BETA, SuggestFunctions.UNIFORM)
@@ -188,7 +183,7 @@ class ElasticNetObjective(Objective):
         beta = self._get_beta(trial)
 
         # We create the model with the suggested set of hyperparameters
-        model = self._model_generator(alpha=alpha, beta=beta)
+        model = build_elasticnet(alpha=alpha, beta=beta)
 
         # We update the trainer
         self._trainer.update_trainer(model=model)
@@ -253,11 +248,11 @@ class NNObjective(Objective):
             early_stopping: True if we want to stop the training when the validation loss stops decreasing
         """
         # We call parent's constructor
-        super().__init__(model_generator=model_generator, dataset=dataset, masks=masks,
-                         hps=hps, metric=metric, needed_hps=list(NeuralNetsHP()), device=device,
-                         n_epochs=n_epochs, early_stopping=early_stopping)
+        super().__init__(dataset=dataset, masks=masks, hps=hps, metric=metric, needed_hps=list(NeuralNetsHP()),
+                         device=device, n_epochs=n_epochs, early_stopping=early_stopping)
 
         # We set protected methods to extract hyperparameters' suggestions
+        self._model_generator = model_generator
         self._get_activation = self._define_categorical_hp_getter(NeuralNetsHP.ACTIVATION)
         self._get_batch_size = self._define_numerical_hp_getter(NeuralNetsHP.BATCH_SIZE, SuggestFunctions.INT)
         self._get_dropout = self._define_numerical_hp_getter(NeuralNetsHP.DROPOUT, SuggestFunctions.UNIFORM)
@@ -382,14 +377,12 @@ class RFObjective(Objective):
     """
     Random Forests' objective function used to optimize hyperparameters
     """
-    def __init__(self, model_generator: RFCModelGenerator,
-                 dataset: PetaleRFDataset, masks: Dict[int, Dict[str, List[int]]],
+    def __init__(self, dataset: PetaleRFDataset, masks: Dict[int, Dict[str, List[int]]],
                  hps: Dict[str, Dict[str, Any]], metric: Metric):
         """
         Sets protected and public attributes
 
         Args:
-            model_generator: callable object used to generate a model according to a set of hyperparameters
             dataset: custom dataset containing the whole learning dataset needed for our evaluation
             masks: dict with list of idx to use as train, valid and test masks
             hps: dictionary with information on the hyperparameters we want to tune
@@ -397,8 +390,7 @@ class RFObjective(Objective):
         """
 
         # We call parent's constructor
-        super().__init__(model_generator=model_generator, dataset=dataset, masks=masks,
-                         hps=hps, metric=metric, needed_hps=list(RandomForestsHP()))
+        super().__init__(dataset=dataset, masks=masks, hps=hps, metric=metric, needed_hps=list(RandomForestsHP()))
 
         # We set protected methods to extract hyperparameters' suggestions
         self._get_max_depth = self._define_numerical_hp_getter(RandomForestsHP.MAX_DEPTH, SuggestFunctions.INT)
@@ -421,8 +413,8 @@ class RFObjective(Objective):
         max_samples = self._get_max_samples(trial)
 
         # We define the model with the suggested set of hyper parameters
-        model = self._model_generator(n_estimators=n_estimators, max_features=max_features,
-                                      max_depth=max_depth, max_samples=max_samples)
+        model = RandomForestClassifier(n_estimators=n_estimators, max_features=max_features,
+                                       max_depth=max_depth, max_samples=max_samples)
 
         # We update the trainer that will train our model
         self._trainer.update_trainer(model=model)
@@ -452,8 +444,6 @@ class RFObjective(Objective):
 
         return trainer
 
-
-
     def extract_hps(self, trial: FrozenTrial) -> Dict[str, Any]:
         """
         Given an optuna trial, returns model hyperparameters in a dictionary
@@ -467,6 +457,7 @@ class RFObjective(Objective):
         """
         return {hp: self._hps[hp].get(Range.VALUE, trial.params.get(hp)) for
                 hp in RandomForestsHP()}
+
 
 class Tuner:
     """

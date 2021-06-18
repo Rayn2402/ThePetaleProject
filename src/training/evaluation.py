@@ -8,22 +8,22 @@ File that contains the class related to the evaluation of the models
 import ray
 
 from abc import ABC, abstractmethod
-from settings.paths import Paths
-from src.data.processing.datasets import PetaleNNDataset, PetaleRFDataset
-from src.training.enums import *
-from src.models.models_generation import NNModelGenerator, RFCModelGenerator
 from numpy.random import seed as np_seed
 from os import path, makedirs
-from src.recording.recording import Recorder, compare_prediction_recordings,\
-    get_evaluation_recap, plot_hyperparameter_importance_chart
+from settings.paths import Paths
 from sklearn.ensemble import RandomForestClassifier
+from src.data.processing.datasets import PetaleNNDataset, PetaleRFDataset
+from src.models.models_generation import NNModelGenerator
+from src.recording.recording import Recorder, compare_prediction_recordings, \
+    get_evaluation_recap, plot_hyperparameter_importance_chart
+from src.training.enums import *
+from src.training.training import NNTrainer, RFTrainer
+from src.training.tuning import Tuner, NNObjective, RFObjective
+from src.utils.score_metrics import Metric
 from time import strftime
 from torch import manual_seed
 from torch.nn import Module
-from src.training.training import NNTrainer, RFTrainer
-from src.training.tuning import Tuner, NNObjective, RFObjective
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
-from src.utils.score_metrics import Metric
 
 
 class Evaluator(ABC):
@@ -341,5 +341,4 @@ class RFEvaluator(Evaluator):
 
         Returns: objective function
         """
-        return RFObjective(model_generator=self.model_generator, dataset=self._dataset,
-                           masks=self._masks, hps=self._hps, metric=self.optimization_metric)
+        return RFObjective(dataset=self._dataset, masks=self._masks, hps=self._hps, metric=self.optimization_metric)

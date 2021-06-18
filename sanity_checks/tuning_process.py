@@ -18,7 +18,7 @@ if __name__ == '__main__':
     from src.data.processing.datasets import PetaleRFDataset, PetaleNNDataset
     from src.data.processing.sampling import get_learning_one_data, extract_masks
     from src.models.nn_models import NNClassifier
-    from src.models.models_generation import NNModelGenerator, RFCModelGenerator
+    from src.models.models_generation import NNModelGenerator
     from src.training.tuning import Tuner, NNObjective, RFObjective
     from src.utils.score_metrics import SensitivityCrossEntropyRatio
 
@@ -66,12 +66,8 @@ if __name__ == '__main__':
     # Creation of dataset
     rf_dataset = PetaleRFDataset(df, CARDIOMETABOLIC_COMPLICATIONS, cont_cols, cat_cols)
 
-    # Creation of model generator
-    model_generator = RFCModelGenerator()
-
     # Creation of RFObjective
-    rf_objective = RFObjective(model_generator=model_generator, dataset=rf_dataset, masks=inner_masks,
-                               hps=RF_HPS, device="cpu", metric=metric)
+    rf_objective = RFObjective(dataset=rf_dataset, masks=inner_masks, hps=RF_HPS, metric=metric)
 
     # Creation of tuner
     tuner = Tuner(n_trials=50, study_name="sanity_check_2", objective=rf_objective,

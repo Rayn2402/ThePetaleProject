@@ -17,7 +17,7 @@ if __name__ == '__main__':
     from src.data.processing.sampling import get_learning_one_data, extract_masks
     from src.training.evaluation import NNEvaluator, RFEvaluator
     from src.models.nn_models import NNClassifier
-    from src.models.models_generation import NNModelGenerator, RFCModelGenerator
+    from src.models.models_generation import NNModelGenerator
     from src.data.extraction.constants import *
     from src.data.extraction.data_management import PetaleDataManager
     from src.utils.score_metrics import CrossEntropyLoss, Sensitivity, Accuracy
@@ -63,11 +63,8 @@ if __name__ == '__main__':
     # Creation of dataset
     rf_dataset = PetaleRFDataset(df, NEUROCOGNITIVE_COMPLICATIONS, cont_cols, cat_cols)
 
-    # Creation of model generator
-    model_generator = RFCModelGenerator()
-
     # Creation of the evaluator
-    rf_evaluator = RFEvaluator(model_generator=model_generator, dataset=rf_dataset, masks=masks,
+    rf_evaluator = RFEvaluator(dataset=rf_dataset, masks=masks,
                                hps=RF_HPS, n_trials=50, optimization_metric=metric,
                                evaluation_metrics=evaluation_metrics, save_optimization_history=True)
     # Evaluation

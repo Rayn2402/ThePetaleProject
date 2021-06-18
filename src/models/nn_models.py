@@ -35,8 +35,8 @@ class NNModel(ABC, Module):
             (equal to number of class in the case of classification)
             cat_sizes: list of integer representing the size of each categorical column
         """
-        assert num_cont_col is not None and cat_sizes is not None, "There must be continuous columns" \
-                                                                   " or categorical columns"
+        assert num_cont_col is not None or cat_sizes is not None, "There must be continuous columns" \
+                                                                  " or categorical columns"
 
         # We call parents' constructors
         Module.__init__(self)

@@ -188,6 +188,10 @@ class CustomDataset(ABC):
         self._set_categorical(modes)
 
     @abstractmethod
+    def __getitem__(self, idx: Union[int, List[int]]) -> Any:
+        raise NotImplementedError
+
+    @abstractmethod
     def _numerical_setter(self, mu: Series, std: Series) -> None:
         """
         Fills missing values of numerical continuous data according according to the means of the
@@ -574,7 +578,3 @@ class PetaleGNNDataset(PetaleRFDataset):
         """
         CustomDataset.update_masks(self, train_mask, test_mask, valid_mask)
         self._update_graph()
-
-
-
-

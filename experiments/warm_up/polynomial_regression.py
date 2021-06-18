@@ -16,7 +16,7 @@ from src.data.extraction.data_management import PetaleDataManager
 from src.data.extraction.constants import SEED, MVLPA
 from src.data.processing.datasets import PetaleRFDataset
 from src.data.processing.sampling import TRAIN, TEST, get_warmup_data, RandomStratifiedSampler
-from src.models.linear_models import LinearRegressor
+from src.models.linear_models import LinearRegression
 from src.recording.recording import Recorder, get_evaluation_recap, compare_prediction_recordings
 from src.utils.score_metrics import AbsoluteError
 from torch import manual_seed, tensor, is_tensor
@@ -111,7 +111,7 @@ def build_run(dataset: PetaleRFDataset, masks: Dict[int, Dict[str, List[int]]], 
                 model = ElasticNet(alpha=alpha, l1_ratio=l1_ratio, fit_intercept=False, max_iter=10000)
                 model_name = "elasticnet"
             else:
-                model = LinearRegressor(input_size=x_train.shape[1], beta=beta)
+                model = LinearRegression(input_size=x_train.shape[1], beta=beta)
                 x_train, y_train, x_test, y_test = tensor(x_train), tensor(y_train), tensor(x_test), tensor(y_test)
                 model_name = "linearreg"
 

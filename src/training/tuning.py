@@ -186,11 +186,8 @@ class ElasticNetObjective(Objective):
         # We create the model with the suggested set of hyperparameters
         model = build_elasticnet(alpha=alpha, beta=beta)
 
-        # We update the trainer
-        self._trainer.update_trainer(model=model)
-
         # We perform a k fold random subsampling to evaluate the model
-        score = self._trainer.inner_random_subsampling(self._n_splits)
+        score = self._trainer.inner_random_subsampling(self._n_splits, model=model)
 
         return score
 
@@ -292,12 +289,9 @@ class NNObjective(Objective):
         # We define the model with the suggested set of hyper parameters
         model = self._model_generator(layers=layers, dropout=p, activation=activation)
 
-        # We update the Trainer to train our model
-        self._trainer.update_trainer(model=model, weight_decay=weight_decay,
-                                     batch_size=batch_size, lr=lr, trial=trial)
-
         # We perform a k fold random subsampling to evaluate the model
-        score = self._trainer.inner_random_subsampling(self._n_splits)
+        score = self._trainer.inner_random_subsampling(self._n_splits, model=model, weight_decay=weight_decay,
+                                                       batch_size=batch_size, lr=lr, trial=trial)
 
         # We return the score
         return score
@@ -417,11 +411,8 @@ class RFObjective(Objective):
         model = RandomForestClassifier(n_estimators=n_estimators, max_features=max_features,
                                        max_depth=max_depth, max_samples=max_samples)
 
-        # We update the trainer that will train our model
-        self._trainer.update_trainer(model=model)
-
         # We perform a k fold random subsampling to evaluate the model
-        score = self._trainer.inner_random_subsampling(self._n_splits)
+        score = self._trainer.inner_random_subsampling(self._n_splits, model=model)
 
         # We return the score
         return score

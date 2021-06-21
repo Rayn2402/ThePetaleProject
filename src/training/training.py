@@ -56,7 +56,7 @@ class Trainer(ABC):
     def model(self) -> Any:
         return self._model
 
-    def inner_random_subsampling(self, n_splits: int, seed: Optional[int] = None) -> float:
+    def inner_random_subsampling(self, n_splits: int, seed: Optional[int] = None, **kwargs) -> float:
         """
         Performs multiple random subsamplings validation on the model
 
@@ -75,7 +75,7 @@ class Trainer(ABC):
             manual_seed(seed)
 
         # We train and test on each of the inner split
-        futures = [self._subprocess.remote(i) for i in range(n_splits)]
+        futures = [self._subprocess.remote(i, **kwargs) for i in range(n_splits)]
         scores = ray.get(futures)
 
         # We the mean of the scores divided by the standard deviation
@@ -100,17 +100,24 @@ class Trainer(ABC):
         gpus = 0.10 if (self._device_type != "cpu") else 0
 
         @ray.remote(num_gpus=gpus)
-        def subprocess(i: int) -> float:
+        def subprocess(i: int, **kwargs) -> float:
             """
-            Consists of the parallelizable process of the inner random subsampling loop
+            Consists of the parallelizable process doing the inner random subsampling loop
 
-            :param i: Index of the random subsamples' splits on which to test hyperparameters selection
+            Args:
+                i: inner split idx
+
+            Returns: score of the optimization metric
+
             """
             # We the get the train, valid and test masks
             train_mask, valid_mask, test_mask = masks[i]["train"], masks[i]["valid"], masks[i]["test"]
 
             # We update dataset's masks
             dataset.update_masks(train_mask, valid_mask, test_mask)
+
+            # We update the trainer
+            self.update_trainer(**kwargs)
 
             # We train our model with the train and valid sets
             self.fit(dataset=dataset)

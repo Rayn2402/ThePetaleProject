@@ -590,7 +590,7 @@ class Tuner:
 
         return best_hps, hps_importance
 
-    def update_tuner(self, study_name: str, objective: Union[NNObjective, RFObjective],
+    def update_tuner(self, study_name: str, objective: Objective,
                      saving_path: Optional[str] = None) -> None:
         """
         Sets study and objective protected attributes

@@ -14,7 +14,7 @@ from src.data.extraction.constants import SEED
 from src.data.processing.datasets import PetaleLinearModelDataset
 from src.data.processing.sampling import get_warmup_data, extract_masks, push_valid_to_test
 from src.training.evaluation import ElasticNetEvaluator
-from src.utils.score_metrics import AbsoluteError
+from src.utils.score_metrics import AbsoluteError, RootMeanSquaredError
 
 
 def argument_parser():
@@ -67,7 +67,8 @@ if __name__ == '__main__':
         hps = load(read_file)
 
     # Metric choice
-    metric = AbsoluteError()
+    opt_metric = RootMeanSquaredError()
+    eval_metrics = {"MAE": AbsoluteError(), "RMSE": opt_metric}
 
     # Generation of dataset
     data_manager = PetaleDataManager(args.user)
@@ -80,8 +81,8 @@ if __name__ == '__main__':
 
         # Creation of an evaluator
         evaluator = ElasticNetEvaluator(dataset=dataset, masks=masks, hps=hps, n_trials=args.nb_trials,
-                                        optimization_metric=metric,
-                                        evaluation_metrics={"mean_absolute_error": metric},
+                                        optimization_metric=opt_metric,
+                                        evaluation_metrics=eval_metrics,
                                         seed=args.seed, evaluation_name=f"elastic_net_warmup_k{k}_l{l}_deg{deg}",
                                         save_hps_importance=True, save_parallel_coordinates=True,
                                         save_optimization_history=True)

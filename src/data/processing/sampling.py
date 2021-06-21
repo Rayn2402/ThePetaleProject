@@ -307,10 +307,10 @@ def extract_masks(file_path: str, k: int = 20, l: int = 20
     return masks
 
 
-def push_valid_to_test(masks: Dict[int, Dict[str, Union[List[int], Dict[str, List[int]]]]]
-                       ) -> Dict[int, Dict[str, Union[List[int], Dict[str, List[int]]]]]:
+def push_valid_to_train(masks: Dict[int, Dict[str, Union[List[int], Dict[str, List[int]]]]]
+                        ) -> Dict[int, Dict[str, Union[List[int], Dict[str, List[int]]]]]:
     """
-    Pushes all index of validation masks into test masks
+    Pushes all index of validation masks into train masks
 
     Args:
         masks: dictionary with list of idx to use as train, valid and test masks
@@ -318,10 +318,10 @@ def push_valid_to_test(masks: Dict[int, Dict[str, Union[List[int], Dict[str, Lis
     Returns: same masks with valid idx added to test idx
     """
     for k, v in masks.items():
-        masks[k][TEST] += v[VALID]
+        masks[k][TRAIN] += v[VALID]
         masks[k][VALID] = None
         for in_k, in_v in masks[k][INNER].items():
-            masks[k][INNER][in_k][TEST] += in_v[VALID]
+            masks[k][INNER][in_k][TRAIN] += in_v[VALID]
             masks[k][INNER][in_k][VALID] = None
 
 

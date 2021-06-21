@@ -4,7 +4,7 @@ Author : Nicolas Raymond
 This file contains metric used to measure models' performances
 """
 from abc import ABC, abstractmethod
-from torch import sqrt, abs, tensor, argmax, zeros, unique, ones, eye, mean, prod, sum, pow
+from torch import sqrt, abs, tensor, argmax, zeros, ones, eye, mean, prod, sum, pow
 from torch.nn.functional import nll_loss
 
 MAXIMIZE = "maximize"
@@ -102,6 +102,29 @@ class AbsoluteError(Metric):
 
         """
         return self._reduction(abs(pred - targets)).item()
+
+
+class RootMeanSquaredError(Metric):
+    """
+    Callable class that computes root mean-squared error
+    """
+    def __init__(self):
+        """
+        Calls parent constructor that sets protected attributes
+        """
+        super().__init__(MINIMIZE, REG)
+
+    def __call__(self, pred: tensor, targets: tensor) -> float:
+        """
+        Compute the root mean-squared error between predictions and targets
+
+        Args:
+            pred: (N,) tensor
+            targets: (N,) tensor
+
+        Returns: float
+        """
+        return (mean((pred - targets)**2).item())**(1/2)
 
 
 class Accuracy(Metric):

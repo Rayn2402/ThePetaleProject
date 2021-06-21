@@ -13,12 +13,12 @@ from os import path, makedirs
 from settings.paths import Paths
 from sklearn.ensemble import RandomForestClassifier
 from src.data.processing.datasets import PetaleNNDataset, PetaleRFDataset
-from src.models.models_generation import NNModelGenerator
+from src.models.models_generation import NNModelGenerator, build_elasticnet
 from src.recording.recording import Recorder, compare_prediction_recordings, \
     get_evaluation_recap, plot_hyperparameter_importance_chart
 from src.training.enums import *
-from src.training.training import NNTrainer, RFTrainer
-from src.training.tuning import Tuner, NNObjective, RFObjective
+from src.training.training import NNTrainer, RFTrainer, ElasticNetTrainer, Trainer
+from src.training.tuning import Tuner, NNObjective, RFObjective, ElasticNetObjective, Objective
 from src.utils.score_metrics import Metric
 from time import strftime
 from torch import manual_seed
@@ -126,7 +126,7 @@ class Evaluator(ABC):
             # We update the tuner to perform the hyperparameters optimization
             print(f"\nHyperparameter tuning started - K = {k}\n")
             self._tuner.update_tuner(study_name=f"{self.evaluation_name}_{k}",
-                                     objective=self._create_objective(),
+                                     objective=self._create_objective(masks=in_masks),
                                      saving_path=saving_path)
 
             # We perform the hyper parameters tuning to get the best hyper parameters
@@ -184,8 +184,7 @@ class Evaluator(ABC):
         ray.shutdown()
 
     @abstractmethod
-    def _create_model_and_trainer(self, best_hps: Dict[str, Any]
-                                  ) -> Tuple[Union[RandomForestClassifier, Module], Union[NNTrainer, RFTrainer]]:
+    def _create_model_and_trainer(self, best_hps: Dict[str, Any]) -> Tuple[Callable, Trainer]:
         """
         Returns a model built according to the best hyperparameters given and a trainer
 
@@ -197,9 +196,12 @@ class Evaluator(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def _create_objective(self) -> Union[NNObjective, RFObjective]:
+    def _create_objective(self, masks: Dict[int, Dict[str, List[int]]]) -> Objective:
         """
         Creates an adapted objective function to pass to our tuner
+
+        Args:
+            masks: inner masks for hyperparameters tuning
 
         Returns: objective function
         """
@@ -207,7 +209,9 @@ class Evaluator(ABC):
 
 
 class NNEvaluator(Evaluator):
-
+    """
+    Object charged to evaluate performances of Neural Network model over multiple splits
+    """
     def __init__(self, model_generator: NNModelGenerator, dataset: PetaleNNDataset,
                  masks: Dict[int, Dict[str, List[int]]], hps: Dict[str, Dict[str, Any]], n_trials: int,
                  optimization_metric: Metric, evaluation_metrics: Dict[str, Metric], max_epochs: int,
@@ -218,7 +222,7 @@ class NNEvaluator(Evaluator):
                  save_optimization_history: Optional[bool] = False):
 
         """
-        Set protected and public attributes of the abstract class
+        Sets protected and public attributes of the class
 
         Args:
             model_generator: callable object used to generate a model according to a set of hyperparameters
@@ -272,19 +276,24 @@ class NNEvaluator(Evaluator):
 
         return model, trainer
 
-    def _create_objective(self) -> NNObjective:
+    def _create_objective(self, masks: Dict[int, Dict[str, List[int]]]) -> NNObjective:
         """
-        Creates an objective function adapted to neural networks
+        Creates an adapted objective function to pass to our tuner
+
+        Args:
+            masks: inner masks for hyperparameters tuning
 
         Returns: objective function
         """
-        return NNObjective(model_generator=self.model_generator, dataset=self._dataset, masks=self._masks,
+        return NNObjective(model_generator=self.model_generator, dataset=self._dataset, masks=masks,
                            hps=self._hps, device=self._device, metric=self.optimization_metric,
                            n_epochs=self._max_epochs, early_stopping=self._early_stopping)
 
 
 class RFEvaluator(Evaluator):
-
+    """
+    Object charged to evaluate performances of Random Forest classifier model over multiple splits
+    """
     def __init__(self, dataset: PetaleRFDataset, masks: Dict[int, Dict[str, List[int]]],
                  hps: Dict[str, Dict[str, Any]], n_trials: int, optimization_metric: Metric,
                  evaluation_metrics: Dict[str, Metric],
@@ -293,7 +302,7 @@ class RFEvaluator(Evaluator):
                  save_parallel_coordinates: Optional[bool] = False,
                  save_optimization_history: Optional[bool] = False):
         """
-        Set protected and public attributes of the abstract class
+        Sets protected and public attributes of the class
 
         Args:
             dataset: custom dataset containing the whole learning dataset needed for our evaluation
@@ -335,10 +344,13 @@ class RFEvaluator(Evaluator):
 
         return model, trainer
 
-    def _create_objective(self) -> RFObjective:
+    def _create_objective(self, masks: Dict[int, Dict[str, List[int]]]) -> RFObjective:
         """
-        Creates an objective function adapted to random forest classifier
+        Creates an adapted objective function to pass to our tuner
+
+        Args:
+            masks: inner masks for hyperparameters tuning
 
         Returns: objective function
         """
-        return RFObjective(dataset=self._dataset, masks=self._masks, hps=self._hps, metric=self.optimization_metric)
+        return RFObjective(dataset=self._dataset, masks=masks, hps=self._hps, metric=self.optimization_metric)

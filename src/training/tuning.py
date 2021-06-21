@@ -465,7 +465,7 @@ class Tuner:
     Base of all objects used for hyperparameter tuning
     """
     def __init__(self, n_trials: int, study_name: Optional[str] = None,
-                 objective: Optional[Union[NNObjective, RFObjective]] = None,
+                 objective: Objective = None,
                  save_hps_importance: Optional[bool] = False,
                  save_parallel_coordinates: Optional[bool] = False,
                  save_optimization_history: Optional[bool] = False,

@@ -10,7 +10,7 @@ import torch
 
 from abc import ABC, abstractmethod
 from src.data.processing.datasets import CustomDataset, PetaleNNDataset, PetaleRFDataset, PetaleLinearModelDataset
-from numpy import mean, std, array, log
+from numpy import mean, array, log
 from pandas import DataFrame
 from src.training.early_stopping import EarlyStopping
 from src.utils.score_metrics import Metric
@@ -329,7 +329,7 @@ class NNTrainer(Trainer):
 
         return val_epoch_loss, score, False
 
-    def extract_data(self, data: Tuple[Optional[tensor], Optional[tensor], tensor]
+    def extract_data(self, data: Tuple[tensor, tensor, tensor]
                      ) -> Tuple[Dict[str, Optional[tensor]], tensor]:
         """
         Extracts data out of a slice of PetaleNNDataset
@@ -341,7 +341,13 @@ class NNTrainer(Trainer):
 
         """
         x_cont, x_cat, y = data
-        data = {k: v.to(self._device) for k, v in [("x_cont", x_cont), ("x_cat", x_cat)]}
+        if x_cont.nelement() == 0:
+            data = {"x_cont": None, "x_cat": x_cat.to(self._device)}
+        elif x_cat.nelement() == 0:
+            data = {"x_cont": x_cont.to(self._device), "x_cat": None}
+        else:
+            data = {"x_cont": x_cont.to(self._device), "x_cat": x_cat.to(self._device)}
+
         return data, y.to(self._device)
 
     def fit(self, dataset: PetaleNNDataset, verbose: bool = True,

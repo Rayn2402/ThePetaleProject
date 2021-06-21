@@ -13,7 +13,7 @@ from pandas import DataFrame, Series
 from sklearn.preprocessing import PolynomialFeatures
 from src.data.extraction.constants import *
 from torch.utils.data import Dataset
-from torch import from_numpy, tensor
+from torch import from_numpy, tensor, empty
 from typing import Optional, List, Callable, Tuple, Union, Any, Dict
 
 
@@ -291,12 +291,12 @@ class PetaleNNDataset(CustomDataset, Dataset):
         Returns: item_getter function
         """
         if cont_cols is None:
-            def item_getter(idx: Any) -> Tuple[None, tensor, tensor]:
-                return None, self._x_cat[idx, :], self._y[idx]
+            def item_getter(idx: Any) -> Tuple[tensor, tensor, tensor]:
+                return empty(0), self._x_cat[idx, :], self._y[idx]
 
         elif cat_cols is None:
-            def item_getter(idx: Any) -> Tuple[tensor, None, tensor]:
-                return self._x_cont[idx, :], None, self._y[idx]
+            def item_getter(idx: Any) -> Tuple[tensor, tensor, tensor]:
+                return self._x_cont[idx, :], empty(0), self._y[idx]
 
         else:
             def item_getter(idx: Any) -> Tuple[tensor, tensor, tensor]:

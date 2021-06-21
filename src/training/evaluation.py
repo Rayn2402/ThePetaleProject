@@ -121,7 +121,8 @@ class Evaluator(ABC):
 
             # We record the data count
             for name, mask in [("train_set", train_mask), ("valid_set", valid_mask), ("test_set", test_mask)]:
-                recorder.record_data_info(name, len(mask))
+                mask_length = len(mask) if mask is not None else 0
+                recorder.record_data_info(name, mask_length)
 
             # We update the tuner to perform the hyperparameters optimization
             print(f"\nHyperparameter tuning started - K = {k}\n")

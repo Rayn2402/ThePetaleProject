@@ -508,7 +508,10 @@ class Tuner:
         """
         return create_study(direction=self._objective.metric.direction,
                             study_name=study_name,
-                            sampler=TPESampler(n_startup_trials=20, n_ei_candidates=20, multivariate=True),
+                            sampler=TPESampler(n_startup_trials=20,
+                                               n_ei_candidates=20,
+                                               multivariate=True,
+                                               constant_liar=True),
                             pruner=NopPruner())
 
     def _plot_hps_importance_graph(self) -> None:

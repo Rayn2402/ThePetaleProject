@@ -21,7 +21,7 @@ def build_elasticnet(alpha: float, beta: float):
     Returns: elasticnet model
     """
     l1_ratio = alpha / (alpha + beta)
-    return ElasticNet(alpha=alpha, l1_ratio=l1_ratio, fit_intercept=False, max_iter=5000)
+    return ElasticNet(alpha=alpha, l1_ratio=l1_ratio, fit_intercept=False, max_iter=10000)
 
 
 class NNModelGenerator:

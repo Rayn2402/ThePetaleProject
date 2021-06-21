@@ -19,6 +19,7 @@ from optuna.visualization import plot_param_importances, plot_parallel_coordinat
 from os import makedirs
 from os.path import join
 from sklearn.ensemble import RandomForestClassifier
+from settings.paths import Paths
 from src.data.processing.datasets import CustomDataset, \
     PetaleRFDataset, PetaleNNDataset, PetaleLinearModelDataset
 from src.models.models_generation import NNModelGenerator, build_elasticnet
@@ -490,7 +491,7 @@ class Tuner:
 
         # We set public attributes
         self.n_trials = n_trials
-        self.path = path if path is not None else join("tuning_records", f"{strftime('%Y%m%d-%H%M%S')}")
+        self.path = path if path is not None else join(Paths.TUNING_RECORDS, f"{strftime('%Y%m%d-%H%M%S')}")
         self.save_hps_importance = save_hps_importance
         self.save_parallel_coordinates = save_parallel_coordinates
         self.save_optimization_history = save_optimization_history

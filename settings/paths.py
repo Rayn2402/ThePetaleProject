@@ -22,6 +22,7 @@ class Paths:
     DESC_CHARTS: str = join(DESC_RECORDS, "charts")
     DESC_STATS: str = join(DESC_RECORDS, "stats")
     EXPERIMENTS_RECORDS: str = join(RECORDS, "experiments")
+    TUNING_RECORDS: str = join(RECORDS, "tuning")
     EXPERIMENTS_SCRIPTS: str = join(PROJECT_DIR, "experiments")
     WARMUP_EXPERIMENTS_SCRIPTS: str = join(EXPERIMENTS_SCRIPTS, "warm_up")
     SANITY_CHECKS: str = join(PROJECT_DIR, "sanity_checks")

@@ -482,8 +482,6 @@ class Tuner:
             save_optimization_history: True if we want to plot the optimization history graph after tuning
             path: path of the directory used to store graphs created
         """
-        # We call super init since we're using ABC
-        super().__init__()
 
         # We set protected attributes
         self._objective = objective

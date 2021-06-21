@@ -11,7 +11,7 @@ from subprocess import check_call
 
 FILE = str(join(Paths.WARMUP_EXPERIMENTS_SCRIPTS, "polynomial_regression.py"))
 DEGREES = map(str, range(1, 4))
-COMMANDS = ['python3', FILE, '-d', *DEGREES, '-nos', '20', '-nis', '20', '-t', '500']
+COMMANDS = ['python3', FILE, '-d', *DEGREES, '-nos', '20', '-nis', '20', '-t', '150']
 
 if __name__ == '__main__':
 

@@ -78,9 +78,8 @@ class Trainer(ABC):
         futures = [self._subprocess.remote(i, **kwargs) for i in range(n_splits)]
         scores = ray.get(futures)
 
-        # We the mean of the scores divided by the standard deviation
-        standard_dev = 1 if len(scores) == 1 else std(scores)
-        return mean(scores) / standard_dev
+        # We take the mean of the scores
+        return mean(scores).item()
 
     def define_subprocess(self, dataset: CustomDataset,
                           masks: Dict[int, Dict[str, List[int]]]) -> None:
@@ -92,7 +91,6 @@ class Trainer(ABC):
             masks: dict with list of indexes
 
         """
-
         # We inform the trainer that a subprocess has been defined
         self._subprocess_defined = True
 

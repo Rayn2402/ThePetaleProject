@@ -226,7 +226,9 @@ class ElasticNetTrainer(Trainer):
         Returns: (N, 1) tensor
 
         """
-        return self._model.predict(kwargs['x'])
+        predictions = tensor(self._model.predict(kwargs['x'])).unsqueeze_(1)
+
+        return predictions
 
     def update_trainer(self, **kwargs) -> None:
         """

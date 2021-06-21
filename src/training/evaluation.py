@@ -12,7 +12,7 @@ from numpy.random import seed as np_seed
 from os import path, makedirs
 from settings.paths import Paths
 from sklearn.ensemble import RandomForestClassifier
-from src.data.processing.datasets import PetaleNNDataset, PetaleRFDataset
+from src.data.processing.datasets import PetaleNNDataset, PetaleRFDataset, PetaleLinearModelDataset, CustomDataset
 from src.models.models_generation import NNModelGenerator, build_elasticnet
 from src.recording.recording import Recorder, compare_prediction_recordings, \
     get_evaluation_recap, plot_hyperparameter_importance_chart
@@ -23,7 +23,7 @@ from src.utils.score_metrics import Metric
 from time import strftime
 from torch import manual_seed
 from torch.nn import Module
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 
 class Evaluator(ABC):
@@ -32,7 +32,7 @@ class Evaluator(ABC):
     """
 
     def __init__(self, model_generator: Callable,
-                 dataset: Union[PetaleNNDataset, PetaleRFDataset], masks: Dict[int, Dict[str, List[int]]],
+                 dataset: CustomDataset, masks: Dict[int, Dict[str, List[int]]],
                  hps: Dict[str, Dict[str, Any]], n_trials: int, optimization_metric: Metric,
                  evaluation_metrics: Dict[str, Metric], seed: Optional[int] = None,
                  device: Optional[str] = "cpu", evaluation_name: Optional[str] = None,
@@ -206,6 +206,68 @@ class Evaluator(ABC):
         Returns: objective function
         """
         raise NotImplementedError
+
+
+class ElasticNetEvaluator(Evaluator):
+    """
+    Object charged to evaluate performances of ElasticNet model over multiple splits
+    """
+    def __init__(self, dataset: PetaleLinearModelDataset, masks: Dict[int, Dict[str, List[int]]],
+                 hps: Dict[str, Dict[str, Any]], n_trials: int, optimization_metric: Metric,
+                 evaluation_metrics: Dict[str, Metric], seed: Optional[int] = None,
+                 evaluation_name: Optional[str] = None, save_hps_importance: Optional[bool] = False,
+                 save_parallel_coordinates: Optional[bool] = False, save_optimization_history: Optional[bool] = False):
+        """
+        Sets protected and public attributes of the class
+
+        Args:
+            dataset: custom dataset containing the whole learning dataset needed for our evaluation
+            masks: dict with list of idx to use as train, valid and test masks
+            hps: dictionary with information on the hyperparameters we want to tune
+            n_trials: number of hyperparameters sets sampled within each inner validation loop
+            optimization_metric: function that hyperparameters must optimize
+            evaluation_metrics: dict where keys are names of metrics and values are functions
+                                that will be used to calculate the score of the associated metric
+                                on the test sets of the outer loops
+            seed: random state used for reproducibility
+            evaluation_name: name of the results file saved at the recordings_path
+            save_hps_importance: True if we want to plot the hyperparameters importance graph after tuning
+            save_parallel_coordinates: True if we want to plot the parallel coordinates graph after tuning
+            save_optimization_history: True if we want to plot the optimization history graph after tuning
+        """
+
+        # We call parent's constructor
+        super().__init__(model_generator=build_elasticnet, dataset=dataset, masks=masks, hps=hps,
+                         n_trials=n_trials, optimization_metric=optimization_metric,
+                         evaluation_metrics=evaluation_metrics, seed=seed, evaluation_name=evaluation_name,
+                         save_hps_importance=save_hps_importance, save_parallel_coordinates=save_parallel_coordinates,
+                         save_optimization_history=save_optimization_history)
+
+    def _create_model_and_trainer(self, best_hps: Dict[str, Any]) -> Tuple[Callable, ElasticNetTrainer]:
+        """
+        Returns a model built according to the best hyperparameters given and a trainer
+
+        Args:
+            best_hps: hyperparameters to use in order to build the model
+
+        Returns: model and trainer
+        """
+        model = self.model_generator(alpha=best_hps[ElasticNetHP.ALPHA], beta=best_hps[ElasticNetHP.BETA])
+        trainer = ElasticNetTrainer(model=model, metric=self.optimization_metric)
+
+        return model, trainer
+
+    def _create_objective(self, masks: Dict[int, Dict[str, List[int]]]) -> ElasticNetObjective:
+        """
+        Creates an adapted objective function to pass to our tuner
+
+        Args:
+            masks: inner masks for hyperparameters tuning
+
+        Returns: objective function
+        """
+        return ElasticNetObjective(dataset=self._dataset, masks=masks, hps=self._hps,
+                                   metric=self.optimization_metric)
 
 
 class NNEvaluator(Evaluator):

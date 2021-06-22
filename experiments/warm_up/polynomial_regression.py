@@ -13,6 +13,7 @@ from src.data.extraction.data_management import PetaleDataManager
 from src.data.extraction.constants import SEED
 from src.data.processing.datasets import PetaleLinearModelDataset
 from src.data.processing.sampling import get_warmup_data, extract_masks, push_valid_to_train
+from hps.hps import ELASTIC_HPS
 from src.training.evaluation import ElasticNetEvaluator
 from src.utils.score_metrics import AbsoluteError, RootMeanSquaredError
 
@@ -62,10 +63,6 @@ if __name__ == '__main__':
     masks = extract_masks(join(Paths.MASKS, "l0_masks.json"), k, l)
     push_valid_to_train(masks)
 
-    # Hyperparameters extraction
-    with open(join(Paths.HYPERPARAMETERS, "elastic_net_warmup.json"), "r") as read_file:
-        hps = load(read_file)
-
     # Metric choice
     opt_metric = RootMeanSquaredError()
     eval_metrics = {"MAE": AbsoluteError(), "RMSE": opt_metric}
@@ -80,7 +77,7 @@ if __name__ == '__main__':
         dataset = PetaleLinearModelDataset(df, target, cont_cols, polynomial_degree=deg)
 
         # Creation of an evaluator
-        evaluator = ElasticNetEvaluator(dataset=dataset, masks=masks, hps=hps, n_trials=args.nb_trials,
+        evaluator = ElasticNetEvaluator(dataset=dataset, masks=masks, hps=ELASTIC_HPS, n_trials=args.nb_trials,
                                         optimization_metric=opt_metric,
                                         evaluation_metrics=eval_metrics,
                                         seed=args.seed, evaluation_name=f"elastic_net_warmup_k{k}_l{l}_deg{deg}",

@@ -1,5 +1,5 @@
 """
- File used to store hyperparameters used for sanity checks
+ File used to store hyperparameters used for evaluations
 """
 
 from src.training.enums import *
@@ -48,5 +48,16 @@ RF_HPS = {
     },
     RandomForestsHP.MAX_DEPTH: {
         Range.VALUE: 50
+    }
+}
+
+ELASTIC_HPS = {
+    ElasticNetHP.BETA: {
+        Range.MIN: 1e-8,
+        Range.MAX: 5
+    },
+    ElasticNetHP.ALPHA: {
+        Range.MIN: 1e-8,
+        Range.MAX: 5
     }
 }

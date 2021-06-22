@@ -19,7 +19,7 @@ from src.training.evaluation import NNEvaluator
 from src.data.processing.sampling import get_warmup_data, extract_masks
 from src.data.processing.datasets import PetaleNNDataset
 from settings.paths import Paths
-from Experiments.warm_up.hps import NN_HPS
+from hps.hps import NN_HPS
 from src.data.extraction.constants import *
 from typing import Callable, Dict, List
 

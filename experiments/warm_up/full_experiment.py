@@ -71,9 +71,10 @@ if __name__ == '__main__':
     if len(commands) == 0:
         print("Please choose one of the available options -nn, -oe, or -lin")
     else:
+        start = time.time()
         for cmd in commands:
+
             # We run experiments
-            start = time.time()
             check_call(cmd)
 
         print("Time Taken (minutes): ", round((time.time() - start) / 60, 2))

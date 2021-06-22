@@ -38,8 +38,6 @@ def argument_parser():
 
     parser.add_argument('-k', '--nb_outer_splits', type=int, default=20,
                         help="Number of outer splits (default = [20])")
-    parser.add_argument('-l', '--nb_inner_splits', type=int, default=20,
-                        help="Number of inner splits (default = [20])")
     parser.add_argument('-s', '--seed', nargs="*", type=int, default=[SEED],
                         help=f"List of seeds (default = [{SEED}])")
     parser.add_argument('-u', '--user', type=str, default='rayn2402',
@@ -113,7 +111,6 @@ if __name__ == '__main__':
     # Arguments extraction
     seeds = args.seed
     k = args.nb_outer_splits
-    l = args.nb_inner_splits
 
     # Generation of dataset
     data_manager = PetaleDataManager(args.user)
@@ -123,11 +120,12 @@ if __name__ == '__main__':
     dataset = PetaleRFDataset(df, VO2R_MAX, cont_cols, cat_cols=None)
 
     # Extraction of masks
-    masks = extract_masks(join(Paths.MASKS, "L0_masks.json"), k=k, l=l)
+    masks = extract_masks(join(Paths.MASKS, "L0_masks.json"), k=k, l=0)
+
     # Experiments run
     for s in seeds:
         seed(s)
 
         # Execution of one experiment
-        evaluation_name = f"original_equation_k{k}_l{l}_s{s}"
+        evaluation_name = f"original_equation_k{k}_s{s}"
         execute_original_equation_experiment(dataset=dataset, masks=masks, evaluation_name=evaluation_name)

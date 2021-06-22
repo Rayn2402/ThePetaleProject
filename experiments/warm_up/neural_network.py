@@ -109,9 +109,8 @@ if __name__ == '__main__':
         cont_cols = [c for c in cont_cols if c != MVLPA]
         mvlpa=""
 
-
     # Creation of the dataset
-    nn_dataset = PetaleNNDataset(df, VO2R_MAX, cont_cols, cat_cols=None)
+    nn_dataset = PetaleNNDataset(df, target, cont_cols, cat_cols=None)
 
     # Extraction of masks
     masks = extract_masks(join(Paths.MASKS, "L0_masks.json"), k=k, l=l)

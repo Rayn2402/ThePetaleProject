@@ -117,7 +117,7 @@ if __name__ == '__main__':
     df, target, cont_cols, _ = get_warmup_data(data_manager)
 
     # Creation of the dataset
-    dataset = PetaleRFDataset(df, VO2R_MAX, cont_cols, cat_cols=None)
+    dataset = PetaleRFDataset(df, target, cont_cols, cat_cols=None)
 
     # Extraction of masks
     masks = extract_masks(join(Paths.MASKS, "L0_masks.json"), k=k, l=0)

@@ -12,7 +12,7 @@ sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
 from src.data.extraction.data_management import PetaleDataManager
 from src.data.processing.sampling import TRAIN, TEST, get_warmup_data, extract_masks
 from src.data.processing.datasets import PetaleRFDataset
-from src.utils.score_metrics import AbsoluteError
+from src.utils.score_metrics import RootMeanSquaredError
 from src.data.extraction.constants import *
 from torch import tensor
 from numpy.random import seed
@@ -69,7 +69,7 @@ def execute_original_equation_experiment(dataset: PetaleRFDataset, masks: Dict[i
 
          """
     # We save the metric object
-    metric = AbsoluteError()
+    metric = RootMeanSquaredError()
 
     # We run training and testing for each masks
     for k, v in masks.items():

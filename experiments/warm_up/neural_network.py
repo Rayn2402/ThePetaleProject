@@ -12,7 +12,7 @@ import sys
 sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
 from os.path import join
 from src.data.extraction.data_management import PetaleDataManager
-from src.utils.score_metrics import AbsoluteError
+from src.utils.score_metrics import AbsoluteError, RootMeanSquaredError
 from src.models.nn_models import NNRegressor
 from src.models.models_generation import NNModelGenerator
 from src.training.evaluation import NNEvaluator
@@ -75,10 +75,10 @@ def execute_neural_network_experiment(dataset: PetaleNNDataset, masks:Dict[int, 
      """
 
     # Initialization of the optimization metric
-    metric = AbsoluteError()
+    metric = RootMeanSquaredError()
 
     # Initialization of the dictionary containing the evaluation metrics
-    evaluation_metrics = {"Mean absolute error": AbsoluteError()}
+    evaluation_metrics = {"Root mean square error": RootMeanSquaredError(), "Mean absolute error": AbsoluteError()}
 
     # Creation of the evaluator
     nn_evaluator = NNEvaluator(model_generator=model_generator, dataset=dataset, masks=masks,

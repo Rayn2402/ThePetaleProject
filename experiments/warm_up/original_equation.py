@@ -12,14 +12,13 @@ sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
 from src.data.extraction.data_management import PetaleDataManager
 from src.data.processing.sampling import TRAIN, TEST, get_warmup_data, extract_masks
 from src.data.processing.datasets import PetaleRFDataset
-from src.utils.score_metrics import RootMeanSquaredError
+from src.utils.score_metrics import RootMeanSquaredError, AbsoluteError
 from src.data.extraction.constants import *
 from torch import tensor
-from numpy.random import seed
 from src.recording.recording import Recorder, get_evaluation_recap, compare_prediction_recordings
 from settings.paths import Paths
 from os.path import join
-from typing import Callable, Dict, List
+from typing import Dict, List
 
 
 # We create the function that will calculate the vo2 Peak value based on the original equation
@@ -37,9 +36,8 @@ def argument_parser():
                                      description="Runs the original equation experiment")
 
     parser.add_argument('-nos', '--nb_outer_splits', type=int, default=20,
-                        help="Number of outer splits (default = [20])")
-    parser.add_argument('-s', '--seed', nargs="*", type=int, default=[SEED],
-                        help=f"List of seeds (default = [{SEED}])")
+                        help="Number of outer splits (default = 20)")
+
     parser.add_argument('-u', '--user', type=str, default='rayn2402',
                         help="Valid username for petale database")
 
@@ -54,8 +52,9 @@ def argument_parser():
     return arguments
 
 
-def execute_original_equation_experiment(dataset: PetaleRFDataset, masks: Dict[int, Dict[str, List[int]]],
-                                         evaluation_name:str) -> Callable:
+def execute_original_equation_experiment(dataset: PetaleRFDataset,
+                                         masks: Dict[int, Dict[str, List[int]]],
+                                         evaluation_name:str) -> None:
     """
         Function that executes a Neural Network experiments
 
@@ -70,6 +69,9 @@ def execute_original_equation_experiment(dataset: PetaleRFDataset, masks: Dict[i
          """
     # We save the metric object
     metric = RootMeanSquaredError()
+
+    # We save the evaluation metrics
+    eval_metrics = {'MAE': AbsoluteError(), 'RMSE': metric}
 
     # We run training and testing for each masks
     for k, v in masks.items():
@@ -93,8 +95,8 @@ def execute_original_equation_experiment(dataset: PetaleRFDataset, masks: Dict[i
         recorder.record_predictions([dataset.ids[i] for i in test_mask], predictions, y_test)
 
         # Score calculation and recording
-        score = metric(predictions, y_test)
-        recorder.record_scores(score, "mean_absolute_error")
+        for metric_name, f in eval_metrics.items():
+            recorder.record_scores(score=f(predictions, y_test), metric=metric_name)
 
         # Generation of the file with the results
         recorder.generate_file()
@@ -103,13 +105,13 @@ def execute_original_equation_experiment(dataset: PetaleRFDataset, masks: Dict[i
     get_evaluation_recap(evaluation_name=evaluation_name, recordings_path=Paths.EXPERIMENTS_RECORDS)
 
 
-
 if __name__ == '__main__':
+
     # Arguments parsing
     args = argument_parser()
 
     # Arguments extraction
-    seeds = args.seed
+    seed = args.seed
     k = args.nb_outer_splits
 
     # Generation of dataset
@@ -122,10 +124,6 @@ if __name__ == '__main__':
     # Extraction of masks
     masks = extract_masks(join(Paths.MASKS, "L0_masks.json"), k=k, l=0)
 
-    # Experiments run
-    for s in seeds:
-        seed(s)
-
-        # Execution of one experiment
-        evaluation_name = f"original_equation_k{k}_s{s}"
-        execute_original_equation_experiment(dataset=dataset, masks=masks, evaluation_name=evaluation_name)
+    # Execution of the experiment
+    evaluation_name = f"original_equation_k{k}"
+    execute_original_equation_experiment(dataset=dataset, masks=masks, evaluation_name=evaluation_name)

@@ -6,24 +6,26 @@ import sys
 
 sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
 import time
-import subprocess as sp
+from subprocess import check_call
 from settings.paths import Paths
-
+from src.data.extraction.constants import SEED
 
 FILE_NN = str(join(Paths.WARMUP_EXPERIMENTS_SCRIPTS, "neural_network.py"))
 FILE_OE = str(join(Paths.WARMUP_EXPERIMENTS_SCRIPTS, "original_equation.py"))
-SEEDS = map(str, range(100, 106))
-COMMANDS_NN_1 = ['python3', FILE_NN, '-k', '10', '-l', '20', '-n', '1000', '-s', *SEEDS, "-m"]
-SEEDS = map(str, range(100, 106))
-COMMANDS_OE = ['python3', FILE_OE, '-k', '10', '-s', *SEEDS]
+FILE_PR = str(join(Paths.WARMUP_EXPERIMENTS_SCRIPTS, "polynomial_regression.py"))
 
+COMMANDS_NN = ['python3', FILE_NN, '-nos', '20', '-nis', '20', '-t', '1000', '-s', f'{SEED}', "-m"]
+
+COMMANDS_OE = ['python3', FILE_OE, '-nos', '20', '-s', f'{SEED}']
+
+DEGREES = map(str, range(1, 4))
+COMMANDS_PR = ['python3', FILE_PR, '-d', *DEGREES, '-nos', '20', '-nis', '20', '-t', '1000', '-s', f'{SEED}']
 
 if __name__ == '__main__':
 
-    for cmd in [COMMANDS_NN_1, COMMANDS_OE]:
+    for cmd in [COMMANDS_NN, COMMANDS_OE, COMMANDS_PR]:
         # We run experiments
         start = time.time()
-        p = sp.Popen(cmd)
-        p.wait()
+        check_call(cmd)
 
     print("Time Taken (minutes): ", round((time.time() - start) / 60, 2))

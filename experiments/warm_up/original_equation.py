@@ -36,7 +36,7 @@ def argument_parser():
     parser = argparse.ArgumentParser(usage='\n python3 original_equation.py',
                                      description="Runs the original equation experiment")
 
-    parser.add_argument('-k', '--nb_outer_splits', type=int, default=20,
+    parser.add_argument('-nos', '--nb_outer_splits', type=int, default=20,
                         help="Number of outer splits (default = [20])")
     parser.add_argument('-s', '--seed', nargs="*", type=int, default=[SEED],
                         help=f"List of seeds (default = [{SEED}])")

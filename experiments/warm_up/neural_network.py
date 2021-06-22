@@ -32,11 +32,11 @@ def argument_parser():
     parser = argparse.ArgumentParser(usage='\n python3 neural_network.py',
                                      description="Runs a neural network experiment")
 
-    parser.add_argument('-k', '--nb_outer_splits', type=int, default=20,
+    parser.add_argument('-nos', '--nb_outer_splits', type=int, default=20,
                         help="Number of outer splits (default = [20])")
-    parser.add_argument('-l', '--nb_inner_splits', type=int, default=20,
+    parser.add_argument('-nis', '--nb_inner_splits', type=int, default=20,
                         help="Number of inner splits (default = [20])")
-    parser.add_argument('-n', '--n_trials', type=int, default=100,
+    parser.add_argument('-t', '--nb_trials', type=int, default=100,
                         help="Number of trials (default = [100])")
     parser.add_argument('-s', '--seed', nargs="*", type=int, default=[SEED],
                         help=f"List of seeds (default = [{SEED}])")
@@ -94,7 +94,7 @@ if __name__ == '__main__':
     args = argument_parser()
 
     # Arguments extraction
-    n_trials = args.n_trials
+    n_trials = args.nb_trials
     seeds = args.seed
     k = args.nb_outer_splits
     l = args.nb_inner_splits

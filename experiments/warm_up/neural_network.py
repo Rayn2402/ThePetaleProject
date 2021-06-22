@@ -79,7 +79,7 @@ def execute_neural_network_experiment(dataset: PetaleNNDataset, masks: Dict[int,
     metric = RootMeanSquaredError()
 
     # Initialization of the dictionary containing the evaluation metrics
-    evaluation_metrics = {"RMSE": RootMeanSquaredError(), "MAE": AbsoluteError()}
+    evaluation_metrics = {"RMSE": metric, "MAE": AbsoluteError()}
 
     # Creation of the evaluator
     nn_evaluator = NNEvaluator(model_generator=model_generator, dataset=dataset, masks=masks,

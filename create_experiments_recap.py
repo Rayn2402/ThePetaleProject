@@ -3,8 +3,31 @@ File that will be responsible of creating the experiment recap: an html page whi
  about all the experiments
 """
 
+import argparse
 import os
 import json
+
+
+def argument_parser():
+    """
+    This function defines a parser that enables user to extract experiment recap from split folders
+    """
+    # Create a parser
+    parser = argparse.ArgumentParser(usage='\n python3 create_experiment_recap.py [experiment_folder_path]',
+                                     description="Creates an html file with splits details")
+
+    parser.add_argument('-p', '--path', type=str,
+                        help='Path of the experiment folder')
+
+    arguments = parser.parse_args()
+
+    # Print arguments
+    print("\nThe inputs are:")
+    for arg in vars(arguments):
+        print("{}: {}".format(arg, getattr(arguments, arg)))
+    print("\n")
+
+    return arguments
 
 
 def create_experiments_recap(path):
@@ -24,8 +47,6 @@ def create_experiments_recap(path):
     optimization_history_file = "optimization_history.png"
     loss_over_epochs_file = "Train_and_valid_loss_over_epochs.png"
     metric_over_epochs_file = "Train_and_valid_metric_over_epochs.png"
-
-
 
     # We define the style of our webpage with css
     style = """<style>
@@ -295,8 +316,6 @@ x   }
                     </div>
                     """
 
-
-
             # We add the hyperparameters section
             hyperparams_section = ""
             if "hyperparameters" in data.keys():
@@ -432,8 +451,13 @@ x   }
     """
     
     # We save the html file
-    file = open("Experiments_recap.html", "w")
+    file = open("experiments_recap.html", "w")
     file.write(body)
     file.close()
 
-create_experiments_recap(path="Recordings")
+
+if __name__ == '__main__':
+
+    # Arguments parsing
+    args = argument_parser()
+    create_experiments_recap(path=args.path)

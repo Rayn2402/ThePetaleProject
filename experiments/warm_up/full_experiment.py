@@ -44,7 +44,7 @@ FILE_PR = str(join(Paths.WARMUP_EXPERIMENTS_SCRIPTS, "polynomial_regression.py")
 
 COMMANDS_NN = ['python3', FILE_NN, '-nos', '20', '-nis', '20', '-t', '1000', '-s', f'{SEED}', "-m"]
 
-COMMANDS_OE = ['python3', FILE_OE, '-nos', '20', '-s', f'{SEED}']
+COMMANDS_OE = ['python3', FILE_OE, '-nos', '20']
 
 DEGREES = map(str, range(1, 4))
 COMMANDS_PR = ['python3', FILE_PR, '-d', *DEGREES, '-nos', '20', '-nis', '20', '-t', '1000', '-s', f'{SEED}']

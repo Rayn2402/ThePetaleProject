@@ -12,6 +12,7 @@ sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
 from src.data.extraction.data_management import PetaleDataManager
 from src.data.processing.sampling import TRAIN, TEST, get_warmup_data, extract_masks
 from src.data.processing.datasets import PetaleRFDataset
+from src.data.processing.transforms import ContinuousTransform, CategoricalTransform
 from src.utils.score_metrics import RootMeanSquaredError, AbsoluteError
 from src.data.extraction.constants import *
 from torch import tensor
@@ -80,8 +81,14 @@ def execute_original_equation_experiment(dataset: PetaleRFDataset,
         train_mask, test_mask = v[TRAIN], v[TEST]
         dataset.update_masks(train_mask=train_mask, test_mask=test_mask)
 
+        # Data extraction and preprocessing without normalization
+        x = dataset.original_data.copy()
+        mu, _, _ = dataset.current_train_stats()
+        x = ContinuousTransform.fill_missing(x, mu)
+
         # Train and test data extraction
-        x_test, y_test = dataset[test_mask]
+        x_test = x.iloc[test_mask]
+        _, y_test = dataset[test_mask]
 
         # Recorder initialization
         recorder = Recorder(evaluation_name=evaluation_name,
@@ -90,7 +97,7 @@ def execute_original_equation_experiment(dataset: PetaleRFDataset,
         # Prediction calculations and recording
         predictions = []
         for i, row in x_test.iterrows():
-            predictions.append((original_equation(row)))
+            predictions.append(original_equation(row))
         predictions = tensor(predictions)
         recorder.record_predictions([dataset.ids[i] for i in test_mask], predictions, y_test)
 
@@ -111,7 +118,6 @@ if __name__ == '__main__':
     args = argument_parser()
 
     # Arguments extraction
-    seed = args.seed
     k = args.nb_outer_splits
 
     # Generation of dataset

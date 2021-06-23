@@ -56,8 +56,9 @@ def argument_parser():
     return arguments
 
 
-def execute_neural_network_experiment(dataset: PetaleNNDataset, masks:Dict[int, Dict[str, List[int]]], n_trials: int,
-                                      model_generator:NNModelGenerator, seed:List[int], evaluation_name:str)->Callable:
+def execute_neural_network_experiment(dataset: PetaleNNDataset, masks: Dict[int, Dict[str, List[int]]],
+                                      n_trials: int, model_generator: NNModelGenerator, seed: int,
+                                      evaluation_name:str)->Callable:
     """
     Function that executes a Neural Network experiments
 
@@ -78,7 +79,7 @@ def execute_neural_network_experiment(dataset: PetaleNNDataset, masks:Dict[int, 
     metric = RootMeanSquaredError()
 
     # Initialization of the dictionary containing the evaluation metrics
-    evaluation_metrics = {"Root mean square error": RootMeanSquaredError(), "Mean absolute error": AbsoluteError()}
+    evaluation_metrics = {"RMSE": metric, "MAE": AbsoluteError()}
 
     # Creation of the evaluator
     nn_evaluator = NNEvaluator(model_generator=model_generator, dataset=dataset, masks=masks,
@@ -99,15 +100,14 @@ if __name__ == '__main__':
     k = args.nb_outer_splits
     l = args.nb_inner_splits
 
-    mvlpa = "MVLPA"
-
     # Generation of dataset
+    mvlpa = "MVLPA"
     data_manager = PetaleDataManager(args.user)
     df, target, cont_cols, _ = get_warmup_data(data_manager)
     if not args.mvlpa:
         df = df.drop([MVLPA], axis=1)
         cont_cols = [c for c in cont_cols if c != MVLPA]
-        mvlpa=""
+        mvlpa = ""
 
     # Creation of the dataset
     nn_dataset = PetaleNNDataset(df, target, cont_cols, cat_cols=None)

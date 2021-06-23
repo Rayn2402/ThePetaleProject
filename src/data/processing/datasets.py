@@ -79,6 +79,10 @@ class CustomDataset(ABC):
         return self._ids
 
     @property
+    def original_data(self) -> DataFrame:
+        return self._original_data
+
+    @property
     def test_mask(self) -> List[int]:
         return self._test_mask
 
@@ -94,7 +98,7 @@ class CustomDataset(ABC):
     def y(self) -> Union[tensor, array]:
         return self._y
 
-    def _current_train_stats(self) -> Tuple[Optional[Series], Optional[Series], Optional[Series]]:
+    def current_train_stats(self) -> Tuple[Optional[Series], Optional[Series], Optional[Series]]:
         """
         Returns the current statistics and encodings related to the training data
         """
@@ -181,7 +185,7 @@ class CustomDataset(ABC):
         self._train_mask, self._valid_mask, self._test_mask = train_mask, valid_mask, test_mask
 
         # We compute the current values of mu, std, modes and encodings
-        mu, std, modes = self._current_train_stats()
+        mu, std, modes = self.current_train_stats()
 
         # We update the data that will be available via __get_item__
         self._set_numerical(mu, std)
@@ -545,7 +549,6 @@ class PetaleGNNDataset(PetaleRFDataset):
         """
         # We look through categorical columns to generate graph structure
         graph_structure = {}
-        print(self.encodings)
         for e_types, e_values in self.encodings.items():
             edges_start, edges_end = [], []
             for value in e_values.values():
@@ -559,7 +562,6 @@ class PetaleGNNDataset(PetaleRFDataset):
 
         # We update the internal graph attribute
         self._graph = heterograph(graph_structure)
-        print(self._graph.num_nodes)
 
         # We set the graph data
         print(self._graph.nodes())

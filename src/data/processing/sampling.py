@@ -4,7 +4,7 @@ Author : Nicolas Raymond
 This file contains the Sampler class used to separate test sets from train sets
 """
 
-from src.data.processing.datasets import PetaleRFDataset
+from src.data.processing.datasets import CustomDataset
 from itertools import product
 from json import load
 from numpy import array
@@ -29,7 +29,7 @@ class RandomStratifiedSampler:
     Object uses in order to generate lists of indexes to use as train, valid
     and test masks for outer and inner validation loops.
     """
-    def __init__(self, dataset: PetaleRFDataset,
+    def __init__(self, dataset: CustomDataset,
                  n_out_split: int, n_in_split: int, valid_size: float = 0.20, test_size: float = 0.20,
                  random_state: Optional[int] = None, alpha: int = 4, patience: int = 100):
         """

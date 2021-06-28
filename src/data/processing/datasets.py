@@ -51,6 +51,7 @@ class CustomDataset(ABC):
         self._original_data = df
         self._n = df.shape[0]
         self._x = df.drop([PARTICIPANT, target], axis=1).copy()
+        self._x_cat, self._x_cont = None, None
         self._y = self._original_data[target].to_numpy(dtype=float)
 
         # Set public attributes
@@ -100,6 +101,14 @@ class CustomDataset(ABC):
     @property
     def x(self) -> DataFrame:
         return self._x
+
+    @property
+    def x_cat(self) -> Optional[Union[array, tensor]]:
+        return self._x_cat
+
+    @property
+    def x_cont(self) -> Optional[Union[array, tensor]]:
+        return self._x_cont
 
     @property
     def y(self) -> array:
@@ -226,10 +235,19 @@ class CustomDataset(ABC):
         # We update the data that will be available via __get_item__
         self._set_numerical(mu, std)
         self._set_categorical(modes)
+        self._apply_conversion()
 
     @abstractmethod
     def __getitem__(self, idx: Union[int, List[int]]) -> Any:
         raise NotImplementedError
+
+    @abstractmethod
+    def _apply_conversion(self) -> None:
+        """
+        Abstract method that takes imputed data and convert it to proper format for training
+        Returns: None
+        """
+        pass
 
     # @abstractmethod
     # def _create_subset(self) -> Any:
@@ -281,6 +299,15 @@ class PetaleNNDataset(CustomDataset, Dataset):
     def __getitem__(self, idx: Any) -> Tuple[tensor, tensor, tensor]:
         return self._item_getter(idx)
 
+    def _apply_conversion(self) -> None:
+        """
+        Sets x_cat and x_cont protected attributes
+
+        Returns: None
+        """
+        self._x_cat = CaT.to_tensor(self.x.loc[:, self.cat_cols])
+        self._x_cont = ConT.to_tensor(self.x.loc[:, self.cont_cols])
+
     def _define_item_getter(self, cont_cols: Optional[List[str]] = None,
                             cat_cols: Optional[List[str]] = None) -> Callable:
         """
@@ -293,47 +320,17 @@ class PetaleNNDataset(CustomDataset, Dataset):
         """
         if cont_cols is None:
             def item_getter(idx: Any) -> Tuple[tensor, tensor, tensor]:
-                return empty(0), self.x_cat(idx), self.y[idx]
+                return empty(0), self.x_cat[idx, :], self.y[idx]
 
         elif cat_cols is None:
             def item_getter(idx: Any) -> Tuple[tensor, tensor, tensor]:
-                return self.x_cont(idx), empty(0), self.y[idx]
+                return self.x_cont[idx, :], empty(0), self.y[idx]
 
         else:
             def item_getter(idx: Any) -> Tuple[tensor, tensor, tensor]:
-                return self.x_cont(idx), self.x_cat(idx), self.y[idx]
+                return self.x_cont[idx, :], self.x_cat[idx, :], self.y[idx]
 
         return item_getter
-
-    def x_cat(self, idx: List[int]) -> tensor:
-        """
-        Returns categorical data in the appropriate format
-
-        Args:
-            idx: list of idx
-
-        Returns: tensor
-
-        """
-        if idx is not None:
-            return CaT.to_tensor(self.x.loc[idx, self.cat_cols])
-        else:
-            return CaT.to_tensor(self.x.loc[:, self.cat_cols])
-
-    def x_cont(self, idx: Optional[List[int]] = None) -> tensor:
-        """
-        Returns continuous data in the appropriate format
-
-        Args:
-            idx: list of idx
-
-        Returns: tensor
-
-        """
-        if idx is not None:
-            return ConT.to_tensor(self.x.loc[idx, self.cont_cols])
-        else:
-            return ConT.to_tensor(self.x.loc[:, self.cont_cols])
 
 
 class PetaleRFDataset(CustomDataset):
@@ -357,6 +354,12 @@ class PetaleRFDataset(CustomDataset):
 
     def __getitem__(self, idx) -> Tuple[Series, array]:
         return self.x.iloc[idx], self.y[idx]
+
+    def _apply_conversion(self) -> None:
+        """
+        Only passes since we're using dataframe directly
+        """
+        super()._apply_conversion()
 
 
 class PetaleLinearModelDataset(CustomDataset):
@@ -390,35 +393,14 @@ class PetaleLinearModelDataset(CustomDataset):
     def __getitem__(self, idx) -> Tuple[array, array]:
         return self._item_getter(idx)
 
-    def x_cat(self, idx: List[int]) -> array:
+    def _apply_conversion(self) -> None:
         """
-        Returns categorical data in the appropriate format
+        Sets x_cat and x_cont protected attributes
 
-        Args:
-            idx: list of idx
-
-        Returns: tensor
-
+        Returns: None
         """
-        if idx is not None:
-            return self.x.loc[idx, self.cat_cols].to_numpy(dtype=int)
-        else:
-            return self.x.loc[:, self.cat_cols].to_numpy(dtype=int)
-
-    def x_cont(self, idx: Optional[List[int]] = None) -> array:
-        """
-        Returns continuous data in the appropriate format
-
-        Args:
-            idx: list of idx
-
-        Returns: tensor
-
-        """
-        if idx is not None:
-            return self._basis_function.fit_transform(self.x.loc[idx, self.cont_cols].to_numpy(dtype=float))
-        else:
-            return self._basis_function.fit_transform(self.x.loc[:, self.cont_cols].to_numpy(dtype=float))
+        self._x_cat = self.x.loc[:, self.cat_cols].to_numpy(dtype=int)
+        self._x_cont = self._basis_function.fit_transform(self.x.loc[:, self.cont_cols].to_numpy(dtype=float))
 
     def _define_item_getter(self, cont_cols: Optional[List[str]] = None,
                             cat_cols: Optional[List[str]] = None) -> Callable:
@@ -432,15 +414,15 @@ class PetaleLinearModelDataset(CustomDataset):
         """
         if cont_cols is None:
             def item_getter(idx: Any) -> Tuple[array, array]:
-                return self.x_cat(idx), self.y[idx]
+                return self.x_cat[idx, :], self.y[idx]
 
         elif cat_cols is None:
             def item_getter(idx: Any) -> Tuple[array, array]:
-                return self.x_cont(idx), self.y[idx]
+                return self.x_cont[idx, :], self.y[idx]
 
         else:
             def item_getter(idx: Any) -> Tuple[array, array]:
-                return concatenate((self.x_cont(idx), self.x_cat(idx)), axis=1), self.y[idx]
+                return concatenate((self.x_cont[idx, :], self.x_cat[idx, :]), axis=1), self.y[idx]
 
         return item_getter
 

@@ -204,6 +204,8 @@ class CustomDataset(ABC):
         # We apply an ordinal encoding to categorical columns
         self._x[self.cat_cols], _ = preprocess_categoricals(self._original_data[self.cat_cols].copy(),
                                                             mode=modes, encodings=self._encodings)
+        # We update x_cat protected attribute
+        self._set_x_cat()
 
     def _numerical_setter(self, mu: Series, std: Series) -> None:
         """
@@ -220,6 +222,27 @@ class CustomDataset(ABC):
         # We fill missing with means and normalize the data
         self._x[self.cont_cols] = preprocess_continuous(self._original_data[self.cont_cols].copy(), mu, std)
 
+        # We update x_cont protected attribute
+        self._set_x_cont()
+
+    def _set_x_cat(self) -> None:
+        """
+        Abstract method that takes imputed categorical data and convert it
+        to proper format for training
+
+        Returns: None
+        """
+        pass
+
+    def _set_x_cont(self) -> None:
+        """
+        Abstract method that takes imputed continuous data and convert it
+        to proper format for training
+
+        Returns: None
+        """
+        pass
+
     def update_masks(self, train_mask: List[int], test_mask: List[int],
                      valid_mask: Optional[List[int]] = None) -> None:
         """
@@ -235,19 +258,11 @@ class CustomDataset(ABC):
         # We update the data that will be available via __get_item__
         self._set_numerical(mu, std)
         self._set_categorical(modes)
-        self._apply_conversion()
 
     @abstractmethod
     def __getitem__(self, idx: Union[int, List[int]]) -> Any:
         raise NotImplementedError
 
-    @abstractmethod
-    def _apply_conversion(self) -> None:
-        """
-        Abstract method that takes imputed data and convert it to proper format for training
-        Returns: None
-        """
-        pass
 
     # @abstractmethod
     # def _create_subset(self) -> Any:
@@ -299,15 +314,6 @@ class PetaleNNDataset(CustomDataset, Dataset):
     def __getitem__(self, idx: Any) -> Tuple[tensor, tensor, tensor]:
         return self._item_getter(idx)
 
-    def _apply_conversion(self) -> None:
-        """
-        Sets x_cat and x_cont protected attributes
-
-        Returns: None
-        """
-        self._x_cat = CaT.to_tensor(self.x.loc[:, self.cat_cols])
-        self._x_cont = ConT.to_tensor(self.x.loc[:, self.cont_cols])
-
     def _define_item_getter(self, cont_cols: Optional[List[str]] = None,
                             cat_cols: Optional[List[str]] = None) -> Callable:
         """
@@ -332,6 +338,20 @@ class PetaleNNDataset(CustomDataset, Dataset):
 
         return item_getter
 
+    def _set_x_cat(self) -> None:
+        """
+        Sets x_cat protected attribute after masks update
+        Returns: None
+        """
+        self._x_cat = CaT.to_tensor(self.x[self.cat_cols])
+
+    def _set_x_cont(self) -> None:
+        """
+        Sets x_cont protected attribute after masks update
+        Returns: None
+        """
+        self._x_cont = ConT.to_tensor(self.x[self.cont_cols])
+
 
 class PetaleRFDataset(CustomDataset):
     """
@@ -354,12 +374,6 @@ class PetaleRFDataset(CustomDataset):
 
     def __getitem__(self, idx) -> Tuple[Series, array]:
         return self.x.iloc[idx], self.y[idx]
-
-    def _apply_conversion(self) -> None:
-        """
-        Only passes since we're using dataframe directly
-        """
-        super()._apply_conversion()
 
 
 class PetaleLinearModelDataset(CustomDataset):
@@ -393,15 +407,6 @@ class PetaleLinearModelDataset(CustomDataset):
     def __getitem__(self, idx) -> Tuple[array, array]:
         return self._item_getter(idx)
 
-    def _apply_conversion(self) -> None:
-        """
-        Sets x_cat and x_cont protected attributes
-
-        Returns: None
-        """
-        self._x_cat = self.x.loc[:, self.cat_cols].to_numpy(dtype=int)
-        self._x_cont = self._basis_function.fit_transform(self.x.loc[:, self.cont_cols].to_numpy(dtype=float))
-
     def _define_item_getter(self, cont_cols: Optional[List[str]] = None,
                             cat_cols: Optional[List[str]] = None) -> Callable:
         """
@@ -425,6 +430,20 @@ class PetaleLinearModelDataset(CustomDataset):
                 return concatenate((self.x_cont[idx, :], self.x_cat[idx, :]), axis=1), self.y[idx]
 
         return item_getter
+
+    def _set_x_cat(self) -> None:
+        """
+        Sets x_cat protected attribute after masks update
+        Returns: None
+        """
+        self._x_cat = self.x[self.cat_cols].to_numpy(dtype=int)
+
+    def _set_x_cont(self) -> None:
+        """
+        Sets x_cont protected attribute after masks update
+        Returns: None
+        """
+        self._x_cont = self._basis_function.fit_transform(self.x[self.cont_cols].to_numpy(dtype=float))
 
 
 class PetaleGNNDataset(PetaleNNDataset):

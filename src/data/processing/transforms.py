@@ -4,6 +4,7 @@ Author : Nicolas Raymond
 This file contains all transformations related to preprocessing treatment
 """
 
+from torch import tensor, from_numpy
 from typing import Optional, Tuple
 import pandas as pd
 
@@ -33,6 +34,18 @@ class ContinuousTransform:
             return df.fillna(mean)
         else:
             return df.fillna(df.mean())
+
+    @staticmethod
+    def to_tensor(df: pd.DataFrame) -> tensor:
+        """
+        Takes a dataframe with categorical columns and return a tensor with "longs"
+
+        Args:
+            df: dataframe with categorical columns only
+
+        Returns: tensor
+        """
+        return from_numpy(df.to_numpy(dtype=float)).long()
 
 
 class CategoricalTransform:
@@ -74,4 +87,16 @@ class CategoricalTransform:
             return df.fillna(mode)
         else:
             return df.fillna(df.mode().iloc[0])
+
+    @staticmethod
+    def to_tensor(df: pd.DataFrame) -> tensor:
+        """
+        Takes a dataframe with numerical columns and return a tensor with "floats"
+
+        Args:
+            df: dataframe with categorical columns only
+
+        Returns: tensor
+        """
+        return from_numpy(df.to_numpy(dtype=float)).float()
 

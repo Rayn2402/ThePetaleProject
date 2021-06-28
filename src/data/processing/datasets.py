@@ -6,12 +6,14 @@ Files that contains class related to Datasets
 """
 
 from abc import ABC, abstractmethod
-from src.data.processing.preprocessing import preprocess_continuous, preprocess_categoricals
 from dgl import heterograph
 from numpy import array, concatenate
 from pandas import DataFrame, Series
 from sklearn.preprocessing import PolynomialFeatures
 from src.data.extraction.constants import *
+from src.data.processing.preprocessing import preprocess_continuous, preprocess_categoricals
+from src.data.processing.transforms import CategoricalTransform as CaT
+from src.data.processing.transforms import ContinuousTransform as ConT
 from torch.utils.data import Dataset
 from torch import from_numpy, tensor, empty
 from typing import Optional, List, Callable, Tuple, Union, Any, Dict
@@ -48,7 +50,8 @@ class CustomDataset(ABC):
         self._train_mask, self._valid_mask, self._test_mask = [], None, []
         self._original_data = df
         self._n = df.shape[0]
-        self._y = self._initialize_targets(target)
+        self._x = df.drop([PARTICIPANT, target], axis=1).copy()
+        self._y = self._original_data[target].to_numpy(dtype=float)
 
         # Set public attributes
         self.cont_cols = cont_cols
@@ -95,7 +98,11 @@ class CustomDataset(ABC):
         return self._valid_mask
 
     @property
-    def y(self) -> Union[tensor, array]:
+    def x(self) -> DataFrame:
+        return self._x
+
+    @property
+    def y(self) -> array:
         return self._y
 
     def current_train_stats(self) -> Tuple[Optional[Series], Optional[Series], Optional[Series]]:
@@ -175,6 +182,35 @@ class CustomDataset(ABC):
 
         return get_mu_and_std
 
+    def _categorical_setter(self, modes: Series) -> None:
+        """
+        Fill missing values of categorical data according to the modes in the training set and
+        then encodes categories using the same ordinal encoding as in the training set.
+
+        Args:
+            modes: modes of the categorical column according to the training mask
+
+        Returns: None
+        """
+        # We apply an ordinal encoding to categorical columns
+        self._x[self.cat_cols], _ = preprocess_categoricals(self._original_data[self.cat_cols].copy(),
+                                                            mode=modes, encodings=self._encodings)
+
+    def _numerical_setter(self, mu: Series, std: Series) -> None:
+        """
+        Fills missing values of numerical continuous data according according to the means of the
+        training set and then normalize continuous data using the means and the standard
+        deviations of the training set.
+
+        Args:
+            mu: means of the numerical column according to the training mask
+            std: standard deviations of the numerical column according to the training mask
+
+        Returns: None
+        """
+        # We fill missing with means and normalize the data
+        self._x[self.cont_cols] = preprocess_continuous(self._original_data[self.cont_cols].copy(), mu, std)
+
     def update_masks(self, train_mask: List[int], test_mask: List[int],
                      valid_mask: Optional[List[int]] = None) -> None:
         """
@@ -195,29 +231,14 @@ class CustomDataset(ABC):
     def __getitem__(self, idx: Union[int, List[int]]) -> Any:
         raise NotImplementedError
 
-    @abstractmethod
-    def _numerical_setter(self, mu: Series, std: Series) -> None:
-        """
-        Fills missing values of numerical continuous data according according to the means of the
-        training set and then normalize continuous data using the means and the standard
-        deviations of the training set.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def _categorical_setter(self, modes: Series) -> None:
-        """
-        Fill missing values of categorical data according to the modes in the training set and
-        then encodes categories using the same encoding as in the training set.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def _initialize_targets(self, target: str) -> Union[tensor, array]:
-        """
-        Returns the targets container in the appropriate format (tensor or array)
-        """
-        raise NotImplementedError
+    # @abstractmethod
+    # def _create_subset(self) -> Any:
+    #     """
+    #     Returns a subset of the current dataset while using feature selection
+    #
+    #     Returns: instance of the same class
+    #     """
+    #     raise NotImplementedError
 
     @staticmethod
     def check_columns_validity(df: DataFrame, columns: Optional[List[str]] = None) -> None:
@@ -245,44 +266,20 @@ class PetaleNNDataset(CustomDataset, Dataset):
             cont_cols: list of column names associated with continuous data
             cat_cols: list of column names associated with categorical data
         """
-        # We set protected attributes to None before they get initialized in the CustomDataset constructor
-        self._x_cont, self._x_cat = None, None
-
         # We use the _init_ of the parent class CustomDataset
         CustomDataset.__init__(self, df, target, cont_cols, cat_cols)
 
         # We define the item getter function
         self._item_getter = self._define_item_getter(cont_cols, cat_cols)
 
+        # We change format of targets
+        self._y = from_numpy(self._y).float().flatten()
+
     def __len__(self) -> int:
         return CustomDataset.__len__(self)
 
     def __getitem__(self, idx: Any) -> Tuple[tensor, tensor, tensor]:
         return self._item_getter(idx)
-
-    @property
-    def x_cont(self) -> Optional[tensor]:
-        return self._x_cont
-
-    @property
-    def x_cat(self) -> Optional[tensor]:
-        return self._x_cat
-
-    def _categorical_setter(self, modes: Series) -> None:
-        """
-        Fill missing values of categorical data according to the modes in the training set and
-        then encodes categories using the same ordinal encoding as in the training set.
-
-        Args:
-            modes: modes of the categorical column according to the training mask
-
-        Returns: None
-        """
-        # We apply an ordinal encoding to categorical columns
-        temporary_df, _ = preprocess_categoricals(self._original_data[self.cat_cols].copy(),
-                                                  mode=modes, encodings=self._encodings)
-
-        self._x_cat = from_numpy(temporary_df.to_numpy(dtype=float)).long()
 
     def _define_item_getter(self, cont_cols: Optional[List[str]] = None,
                             cat_cols: Optional[List[str]] = None) -> Callable:
@@ -296,45 +293,47 @@ class PetaleNNDataset(CustomDataset, Dataset):
         """
         if cont_cols is None:
             def item_getter(idx: Any) -> Tuple[tensor, tensor, tensor]:
-                return empty(0), self._x_cat[idx, :], self._y[idx]
+                return empty(0), self.x_cat(idx), self.y[idx]
 
         elif cat_cols is None:
             def item_getter(idx: Any) -> Tuple[tensor, tensor, tensor]:
-                return self._x_cont[idx, :], empty(0), self._y[idx]
+                return self.x_cont(idx), empty(0), self.y[idx]
 
         else:
             def item_getter(idx: Any) -> Tuple[tensor, tensor, tensor]:
-                return self._x_cont[idx, :], self._x_cat[idx, :], self._y[idx]
+                return self.x_cont(idx), self.x_cat(idx), self.y[idx]
 
         return item_getter
 
-    def _initialize_targets(self, target: str) -> tensor:
+    def x_cat(self, idx: List[int]) -> tensor:
         """
-        Saves targets values in a tensor
+        Returns categorical data in the appropriate format
 
         Args:
-            target: name of the column with the targets
+            idx: list of idx
 
         Returns: tensor
-        """
-        temporary_df = self._original_data[target].astype(float)
-        return from_numpy(temporary_df.to_numpy(dtype=float)).float().flatten()
 
-    def _numerical_setter(self, mu: Series, std: Series) -> None:
         """
-        Fills missing values of numerical continuous data according according to the means of the
-        training set and then normalize continuous data using the means and the standard
-        deviations of the training set.
+        if idx is not None:
+            return CaT.to_tensor(self.x.loc[idx, self.cat_cols])
+        else:
+            return CaT.to_tensor(self.x.loc[:, self.cat_cols])
+
+    def x_cont(self, idx: Optional[List[int]] = None) -> tensor:
+        """
+        Returns continuous data in the appropriate format
 
         Args:
-            mu: means of the numerical column according to the training mask
-            std: standard deviations of the numerical column according to the training mask
+            idx: list of idx
 
-        Returns: None
+        Returns: tensor
+
         """
-        # We fill missing with means and normalize the data
-        temporary_df = preprocess_continuous(self._original_data[self.cont_cols].copy(), mu, std)
-        self._x_cont = from_numpy(temporary_df.to_numpy(dtype=float)).float()
+        if idx is not None:
+            return ConT.to_tensor(self.x.loc[idx, self.cont_cols])
+        else:
+            return ConT.to_tensor(self.x.loc[:, self.cont_cols])
 
 
 class PetaleRFDataset(CustomDataset):
@@ -353,58 +352,11 @@ class PetaleRFDataset(CustomDataset):
             cat_cols: list of column names associated with categorical data
         """
 
-        # We set protected attributes to None before they get initialized in the CustomDataset constructor
-        self._x = df.drop([PARTICIPANT, target], axis=1).copy()
-
         # We use the _init_ of the parent class CustomDataset
         super().__init__(df, target, cont_cols, cat_cols)
 
     def __getitem__(self, idx) -> Tuple[Series, array]:
-        return self._x.iloc[idx], self._y[idx]
-
-    @property
-    def x(self) -> DataFrame:
-        return self._x
-
-    def _categorical_setter(self, modes: Series) -> None:
-        """
-        Fill missing values of categorical data according to the modes in the training set and
-        then encodes categories using the same ordinal encoding as in the training set.
-
-        Args:
-            modes: modes of the categorical column according to the training mask
-
-        Returns: None
-        """
-        # We apply an ordinal encoding to categorical columns
-        self._x[self.cat_cols], _ = preprocess_categoricals(self._original_data[self.cat_cols].copy(),
-                                                            mode=modes, encodings=self._encodings)
-
-    def _initialize_targets(self, target: str) -> array:
-        """
-        Saves targets values in a numpy array
-
-        Args:
-            target: name of the column with the targets
-
-        Returns: tensor
-        """
-        return self._original_data[target].to_numpy(dtype=float)
-
-    def _numerical_setter(self, mu: Series, std: Series) -> None:
-        """
-        Fills missing values of numerical continuous data according according to the means of the
-        training set and then normalize continuous data using the means and the standard
-        deviations of the training set.
-
-        Args:
-            mu: means of the numerical column according to the training mask
-            std: standard deviations of the numerical column according to the training mask
-
-        Returns: None
-        """
-        # We fill missing with means and normalize the data
-        self._x[self.cont_cols] = preprocess_continuous(self._original_data[self.cont_cols].copy(), mu, std)
+        return self.x.iloc[idx], self.y[idx]
 
 
 class PetaleLinearModelDataset(CustomDataset):
@@ -427,7 +379,6 @@ class PetaleLinearModelDataset(CustomDataset):
             include_bias: True if we want to include bias to the original data
         """
         # We set the protected attributes
-        self._x_cont, self._x_cat = None, None
         self._basis_function = PolynomialFeatures(degree=polynomial_degree, include_bias=include_bias)
 
         # We use the _init_ of the parent class PetaleRFDataset
@@ -439,21 +390,35 @@ class PetaleLinearModelDataset(CustomDataset):
     def __getitem__(self, idx) -> Tuple[array, array]:
         return self._item_getter(idx)
 
-    def _categorical_setter(self, modes: Series) -> None:
+    def x_cat(self, idx: List[int]) -> array:
         """
-        Fill missing values of categorical data according to the modes in the training set and
-        then encodes categories using the same ordinal encoding as in the training set.
+        Returns categorical data in the appropriate format
 
         Args:
-            modes: modes of the categorical column according to the training mask
+            idx: list of idx
 
-        Returns: None
+        Returns: tensor
+
         """
-        # We apply an ordinal encoding to categorical columns
-        temporary_df, _ = preprocess_categoricals(self._original_data[self.cat_cols].copy(),
-                                                  mode=modes, encodings=self._encodings)
+        if idx is not None:
+            return self.x.loc[idx, self.cat_cols].to_numpy(dtype=int)
+        else:
+            return self.x.loc[:, self.cat_cols].to_numpy(dtype=int)
 
-        self._x_cat = temporary_df.to_numpy(dtype=int)
+    def x_cont(self, idx: Optional[List[int]] = None) -> array:
+        """
+        Returns continuous data in the appropriate format
+
+        Args:
+            idx: list of idx
+
+        Returns: tensor
+
+        """
+        if idx is not None:
+            return self._basis_function.fit_transform(self.x.loc[idx, self.cont_cols].to_numpy(dtype=float))
+        else:
+            return self._basis_function.fit_transform(self.x.loc[:, self.cont_cols].to_numpy(dtype=float))
 
     def _define_item_getter(self, cont_cols: Optional[List[str]] = None,
                             cat_cols: Optional[List[str]] = None) -> Callable:
@@ -467,58 +432,20 @@ class PetaleLinearModelDataset(CustomDataset):
         """
         if cont_cols is None:
             def item_getter(idx: Any) -> Tuple[array, array]:
-                return self._x_cat[idx, :], self._y[idx]
+                return self.x_cat(idx), self.y[idx]
 
         elif cat_cols is None:
             def item_getter(idx: Any) -> Tuple[array, array]:
-                return self._x_cont[idx, :], self._y[idx]
+                return self.x_cont(idx), self.y[idx]
 
         else:
             def item_getter(idx: Any) -> Tuple[array, array]:
-                return concatenate((self._x_cont[idx, :], self._x_cat[idx, :]), axis=1), self._y[idx]
+                return concatenate((self.x_cont(idx), self.x_cat(idx)), axis=1), self.y[idx]
 
         return item_getter
 
-    def _initialize_targets(self, target: str) -> array:
-        """
-        Saves targets values in a numpy array
 
-        Args:
-            target: name of the column with the targets
-
-        Returns: tensor
-        """
-        return self._original_data[target].to_numpy(dtype=float)
-
-    def _numerical_setter(self, mu: Series, std: Series) -> None:
-        """
-        Fills missing values of numerical continuous data according according to the means of the
-        training set and then normalize continuous data using the means and the standard
-        deviations of the training set.
-
-        Args:
-            mu: means of the numerical column according to the training mask
-            std: standard deviations of the numerical column according to the training mask
-
-        Returns: None
-        """
-        # We fill missing with means and normalize the data
-        temporary_df = preprocess_continuous(self._original_data[self.cont_cols].copy(), mu, std)
-        self._x_cont = self._basis_function.fit_transform(temporary_df.to_numpy(dtype=float))
-
-    def update_basis_function(self, degree: int, bias: bool) -> None:
-        """
-        Updates the polynomial basis function
-        Args:
-            degree: degree of the polynomial features
-            bias: True if we want to include bias in the data
-
-        Returns: None
-        """
-        self._basis_function = PolynomialFeatures(degree=degree, include_bias=bias)
-
-
-class PetaleGNNDataset(PetaleRFDataset):
+class PetaleGNNDataset(PetaleNNDataset):
     """
     Dataset used to train, valid and test our Graph Neural Network
     """
@@ -552,7 +479,7 @@ class PetaleGNNDataset(PetaleRFDataset):
         for e_types, e_values in self.encodings.items():
             edges_start, edges_end = [], []
             for value in e_values.values():
-                idx_subset = self._x.loc[self._x[e_types] == value].index.to_numpy()
+                idx_subset = self.x.loc[self._x[e_types] == value].index.to_numpy()
                 subset_size = idx_subset.shape[0]
                 for i in range(subset_size):
                     edges_start += [idx_subset[i]]*(subset_size - 1)

@@ -24,7 +24,8 @@ class CustomDataset(ABC):
     Scaffolding of all dataset classes implemented for our experiments
     """
     def __init__(self, df: DataFrame, target: str,
-                 cont_cols: Optional[List[str]] = None, cat_cols: Optional[List[str]] = None):
+                 cont_cols: Optional[List[str]] = None, cat_cols: Optional[List[str]] = None,
+                 classification: bool = True, target_to_tensor: bool = False):
         """
         Sets protected and public attributes of our custom dataset class
 
@@ -33,13 +34,15 @@ class CustomDataset(ABC):
             target: name of the column with the targets
             cont_cols: list of column names associated with continuous data
             cat_cols: list of column names associated with categorical data
+            classification: True for classification task, False for regression
+            target_to_tensor: True if we want the targets to be in a tensor, False for numpy array
 
         """
         assert PARTICIPANT in df.columns, "Patients' ids missing from the dataframe."
         assert (cont_cols is not None or cat_cols is not None), "At least a list of continuous columns" \
                                                                 " or a list of categorical columns must be given."
         for columns in [cont_cols, cat_cols]:
-            self.check_columns_validity(df, columns)
+            self._check_columns_validity(df, columns)
 
         # We call super init since we're using ABC
         super().__init__()
@@ -52,7 +55,7 @@ class CustomDataset(ABC):
         self._n = df.shape[0]
         self._x = df.drop([PARTICIPANT, target], axis=1).copy()
         self._x_cat, self._x_cont = None, None
-        self._y = self._original_data[target].to_numpy(dtype=float)
+        self._y = self._initialize_targets(df[target], classification, target_to_tensor)
 
         # Set public attributes
         self.cont_cols = cont_cols
@@ -114,18 +117,21 @@ class CustomDataset(ABC):
     def y(self) -> array:
         return self._y
 
-    def current_train_stats(self) -> Tuple[Optional[Series], Optional[Series], Optional[Series]]:
+    def _categorical_setter(self, modes: Series) -> None:
         """
-        Returns the current statistics and encodings related to the training data
+        Fill missing values of categorical data according to the modes in the training set and
+        then encodes categories using the same ordinal encoding as in the training set.
+
+        Args:
+            modes: modes of the categorical column according to the training mask
+
+        Returns: None
         """
-        # We extract the current training data
-        train_data = self._original_data.iloc[self._train_mask]
-
-        # We compute the current values of mu, std, modes and encodings
-        mu, std = self._get_mu_and_std(train_data)
-        modes = self._get_modes(train_data)
-
-        return mu, std, modes
+        # We apply an ordinal encoding to categorical columns
+        self._x[self.cat_cols], _ = preprocess_categoricals(self._original_data[self.cat_cols].copy(),
+                                                            mode=modes, encodings=self._encodings)
+        # We update x_cat protected attribute
+        self._set_x_cat()
 
     def _define_categorical_data_setter(self, cat_cols: Optional[List[str]] = None) -> Callable:
         """
@@ -191,22 +197,6 @@ class CustomDataset(ABC):
 
         return get_mu_and_std
 
-    def _categorical_setter(self, modes: Series) -> None:
-        """
-        Fill missing values of categorical data according to the modes in the training set and
-        then encodes categories using the same ordinal encoding as in the training set.
-
-        Args:
-            modes: modes of the categorical column according to the training mask
-
-        Returns: None
-        """
-        # We apply an ordinal encoding to categorical columns
-        self._x[self.cat_cols], _ = preprocess_categoricals(self._original_data[self.cat_cols].copy(),
-                                                            mode=modes, encodings=self._encodings)
-        # We update x_cat protected attribute
-        self._set_x_cat()
-
     def _numerical_setter(self, mu: Series, std: Series) -> None:
         """
         Fills missing values of numerical continuous data according according to the means of the
@@ -243,6 +233,19 @@ class CustomDataset(ABC):
         """
         pass
 
+    def current_train_stats(self) -> Tuple[Optional[Series], Optional[Series], Optional[Series]]:
+        """
+        Returns the current statistics and encodings related to the training data
+        """
+        # We extract the current training data
+        train_data = self._original_data.iloc[self._train_mask]
+
+        # We compute the current values of mu, std, modes and encodings
+        mu, std = self._get_mu_and_std(train_data)
+        modes = self._get_modes(train_data)
+
+        return mu, std, modes
+
     def update_masks(self, train_mask: List[int], test_mask: List[int],
                      valid_mask: Optional[List[int]] = None) -> None:
         """
@@ -263,7 +266,6 @@ class CustomDataset(ABC):
     def __getitem__(self, idx: Union[int, List[int]]) -> Any:
         raise NotImplementedError
 
-
     # @abstractmethod
     # def _create_subset(self) -> Any:
     #     """
@@ -274,7 +276,31 @@ class CustomDataset(ABC):
     #     raise NotImplementedError
 
     @staticmethod
-    def check_columns_validity(df: DataFrame, columns: Optional[List[str]] = None) -> None:
+    def _initialize_targets(targets_column: Series, classification: bool,
+                            target_to_tensor: bool) -> Union[array, tensor]:
+        """
+        Sets the targets according to the task and the choice of container
+        Args:
+            targets_column: column of the dataframe with the targets
+            classification: True for classification task, False for regression
+            target_to_tensor: True if we want the targets to be in a tensor, False for numpy array
+
+        Returns: targets
+        """
+        # Set targets protected attribute according to task
+        t = targets_column.to_numpy(dtype=float)
+        if (not classification) and target_to_tensor:
+            t = from_numpy(t).float()
+        else:
+            if target_to_tensor:
+                t = from_numpy(t).long()
+            else:
+                t.astype(int)
+
+        return t
+
+    @staticmethod
+    def _check_columns_validity(df: DataFrame, columns: Optional[List[str]] = None) -> None:
         """
         Checks if the columns are all in the dataframe
         """
@@ -289,18 +315,21 @@ class PetaleNNDataset(CustomDataset, Dataset):
     Dataset used to train, valid and tests our neural network models
     """
     def __init__(self, df: DataFrame, target: str,
-                 cont_cols: Optional[List[str]] = None, cat_cols: Optional[List[str]] = None):
+                 cont_cols: Optional[List[str]] = None, cat_cols: Optional[List[str]] = None,
+                 classification: bool = True):
         """
-        Sets protected and public attributes of the class
+        Sets protected and public attributes of our custom dataset class
 
         Args:
             df: dataframe with the original data
             target: name of the column with the targets
             cont_cols: list of column names associated with continuous data
             cat_cols: list of column names associated with categorical data
+            classification: True for classification task, False for regression
+
         """
         # We use the _init_ of the parent class CustomDataset
-        CustomDataset.__init__(self, df, target, cont_cols, cat_cols)
+        CustomDataset.__init__(self, df, target, cont_cols, cat_cols, classification)
 
         # We define the item getter function
         self._item_getter = self._define_item_getter(cont_cols, cat_cols)
@@ -358,19 +387,21 @@ class PetaleRFDataset(CustomDataset):
     Dataset used to train, valid and tests our random forest models
     """
     def __init__(self, df: DataFrame, target: str,
-                 cont_cols: Optional[List[str]] = None, cat_cols: Optional[List[str]] = None):
+                 cont_cols: Optional[List[str]] = None, cat_cols: Optional[List[str]] = None,
+                 classification: bool = True):
         """
-        Sets protected and public attributes of using the CustomDataset constructor
+        Sets protected and public attributes of our custom dataset class
 
         Args:
             df: dataframe with the original data
             target: name of the column with the targets
             cont_cols: list of column names associated with continuous data
             cat_cols: list of column names associated with categorical data
-        """
+            classification: True for classification task, False for regression
 
-        # We use the _init_ of the parent class CustomDataset
-        super().__init__(df, target, cont_cols, cat_cols)
+        """
+        # We use the _init_ of the parent class
+        super().__init__(df, target, cont_cols, cat_cols, classification)
 
     def __getitem__(self, idx) -> Tuple[Series, array]:
         return self.x.iloc[idx], self.y[idx]
@@ -383,7 +414,7 @@ class PetaleLinearModelDataset(CustomDataset):
 
     def __init__(self, df: DataFrame, target: str,
                  cont_cols: Optional[List[str]] = None, cat_cols: Optional[List[str]] = None,
-                 polynomial_degree: int = 1, include_bias: bool = True):
+                 classification: bool = True,  polynomial_degree: int = 1, include_bias: bool = True):
         """
         Sets protected and public attributes of our custom dataset class
 
@@ -392,14 +423,15 @@ class PetaleLinearModelDataset(CustomDataset):
             target: name of the column with the targets
             cont_cols: list of column names associated with continuous data
             cat_cols: list of column names associated with categorical data
+            classification: True for classification task, False for regression
             polynomial_degree: degree of polynomial basis function to apply to the data
             include_bias: True if we want to include bias to the original data
         """
         # We set the protected attributes
         self._basis_function = PolynomialFeatures(degree=polynomial_degree, include_bias=include_bias)
 
-        # We use the _init_ of the parent class PetaleRFDataset
-        super().__init__(df, target, cont_cols, cat_cols)
+        # We use the _init_ of the parent class
+        super().__init__(df, target, cont_cols, cat_cols, classification)
 
         # We define the item getter function
         self._item_getter = self._define_item_getter(cont_cols, cat_cols)
@@ -452,7 +484,8 @@ class PetaleGNNDataset(PetaleNNDataset):
     """
 
     def __init__(self, df: DataFrame, target: str,
-                 cont_cols: Optional[List[str]] = None, cat_cols: Optional[List[str]] = None):
+                 cont_cols: Optional[List[str]] = None, cat_cols: Optional[List[str]] = None,
+                 classification: bool = True):
         """
         Sets protected and public attributes of our custom dataset class
 
@@ -461,13 +494,14 @@ class PetaleGNNDataset(PetaleNNDataset):
             target: name of the column with the targets
             cont_cols: list of column names associated with continuous data
             cat_cols: list of column names associated with categorical data
+            classification: True for classification task, False for regression
 
         """
         # We initialize protected attributes proper to GNNDataset class
         self._graph = None
 
         # We use the _init_ of the parent class CustomDataset
-        super().__init__(df, target, cont_cols, cat_cols)
+        super().__init__(df, target, cont_cols, cat_cols, classification)
 
     def _update_graph(self) -> None:
         """

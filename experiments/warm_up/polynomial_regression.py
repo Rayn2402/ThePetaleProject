@@ -74,7 +74,7 @@ if __name__ == '__main__':
     for deg in args.degree:
 
         # Creation of a dataset
-        dataset = PetaleLinearModelDataset(df, target, cont_cols, polynomial_degree=deg)
+        dataset = PetaleLinearModelDataset(df, target, cont_cols, classification=False, polynomial_degree=deg)
 
         # Creation of an evaluator
         evaluator = ElasticNetEvaluator(dataset=dataset, masks=masks, hps=ELASTIC_HPS, n_trials=args.nb_trials,

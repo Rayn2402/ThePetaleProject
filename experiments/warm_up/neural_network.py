@@ -58,7 +58,7 @@ def argument_parser():
 
 def execute_neural_network_experiment(dataset: PetaleNNDataset, masks: Dict[int, Dict[str, List[int]]],
                                       n_trials: int, model_generator: NNModelGenerator, seed: int,
-                                      evaluation_name:str) -> None:
+                                      evaluation_name: str) -> None:
     """
     Function that executes a Neural Network experiments
 
@@ -111,7 +111,7 @@ if __name__ == '__main__':
         mvlpa = ""
 
     # Creation of the dataset
-    nn_dataset = PetaleNNDataset(df, target, cont_cols)
+    nn_dataset = PetaleNNDataset(df, target, cont_cols, classification=False)
 
     # Extraction of masks
     masks = extract_masks(join(Paths.MASKS, "l0_masks.json"), k=k, l=l)

@@ -329,13 +329,11 @@ class PetaleNNDataset(CustomDataset, Dataset):
 
         """
         # We use the _init_ of the parent class CustomDataset
-        CustomDataset.__init__(self, df, target, cont_cols, cat_cols, classification)
+        CustomDataset.__init__(self, df, target, cont_cols, cat_cols, classification,
+                               target_to_tensor=True)
 
         # We define the item getter function
         self._item_getter = self._define_item_getter(cont_cols, cat_cols)
-
-        # We change format of targets
-        self._y = from_numpy(self._y).float().flatten()
 
     def __len__(self) -> int:
         return CustomDataset.__len__(self)

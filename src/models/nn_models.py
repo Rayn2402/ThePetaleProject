@@ -33,7 +33,7 @@ class NNModel(ABC, Module):
             activation: activation function
             dropout: probability of dropout
             alpha: L1 penalty coefficient
-            beta: L1 penalty coefficient
+            beta: L2 penalty coefficient
             num_cont_col: number of numerical continuous columns
             (equal to number of class in the case of classification)
             cat_sizes: list of integer representing the size of each categorical column
@@ -154,7 +154,7 @@ class NNRegression(NNModel):
     Neural Network dedicated to regression
     """
     def __init__(self, layers: List[int], activation: str, dropout: float = 0,
-                 num_cont_col: Optional[int] = None, cat_sizes: Optional[List[int]] = None,
+                 alpha: float = 0, beta: float = 0, num_cont_col: Optional[int] = None, cat_sizes: Optional[List[int]] = None,
                  **kwargs):
 
         """
@@ -164,6 +164,8 @@ class NNRegression(NNModel):
             layers: list with number of units in each hidden layer
             activation: activation function
             dropout: probability of dropout
+            alpha: L1 penalty coefficient
+            beta: L2 penalty coefficient
             num_cont_col: number of numerical continuous columns
              (equal to number of class in the case of classification)
             cat_sizes: list of integer representing the size of each categorical column
@@ -171,7 +173,7 @@ class NNRegression(NNModel):
         """
 
         # We call parent's constructor
-        super().__init__(output_size=1, layers=layers, activation=activation,
+        super().__init__(output_size=1, layers=layers, activation=activation, alpha=alpha, beta=beta,
                          criterion=MSELoss(), dropout=dropout, num_cont_col=num_cont_col, cat_sizes=cat_sizes)
 
     def predict(self, x_cont: Optional[tensor], x_cat: Optional[tensor], **kwargs):
@@ -199,8 +201,9 @@ class NNClassifier(NNModel):
     """
     Neural Network dedicated to classification
     """
-    def __init__(self, output_size: int, layers: List[int], activation: str,
-                 dropout: float = 0, num_cont_col: Optional[int] = None, cat_sizes: Optional[List[int]] = None):
+    def __init__(self, output_size: int, layers: List[int], activation: str, dropout: float = 0,
+                 alpha: float = 0, beta: float = 0, num_cont_col: Optional[int] = None,
+                 cat_sizes: Optional[List[int]] = None):
 
         """
         Builds the layers of the model and sets the criterion
@@ -211,13 +214,15 @@ class NNClassifier(NNModel):
             layers: list with number of units in each hidden layer
             activation: activation function
             dropout: probability of dropout
+            alpha: L1 penalty coefficient
+            beta: L2 penalty coefficient
             num_cont_col: number of numerical continuous columns
             (equal to number of class in the case of classification)
             cat_sizes: list of integer representing the size of each categorical column
         """
         # We call parent's constructor
         super().__init__(output_size=output_size, layers=layers, activation=activation, criterion=CrossEntropyLoss(),
-                         dropout=dropout, num_cont_col=num_cont_col, cat_sizes=cat_sizes)
+                         alpha=alpha, beta=beta, dropout=dropout, num_cont_col=num_cont_col, cat_sizes=cat_sizes)
 
     def predict(self, x_cont: Optional[tensor], x_cat: Optional[tensor], **kwargs) -> tensor:
         """

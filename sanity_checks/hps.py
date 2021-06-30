@@ -5,6 +5,14 @@
 from src.training.enums import *
 
 NN_HPS = {
+    NeuralNetsHP.ALPHA: {
+        Range.MIN: 1e-5,
+        Range.MAX: 2,
+    },
+    NeuralNetsHP.BETA: {
+        Range.MIN: 1e-5,
+        Range.MAX: 2,
+    },
     NeuralNetsHP.LR: {
         Range.MIN: 1e-2,
         Range.MAX: 1e-1
@@ -25,9 +33,6 @@ NN_HPS = {
     },
     NeuralNetsHP.ACTIVATION: {
         Range.VALUE: "ReLU"
-    },
-    NeuralNetsHP.WEIGHT_DECAY: {
-        Range.VALUE: 0.1
     }
 }
 

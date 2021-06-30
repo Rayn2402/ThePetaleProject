@@ -333,7 +333,6 @@ class NNEvaluator(Evaluator):
 
         trainer = NNTrainer(model=model, metric=self.optimization_metric, lr=best_hps[NeuralNetsHP.LR],
                             batch_size=best_hps[NeuralNetsHP.BATCH_SIZE],
-                            weight_decay=best_hps[NeuralNetsHP.WEIGHT_DECAY],
                             epochs=self._max_epochs, early_stopping=self._early_stopping,
                             device=self._device, in_trial=False)
 

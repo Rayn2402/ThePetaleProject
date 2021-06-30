@@ -8,7 +8,7 @@ This file stores the two classes of Neural Networks models :
 """
 
 from abc import ABC, abstractmethod
-from torch import cat, nn, no_grad, argmax, tensor, flatten, mean, zeros
+from torch import cat, nn, no_grad, argmax, tensor, mean, zeros_like, flatten
 from torch.nn import Module, ModuleList, Embedding,\
     Linear, MSELoss, BatchNorm1d, Dropout, Sequential, CrossEntropyLoss
 from torch.nn.functional import log_softmax, l1_loss, mse_loss
@@ -130,10 +130,10 @@ class NNModel(ABC, Module):
         """
         # Computations of penalties
         flatten_params = [w.view(-1, 1) for w in self.parameters()]
-        l1_penalty = mean(tensor([l1_loss(w, zeros(w.shape)) for w in flatten_params]))
-        l2_penalty = mean(tensor([mse_loss(w, zeros(w.shape)) for w in flatten_params]))
+        l1_penalty = mean(tensor([l1_loss(w, zeros_like(w)) for w in flatten_params]))
+        l2_penalty = mean(tensor([mse_loss(w, zeros_like(w)) for w in flatten_params]))
 
-        return self._criterion(pred, y) + self._alpha*l1_penalty + self._beta*l2_penalty
+        return self._criterion(pred.squeeze(), y) + self._alpha*l1_penalty + self._beta*l2_penalty
 
     @abstractmethod
     def predict(self, x_cont: Optional[tensor], x_cat: Optional[tensor], **kwargs) -> tensor:
@@ -193,6 +193,7 @@ class NNRegression(NNModel):
         # We execute a forward pass
         with no_grad():
             output = self.forward(x_cont, x_cat)
+            output.squeeze()
 
         return output
 

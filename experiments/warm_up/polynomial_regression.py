@@ -4,7 +4,6 @@ This file is used to evaluate linear models in a regression context
 
 import argparse
 import sys
-from json import load
 from os.path import dirname, realpath, join
 
 sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
@@ -13,7 +12,7 @@ from src.data.extraction.data_management import PetaleDataManager
 from src.data.extraction.constants import SEED
 from src.data.processing.datasets import PetaleLinearModelDataset
 from src.data.processing.sampling import get_warmup_data, extract_masks, push_valid_to_train
-from hps.hps import ELASTIC_HPS
+from hps.warmup_hps import ELASTIC_HPS
 from src.training.evaluation import ElasticNetEvaluator
 from src.utils.score_metrics import AbsoluteError, RootMeanSquaredError
 

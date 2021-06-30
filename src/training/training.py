@@ -247,8 +247,7 @@ class NNTrainer(Trainer):
     Object that trains neural networks
     """
     def __init__(self, model: Optional[Module], metric: Optional[Callable],
-                 lr: Optional[float], batch_size: Optional[int],
-                 weight_decay: Optional[float], epochs: int,
+                 lr: Optional[float], batch_size: Optional[int], epochs: int,
                  early_stopping: bool = False, patience: int = 50,
                  device: str = "cpu", in_trial: bool = False):
         """
@@ -259,7 +258,6 @@ class NNTrainer(Trainer):
             metric: callable metric we want to optimize with the hps
             lr: learning rate
             batch_size: size of the batches created by the training data loader
-            weight_decay: L2 penalty
             epochs: number of epochs
             early_stopping: True if we want to stop the training when the validation loss stops decreasing
             patience: number of epochs without improvement allowed before early stopping
@@ -281,11 +279,10 @@ class NNTrainer(Trainer):
         # We save protected attribute
         self._in_trial = in_trial
         self._lr = lr
-        self._weight_decay = weight_decay
 
         # We send model to the proper device and set optimizer protected attribute if it is not None
         if model is not None:
-            self._optimizer = optim.Adam(params=self._model.parameters(), lr=lr, weight_decay=weight_decay)
+            self._optimizer = optim.Adam(params=self._model.parameters(), lr=lr)
             self._model.to(self._device)
         else:
             self._optimizer = None
@@ -497,9 +494,8 @@ class NNTrainer(Trainer):
 
         # Update of protected attributes
         self._model = kwargs.get('model', self._model)
-        self._weight_decay = kwargs.get('weight_decay', self._weight_decay)
         self._lr = kwargs.get('lr', self._lr)
-        self._optimizer = optim.Adam(params=self._model.parameters(), lr=self._lr, weight_decay=self._weight_decay)
+        self._optimizer = optim.Adam(params=self._model.parameters(), lr=self._lr)
 
         # We send model to the proper device
         self._model.to(self._device)

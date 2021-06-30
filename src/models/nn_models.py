@@ -8,9 +8,10 @@ This file stores the two classes of Neural Networks models :
 """
 
 from abc import ABC, abstractmethod
-from torch import cat, nn, no_grad, argmax, tensor
-from torch.nn import Module, ModuleList, Embedding, Linear, MSELoss, BatchNorm1d, Dropout, Sequential, CrossEntropyLoss
-from torch.nn.functional import log_softmax
+from torch import cat, nn, no_grad, argmax, tensor, flatten, mean, zeros
+from torch.nn import Module, ModuleList, Embedding,\
+    Linear, MSELoss, BatchNorm1d, Dropout, Sequential, CrossEntropyLoss
+from torch.nn.functional import log_softmax, l1_loss, mse_loss
 from typing import Callable, List, Optional
 
 
@@ -19,7 +20,7 @@ class NNModel(ABC, Module):
     Neural Network model with entity embedding
     """
     def __init__(self, output_size: int, layers: List[int], activation: str, criterion: Callable,
-                 dropout: float = 0, num_cont_col: Optional[int] = None, cat_sizes: Optional[List[int]] = None):
+                 dropout: float = 0, alpha: float = 0, beta: float = 0,  num_cont_col: Optional[int] = None, cat_sizes: Optional[List[int]] = None):
 
         """
         Builds the layers of the model and sets the criterion
@@ -31,12 +32,18 @@ class NNModel(ABC, Module):
             criterion: loss function of our model
             activation: activation function
             dropout: probability of dropout
+            alpha: L1 penalty coefficient
+            beta: L1 penalty coefficient
             num_cont_col: number of numerical continuous columns
             (equal to number of class in the case of classification)
             cat_sizes: list of integer representing the size of each categorical column
         """
         assert num_cont_col is not None or cat_sizes is not None, "There must be continuous columns" \
                                                                   " or categorical columns"
+
+        # We save penalty coefficients
+        self._alpha = alpha
+        self._beta = beta
 
         # We call parents' constructors
         Module.__init__(self)
@@ -111,10 +118,9 @@ class NNModel(ABC, Module):
 
         return self._layers(x)
 
-    @abstractmethod
     def loss(self, pred: tensor, y: tensor) -> tensor:
         """
-        Applies transformation to input tensors and call the criterion
+        Calls the criterion and add elastic penalty
 
         Args:
             pred: prediction of the models
@@ -122,7 +128,12 @@ class NNModel(ABC, Module):
 
         Returns: tensor with loss value
         """
-        raise NotImplementedError
+        # Computations of penalties
+        flatten_params = [w.view(-1, 1) for w in self.parameters()]
+        l1_penalty = mean(tensor([l1_loss(w, zeros(w.shape)) for w in flatten_params]))
+        l2_penalty = mean(tensor([mse_loss(w, zeros(w.shape)) for w in flatten_params]))
+
+        return self._criterion(pred, y) + self._alpha*l1_penalty + self._beta*l2_penalty
 
     @abstractmethod
     def predict(self, x_cont: Optional[tensor], x_cat: Optional[tensor], **kwargs) -> tensor:
@@ -138,7 +149,7 @@ class NNModel(ABC, Module):
         raise NotImplementedError
 
 
-class NNRegressor(NNModel):
+class NNRegression(NNModel):
     """
     Neural Network dedicated to regression
     """
@@ -162,18 +173,6 @@ class NNRegressor(NNModel):
         # We call parent's constructor
         super().__init__(output_size=1, layers=layers, activation=activation,
                          criterion=MSELoss(), dropout=dropout, num_cont_col=num_cont_col, cat_sizes=cat_sizes)
-
-    def loss(self, pred: tensor, y: tensor) -> tensor:
-        """
-        Applies transformation to input tensors and call the criterion
-
-        Args:
-            pred: prediction of the models
-            y: targets
-
-        Returns: tensor with loss value
-        """
-        return self._criterion(pred.flatten(), y.float())
 
     def predict(self, x_cont: Optional[tensor], x_cat: Optional[tensor], **kwargs):
         """
@@ -219,18 +218,6 @@ class NNClassifier(NNModel):
         # We call parent's constructor
         super().__init__(output_size=output_size, layers=layers, activation=activation, criterion=CrossEntropyLoss(),
                          dropout=dropout, num_cont_col=num_cont_col, cat_sizes=cat_sizes)
-
-    def loss(self, pred: tensor, y: tensor) -> tensor:
-        """
-        Applies transformation to input tensors and call the criterion
-
-        Args:
-            pred: prediction of the models
-            y: targets
-
-        Returns: tensor with loss value
-        """
-        return self._criterion(pred, y.long())
 
     def predict(self, x_cont: Optional[tensor], x_cat: Optional[tensor], **kwargs) -> tensor:
         """

@@ -158,9 +158,6 @@ class Evaluator(ABC):
             # We get the predictions
             predictions = trainer.predict(**inputs, log_prob=True)
 
-            if predictions.shape[1] == 1:
-                predictions = predictions.flatten()
-
             # We save the predictions
             recorder.record_predictions(predictions=predictions, ids=ids, target=targets)
 

@@ -126,10 +126,6 @@ class Trainer(ABC):
             # We get the predictions
             predictions = self.predict(**inputs, log_prob=True)
 
-            # We flatten the predictions array if we are doing regression
-            if predictions.shape[1] == 1:
-                predictions = predictions.flatten()
-
             # We calculate the score with the help of the metric function
             score = self._metric(predictions, targets)
 

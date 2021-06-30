@@ -13,13 +13,13 @@ sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
 from os.path import join
 from src.data.extraction.data_management import PetaleDataManager
 from src.utils.score_metrics import AbsoluteError, RootMeanSquaredError
-from src.models.nn_models import NNRegressor
+from src.models.nn_models import NNRegression
 from src.models.models_generation import NNModelGenerator
 from src.training.evaluation import NNEvaluator
 from src.data.processing.sampling import get_warmup_data, extract_masks
 from src.data.processing.datasets import PetaleNNDataset
 from settings.paths import Paths
-from hps.hps import NN_HPS
+from hps.warmup_hps import NN_LOW_HPS, NN_HIGH_HPS, NN_ENET_HPS
 from src.data.extraction.constants import *
 from typing import Callable, Dict, List
 
@@ -31,7 +31,8 @@ def argument_parser():
     # Create a parser
     parser = argparse.ArgumentParser(usage='\n python3 neural_network.py',
                                      description="Runs a neural network experiment")
-
+    parser.add_argument('-hps', '--hyperparameters', type=str, choices=['low', 'high', 'enet'],
+                        help="Hyperparameters dictionary to use")
     parser.add_argument('-nos', '--nb_outer_splits', type=int, default=20,
                         help="Number of outer splits (default = [20])")
     parser.add_argument('-nis', '--nb_inner_splits', type=int, default=20,
@@ -42,9 +43,6 @@ def argument_parser():
                         help=f"List of seeds (default = [{SEED}])")
     parser.add_argument('-u', '--user', type=str, default='rayn2402',
                         help="Valid username for petale database")
-    parser.add_argument('-m', '--mvlpa', default=False, action='store_true',
-                        help='Indicates if we want to consider MVLPA feature')
-
     arguments = parser.parse_args()
 
     # Print arguments
@@ -58,7 +56,7 @@ def argument_parser():
 
 def execute_neural_network_experiment(dataset: PetaleNNDataset, masks: Dict[int, Dict[str, List[int]]],
                                       n_trials: int, model_generator: NNModelGenerator, seed: int,
-                                      evaluation_name: str) -> None:
+                                      evaluation_name: str, hps: dict) -> None:
     """
     Function that executes a Neural Network experiments
 
@@ -69,6 +67,7 @@ def execute_neural_network_experiment(dataset: PetaleNNDataset, masks: Dict[int,
         model_generator: callable object used to generate a model according to a set of hyperparameters
         seed: random state used for reproducibility
         evaluation_name: name of the results file saved at the recordings_path
+        hps: hyperparameters dictionary
 
 
      Returns: None
@@ -83,7 +82,7 @@ def execute_neural_network_experiment(dataset: PetaleNNDataset, masks: Dict[int,
 
     # Creation of the evaluator
     nn_evaluator = NNEvaluator(model_generator=model_generator, dataset=dataset, masks=masks,
-                               hps=NN_HPS, n_trials=n_trials, optimization_metric=metric,
+                               hps=hps, n_trials=n_trials, optimization_metric=metric,
                                evaluation_metrics=evaluation_metrics, max_epochs=100, early_stopping=True,
                                save_optimization_history=True, evaluation_name=evaluation_name, seed=seed)
     # Evaluation
@@ -98,17 +97,13 @@ if __name__ == '__main__':
     # Arguments extraction
     n_trials = args.nb_trials
     seeds = args.seed
+    hp_choice = args.hyperparameters
     k = args.nb_outer_splits
     l = args.nb_inner_splits
 
     # Generation of dataset
-    mvlpa = "MVLPA"
     data_manager = PetaleDataManager(args.user)
     df, target, cont_cols, _ = get_warmup_data(data_manager)
-    if not args.mvlpa:
-        df = df.drop([MVLPA], axis=1)
-        cont_cols = [c for c in cont_cols if c != MVLPA]
-        mvlpa = ""
 
     # Creation of the dataset
     nn_dataset = PetaleNNDataset(df, target, cont_cols, classification=False)
@@ -118,14 +113,23 @@ if __name__ == '__main__':
 
     # Creation of model generator
     nb_cont_cols = len(cont_cols)
-    model_generator = NNModelGenerator(NNRegressor, nb_cont_cols, cat_sizes=None)
+    model_generator = NNModelGenerator(NNRegression, nb_cont_cols, cat_sizes=None)
+
+    # Extraction of hps
+    if hp_choice == 'low':
+        hyperparameters = NN_LOW_HPS
+    elif hp_choice == 'high':
+        hyperparameters = NN_HIGH_HPS
+    else:
+        hyperparameters = NN_ENET_HPS
 
     # Experiments run
     for seed in seeds:
 
         # Naming of the evaluation
-        evaluation_name = f"neural_network_k{k}_l{l}_n{n_trials}_s{seed}_{mvlpa}"
+        evaluation_name = f"neural_network_k{k}_l{l}_n{n_trials}_s{seed}_{hp_choice}"
 
         # Execution of one experiment
         execute_neural_network_experiment(dataset=nn_dataset, masks=masks, seed=seed, n_trials=n_trials,
-                                          model_generator=model_generator, evaluation_name=evaluation_name)
+                                          model_generator=model_generator, evaluation_name=evaluation_name,
+                                          hps=hyperparameters)

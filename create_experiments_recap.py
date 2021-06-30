@@ -241,7 +241,8 @@ x   }
         # We get the folders of all the splits
         splits = os.listdir(os.path.join(path, evaluation))
         splits = [folder for folder in splits if os.path.isdir(os.path.join(path, evaluation, folder))]
-        splits.sort()
+        splits.sort(key=lambda x: int(x.split("_")[1]))
+
         split_board = f"""<div class="split center {"split-active" if i==0 else None}">General</div>"""
 
         # We open the json file containing the general information of an evaluation

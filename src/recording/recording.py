@@ -22,6 +22,7 @@ class Recorder:
     """
     Recorder objects used save results of the experiments
     """
+
     def __init__(self, evaluation_name: str, index: int, recordings_path: str):
         """
         Sets protected attributes
@@ -179,6 +180,8 @@ def get_evaluation_recap(evaluation_name, recordings_path):
     path = os.path.join(recordings_path, evaluation_name)
     json_file = "records.json"
     folders = next(os.walk(path))[1]
+    folders.sort(key=lambda x: int(x.split("_")[1]))
+
     data = {
         METRICS: {}
     }
@@ -358,7 +361,7 @@ def compare_prediction_recordings(evaluations, split_index, recording_path=""):
             break
         id_to_compare = list(data["results"].keys())
 
-        for j,id in enumerate(id_to_compare):
+        for j, id in enumerate(id_to_compare):
             if id != ids[j]:
                 comparaison_possible = False
                 break

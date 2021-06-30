@@ -45,7 +45,7 @@ class ContinuousTransform:
 
         Returns: tensor
         """
-        return from_numpy(df.to_numpy(dtype=float)).long()
+        return from_numpy(df.to_numpy(dtype=float)).float()
 
 
 class CategoricalTransform:
@@ -98,5 +98,5 @@ class CategoricalTransform:
 
         Returns: tensor
         """
-        return from_numpy(df.to_numpy(dtype=float)).float()
+        return from_numpy(df.to_numpy(dtype=float)).long()
 

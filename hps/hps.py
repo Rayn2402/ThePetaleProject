@@ -33,6 +33,33 @@ NN_HPS = {
     }
 }
 
+LOGISTIC_REGRESSION_HPS = {
+    NeuralNetsHP.LR: {
+        Range.MIN: 1e-3,
+        Range.MAX: 1e-1
+    },
+    NeuralNetsHP.BATCH_SIZE: {
+        Range.MIN: 5,
+        Range.MAX: 50
+    },
+    NeuralNetsHP.N_LAYERS: {
+        Range.VALUE: 0
+    },
+    NeuralNetsHP.N_UNITS: {
+        Range.VALUE: 0
+    },
+    NeuralNetsHP.DROPOUT: {
+        Range.VALUE: 0
+    },
+    NeuralNetsHP.ACTIVATION: {
+        Range.VALUE: "ReLU"
+    },
+    NeuralNetsHP.WEIGHT_DECAY: {
+        Range.MIN: 1e-8,
+        Range.MAX: 1e-1
+    }
+}
+
 RF_HPS = {
     RandomForestsHP.N_ESTIMATORS: {
         Range.MIN: 80,

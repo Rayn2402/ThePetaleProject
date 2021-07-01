@@ -26,6 +26,8 @@ def argument_parser():
 
     parser.add_argument('-nn', '--neural_network', default=False, action='store_true',
                         help='Indicates if we want to run neural network experiments')
+    parser.add_argument('-lr', '--logistic_regression', default=False, action='store_true',
+                        help='Indicates if we want to run logistic regression experiments')
 
     arguments = parser.parse_args()
 
@@ -38,6 +40,7 @@ def argument_parser():
     return arguments
 
 
+# Neural Network Commands
 COMMANDS_NN = []
 
 FILE_NN = str(join(Paths.WARMUP_EXPERIMENTS_SCRIPTS, "neural_network.py"))
@@ -59,6 +62,27 @@ for gene_value in GENES_CHOICES:
     COMMANDS_NN.append(['python3', FILE_NN, '-nos', '20', '-nis', '20', '-t', '1000', '-s', f'{SEED}', "-c",
                         *COMPLICATIONS_IDS, '-g', gene_value])
 
+# Logistic Regression Commands
+COMMANDS_LR = []
+
+FILE_LR = str(join(Paths.WARMUP_EXPERIMENTS_SCRIPTS, "logistic_regression.py"))
+
+COMPLICATIONS_IDS = map(str, range(0, 4))
+COMMANDS_LR.append(['python3', FILE_LR, '-nos', '20', '-nis', '20', '-t', '1000', '-s', f'{SEED}', "-c",
+                    *COMPLICATIONS_IDS])
+
+COMPLICATIONS_IDS = map(str, range(0, 4))
+COMMANDS_LR.append(['python3', FILE_LR, '-nos', '20', '-nis', '20', '-t', '1000', '-s', f'{SEED}', "-c",
+                    *COMPLICATIONS_IDS, '-b'])
+
+for gene_value in GENES_CHOICES:
+    COMPLICATIONS_IDS = map(str, range(0, 4))
+    COMMANDS_LR.append(['python3', FILE_LR, '-nos', '20', '-nis', '20', '-t', '1000', '-s', f'{SEED}', "-c",
+                        *COMPLICATIONS_IDS, '-b', '-g', gene_value])
+
+    COMPLICATIONS_IDS = map(str, range(0, 4))
+    COMMANDS_LR.append(['python3', FILE_LR, '-nos', '20', '-nis', '20', '-t', '1000', '-s', f'{SEED}', "-c",
+                        *COMPLICATIONS_IDS, '-g', gene_value])
 
 if __name__ == '__main__':
     # Arguments parsing
@@ -66,11 +90,14 @@ if __name__ == '__main__':
 
     # Arguments extraction
     nn = args.neural_network
+    lr = args.logistic_regression
 
     # Preparation of the commands to execute
     commands = []
     if nn:
         commands.extend(COMMANDS_NN)
+    if lr:
+        commands.extend(COMMANDS_LR)
 
     if len(commands) == 0:
         print("Please choose one of the available options -nn, -oe, or -lin")

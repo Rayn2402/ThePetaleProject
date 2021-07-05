@@ -83,7 +83,7 @@ def execute_neural_network_experiment(dataset: PetaleNNDataset, masks: Dict[int,
     # Creation of the evaluator
     nn_evaluator = NNEvaluator(model_generator=model_generator, dataset=dataset, masks=masks,
                                hps=hps, n_trials=n_trials, optimization_metric=metric,
-                               evaluation_metrics=evaluation_metrics, max_epochs=100, early_stopping=True,
+                               evaluation_metrics=evaluation_metrics, max_epochs=2000, early_stopping=True,
                                save_optimization_history=True, evaluation_name=evaluation_name, seed=seed)
     # Evaluation
     nn_evaluator.nested_cross_valid()

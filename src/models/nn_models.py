@@ -3,7 +3,7 @@ Authors : Mehdi Mitiche
           Nicolas Raymond
 
 This file stores the two classes of Neural Networks models : 
-    - NNRegressor which is a model to preform regression
+    - NNRegression which is a model to preform regression
     - NNClassifier which is a model to perform classification
 """
 
@@ -116,7 +116,7 @@ class NNModel(ABC, Module):
         # We concatenate all inputs
         x = cat(x, 1)
 
-        return self._layers(x)
+        return self._layers(x).squeeze()
 
     def loss(self, pred: tensor, y: tensor) -> tensor:
         """
@@ -133,7 +133,7 @@ class NNModel(ABC, Module):
         l1_penalty = mean(tensor([l1_loss(w, zeros_like(w)) for w in flatten_params]))
         l2_penalty = mean(tensor([mse_loss(w, zeros_like(w)) for w in flatten_params]))
 
-        return self._criterion(pred.squeeze(), y) + self._alpha*l1_penalty + self._beta*l2_penalty
+        return self._criterion(pred, y) + self._alpha*l1_penalty + self._beta*l2_penalty
 
     @abstractmethod
     def predict(self, x_cont: Optional[tensor], x_cat: Optional[tensor], **kwargs) -> tensor:
@@ -192,8 +192,7 @@ class NNRegression(NNModel):
 
         # We execute a forward pass
         with no_grad():
-            output = self.forward(x_cont, x_cat)
-            output.squeeze()
+            output = self(x_cont, x_cat)
 
         return output
 
@@ -241,7 +240,7 @@ class NNClassifier(NNModel):
 
         # We execute a forward pass and get the log probabilities if needed
         with no_grad():
-            output = self.forward(x_cont, x_cat)
+            output = self(x_cont, x_cat)
             if kwargs.get("log_prob", False):
                 log_soft = log_softmax(output, dim=1).float()
                 return log_soft

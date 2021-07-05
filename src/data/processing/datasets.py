@@ -291,13 +291,13 @@ class CustomDataset(ABC):
         t = targets_column.to_numpy(dtype=float)
         if (not classification) and target_to_tensor:
             t = from_numpy(t).float()
-        else:
+        elif classification:
             if target_to_tensor:
                 t = from_numpy(t).long()
             else:
-                t.astype(int)
+                t = t.astype(int)
 
-        return t
+        return t.squeeze()
 
     @staticmethod
     def _check_columns_validity(df: DataFrame, columns: Optional[List[str]] = None) -> None:

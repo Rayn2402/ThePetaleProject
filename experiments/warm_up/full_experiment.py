@@ -49,14 +49,14 @@ FILE_NN = str(join(Paths.WARMUP_EXPERIMENTS_SCRIPTS, "neural_network.py"))
 FILE_OE = str(join(Paths.WARMUP_EXPERIMENTS_SCRIPTS, "original_equation.py"))
 FILE_PR = str(join(Paths.WARMUP_EXPERIMENTS_SCRIPTS, "polynomial_regression.py"))
 
-COMMANDS_NN = ['python3', FILE_NN, '-nos', '20', '-nis', '20', '-t', '1000', '-s', f'{SEED}']
+COMMANDS_NN = ['python3', FILE_NN, '-nos', '10', '-nis', '10', '-t', '500', '-s', f'{SEED}']
 COMMANDS_NN_LOW = COMMANDS_NN + ['-hps', 'low']
 COMMANDS_NN_HIGH = COMMANDS_NN + ['-hps', 'high']
 COMMANDS_NN_ENET = COMMANDS_NN + ['-hps', 'enet']
 COMMANDS_OE = ['python3', FILE_OE, '-nos', '20']
 
 DEGREES = map(str, range(1, 4))
-COMMANDS_PR = ['python3', FILE_PR, '-d', *DEGREES, '-nos', '20', '-nis', '20', '-t', '1000', '-s', f'{SEED}']
+COMMANDS_PR = ['python3', FILE_PR, '-d', *DEGREES, '-nos', '10', '-nis', '10', '-t', '500', '-s', f'{SEED}']
 
 if __name__ == '__main__':
     # Arguments parsing

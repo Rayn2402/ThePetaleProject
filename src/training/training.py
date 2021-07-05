@@ -283,14 +283,14 @@ class NNTrainer(Trainer):
         else:
             self._optimizer = None
 
-    def evaluate(self, dataset: PetaleNNDataset, early_stopper: EarlyStopping) -> Tuple[float, float, bool]:
+    def evaluate(self, valid_loader: DataLoader, early_stopper: EarlyStopping) -> Tuple[float, float, bool]:
         """
         Calculates the loss on the validation set using a single batch.
         There will be no memory problem since our datasets are really small
 
         Args:
+            valid_loader: validation dataloader
             early_stopper: early stopping object created in the fit function
-            dataset: custom dataset with masks already defined
 
         Returns: validation epoch loss, validation epoch score and early stopping status
 
@@ -299,28 +299,36 @@ class NNTrainer(Trainer):
         # Set model for validation
         self._model.eval()
 
+        epoch_loss, epoch_score = 0, 0
         with torch.no_grad():
 
-            # We extract the continuous data x_cont, the categorical data x_cat
-            # and the correct predictions y for the single batch
-            inputs, y = self.extract_data(dataset[dataset.valid_mask])
+            for item in valid_loader:
 
-            # We perform the forward pass: compute predicted outputs by passing inputs to the model
-            output = self._model(**inputs)
+                # We extract the continuous data x_cont, the categorical data x_cat
+                # and the correct predictions y for the single batch
+                inputs, y = self.extract_data(item)
 
-            # We calculate the loss and the score
-            val_epoch_loss = self._model.loss(output, y).item()
-            score = self._metric(output, y)
+                # We perform the forward pass: compute predicted outputs by passing inputs to the model
+                output = self._model(**inputs)
+
+                # We calculate the loss and the score
+                val_epoch_loss = self._model.loss(output, y)
+                score = self._metric(output, y)
+                epoch_loss += val_epoch_loss.item()
+                epoch_score += score
+
+        # We take the mean of the losses and the scores
+        epoch_loss, epoch_score = epoch_loss/len(valid_loader), epoch_score/len(valid_loader)
 
         # We early stopping status
         if self.early_stopping:
-            early_stopper(val_epoch_loss, self._model)
+            early_stopper(epoch_loss, self._model)
 
             if early_stopper.early_stop:
                 self._model = early_stopper.get_best_model()
-                return val_epoch_loss, score, True
+                return epoch_loss, epoch_score, True
 
-        return val_epoch_loss, score, False
+        return epoch_loss, epoch_score, False
 
     def extract_data(self, data: Tuple[tensor, tensor, tensor]
                      ) -> Tuple[Dict[str, Optional[tensor]], tensor]:
@@ -373,10 +381,15 @@ class NNTrainer(Trainer):
         # We create the training data loader
         if training_size % self.batch_size == 1:
             train_loader = DataLoader(dataset, batch_size=self.batch_size,
-                                      sampler=SubsetRandomSampler(dataset.train_mask), drop_last=True)
+                                      sampler=SubsetRandomSampler(dataset.train_mask),
+                                      drop_last=True)
         else:
             train_loader = DataLoader(dataset, batch_size=self.batch_size,
                                       sampler=SubsetRandomSampler(dataset.train_mask))
+
+        # We create the validation loader
+        valid_loader = DataLoader(dataset, batch_size=self.batch_size,
+                                  sampler=SubsetRandomSampler(dataset.valid_mask))
 
         # We initialize empty lists to store losses and scores
         training_loss, valid_loss, training_score, valid_score = [], [], [], []
@@ -406,7 +419,7 @@ class NNTrainer(Trainer):
             ######################
 
             # We calculate validation epoch loss and save it
-            val_epoch_loss, val_metric_score, early_stop = self.evaluate(dataset, early_stopper)
+            val_epoch_loss, val_metric_score, early_stop = self.evaluate(valid_loader, early_stopper)
             valid_loss.append(val_epoch_loss)
             valid_score.append(val_metric_score)
 

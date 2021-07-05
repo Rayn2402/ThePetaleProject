@@ -244,7 +244,7 @@ class NNTrainer(Trainer):
     """
     def __init__(self, model: Optional[Module], metric: Optional[Callable],
                  lr: Optional[float], batch_size: Optional[int], epochs: int,
-                 early_stopping: bool = False, patience: int = 50,
+                 early_stopping: bool = False, patience: int = 250,
                  device: str = "cpu", in_trial: bool = False):
         """
         Sets protected and public attributes
@@ -377,19 +377,20 @@ class NNTrainer(Trainer):
         # We validate the batch size
         training_size = len(dataset.train_mask)
         self.batch_size = min(training_size, self.batch_size)
+        drop_last = (training_size % self.batch_size == 1)
 
         # We create the training data loader
-        if training_size % self.batch_size == 1:
-            train_loader = DataLoader(dataset, batch_size=self.batch_size,
-                                      sampler=SubsetRandomSampler(dataset.train_mask),
-                                      drop_last=True)
-        else:
-            train_loader = DataLoader(dataset, batch_size=self.batch_size,
-                                      sampler=SubsetRandomSampler(dataset.train_mask))
+        train_loader = DataLoader(dataset, batch_size=self.batch_size,
+                                  sampler=SubsetRandomSampler(dataset.train_mask),
+                                  drop_last=drop_last)
 
         # We create the validation loader
+        valid_size = len(dataset.valid_mask)
+        valid_batch_size = min(valid_size, 500)
+        drop_last = (valid_size % valid_batch_size == 1)
         valid_loader = DataLoader(dataset, batch_size=self.batch_size,
-                                  sampler=SubsetRandomSampler(dataset.valid_mask))
+                                  sampler=SubsetRandomSampler(dataset.valid_mask),
+                                  drop_last=drop_last)
 
         # We initialize empty lists to store losses and scores
         training_loss, valid_loss, training_score, valid_score = [], [], [], []

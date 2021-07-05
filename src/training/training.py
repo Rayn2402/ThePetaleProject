@@ -388,7 +388,7 @@ class NNTrainer(Trainer):
         valid_size = len(dataset.valid_mask)
         valid_batch_size = min(valid_size, 500)
         drop_last = (valid_size % valid_batch_size == 1)
-        valid_loader = DataLoader(dataset, batch_size=self.batch_size,
+        valid_loader = DataLoader(dataset, batch_size=valid_batch_size,
                                   sampler=SubsetRandomSampler(dataset.valid_mask),
                                   drop_last=drop_last)
 

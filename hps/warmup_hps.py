@@ -36,6 +36,14 @@ NN_ENET_HPS = {
 }
 
 NN_LOW_HPS = {
+    NeuralNetsHP.ALPHA: {
+        Range.MIN: 1e-8,
+        Range.MAX: 5,
+    },
+    NeuralNetsHP.BETA: {
+        Range.MIN: 1e-8,
+        Range.MAX: 5,
+    },
     NeuralNetsHP.LR: {
         Range.MIN: 1e-3,
         Range.MAX: 1e-1
@@ -61,6 +69,14 @@ NN_LOW_HPS = {
 }
 
 NN_HIGH_HPS = {
+    NeuralNetsHP.ALPHA: {
+        Range.MIN: 1e-8,
+        Range.MAX: 5,
+    },
+    NeuralNetsHP.BETA: {
+        Range.MIN: 1e-8,
+        Range.MAX: 5,
+    },
     NeuralNetsHP.LR: {
         Range.MIN: 1e-3,
         Range.MAX: 1e-1

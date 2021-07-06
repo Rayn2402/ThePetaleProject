@@ -53,6 +53,7 @@ class CustomDataset(ABC):
         self._train_mask, self._valid_mask, self._test_mask = [], None, []
         self._original_data = df
         self._n = df.shape[0]
+        self._classification = classification
         self._x = df.drop([PARTICIPANT, target], axis=1).copy()
         self._x_cat, self._x_cont = None, None
         self._y = self._initialize_targets(df[target], classification, target_to_tensor)
@@ -76,6 +77,10 @@ class CustomDataset(ABC):
 
     def __len__(self) -> int:
         return self._n
+
+    @property
+    def classification(self) -> bool:
+        return self._classification
 
     @property
     def encodings(self) -> Dict[str, Dict[str, int]]:

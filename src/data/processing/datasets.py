@@ -220,6 +220,25 @@ class CustomDataset(ABC):
         # We update x_cont protected attribute
         self._set_x_cont()
 
+    def _retrieve_original_data_subset(self, cont_cols: Optional[List[str]] = None, cat_cols: List[str] = None
+                                       ) -> DataFrame:
+        """
+        Returns a copy of a subset of the original dataframe
+
+        Args:
+            cont_cols: list of continuous columns
+            cat_cols: list of categorical columns
+
+        Returns: dataframe
+        """
+        selected_cols = []
+        if cont_cols is not None:
+            selected_cols += cont_cols
+        if cat_cols is not None:
+            selected_cols += cat_cols
+
+        return self.original_data[[PARTICIPANT, self._target] + selected_cols].copy()
+
     def _set_x_cat(self) -> None:
         """
         Abstract method that takes imputed categorical data and convert it
@@ -271,14 +290,18 @@ class CustomDataset(ABC):
     def __getitem__(self, idx: Union[int, List[int]]) -> Any:
         raise NotImplementedError
 
-    # @abstractmethod
-    # def _create_subset(self) -> Any:
-    #     """
-    #     Returns a subset of the current dataset while using feature selection
-    #
-    #     Returns: instance of the same class
-    #     """
-    #     raise NotImplementedError
+    @abstractmethod
+    def create_subset(self, cont_cols: Optional[List[str]] = None, cat_cols: List[str] = None) -> Any:
+        """
+        Returns a subset of the current dataset using the given cont_cols and cat_cols
+
+        Args:
+            cont_cols: list of continuous columns
+            cat_cols: list of categorical columns
+
+        Returns: instance of the same class
+        """
+        raise NotImplementedError
 
     @staticmethod
     def _initialize_targets(targets_column: Series, classification: bool,
@@ -384,6 +407,21 @@ class PetaleNNDataset(CustomDataset, Dataset):
         """
         self._x_cont = ConT.to_tensor(self.x[self.cont_cols])
 
+    def create_subset(self, cont_cols: Optional[List[str]] = None, cat_cols: List[str] = None
+                      ) -> CustomDataset:
+        """
+        Create a PetaleNNDataset from the current dataset, using the given column names
+
+        Args:
+            cont_cols: list of continuous columns
+            cat_cols: list of categorical columns
+
+        Returns: instance of the same class
+        """
+
+        return PetaleNNDataset(self._retrieve_original_data_subset(cont_cols, cat_cols), self._target,
+                               cont_cols, cat_cols, self.classification)
+
 
 class PetaleRFDataset(CustomDataset):
     """
@@ -409,6 +447,20 @@ class PetaleRFDataset(CustomDataset):
     def __getitem__(self, idx) -> Tuple[Series, array]:
         return self.x.iloc[idx], self.y[idx]
 
+    def create_subset(self, cont_cols: Optional[List[str]] = None, cat_cols: List[str] = None
+                      ) -> CustomDataset:
+        """
+        Create a PetaleRFDataset from the current dataset, using the given column names
+
+        Args:
+            cont_cols: list of continuous columns
+            cat_cols: list of categorical columns
+
+        Returns: instance of the same class
+        """
+        return PetaleRFDataset(self._retrieve_original_data_subset(cont_cols, cat_cols), self._target,
+                               cont_cols, cat_cols, self.classification)
+
 
 class PetaleLinearModelDataset(CustomDataset):
     """
@@ -431,6 +483,8 @@ class PetaleLinearModelDataset(CustomDataset):
             include_bias: True if we want to include bias to the original data
         """
         # We set the protected attributes
+        self._polynomial_degree = polynomial_degree
+        self._bias = include_bias
         self._basis_function = PolynomialFeatures(degree=polynomial_degree, include_bias=include_bias)
 
         # We use the _init_ of the parent class
@@ -479,6 +533,21 @@ class PetaleLinearModelDataset(CustomDataset):
         Returns: None
         """
         self._x_cont = self._basis_function.fit_transform(self.x[self.cont_cols].to_numpy(dtype=float))
+
+    def create_subset(self, cont_cols: Optional[List[str]] = None, cat_cols: List[str] = None
+                      ) -> CustomDataset:
+        """
+        Create a PetaleLinearModelDataset from the current dataset, using the given column names
+
+        Args:
+            cont_cols: list of continuous columns
+            cat_cols: list of categorical columns
+
+        Returns: instance of the same class
+        """
+        return PetaleLinearModelDataset(self._retrieve_original_data_subset(cont_cols, cat_cols),
+                                        self._target, cont_cols, cat_cols, self.classification,
+                                        self._polynomial_degree, self._bias)
 
 
 class PetaleGNNDataset(PetaleNNDataset):

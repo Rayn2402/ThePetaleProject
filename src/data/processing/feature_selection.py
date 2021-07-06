@@ -15,7 +15,7 @@ class FeatureSelector:
     Object in charge of selecting the most important features of the dataset
     """
 
-    def __init__(self, importance_threshold: float, records_path: Optional[str] = None) -> Tuple[List[str], List[str]]:
+    def __init__(self, importance_threshold: float, records_path: Optional[str] = None):
         """
         Sets protected attributes
 

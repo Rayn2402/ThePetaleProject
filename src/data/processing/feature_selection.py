@@ -15,23 +15,22 @@ class FeatureSelector:
     Object in charge of selecting the most important features of the dataset
     """
 
-    def __init__(self, importance_threshold: float, records_path: Optional[str] = None):
+    def __init__(self, importance_threshold: float):
         """
         Sets protected attributes
 
         Args:
             importance_threshold: cumulative importance of features selected
-            records_path: paths used to store figures and importance table
         """
         self.__importance_thresh = importance_threshold
-        self.__records_path = records_path
 
-    def __call__(self, dataset: CustomDataset):
+    def __call__(self, dataset: CustomDataset, records_path: Optional[str] = None):
         """
         Extracts most important features using a random forest
 
         Args:
             dataset: custom dataset
+            records_path: paths used to store figures and importance table
 
         Returns: List of cont_cols preserved, List of cat_cols preserved
         """
@@ -46,8 +45,8 @@ class FeatureSelector:
         cat_cols = [c for c in dataset.cat_cols if c in selected_features]
 
         # Save records in a csv
-        if self.__records_path is not None:
-            fi_table.to_csv(join(self.__records_path, "feature_selection_records.csv"), index=False)
+        if records_path is not None:
+            fi_table.to_csv(join(records_path, "feature_selection_records.csv"), index=False)
 
         return cont_cols, cat_cols
 

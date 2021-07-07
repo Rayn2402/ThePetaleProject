@@ -229,7 +229,7 @@ class ElasticNetTrainer(Trainer):
         """
         predictions = tensor(self._model.predict(kwargs['x'])).unsqueeze_(1)
 
-        return predictions
+        return predictions.squeeze()
 
     def update_trainer(self, **kwargs) -> None:
         """

@@ -151,7 +151,6 @@ class Evaluator(ABC):
 
             # We proceed to feature selection
             subset = self.extract_subset(records_path=saving_path)
-            print(subset.original_data.columns)
 
             # We record the data count
             for name, mask in [("train_set", train_mask), ("valid_set", valid_mask), ("test_set", test_mask)]:

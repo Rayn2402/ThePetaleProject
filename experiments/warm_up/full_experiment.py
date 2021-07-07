@@ -53,7 +53,7 @@ COMMANDS_NN = ['python3', FILE_NN, '-nos', '10', '-nis', '10', '-t', '500', '-s'
 COMMANDS_NN_LOW = COMMANDS_NN + ['-hps', 'low']
 COMMANDS_NN_HIGH = COMMANDS_NN + ['-hps', 'high']
 COMMANDS_NN_ENET = COMMANDS_NN + ['-hps', 'enet']
-COMMANDS_OE = ['python3', FILE_OE, '-nos', '20']
+COMMANDS_OE = ['python3', FILE_OE, '-nos', '10']
 
 DEGREES = map(str, range(1, 4))
 COMMANDS_PR = ['python3', FILE_PR, '-d', *DEGREES, '-nos', '10', '-nis', '10', '-t', '500', '-s', f'{SEED}']
@@ -86,7 +86,7 @@ if __name__ == '__main__':
     if lin:
         commands.append(COMMANDS_PR)
     if len(commands) == 0:
-        print("Please choose one of the available options -nn_low, -nn_enet, -oe, or -lin")
+        print("Please choose one of the available options -nn_high, -nn_low, -nn_enet, -oe, or -lin")
     else:
         start = time.time()
         for cmd in commands:

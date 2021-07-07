@@ -60,7 +60,7 @@ if __name__ == '__main__':
 
     # Masks extraction
     masks = extract_masks(join(Paths.MASKS, "l0_masks.json"), k, l)
-    push_valid_to_train(masks)
+    # push_valid_to_train(masks)
 
     # Metric choice
     opt_metric = RootMeanSquaredError()

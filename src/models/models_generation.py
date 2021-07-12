@@ -7,7 +7,7 @@ File that contains the class that will be responsible of generating the model wh
 
 from src.models.nn_models import NNModel
 from sklearn.linear_model import ElasticNet
-from typing import Callable, List, Optional, Union
+from typing import Callable, List, Optional
 
 
 def build_elasticnet(alpha: float, beta: float):
@@ -62,3 +62,15 @@ class NNModelGenerator:
         """
         return self.__model(num_cont_col=self.__num_cont_col, cat_sizes=self.__cat_sizes,
                             output_size=self.__output_size, layers=layers, dropout=dropout, activation=activation)
+
+    def update_cat_sizes(self, cat_sizes: List[int]) -> None:
+        """
+        Update the categories' sizes list
+
+        Args:
+            cat_sizes: list with number of unique possible
+                       values per categorical column
+
+        Returns: None
+        """
+        self.__cat_sizes = cat_sizes

@@ -128,11 +128,8 @@ def visualize_epoch_progression(train_history: List[tensor], valid_history: List
 
         plt.legend()
 
-        title = f'Train_and_valid_{progression_type[i]}_over_epochs'
-
         plt.xlabel('Epochs')
-        plt.ylabel(title)
-        plt.title(title)
+        plt.ylabel(progression_type[i])
 
     plt.savefig(join(path, "epochs_progression.png"))
     plt.close()

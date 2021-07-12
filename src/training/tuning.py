@@ -252,11 +252,12 @@ class NNObjective(Objective):
         # We set protected methods to extract hyperparameters' suggestions
         self._model_generator = model_generator
         self._get_activation = self._define_categorical_hp_getter(NeuralNetsHP.ACTIVATION)
+        self._get_alpha = self._define_numerical_hp_getter(ElasticNetHP.ALPHA, SuggestFunctions.UNIFORM)
         self._get_batch_size = self._define_numerical_hp_getter(NeuralNetsHP.BATCH_SIZE, SuggestFunctions.INT)
+        self._get_beta = self._define_numerical_hp_getter(ElasticNetHP.BETA, SuggestFunctions.UNIFORM)
         self._get_dropout = self._define_numerical_hp_getter(NeuralNetsHP.DROPOUT, SuggestFunctions.UNIFORM)
         self._get_layers = self._define_layers_getter()
         self._get_lr = self._define_numerical_hp_getter(NeuralNetsHP.LR, SuggestFunctions.UNIFORM)
-        self._get_weight_decay = self._define_numerical_hp_getter(NeuralNetsHP.WEIGHT_DECAY, SuggestFunctions.UNIFORM)
 
     def __call__(self, trial: Trial) -> float:
         """
@@ -280,18 +281,20 @@ class NNObjective(Objective):
         # We pick a value for the learning rate
         lr = self._get_lr(trial)
 
-        # We pick a value for the weight decay
-        weight_decay = self._get_weight_decay(trial)
-
         # We pick a type of activation function for the network
         activation = self._get_activation(trial)
 
+        # We pick a value for alpha and beta
+        alpha = self._get_alpha(trial)
+        beta = self._get_beta(trial)
+
         # We define the model with the suggested set of hyper parameters
-        model = self._model_generator(layers=layers, dropout=p, activation=activation)
+        model = self._model_generator(layers=layers, dropout=p, activation=activation,
+                                      alpha=alpha, beta=beta)
 
         # We perform a k fold random subsampling to evaluate the model
-        score = self._trainer.inner_random_subsampling(self._n_splits, model=model, weight_decay=weight_decay,
-                                                       batch_size=batch_size, lr=lr, trial=trial)
+        score = self._trainer.inner_random_subsampling(self._n_splits, model=model, batch_size=batch_size,
+                                                       lr=lr, trial=trial)
 
         # We return the score
         return score
@@ -331,10 +334,8 @@ class NNObjective(Objective):
 
         """
         # Trainer's initialization
-        trainer = NNTrainer(model=None, batch_size=None, lr=None, epochs=kwargs['n_epochs'],
-                            weight_decay=None, metric=metric, in_trial=True,
-                            early_stopping=kwargs['early_stopping'],
-                            device=kwargs['device'])
+        trainer = NNTrainer(model=None, batch_size=None, lr=None, epochs=kwargs['n_epochs'], metric=metric,
+                            in_trial=True, early_stopping=kwargs['early_stopping'], device=kwargs['device'])
 
         # Trainer's parallel process definition
         trainer.define_subprocess(dataset, masks)

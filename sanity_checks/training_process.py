@@ -62,8 +62,7 @@ if __name__ == '__main__':
     metric = Accuracy()
 
     # Creation of a trainer
-    trainer = NNTrainer(model, metric, lr=0.005, batch_size=15, weight_decay=0.005, epochs=250,
-                        early_stopping=True, patience=100)
+    trainer = NNTrainer(model, metric, lr=0.005, batch_size=15, epochs=250, early_stopping=True, patience=100)
 
     # Training for 200 epochs
     t_loss, v_loss = trainer.fit(nn_dataset, visualization=True, verbose=True, path=dirname(__file__))

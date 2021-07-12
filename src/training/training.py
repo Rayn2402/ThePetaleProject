@@ -126,10 +126,6 @@ class Trainer(ABC):
             # We get the predictions
             predictions = self.predict(**inputs, log_prob=True)
 
-            # We flatten the predictions array if we are doing regression
-            if predictions.shape[1] == 1:
-                predictions = predictions.flatten()
-
             # We calculate the score with the help of the metric function
             score = self._metric(predictions, targets)
 
@@ -233,7 +229,7 @@ class ElasticNetTrainer(Trainer):
         """
         predictions = tensor(self._model.predict(kwargs['x'])).unsqueeze_(1)
 
-        return predictions
+        return predictions.squeeze()
 
     def update_trainer(self, **kwargs) -> None:
         """
@@ -247,9 +243,8 @@ class NNTrainer(Trainer):
     Object that trains neural networks
     """
     def __init__(self, model: Optional[Module], metric: Optional[Callable],
-                 lr: Optional[float], batch_size: Optional[int],
-                 weight_decay: Optional[float], epochs: int,
-                 early_stopping: bool = False, patience: int = 50,
+                 lr: Optional[float], batch_size: Optional[int], epochs: int,
+                 early_stopping: bool = False, patience: int = 250,
                  device: str = "cpu", in_trial: bool = False):
         """
         Sets protected and public attributes
@@ -259,7 +254,6 @@ class NNTrainer(Trainer):
             metric: callable metric we want to optimize with the hps
             lr: learning rate
             batch_size: size of the batches created by the training data loader
-            weight_decay: L2 penalty
             epochs: number of epochs
             early_stopping: True if we want to stop the training when the validation loss stops decreasing
             patience: number of epochs without improvement allowed before early stopping
@@ -281,23 +275,22 @@ class NNTrainer(Trainer):
         # We save protected attribute
         self._in_trial = in_trial
         self._lr = lr
-        self._weight_decay = weight_decay
 
         # We send model to the proper device and set optimizer protected attribute if it is not None
         if model is not None:
-            self._optimizer = optim.Adam(params=self._model.parameters(), lr=lr, weight_decay=weight_decay)
+            self._optimizer = optim.Adam(params=self._model.parameters(), lr=lr)
             self._model.to(self._device)
         else:
             self._optimizer = None
 
-    def evaluate(self, dataset: PetaleNNDataset, early_stopper: EarlyStopping) -> Tuple[float, float, bool]:
+    def evaluate(self, valid_loader: DataLoader, early_stopper: EarlyStopping) -> Tuple[float, float, bool]:
         """
         Calculates the loss on the validation set using a single batch.
         There will be no memory problem since our datasets are really small
 
         Args:
+            valid_loader: validation dataloader
             early_stopper: early stopping object created in the fit function
-            dataset: custom dataset with masks already defined
 
         Returns: validation epoch loss, validation epoch score and early stopping status
 
@@ -306,28 +299,36 @@ class NNTrainer(Trainer):
         # Set model for validation
         self._model.eval()
 
+        epoch_loss, epoch_score = 0, 0
         with torch.no_grad():
 
-            # We extract the continuous data x_cont, the categorical data x_cat
-            # and the correct predictions y for the single batch
-            inputs, y = self.extract_data(dataset[dataset.valid_mask])
+            for item in valid_loader:
 
-            # We perform the forward pass: compute predicted outputs by passing inputs to the model
-            output = self._model(**inputs)
+                # We extract the continuous data x_cont, the categorical data x_cat
+                # and the correct predictions y for the single batch
+                inputs, y = self.extract_data(item)
 
-            # We calculate the loss and the score
-            val_epoch_loss = self._model.loss(output, y).item()
-            score = self._metric(output, y)
+                # We perform the forward pass: compute predicted outputs by passing inputs to the model
+                output = self._model(**inputs)
+
+                # We calculate the loss and the score
+                val_epoch_loss = self._model.loss(output, y)
+                score = self._metric(output, y)
+                epoch_loss += val_epoch_loss.item()
+                epoch_score += score
+
+        # We take the mean of the losses and the scores
+        epoch_loss, epoch_score = epoch_loss/len(valid_loader), epoch_score/len(valid_loader)
 
         # We early stopping status
         if self.early_stopping:
-            early_stopper(val_epoch_loss, self._model)
+            early_stopper(epoch_loss, self._model)
 
             if early_stopper.early_stop:
                 self._model = early_stopper.get_best_model()
-                return val_epoch_loss, score, True
+                return epoch_loss, epoch_score, True
 
-        return val_epoch_loss, score, False
+        return epoch_loss, epoch_score, False
 
     def extract_data(self, data: Tuple[tensor, tensor, tensor]
                      ) -> Tuple[Dict[str, Optional[tensor]], tensor]:
@@ -376,14 +377,20 @@ class NNTrainer(Trainer):
         # We validate the batch size
         training_size = len(dataset.train_mask)
         self.batch_size = min(training_size, self.batch_size)
+        drop_last = (training_size % self.batch_size == 1)
 
         # We create the training data loader
-        if training_size % self.batch_size == 1:
-            train_loader = DataLoader(dataset, batch_size=self.batch_size,
-                                      sampler=SubsetRandomSampler(dataset.train_mask), drop_last=True)
-        else:
-            train_loader = DataLoader(dataset, batch_size=self.batch_size,
-                                      sampler=SubsetRandomSampler(dataset.train_mask))
+        train_loader = DataLoader(dataset, batch_size=self.batch_size,
+                                  sampler=SubsetRandomSampler(dataset.train_mask),
+                                  drop_last=drop_last)
+
+        # We create the validation loader
+        valid_size = len(dataset.valid_mask)
+        valid_batch_size = min(valid_size, 500)
+        drop_last = (valid_size % valid_batch_size == 1)
+        valid_loader = DataLoader(dataset, batch_size=valid_batch_size,
+                                  sampler=SubsetRandomSampler(dataset.valid_mask),
+                                  drop_last=drop_last)
 
         # We initialize empty lists to store losses and scores
         training_loss, valid_loss, training_score, valid_score = [], [], [], []
@@ -413,7 +420,7 @@ class NNTrainer(Trainer):
             ######################
 
             # We calculate validation epoch loss and save it
-            val_epoch_loss, val_metric_score, early_stop = self.evaluate(dataset, early_stopper)
+            val_epoch_loss, val_metric_score, early_stop = self.evaluate(valid_loader, early_stopper)
             valid_loss.append(val_epoch_loss)
             valid_score.append(val_metric_score)
 
@@ -423,8 +430,8 @@ class NNTrainer(Trainer):
         if visualization:
 
             # We plot the graph to visualize the training and validation loss and metric
-            visualize_epoch_progression([tensor(training_loss), tensor(training_score)], [tensor(valid_loss),
-                                                                                          tensor(valid_score)],
+            visualize_epoch_progression([tensor(training_loss), tensor(training_score)],
+                                        [tensor(valid_loss), tensor(valid_score)],
                                         progression_type=["loss", "metric"], path=path)
 
         if self.early_stopping:
@@ -495,9 +502,8 @@ class NNTrainer(Trainer):
 
         # Update of protected attributes
         self._model = kwargs.get('model', self._model)
-        self._weight_decay = kwargs.get('weight_decay', self._weight_decay)
         self._lr = kwargs.get('lr', self._lr)
-        self._optimizer = optim.Adam(params=self._model.parameters(), lr=self._lr, weight_decay=self._weight_decay)
+        self._optimizer = optim.Adam(params=self._model.parameters(), lr=self._lr)
 
         # We send model to the proper device
         self._model.to(self._device)

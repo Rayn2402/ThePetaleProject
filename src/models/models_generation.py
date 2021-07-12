@@ -5,9 +5,9 @@ File that contains the class that will be responsible of generating the model wh
 
 """
 
-from src.models.nn_models import NNClassifier, NNRegressor
+from src.models.nn_models import NNModel
 from sklearn.linear_model import ElasticNet
-from typing import Callable, List, Optional, Union
+from typing import Callable, List, Optional
 
 
 def build_elasticnet(alpha: float, beta: float):
@@ -34,7 +34,7 @@ class NNModelGenerator:
         Sets private attributes
 
         Args:
-            model_class: constructor of NNClassifier or NNRegressor
+            model_class: constructor of NNClassifier or NNRegression
             num_cont_col: number of continuous columns
             cat_sizes: list of integer representing the size of each categorical column
             output_size: number of nodes in the last layer of the neural network/the the number of classes
@@ -45,7 +45,8 @@ class NNModelGenerator:
         self.__num_cont_col = num_cont_col
         self.__output_size = output_size
 
-    def __call__(self, layers: List[int], dropout: float, activation: str) -> Union[NNClassifier, NNRegressor]:
+    def __call__(self, layers: List[int], dropout: float, activation: str,
+                 alpha: float = 0, beta: float = 0) -> NNModel:
         """
         Generates a neural network model associated to the given set of hyperparameters
 
@@ -53,9 +54,23 @@ class NNModelGenerator:
             layers: list with number of nodes for each hidden layer
             dropout: probability of dropout (0 < p < 1)
             activation: activation function to be used by the model (ex. "ReLU")
+            alpha: L1 penalty coefficient
+            beta: L2 penalty coefficient
 
         Returns: neural network
 
         """
         return self.__model(num_cont_col=self.__num_cont_col, cat_sizes=self.__cat_sizes,
                             output_size=self.__output_size, layers=layers, dropout=dropout, activation=activation)
+
+    def update_cat_sizes(self, cat_sizes: List[int]) -> None:
+        """
+        Update the categories' sizes list
+
+        Args:
+            cat_sizes: list with number of unique possible
+                       values per categorical column
+
+        Returns: None
+        """
+        self.__cat_sizes = cat_sizes

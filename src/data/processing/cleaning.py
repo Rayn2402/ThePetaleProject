@@ -33,7 +33,7 @@ class DataCleaner:
     CSC = "Chi-Squared Cutoff"
 
     # PRE-SAVED WARNING MESSAGES
-    ROW_TRESHOLD_WARNING = "Row threshold condition not fulfilled."
+    ROW_THRESHOLD_WARNING = "Row threshold condition not fulfilled."
     COL_THRESHOLD_WARNING = "Column threshold condition not fulfilled."
     MIN_PER_CAT_WARNING = "Minimal number per category not satisfied."
     MAX_PER_CAT_WARNING = "Maximal percentage allowed for one category not satisfied."
@@ -69,7 +69,7 @@ class DataCleaner:
         assert 0 < qchi2_mahalanobis_cutoff < 1, "Chi-squared quantile cutoff must be in range (0, 1)"
 
         # Internal private fixed attributes
-        self.__column_tresh = column_thresh
+        self.__column_thresh = column_thresh
         self.__row_thresh = row_thresh
         self.__outlier_alpha = outlier_alpha
         self.__min_n_per_cat = min_n_per_cat
@@ -82,7 +82,7 @@ class DataCleaner:
         # Private mutable attribute
         self.__records = {self.CP: {},
                           self.CC: {},
-                          "Column Threshold": self.__column_tresh,
+                          "Column Threshold": self.__column_thresh,
                           "Row Threshold": self.__row_thresh,
                           "Outlier Alpha": self.__outlier_alpha,
                           "Min Item Per Category": self.__min_n_per_cat,
@@ -188,7 +188,7 @@ class DataCleaner:
         """
 
         # Column cleaning
-        updated_df = df.dropna(axis=1, thresh=round(df.shape[0]*(1-self.__column_tresh)))
+        updated_df = df.dropna(axis=1, thresh=round(df.shape[0]*(1-self.__column_thresh)))
 
         # Row cleaning
         updated_df = updated_df.dropna(axis=0, thresh=round(updated_df.shape[1]*(1-self.__row_thresh)))
@@ -196,7 +196,7 @@ class DataCleaner:
         # Records update
         for participant in df[PARTICIPANT].values:
             if participant not in updated_df[PARTICIPANT].values:
-                self.__records[self.CP][participant] = {0: self.ROW_TRESHOLD_WARNING}
+                self.__records[self.CP][participant] = {0: self.ROW_THRESHOLD_WARNING}
 
         for column in df.columns:
             if column not in updated_df.columns:

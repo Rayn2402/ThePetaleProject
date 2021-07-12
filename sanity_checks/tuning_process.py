@@ -48,7 +48,7 @@ if __name__ == '__main__':
     # Initialization of a metric
     metric = SensitivityCrossEntropyRatio(nb_classes=2)
 
-    # Creation of NNobjective
+    # Creation of NNObjective
     nn_objective = NNObjective(model_generator=model_generator, dataset=nn_dataset,
                                masks=inner_masks, hps=NN_HPS, device="cpu", metric=metric,
                                n_epochs=100, early_stopping=True)

@@ -13,15 +13,13 @@ sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
 from os.path import join
 from src.data.extraction.data_management import PetaleDataManager
 from src.utils.score_metrics import AbsoluteError, RootMeanSquaredError
-from src.models.nn_models import NNRegression
-from src.models.models_generation import NNModelGenerator
 from src.training.evaluation import NNEvaluator
 from src.data.processing.sampling import get_warmup_data, extract_masks
 from src.data.processing.datasets import PetaleNNDataset
 from settings.paths import Paths
 from hps.warmup_hps import NN_LOW_HPS, NN_HIGH_HPS, NN_ENET_HPS
 from src.data.extraction.constants import *
-from typing import Callable, Dict, List
+from typing import Dict, List
 
 
 def argument_parser():
@@ -55,8 +53,7 @@ def argument_parser():
 
 
 def execute_neural_network_experiment(dataset: PetaleNNDataset, masks: Dict[int, Dict[str, List[int]]],
-                                      n_trials: int, model_generator: NNModelGenerator, seed: int,
-                                      evaluation_name: str, hps: dict) -> None:
+                                      n_trials: int, seed: int, evaluation_name: str, hps: dict) -> None:
     """
     Function that executes a Neural Network experiments
 
@@ -64,7 +61,6 @@ def execute_neural_network_experiment(dataset: PetaleNNDataset, masks: Dict[int,
         dataset:  dataset with inputs and regression targets
         masks: dictionary with list of idx to use for training and testing
         n_trials: Number of trials to perform during the experiments
-        model_generator: callable object used to generate a model according to a set of hyperparameters
         seed: random state used for reproducibility
         evaluation_name: name of the results file saved at the recordings_path
         hps: hyperparameters dictionary
@@ -81,7 +77,7 @@ def execute_neural_network_experiment(dataset: PetaleNNDataset, masks: Dict[int,
     evaluation_metrics = {"RMSE": metric, "MAE": AbsoluteError()}
 
     # Creation of the evaluator
-    nn_evaluator = NNEvaluator(model_generator=model_generator, dataset=dataset, masks=masks,
+    nn_evaluator = NNEvaluator(dataset=dataset, masks=masks,
                                hps=hps, n_trials=n_trials, optimization_metric=metric,
                                evaluation_metrics=evaluation_metrics, max_epochs=2000, early_stopping=True,
                                save_optimization_history=True, evaluation_name=evaluation_name, seed=seed)
@@ -111,10 +107,6 @@ if __name__ == '__main__':
     # Extraction of masks
     masks = extract_masks(join(Paths.MASKS, "l0_masks.json"), k=k, l=l)
 
-    # Creation of model generator
-    nb_cont_cols = len(cont_cols)
-    model_generator = NNModelGenerator(NNRegression, nb_cont_cols, cat_sizes=None)
-
     # Extraction of hps
     if hp_choice == 'low':
         hyperparameters = NN_LOW_HPS
@@ -131,5 +123,4 @@ if __name__ == '__main__':
 
         # Execution of one experiment
         execute_neural_network_experiment(dataset=nn_dataset, masks=masks, seed=seed, n_trials=n_trials,
-                                          model_generator=model_generator, evaluation_name=evaluation_name,
-                                          hps=hyperparameters)
+                                          evaluation_name=evaluation_name, hps=hyperparameters)

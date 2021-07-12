@@ -16,6 +16,7 @@ from sklearn.ensemble import RandomForestClassifier
 from src.data.processing.datasets import PetaleNNDataset, PetaleRFDataset, PetaleLinearModelDataset, CustomDataset
 from src.data.processing.feature_selection import FeatureSelector
 from src.models.models_generation import NNModelGenerator, build_elasticnet
+from src.models.nn_models import NNClassifier, NNRegression
 from src.recording.recording import Recorder, compare_prediction_recordings, \
     get_evaluation_recap, plot_hyperparameter_importance_chart
 from src.training.enums import *
@@ -310,8 +311,8 @@ class NNEvaluator(Evaluator):
     """
     Object charged to evaluate performances of Neural Network model over multiple splits
     """
-    def __init__(self, model_generator: NNModelGenerator, dataset: PetaleNNDataset,
-                 masks: Dict[int, Dict[str, List[int]]], hps: Dict[str, Dict[str, Any]], n_trials: int,
+    def __init__(self, dataset: PetaleNNDataset, masks: Dict[int, Dict[str, List[int]]],
+                 hps: Dict[str, Dict[str, Any]], n_trials: int,
                  optimization_metric: Metric, evaluation_metrics: Dict[str, Metric], max_epochs: int,
                  early_stopping: bool, seed: Optional[int] = None,
                  feature_selector: Optional[FeatureSelector] = None,
@@ -324,7 +325,6 @@ class NNEvaluator(Evaluator):
         Sets protected and public attributes of the class
 
         Args:
-            model_generator: callable object used to generate a model according to a set of hyperparameters
             dataset: custom dataset containing the whole learning dataset needed for our evaluation
             masks: dict with list of idx to use as train, valid and test masks
             hps: dictionary with information on the hyperparameters we want to tune
@@ -344,8 +344,8 @@ class NNEvaluator(Evaluator):
             save_optimization_history: True if we want to plot the optimization history graph after tuning
         """
         # We call parent's constructor
-        super().__init__(model_generator=model_generator, dataset=dataset, masks=masks,
-                         hps=hps, n_trials=n_trials, optimization_metric=optimization_metric,
+        super().__init__(model_generator=self._create_model_generator(dataset), dataset=dataset,
+                         masks=masks, hps=hps, n_trials=n_trials, optimization_metric=optimization_metric,
                          evaluation_metrics=evaluation_metrics, seed=seed, device=device,
                          feature_selector=feature_selector, evaluation_name=evaluation_name,
                          save_hps_importance=save_hps_importance,
@@ -386,9 +386,33 @@ class NNEvaluator(Evaluator):
 
         Returns: objective function
         """
+        # We update the model generator since some categorical features might
+        # have been removed
+        self.model_generator.update_cat_sizes(subset.cat_sizes)
         return NNObjective(model_generator=self.model_generator, dataset=subset, masks=masks,
                            hps=self._hps, device=self._device, metric=self.optimization_metric,
                            n_epochs=self._max_epochs, early_stopping=self._early_stopping)
+
+    @staticmethod
+    def _create_model_generator(dataset: PetaleNNDataset) -> Callable:
+        """
+        Creates the object used to generates nn architectures
+        Args:
+            dataset: PetaleNNDataset
+
+        Returns: Model generator function
+        """
+        if dataset.classification:
+            constructor = NNClassifier
+            output_size = len(dataset.original_data[dataset.target].unique())
+        else:
+            constructor = NNRegression
+            output_size = None
+
+        return NNModelGenerator(model_class=constructor,
+                                num_cont_col=len(dataset.cont_cols),
+                                cat_sizes=dataset.cat_sizes,
+                                output_size=output_size)
 
 
 class RFEvaluator(Evaluator):

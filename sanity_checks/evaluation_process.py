@@ -17,8 +17,6 @@ if __name__ == '__main__':
     from src.data.processing.feature_selection import FeatureSelector
     from src.data.processing.sampling import get_learning_one_data, extract_masks
     from src.training.evaluation import NNEvaluator, RFEvaluator
-    from src.models.nn_models import NNClassifier
-    from src.models.models_generation import NNModelGenerator
     from src.data.extraction.constants import *
     from src.data.extraction.data_management import PetaleDataManager
     from src.utils.score_metrics import CrossEntropyLoss, Sensitivity, Accuracy
@@ -47,13 +45,8 @@ if __name__ == '__main__':
     # Creation of dataset
     nn_dataset = PetaleNNDataset(df, NEUROCOGNITIVE_COMPLICATIONS, cont_cols, cat_cols)
 
-    # Creation of model generator
-    nb_cont_cols = len(cont_cols)
-    cat_sizes = [len(v.items()) for v in nn_dataset.encodings.values()]
-    model_generator = NNModelGenerator(NNClassifier, nb_cont_cols, cat_sizes, output_size=2)
-
     # Creation of the evaluator
-    nn_evaluator = NNEvaluator(model_generator=model_generator, dataset=nn_dataset, masks=masks,
+    nn_evaluator = NNEvaluator(dataset=nn_dataset, masks=masks,
                                hps=NN_HPS, n_trials=50, optimization_metric=metric,
                                evaluation_metrics=evaluation_metrics, max_epochs=100, early_stopping=True,
                                save_optimization_history=True, feature_selector=feature_selector)

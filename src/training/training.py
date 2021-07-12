@@ -430,8 +430,8 @@ class NNTrainer(Trainer):
         if visualization:
 
             # We plot the graph to visualize the training and validation loss and metric
-            visualize_epoch_progression([tensor(training_loss), tensor(training_score)], [tensor(valid_loss),
-                                                                                          tensor(valid_score)],
+            visualize_epoch_progression([tensor(training_loss), tensor(training_score)],
+                                        [tensor(valid_loss), tensor(valid_score)],
                                         progression_type=["loss", "metric"], path=path)
 
         if self.early_stopping:

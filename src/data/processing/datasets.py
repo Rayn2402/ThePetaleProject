@@ -83,6 +83,12 @@ class CustomDataset(ABC):
         return self._classification
 
     @property
+    def cat_sizes(self) -> Optional[List[int]]:
+        if self.encodings is not None:
+            return [len(v.items()) for v in self.encodings.values()]
+        return None
+
+    @property
     def encodings(self) -> Dict[str, Dict[str, int]]:
         return self._encodings
 
@@ -93,6 +99,10 @@ class CustomDataset(ABC):
     @property
     def original_data(self) -> DataFrame:
         return self._original_data
+
+    @property
+    def target(self) -> str:
+        return self._target
 
     @property
     def test_mask(self) -> List[int]:

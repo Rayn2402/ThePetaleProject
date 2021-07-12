@@ -45,8 +45,8 @@ def create_experiments_recap(path):
     hyperparams_importance_file = "hyperparameters_importance.png"
     parallel_coordinate_file = "parallel_coordinate.png"
     optimization_history_file = "optimization_history.png"
-    loss_over_epochs_file = "Train_and_valid_loss_over_epochs.png"
-    metric_over_epochs_file = "Train_and_valid_metric_over_epochs.png"
+    loss_over_epochs_file = "epochs_progression.png"
+
 
     # We define the style of our webpage with css
     style = """<style>
@@ -241,7 +241,8 @@ x   }
         # We get the folders of all the splits
         splits = os.listdir(os.path.join(path, evaluation))
         splits = [folder for folder in splits if os.path.isdir(os.path.join(path, evaluation, folder))]
-        splits.sort()
+        splits.sort(key=lambda x: int(x.split("_")[1]))
+
         split_board = f"""<div class="split center {"split-active" if i==0 else None}">General</div>"""
 
         # We open the json file containing the general information of an evaluation
@@ -393,13 +394,7 @@ x   }
                         """ if os.path.exists(
                 os.path.join(path, evaluation, split, loss_over_epochs_file)) else ""
 
-            # We add the section visualizing the progression of the metric over the epochs
-            metric_over_epochs_section = f"""
-                                                <div class="row center bottom-space">
-                                                    <img width="800" src="{os.path.join(path, evaluation, split, metric_over_epochs_file)}">
-                                                </div>
-                                    """ if os.path.exists(
-                os.path.join(path, evaluation, split, metric_over_epochs_file)) else ""
+
 
             # We arrange the different sections
             section = f"""<div class="main hidden" id="{evaluation}{split}">
@@ -411,7 +406,6 @@ x   }
                 {optimization_history_section}
                 {predictions_section}
                 {loss_over_epochs_section}
-                {metric_over_epochs_section}
             </div>
             """
 

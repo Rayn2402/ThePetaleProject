@@ -4,7 +4,7 @@ Author : Nicolas Raymond
 This file contains all function related to data visualization
 
 """
-from typing import Union, Optional
+from typing import Union, Optional, List
 from torch import tensor, sum, is_tensor
 from matplotlib import pyplot as plt
 from numpy import array
@@ -102,30 +102,37 @@ def visualize_embeddings(embeddings: tensor, category_levels: tensor,
     plt.close()
 
 
-def visualize_epoch_progression(train_history: tensor, valid_history: tensor, progression_type: str, path: str) -> None:
+def visualize_epoch_progression(train_history: List[tensor], valid_history: List[tensor], progression_type: List[str],
+                                path: str) -> None:
     """
     Visualizes train and test loss history over training epoch
 
-    :param train_history: (E,) tensor where E is the number of epochs
-    :param valid_history: (E,) tensor
-    :param progression_type: (string) type of the progression to visualize
+    :param train_history: list of (E,) tensors where E is the number of epochs
+    :param valid_history: list of (E,) tensor
+    :param progression_type: list of string specifying thee type of the progressions to visualize
     :param path: (string) determines where to save the plots
     """
-    nb_epochs = train_history.shape[0]
-    if nb_epochs != valid_history.shape[0]:
-        raise Exception("Both train and valid tensors must be of the same shape")
+    plt.figure(figsize=(12, 8))
 
-    epochs = range(nb_epochs)
+    for i in range(len(train_history)):
 
-    plt.plot(epochs, train_history, label=f'train {progression_type}')
-    plt.plot(epochs, valid_history, label=f'valid {progression_type}')
+        nb_epochs = train_history[i].shape[0]
+        if nb_epochs != valid_history[i].shape[0]:
+            raise Exception("Both train and valid tensors must be of the same shape")
 
-    plt.legend()
+        epochs = range(nb_epochs)
 
-    title = f'Train_and_valid_{progression_type}_over_epochs'
+        plt.subplot(1, 2, i+1)
+        plt.plot(epochs, train_history[i], label=f'train {progression_type[i]}')
+        plt.plot(epochs, valid_history[i], label=f'valid {progression_type[i]}')
 
-    plt.xlabel('Epochs')
-    plt.ylabel(title)
-    plt.title(title)
-    plt.savefig(join(path, f"{title}.png"))
+        plt.legend()
+
+        title = f'Train_and_valid_{progression_type[i]}_over_epochs'
+
+        plt.xlabel('Epochs')
+        plt.ylabel(title)
+        plt.title(title)
+
+    plt.savefig(join(path, "epochs_progression.png"))
     plt.close()

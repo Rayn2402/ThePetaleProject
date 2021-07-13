@@ -6,7 +6,7 @@ File that stores feature selector object, that removes unimportant features
 from os.path import join
 from pandas import DataFrame
 from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
-from src.data.processing.datasets import CustomDataset
+from src.data.processing.datasets import PetaleDataset
 from typing import Tuple, List, Optional
 
 
@@ -24,7 +24,7 @@ class FeatureSelector:
         """
         self.__importance_thresh = importance_threshold
 
-    def __call__(self, dataset: CustomDataset, records_path: Optional[str] = None):
+    def __call__(self, dataset: PetaleDataset, records_path: Optional[str] = None):
         """
         Extracts most important features using a random forest
 
@@ -50,7 +50,7 @@ class FeatureSelector:
 
         return cont_cols, cat_cols
 
-    def get_features_importance(self, dataset: CustomDataset) -> DataFrame:
+    def get_features_importance(self, dataset: PetaleDataset) -> DataFrame:
         """
         Trains a random forest (with default sklearn hyperparameters) to solve the classification
         or regression problems and uses it to extract feature importance.
@@ -65,12 +65,13 @@ class FeatureSelector:
 
         # Selection of model
         if dataset.classification:
-            model = RandomForestClassifier(n_jobs=-1, oob_score=True).fit(dataset.x.iloc[mask], dataset.y[mask])
+            model = RandomForestClassifier(n_jobs=-1, oob_score=True).fit(dataset.x[mask], dataset.y[mask])
         else:
-            model = RandomForestRegressor(n_jobs=-1, oob_score=True).fit(dataset.x.iloc[mask], dataset.y[mask])
+            model = RandomForestRegressor(n_jobs=-1, oob_score=True).fit(dataset.x[mask], dataset.y[mask])
 
         # Creation of feature importance table
-        fi_table = DataFrame({'features': dataset.x.columns, 'imp': model.feature_importances_}
+        features = dataset.get_imputed_dataframe().columns
+        fi_table = DataFrame({'features': features, 'imp': model.feature_importances_}
                              ).sort_values('imp', ascending=False)
 
         # Addition of a column that indicates if the feature is selected

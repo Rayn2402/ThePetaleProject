@@ -5,7 +5,7 @@ This file is used as a script to produce train, valid and test masks related to 
 import argparse
 
 from json import dump
-from src.data.processing.datasets import PetaleRFDataset
+from src.data.processing.datasets import PetaleDataset
 from src.data.processing.sampling import RandomStratifiedSampler
 from src.data.extraction.constants import *
 from src.data.extraction.data_management import PetaleDataManager
@@ -74,7 +74,7 @@ if __name__ == '__main__':
     # We extract an holdout set from the whole dataframe using a sampler
     cont_cols = list(retrieve_numerical(df, []).columns.values)
     cat_cols = [c for c in df.columns.values if c not in [PARTICIPANT, args.target_column] + cont_cols]
-    dataset = PetaleRFDataset(df, args.target_column, cont_cols=cont_cols, cat_cols=cat_cols)
+    dataset = PetaleDataset(df, args.target_column, cont_cols=cont_cols, cat_cols=cat_cols)
     rss = RandomStratifiedSampler(dataset, n_out_split=args.nb_out_split, n_in_split=args.nb_in_split,
                                   valid_size=args.validation_size, test_size=args.test_size,
                                   random_state=args.seed, alpha=args.alpha, patience=1000)

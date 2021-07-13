@@ -7,7 +7,7 @@ from os.path import join
 from pandas import DataFrame
 from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 from src.data.processing.datasets import PetaleDataset
-from typing import Tuple, List, Optional
+from typing import Optional
 
 
 class FeatureSelector:

@@ -67,3 +67,33 @@ class PetaleBinaryClassifier(ABC):
         Returns: (N,) tensor or array
         """
         raise NotImplementedError
+
+
+class PetaleRegressor(ABC):
+
+    @abstractmethod
+    def fit(self, x_train: Union[tensor, array], y_train: Union[tensor, array],
+            eval_set: Optional[Tuple[Union[tensor, array], Union[tensor, array]]], **kwargs) -> None:
+        """
+        Fits the model to the training data
+
+        Args:
+            x_train: (N,D) tensor or array with D-dimensional samples
+            y_train: (N,1) tensor or array with classification labels
+            eval_set: Tuple with validation set
+
+        Returns: None
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def predict(self, x: Union[tensor, array]) -> Union[tensor, array]:
+        """
+        Returns the predicted real-valued targets for all samples
+
+        Args:
+            x: (N,D) tensor or array with D-dimensional samples
+
+        Returns: (N,) tensor or array
+        """
+        raise NotImplementedError

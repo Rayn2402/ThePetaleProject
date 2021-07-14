@@ -11,8 +11,10 @@ from typing import Optional, Tuple, Union
 
 
 class PetaleBinaryClassifier(ABC):
-
-    def __init__(self, classification_threshold: int = 0.5, weight: Optional[float] = None):
+    """
+    Skeleton of all Petale classification models
+    """
+    def __init__(self, classification_threshold: float = 0.5, weight: Optional[float] = None):
         """
         Sets the threshold for binary classification
 
@@ -25,6 +27,14 @@ class PetaleBinaryClassifier(ABC):
 
         self._thresh = classification_threshold
         self._weight = weight
+
+    @property
+    def thresh(self) -> float:
+        return self._thresh
+
+    @property
+    def weight(self) -> Optional[float]:
+        return self._weight
 
     def predict(self, x: Union[tensor, array]) -> tensor:
         """
@@ -43,7 +53,7 @@ class PetaleBinaryClassifier(ABC):
 
     @abstractmethod
     def fit(self, x_train: Union[tensor, array], y_train: Union[tensor, array],
-            eval_set: Optional[Tuple[Union[tensor, array], Union[tensor, array]]], **kwargs) -> None:
+            eval_set: Optional[Tuple[Union[tensor, array], Union[tensor, array]]] = None, **kwargs) -> None:
         """
         Fits the model to the training data
 
@@ -70,10 +80,12 @@ class PetaleBinaryClassifier(ABC):
 
 
 class PetaleRegressor(ABC):
-
+    """
+    Skeleton of all Petale regression models
+    """
     @abstractmethod
     def fit(self, x_train: Union[tensor, array], y_train: Union[tensor, array],
-            eval_set: Optional[Tuple[Union[tensor, array], Union[tensor, array]]], **kwargs) -> None:
+            eval_set: Optional[Tuple[Union[tensor, array], Union[tensor, array]]] = None, **kwargs) -> None:
         """
         Fits the model to the training data
 
@@ -87,13 +99,13 @@ class PetaleRegressor(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def predict(self, x: Union[tensor, array]) -> Union[tensor, array]:
+    def predict(self, x: Union[tensor, array]) -> tensor:
         """
         Returns the predicted real-valued targets for all samples
 
         Args:
             x: (N,D) tensor or array with D-dimensional samples
 
-        Returns: (N,) tensor or array
+        Returns: (N,) tensor
         """
         raise NotImplementedError

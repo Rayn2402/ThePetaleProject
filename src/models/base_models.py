@@ -7,34 +7,31 @@ to build every other model in the project
 from abc import ABC, abstractmethod
 from numpy import array
 from torch import tensor, is_tensor, from_numpy
-from typing import Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 
 class PetaleBinaryClassifier(ABC):
     """
     Skeleton of all Petale classification models
     """
-    def __init__(self, classification_threshold: float = 0.5, weight: Optional[float] = None):
+    def __init__(self, classification_threshold: float = 0.5, class_weights: Optional[List[float]] = None):
         """
         Sets the threshold for binary classification
 
         Args:
             classification_threshold: threshold used to classify a sample in class 1
-            weight: weight attribute to each sample in class 1 (weight of samples in class 0 is 1-weight)
+            class_weights: weights attributes to samples of each class
         """
-        if weight is not None:
-            assert 0 <= weight <= 1, "weight must be included in range [0, 1]"
-
         self._thresh = classification_threshold
-        self._weight = weight
+        self._class_weights = class_weights
 
     @property
     def thresh(self) -> float:
         return self._thresh
 
     @property
-    def weight(self) -> Optional[float]:
-        return self._weight
+    def class_weights(self) -> Optional[float]:
+        return self._class_weights
 
     def predict(self, x: Union[tensor, array]) -> tensor:
         """

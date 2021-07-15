@@ -6,51 +6,53 @@ to build every other model in the project
 """
 from abc import ABC, abstractmethod
 from numpy import array
-from torch import tensor, is_tensor, from_numpy
-from typing import List, Optional, Tuple, Union
+from torch import tensor
+from typing import Optional, Tuple, Union
 
 
 class PetaleBinaryClassifier(ABC):
     """
     Skeleton of all Petale classification models
     """
-    def __init__(self, classification_threshold: float = 0.5, class_weights: Optional[List[float]] = None):
+    def __init__(self, classification_threshold: float = 0.5, weight:  Optional[float] = None):
         """
         Sets the threshold for binary classification
 
         Args:
             classification_threshold: threshold used to classify a sample in class 1
-            class_weights: weights attributes to samples of each class
+            weight: weight attributed to class 1
         """
+        if weight is not None:
+            assert 0 <= weight <= 1, "weight must be included in range [0, 1]"
+
         self._thresh = classification_threshold
-        self._class_weights = class_weights
+        self._weight = weight
 
     @property
     def thresh(self) -> float:
         return self._thresh
 
     @property
-    def class_weights(self) -> Optional[float]:
-        return self._class_weights
+    def weight(self) -> Optional[float]:
+        return self._weight
 
-    def predict(self, x: Union[tensor, array]) -> tensor:
+    def get_sample_weights(self, n0: int, n1: int) -> Tuple[float, float]:
         """
-        Returns the predicted binary classes associated to samples
-
+        Computes the weights to give to each sample of each class
+        We need to solve the following equation:
+            - n1 * w1 = self.weight
+            - n0 * w0 = 1 - self.weight
         Args:
-            x: (N,D) tensor or array with D-dimensional samples
+            n0: number of samples with label 0
+            n1: number of samples with label 1
 
-        Returns: (N,) tensor
+        Returns: sample weight for C0, sample weight for C1
         """
-        proba = self.predict_proba(x)
-        if not is_tensor(proba):
-            proba = from_numpy(proba).float()
-
-        return (proba >= self._thresh).long()
+        return (1 - self.weight)/n0, self.weight/n1
 
     @abstractmethod
     def fit(self, x_train: Union[tensor, array], y_train: Union[tensor, array],
-            eval_set: Optional[Tuple[Union[tensor, array], Union[tensor, array]]] = None, **kwargs) -> None:
+            eval_set: Optional[Tuple[Union[tensor, array], Union[tensor, array]]] = None) -> None:
         """
         Fits the model to the training data
 
@@ -82,7 +84,7 @@ class PetaleRegressor(ABC):
     """
     @abstractmethod
     def fit(self, x_train: Union[tensor, array], y_train: Union[tensor, array],
-            eval_set: Optional[Tuple[Union[tensor, array], Union[tensor, array]]] = None, **kwargs) -> None:
+            eval_set: Optional[Tuple[Union[tensor, array], Union[tensor, array]]] = None) -> None:
         """
         Fits the model to the training data
 
@@ -96,13 +98,13 @@ class PetaleRegressor(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def predict(self, x: Union[tensor, array]) -> tensor:
+    def predict(self, x: Union[tensor, array]) -> Union[tensor, array]:
         """
         Returns the predicted real-valued targets for all samples
 
         Args:
             x: (N,D) tensor or array with D-dimensional samples
 
-        Returns: (N,) tensor
+        Returns: (N,) tensor or array
         """
         raise NotImplementedError

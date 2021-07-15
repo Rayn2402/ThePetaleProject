@@ -6,7 +6,6 @@ This file is used to test the regression models implemented
 
 import sys
 from os.path import join, dirname, realpath
-from torch import tensor
 
 if __name__ == '__main__':
 
@@ -47,4 +46,4 @@ if __name__ == '__main__':
     pred = petale_rfr.predict(x_test_n)
     print("Random Forest Regressor :")
     for m in metrics:
-        print(f"\t{m.name} : {m(pred, tensor(y_test_n))}")
+        print(f"\t{m.name} : {m(pred, y_test_n)}")

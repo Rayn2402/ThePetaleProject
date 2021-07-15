@@ -6,6 +6,7 @@ This file contains metric used to measure models' performances
 from abc import ABC, abstractmethod
 from numpy import array
 from torch import sqrt, abs, tensor, zeros, mean, prod, sum, pow, from_numpy, is_tensor
+from torch.nn.functional import binary_cross_entropy
 from typing import Tuple, Union
 
 
@@ -319,7 +320,7 @@ class BinaryAccuracy(BinaryClassificationMetric):
         """
         super().__init__(direction=Direction.MAXIMIZE, name="Accuracy", n_digits=n_digits)
 
-    def compute_metric(self, pred: tensor, targets: tensor, thresh: float) -> float:
+    def compute_metric(self, pred: tensor, targets: tensor, thresh: float = 0.5) -> float:
         """
         Returns the accuracy of predictions, according to the threshold
 
@@ -336,15 +337,15 @@ class BinaryAccuracy(BinaryClassificationMetric):
 
 class BinaryBalancedAccuracy(BinaryClassificationMetric):
     """
-    Callable class that compute classes' sensitivity using confusion matrix
+    Callable class that computes balanced accuracy using confusion matrix
     """
     def __init__(self, reduction: str = Reduction.MEAN, n_digits: int = 5):
         """
-        Sets the protected reduction method
+         Sets the protected reduction method and other protected attributes using parent's constructor
 
         Args:
-            reduction: "mean" for mean classes' sensitivity or "geometric_mean"
-                       for geometric mean of classes' sensitivity
+            reduction: "mean" for (TPR + TNR)/2 or "geometric_mean" for sqrt(TPR*TNR)
+            n_digits: number of digits kept for the score
         """
         assert reduction in [Reduction.MEAN, Reduction.GEO_MEAN], f"Reduction must be in" \
                                                                   f" {[Reduction.MEAN, Reduction.GEO_MEAN]}"
@@ -358,7 +359,7 @@ class BinaryBalancedAccuracy(BinaryClassificationMetric):
 
         super().__init__(direction=Direction.MAXIMIZE, name=name, n_digits=n_digits)
 
-    def compute_metric(self, pred: tensor, targets: tensor, thresh: float) -> float:
+    def compute_metric(self, pred: tensor, targets: tensor, thresh: float = 0.5) -> float:
         """
         Returns the either (TPR + TNR)/2 or sqrt(TPR*TNR)
 
@@ -398,3 +399,64 @@ class BinaryBalancedAccuracy(BinaryClassificationMetric):
             conf_matrix[t, p] += 1
 
         return conf_matrix
+
+
+class BinaryCrossEntropy(BinaryClassificationMetric):
+    """
+    Callable class that computes binary cross entropy
+    """
+    def __init__(self, n_digits: int = 5):
+        """
+        Sets protected attributes using parent's constructor
+
+        Args:
+            n_digits: number of digits kept for the score
+        """
+        super().__init__(direction=Direction.MINIMIZE, name="BCE", n_digits=n_digits)
+
+    def compute_metric(self, pred: tensor, targets: tensor, thresh: float = 0.5) -> float:
+        """
+        Computes binary cross entropy using loss from pytorch
+
+        Args:
+            pred: (N,) tensor with predicted labels
+            targets: (N,) tensor with ground truth
+            thresh: probability threshold that must be reach by a sample to be classified into class 1
+
+        Returns: float
+        """
+        return binary_cross_entropy(pred, targets.float()).item()
+
+
+class BalancedAccuracyEntropyRatio(BinaryClassificationMetric):
+    """
+    Callable class that computes the ratio between binary balanced accuracy and binary cross entropy
+    """
+    def __init__(self, reduction: str = Reduction.MEAN, n_digits: int = 5):
+        """
+         Builds two metric and sets other protected attributes using parent's constructor
+
+        Args:
+            reduction: "mean" for (TPR + TNR)/2 or "geometric_mean" for sqrt(TPR*TNR)
+            n_digits: number of digits kept for the score
+        """
+        self.bce = BinaryCrossEntropy(n_digits=10)
+        self.bbacc = BinaryBalancedAccuracy(reduction=reduction, n_digits=10)
+        super().__init__(direction=Direction.MAXIMIZE, name=f"{self.bbacc.name}/{self.bce.name}", n_digits=n_digits)
+
+    def compute_metric(self, pred: tensor, targets: tensor, thresh: float) -> float:
+        """
+        Computes the ratio between binary balanced accuracy and binary cross entropy
+
+       Args:
+            pred: (N,) tensor with predicted labels
+            targets: (N,) tensor with ground truth
+            thresh: probability threshold that must be reach by a sample to be classified into class 1
+
+        Returns: float
+        """
+        return self.bbacc(pred, targets, thresh)/self.bce(pred, targets)
+
+
+
+

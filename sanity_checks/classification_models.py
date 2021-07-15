@@ -18,7 +18,8 @@ if __name__ == '__main__':
     from src.data.processing.sampling import get_learning_one_data, extract_masks
     from src.data.processing.sampling import CARDIOMETABOLIC_COMPLICATIONS as CMC
     from src.models.random_forest import PetaleBinaryRFC
-    from src.utils.score_metrics import BinaryAccuracy, BinaryBalancedAccuracy
+    from src.utils.score_metrics import BinaryAccuracy, BinaryBalancedAccuracy, BinaryCrossEntropy,\
+        BalancedAccuracyEntropyRatio
 
     # Initialization of DataManager and sampler
     manager = PetaleDataManager("rayn2402")
@@ -33,25 +34,25 @@ if __name__ == '__main__':
     l1_numpy_dataset.update_masks(train_mask=train_mask, valid_mask=valid_mask, test_mask=test_mask)
 
     # Metrics
-    metrics = [BinaryAccuracy(), BinaryBalancedAccuracy(), BinaryBalancedAccuracy("geometric_mean")]
+    metrics = [BinaryAccuracy(), BinaryBalancedAccuracy(), BinaryBalancedAccuracy("geometric_mean"),
+               BinaryCrossEntropy(), BalancedAccuracyEntropyRatio()]
 
     # Extraction of data
     x_train_n, y_train_n = l1_numpy_dataset[train_mask]
     x_valid_n, y_valid_n = l1_numpy_dataset[valid_mask]
     x_test_n, y_test_n = l1_numpy_dataset[test_mask]
 
-    # Calculation of class 1 weight for balanced training
-    n1 = y_train_n.sum()
-    n0 = y_train_n.shape[0] - n1
-    weights = [0.05, 1]
+    # Weights attributed to class 1
+    weights = [0.5, 0.75, 0.90, 1]
 
-    """
-    Training and evaluation of PetaleRFR
-    """
-    petale_rfc = PetaleBinaryRFC(n_estimators=1000, max_samples=0.8, class_weights=weights)
-    petale_rfc.fit(x_train_n, y_train_n)
-    pred = petale_rfc.predict(x_test_n)
-    print(type(pred))
-    print("Random Forest Regressor :")
-    for m in metrics:
-        print(f"\t{m.name} : {m(pred, tensor(y_test_n).long())}")
+    for w in weights:
+        print(f"\nC1 weight : {w}")
+        """
+        Training and evaluation of PetaleRFR
+        """
+        petale_rfc = PetaleBinaryRFC(n_estimators=1000, max_samples=0.8, weight=w)
+        petale_rfc.fit(x_train_n, y_train_n)
+        pred = petale_rfc.predict_proba(x_test_n)
+        print("Random Forest Regressor :")
+        for m in metrics:
+            print(f"\t{m.name} : {m(pred, y_test_n)}")

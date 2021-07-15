@@ -4,16 +4,40 @@ Author : Nicolas Raymond
 This file contains metric used to measure models' performances
 """
 from abc import ABC, abstractmethod
-from torch import sqrt, abs, tensor, zeros, mean, prod, sum, pow
-from typing import Callable
+from numpy import array
+from torch import sqrt, abs, tensor, zeros, mean, prod, sum, pow, from_numpy, is_tensor
+from typing import Tuple, Union
 
 
-MAXIMIZE = "maximize"
-MINIMIZE = "minimize"
-REG, CLASSIFICATION = "regression", "classification"
-MEAN = "mean"
-SUM = "sum"
-GEO_MEAN = "geometric_mean"
+class TaskType:
+    """
+    Custom enum for task types
+    """
+    REG: str = "regression"
+    CLASSIFICATION: str = "classification"
+
+    def __iter__(self):
+        return iter([self.REG, self.CLASSIFICATION])
+
+
+class Direction:
+    """
+    Custom enum for optimization directions
+    """
+    MAXIMIZE: str = "maximize"
+    MINIMIZE: str = "minimize"
+
+    def __iter__(self):
+        return iter([self.MAXIMIZE, self.MINIMIZE])
+
+
+class Reduction:
+    """
+    Custom enum for metric reduction choices
+    """
+    MEAN: str = "mean"
+    SUM: str = "sum"
+    GEO_MEAN: str = "geometric_mean"
 
 
 class Metric(ABC):
@@ -30,6 +54,9 @@ class Metric(ABC):
             task_type: "regression" or "classification"
             n_digits: number of digits kept
         """
+        assert direction in Direction(), "direction must be in {'maximize', 'minimize'}"
+        assert task_type in TaskType(), "task_type must be in {'regression', 'classification'}"
+
         # Protected attributes
         self._direction = direction
         self._name = name
@@ -53,14 +80,141 @@ class Metric(ABC):
         return self._n_digits
 
     @abstractmethod
-    def __call__(self, pred: tensor, targets: tensor) -> float:
+    def convert_to_tensors(self, pred: Union[array, tensor], targets: Union[array, tensor]) -> Tuple[tensor, tensor]:
         """
-        Metric calculated by the class
+        Converts inputs to tensors
+
+        Args:
+            pred: (N,) tensor or array with predictions
+            targets: (N,) tensor or array with ground truth
+
+        Returns: rounded metric score
         """
         raise NotImplementedError
 
 
-class Pearson(Metric):
+class RegressionMetric(Metric):
+    """
+    Abstract class that represents the skeleton of callable classes to use as regression metrics
+    """
+    def __init__(self, direction: str, name: str, n_digits: int = 5):
+        """
+        Sets protected attributes using parent's constructor
+
+        Args:
+            direction: "maximize" or "minimize"
+            name: name of the metric
+            n_digits: number of digits kept
+        """
+        super().__init__(direction=direction, name=name, task_type=TaskType.REG, n_digits=n_digits)
+
+    def __call__(self, pred: Union[array, tensor], targets: Union[array, tensor]) -> float:
+        """
+        Converts inputs to tensors than computes the metric and applies rounding
+
+        Args:
+            pred: (N,) tensor or array with predicted labels
+            targets: (N,) tensor or array with ground truth
+
+        Returns: rounded metric score
+        """
+        if not is_tensor(pred):
+            pred, targets = self.convert_to_tensors(pred, targets)
+
+        return round(self.compute_metric(pred, targets), self.n_digits)
+
+    def convert_to_tensors(self, pred: Union[array, tensor], targets: Union[array, tensor]) -> Tuple[tensor, tensor]:
+        """
+        Convert inputs to float tensors
+
+        Args:
+            pred: (N,) tensor with predicted labels
+            targets: (N,) tensor with ground truth
+
+        Returns: (N,) tensor, (N,) tensor
+
+        """
+        if not is_tensor(pred):
+            return from_numpy(pred).float(), from_numpy(targets).float()
+        else:
+            return pred, targets
+
+    @abstractmethod
+    def compute_metric(self, pred: tensor, targets: tensor) -> float:
+        """
+        Computes the metric score
+
+        Args:
+            pred: (N,) tensor with predicted labels
+            targets: (N,) tensor with ground truth
+
+        Returns: metric score
+        """
+        raise NotImplementedError
+
+
+class BinaryClassificationMetric(Metric):
+    """
+    Abstract class that represents the skeleton of callable classes to use as classification metrics
+    """
+    def __init__(self, direction: str, name: str, n_digits: int = 5):
+        """
+        Sets protected attributes using parent's constructor
+
+        Args:
+            direction: "maximize" or "minimize"
+            name: name of the metric
+            n_digits: number of digits kept
+        """
+        super().__init__(direction=direction, name=name, task_type=TaskType.REG, n_digits=n_digits)
+
+    def __call__(self, pred: Union[array, tensor], targets: Union[array, tensor], thresh: float = 0.5) -> float:
+        """
+        Converts inputs to tensors than computes the metric and applies rounding
+
+        Args:
+            pred: (N,) tensor or array with predicted probabilities of being in class 1
+            targets: (N,) tensor or array with ground truth
+
+        Returns: rounded metric score
+        """
+        if not is_tensor(pred):
+            pred, targets = self.convert_to_tensors(pred, targets)
+
+        return round(self.compute_metric(pred, targets, thresh), self.n_digits)
+
+    def convert_to_tensors(self, pred: Union[array, tensor], targets: Union[array, tensor]) -> Tuple[tensor, tensor]:
+        """
+        Converts predictions to float (since they are probabilities) and ground truth to long
+
+        Args:
+            pred: (N,) tensor with predicted probabilities of being in class 1
+            targets: (N,) tensor with ground truth
+
+        Returns: (N,) tensor, (N,) tensor
+
+        """
+        if not is_tensor(pred):
+            return from_numpy(pred).float(), from_numpy(targets).long()
+        else:
+            return pred, targets
+
+    @abstractmethod
+    def compute_metric(self, pred: tensor, targets: tensor, thresh: float) -> float:
+        """
+        Computes the metric score
+
+        Args:
+            pred: (N,) tensor with predicted probabilities of being in class 1
+            targets: (N,) tensor with ground truth
+            thresh: probability threshold that must be reach by a sample to be classified into class 1
+
+        Returns: metric score
+        """
+        raise NotImplementedError
+
+
+class Pearson(RegressionMetric):
     """
     Callable class that computes Pearson correlation coefficient
     """
@@ -71,9 +225,9 @@ class Pearson(Metric):
         Args:
             n_digits: number of digits kept for the score
         """
-        super().__init__(MAXIMIZE, "Pearson", REG, n_digits)
+        super().__init__(direction=Direction.MAXIMIZE, name="Pearson", n_digits=n_digits)
 
-    def __call__(self, pred: tensor, targets: tensor) -> float:
+    def compute_metric(self, pred: tensor, targets: tensor) -> float:
         """
         Computes the pearson correlation coefficient between predictions and targets
         Args:
@@ -86,14 +240,14 @@ class Pearson(Metric):
         p = pred - pred.mean()
         t = targets - targets.mean()
 
-        return round((p.dot(t) / (sqrt((p**2).sum())*sqrt((t**2).sum()))).item(), self.n_digits)
+        return (p.dot(t) / (sqrt((p ** 2).sum()) * sqrt((t ** 2).sum()))).item()
 
 
-class AbsoluteError(Metric):
+class AbsoluteError(RegressionMetric):
     """
     Callable class that computes the absolute error
     """
-    def __init__(self, reduction: str = "mean", n_digits: int = 5):
+    def __init__(self, reduction: str = Reduction.MEAN, n_digits: int = 5):
         """
         Sets the protected reduction method and other protected attributes using parent's constructor
 
@@ -101,20 +255,20 @@ class AbsoluteError(Metric):
             reduction: "mean" for mean absolute error and "sum" for the sum of the absolute errors
             n_digits: number of digits kept for the score
         """
-        assert reduction in [MEAN, SUM], f"Reduction must be in {[MEAN, SUM]}"
+        assert reduction in [Reduction.MEAN, Reduction.SUM], f"Reduction must be in {[Reduction.MEAN, Reduction.SUM]}"
 
-        if reduction == "mean":
+        if reduction == Reduction.MEAN:
             name = "MAE"
             self._reduction = mean
         else:
             name = "AE"
             self._reduction = sum
 
-        super().__init__(MINIMIZE, name, REG, n_digits)
+        super().__init__(direction=Direction.MINIMIZE, name=name, n_digits=n_digits)
 
-    def __call__(self, pred: tensor, targets: tensor) -> float:
+    def compute_metric(self, pred: tensor, targets: tensor) -> float:
         """
-        Compute the absolute error between predictions and targets
+        Computes the absolute error between predictions and targets
 
         Args:
             pred: (N,) tensor with predicted labels
@@ -123,10 +277,10 @@ class AbsoluteError(Metric):
         Returns: float
 
         """
-        return round(self._reduction(abs(pred - targets)).item(), self.n_digits)
+        return self._reduction(abs(pred - targets)).item()
 
 
-class RootMeanSquaredError(Metric):
+class RootMeanSquaredError(RegressionMetric):
     """
     Callable class that computes root mean-squared error
     """
@@ -137,11 +291,11 @@ class RootMeanSquaredError(Metric):
         Args:
             n_digits: number of digits kept for the score
         """
-        super().__init__(MINIMIZE, "RMSE", REG, n_digits)
+        super().__init__(direction=Direction.MINIMIZE, name="RMSE", n_digits=n_digits)
 
-    def __call__(self, pred: tensor, targets: tensor) -> float:
+    def compute_metric(self, pred: tensor, targets: tensor) -> float:
         """
-        Compute the root mean-squared error between predictions and targets
+        Computes the root mean-squared error between predictions and targets
 
         Args:
             pred: (N,) tensor with predicted labels
@@ -149,10 +303,10 @@ class RootMeanSquaredError(Metric):
 
         Returns: float
         """
-        return round((mean((pred - targets)**2).item())**(1/2), self.n_digits)
+        return (mean((pred - targets) ** 2).item()) ** (1 / 2)
 
 
-class BinaryAccuracy(Metric):
+class BinaryAccuracy(BinaryClassificationMetric):
     """
     Callable class that computes the accuracy
     """
@@ -163,27 +317,28 @@ class BinaryAccuracy(Metric):
         Args:
             n_digits: number of digits kept for the score
         """
-        super().__init__(MAXIMIZE, "Accuracy", CLASSIFICATION, n_digits)
+        super().__init__(direction=Direction.MAXIMIZE, name="Accuracy", n_digits=n_digits)
 
-    def __call__(self, pred: tensor, targets: tensor) -> float:
+    def compute_metric(self, pred: tensor, targets: tensor, thresh: float) -> float:
         """
-        Returns the accuracy of predictions
+        Returns the accuracy of predictions, according to the threshold
 
         Args:
-            pred: (N,) tensor with predicted labels
+            pred: (N,) tensor with predicted probabilities of being in class 1
             targets: (N,) tensor with ground truth
+            thresh: probability threshold that must be reach by a sample to be classified into class 1
 
         Returns: float
-
         """
-        return round((pred == targets).float().mean().item(), self.n_digits)
+        pred_labels = (pred >= thresh).float()
+        return (pred_labels == targets).float().mean().item()
 
 
-class BinaryBalancedAccuracy(Metric):
+class BinaryBalancedAccuracy(BinaryClassificationMetric):
     """
     Callable class that compute classes' sensitivity using confusion matrix
     """
-    def __init__(self, reduction: str = "mean", n_digits: int = 5):
+    def __init__(self, reduction: str = Reduction.MEAN, n_digits: int = 5):
         """
         Sets the protected reduction method
 
@@ -191,35 +346,37 @@ class BinaryBalancedAccuracy(Metric):
             reduction: "mean" for mean classes' sensitivity or "geometric_mean"
                        for geometric mean of classes' sensitivity
         """
-        assert reduction in [MEAN, GEO_MEAN], f"Reduction must be in {[MEAN, GEO_MEAN]}"
+        assert reduction in [Reduction.MEAN, Reduction.GEO_MEAN], f"Reduction must be in" \
+                                                                  f" {[Reduction.MEAN, Reduction.GEO_MEAN]}"
 
-        if reduction == "mean":
+        if reduction == Reduction.MEAN:
             self._reduction = mean
             name = "BalancedAcc"
         else:
-            self._reduction = lambda x: pow(prod(x), exponent=x.shape[0])
+            self._reduction = lambda x: pow(prod(x), exponent=(1/x.shape[0]))
             name = "GeoBalancedAcc"
 
-        super().__init__(MAXIMIZE, name, CLASSIFICATION, n_digits)
+        super().__init__(direction=Direction.MAXIMIZE, name=name, n_digits=n_digits)
 
-    def __call__(self, pred: tensor, targets: tensor) -> float:
+    def compute_metric(self, pred: tensor, targets: tensor, thresh: float) -> float:
         """
-        Returns the classes' sensitivity
+        Returns the either (TPR + TNR)/2 or sqrt(TPR*TNR)
 
         Args:
             pred: (N,) tensor with predicted labels
             targets: (N,) tensor with ground truth
+            thresh: probability threshold that must be reach by a sample to be classified into class 1
 
         Returns: float
         """
         # We get confusion matrix
-        conf_mat = self.get_confusion_matrix(pred, targets)
-        print(conf_mat)
+        pred_labels = (pred >= thresh).long()
+        conf_mat = self.get_confusion_matrix(pred_labels, targets)
 
         # We get TNR and TPR
-        correct_rates = conf_mat.diag()/conf_mat.sum(dim=1)
+        correct_rates = conf_mat.diag() / conf_mat.sum(dim=1)
 
-        return round(self._reduction(correct_rates).item(), self.n_digits)
+        return self._reduction(correct_rates).item()
 
     @staticmethod
     def get_confusion_matrix(pred: tensor, targets: tensor) -> tensor:

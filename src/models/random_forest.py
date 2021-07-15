@@ -4,11 +4,10 @@ Author: Nicolas Raymond
 This file is used wrap the sklearn random forest models within PetaleClassifier and PetaleRegressor
 abstract classes
 """
-from numpy import array
+from numpy import array, zeros, where
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from src.models.base_models import PetaleBinaryClassifier, PetaleRegressor
-from torch import from_numpy, tensor
-from typing import List, Optional, Tuple
+from typing import Optional, Tuple
 
 
 class PetaleBinaryRFC(PetaleBinaryClassifier):
@@ -17,7 +16,7 @@ class PetaleBinaryRFC(PetaleBinaryClassifier):
     """
     def __init__(self, n_estimators: int = 100, min_samples_split: int = 2, max_features: str = "auto",
                  max_samples: float = 1, classification_threshold: int = 0.5,
-                 class_weights: Optional[List[float]] = None):
+                 weight: Optional[float] = None):
         """
         Sets required protected attributes and creates a sklearn random forest classifier model
         Args:
@@ -26,25 +25,50 @@ class PetaleBinaryRFC(PetaleBinaryClassifier):
             max_features: number of features to consider when looking for the best split {“auto”, “sqrt”, “log2”}
             max_samples: percentage of samples drawn from X to train each base estimator
             classification_threshold: threshold used to classify a sample in class 1
-            class_weights: weights attributes to samples of each class
+            weight: weight attributed to class 1
         """
         # We call parent's constructor
-        super().__init__(classification_threshold=classification_threshold, class_weights=class_weights)
+        super().__init__(classification_threshold=classification_threshold, weight=weight)
 
         # We build the model
-        class_weights = {i: class_weights[i] for i in range(len(class_weights))} if class_weights is not None else None
         self.__model = RandomForestClassifier(n_estimators=n_estimators, min_samples_split=min_samples_split,
-                                              max_features=max_features, max_samples=max_samples,
-                                              class_weight=class_weights)
+                                              max_features=max_features, max_samples=max_samples)
 
     def fit(self, x_train: array, y_train: array,
-            eval_set: Optional[Tuple[array, array]] = None, **kwargs) -> None:
+            eval_set: Optional[Tuple[array, array]] = None) -> None:
+        """
+        Fits the model to the training data
+
+        Args:
+            x_train: (N,D) array with D-dimensional samples
+            y_train: (N,1) array with classification labels
+            eval_set: Tuple with validation set
+
+        Returns: None
+        """
+        # We set sample weights
+        if self.weight is not None:
+            sample_weights = zeros(y_train.shape)
+            n1 = y_train.sum()
+            n0 = y_train.shape[0] - n1
+            w0, w1 = self.get_sample_weights(n0, n1)
+            sample_weights[where(y_train == 0)] = w0
+            sample_weights[where(y_train == 1)] = w1
+        else:
+            sample_weights = None
 
         # Call the sklearn fit method
-        self.__model.fit(x_train, y_train)
+        self.__model.fit(x_train, y_train, sample_weights)
 
     def predict_proba(self, x: array) -> array:
+        """
+        Returns the probabilities of being in class 1 for all samples
 
+        Args:
+            x: (N,D) array with D-dimensional samples
+
+        Returns: (N,) array
+        """
         # Call sklearn predict_proba method, takes the prediction for class 1 and squeeze the array
         proba = self.__model.predict_proba(x)[:, 1]
 
@@ -55,7 +79,6 @@ class PetaleRFR(PetaleRegressor):
     """
     Sklearn random forest regressor wrapper
     """
-
     def __init__(self, n_estimators: int = 100, min_samples_split: int = 2,
                  max_features: str = "auto", max_samples: float = 1):
         """
@@ -70,12 +93,28 @@ class PetaleRFR(PetaleRegressor):
                                              max_features=max_features, max_samples=max_samples)
 
     def fit(self, x_train: array, y_train: array,
-            eval_set: Optional[Tuple[array, array]] = None, **kwargs) -> None:
+            eval_set: Optional[Tuple[array, array]] = None) -> None:
+        """
+        Fits the model to the training data
 
+        Args:
+            x_train: (N,D) array with D-dimensional samples
+            y_train: (N,1) or array with classification labels
+            eval_set: Tuple with validation set
+
+        Returns: None
+        """
         # Call the sklearn fit method
         self.__model.fit(x_train, y_train)
 
-    def predict(self, x: array) -> tensor:
+    def predict(self, x: array) -> array:
+        """
+        Returns the predicted real-valued targets for all samples
 
+        Args:
+            x: (N,D) array with D-dimensional samples
+
+        Returns: (N,) array
+        """
         # Call sklearn predict method
-        return from_numpy(self.__model.predict(x))
+        return self.__model.predict(x)

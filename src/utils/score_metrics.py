@@ -448,7 +448,7 @@ class BalancedAccuracyEntropyRatio(BinaryClassificationMetric):
         """
         Computes the ratio between binary balanced accuracy and binary cross entropy
 
-       Args:
+        Args:
             pred: (N,) tensor with predicted labels
             targets: (N,) tensor with ground truth
             thresh: probability threshold that must be reach by a sample to be classified into class 1

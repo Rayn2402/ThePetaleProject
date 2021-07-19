@@ -18,6 +18,7 @@ if __name__ == '__main__':
     from src.data.processing.sampling import get_learning_one_data, extract_masks
     from src.data.processing.sampling import CARDIOMETABOLIC_COMPLICATIONS as CMC
     from src.models.random_forest import PetaleBinaryRFC
+    from src.models.xgboost_models import PetaleBinaryXGBC
     from src.utils.score_metrics import BinaryAccuracy, BinaryBalancedAccuracy, BinaryCrossEntropy,\
         BalancedAccuracyEntropyRatio
 
@@ -43,9 +44,10 @@ if __name__ == '__main__':
     x_test_n, y_test_n = l1_numpy_dataset[test_mask]
 
     # Weights attributed to class 1
-    weights = [0.5, 0.75, 0.90, 1]
+    weights = [0.5, 0.55, 0.65, 0.75, 1]
 
     for w in weights:
+
         print(f"\nC1 weight : {w}")
         """
         Training and evaluation of PetaleRFR
@@ -53,6 +55,16 @@ if __name__ == '__main__':
         petale_rfc = PetaleBinaryRFC(n_estimators=1000, max_samples=0.8, weight=w)
         petale_rfc.fit(x_train_n, y_train_n)
         pred = petale_rfc.predict_proba(x_test_n)
-        print("Random Forest Regressor :")
+        print("Random Forest Classifier :")
+        for m in metrics:
+            print(f"\t{m.name} : {m(pred, y_test_n)}")
+
+        """
+        Training and evaluation of PetaleXGBC
+        """
+        petale_xgbc = PetaleBinaryXGBC(subsample=0.8, max_depth=6, weight=w)
+        petale_xgbc.fit(x_train_n, y_train_n)
+        pred = petale_xgbc.predict_proba(x_test_n)
+        print("XGBoost Classifier :")
         for m in metrics:
             print(f"\t{m.name} : {m(pred, y_test_n)}")

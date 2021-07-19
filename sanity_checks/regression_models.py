@@ -16,6 +16,7 @@ if __name__ == '__main__':
     from src.data.processing.datasets import PetaleDataset
     from src.data.processing.sampling import get_warmup_data, extract_masks
     from src.models.random_forest import PetaleRFR
+    from src.models.xgboost_models import PetaleXGBR
     from src.utils.score_metrics import AbsoluteError, Pearson, RootMeanSquaredError
 
     # Initialization of DataManager and sampler
@@ -45,5 +46,15 @@ if __name__ == '__main__':
     petale_rfr.fit(x_train_n, y_train_n)
     pred = petale_rfr.predict(x_test_n)
     print("Random Forest Regressor :")
+    for m in metrics:
+        print(f"\t{m.name} : {m(pred, y_test_n)}")
+
+    """
+    Training and evaluation of PetaleXGBR
+    """
+    petale_xgbr = PetaleXGBR(subsample=0.8, max_depth=8)
+    petale_xgbr.fit(x_train_n, y_train_n)
+    pred = petale_xgbr.predict(x_test_n)
+    print("XGBoost Regressor :")
     for m in metrics:
         print(f"\t{m.name} : {m(pred, y_test_n)}")

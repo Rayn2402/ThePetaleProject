@@ -3,16 +3,16 @@ Author: Nicolas Raymond
 
 This file is used to store abstract class to use as wrappers for models with the sklearn API
 """
-from numpy import array, where, zeros
+from numpy import array
 from src.models.base_models import PetaleBinaryClassifier, PetaleRegressor
-from typing import Callable, Optional, Tuple
+from typing import Callable, Optional
 
 
 class SklearnBinaryClassifierWrapper(PetaleBinaryClassifier):
     """
     Class used as a wrapper for binary classifier with sklearn API
     """
-    def __init__(self, model: Callable, classification_threshold: int = 0.5,
+    def __init__(self, model: Callable, classification_threshold: float = 0.5,
                  weight: Optional[float] = None):
 
         """
@@ -26,31 +26,21 @@ class SklearnBinaryClassifierWrapper(PetaleBinaryClassifier):
         self._model = model
         super().__init__(classification_threshold=classification_threshold, weight=weight)
 
-    def fit(self, x_train: array, y_train: array,
-            eval_set: Optional[Tuple[array, array]] = None) -> None:
+    def fit(self, x_train: array, y_train: array, **kwargs) -> None:
         """
         Fits the model to the training data
 
         Args:
             x_train: (N,D) array with D-dimensional samples
             y_train: (N,1) array with classification labels
-            eval_set: Tuple with validation set
 
         Returns: None
         """
         # We set sample weights
-        if self.weight is not None:
-            sample_weights = zeros(y_train.shape)
-            n1 = y_train.sum()
-            n0 = y_train.shape[0] - n1
-            w0, w1 = self.get_sample_weights(n0, n1)
-            sample_weights[where(y_train == 0)] = w0*10
-            sample_weights[where(y_train == 1)] = w1*10
-        else:
-            sample_weights = None
+        sample_weights = self.get_sample_weights(y_train)
 
         # Call the sklearn fit method
-        self._model.fit(x_train, y_train, sample_weight=sample_weights)
+        self._model.fit(x_train, y_train, sample_weight=sample_weights, **kwargs)
 
     def predict_proba(self, x: array) -> array:
         """
@@ -80,20 +70,18 @@ class SklearnRegressorWrapper(PetaleRegressor):
         """
         self._model = model
 
-    def fit(self, x_train: array, y_train: array,
-            eval_set: Optional[Tuple[array, array]] = None) -> None:
+    def fit(self, x_train: array, y_train: array, **kwargs) -> None:
         """
         Fits the model to the training data
 
         Args:
             x_train: (N,D) array with D-dimensional samples
             y_train: (N,1) or array with classification labels
-            eval_set: Tuple with validation set
 
         Returns: None
         """
         # Call the sklearn fit method
-        self._model.fit(x_train, y_train)
+        self._model.fit(x_train, y_train, **kwargs)
 
     def predict(self, x: array) -> array:
         """

@@ -350,7 +350,8 @@ class PetaleDataset(Dataset):
         according to the current statistics of the training data
         """
         # We set the new masks values
-        self._train_mask, self._valid_mask, self._test_mask = train_mask, valid_mask, test_mask
+        self._train_mask, self._test_mask = train_mask, test_mask
+        self._valid_mask = valid_mask if valid_mask is not None else []
 
         # We compute the current values of mu, std, modes and encodings
         mu, std, modes = self.current_train_stats()

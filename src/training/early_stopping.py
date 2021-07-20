@@ -8,14 +8,14 @@ File that contains class related to the Early Stopping
 import numpy as np
 
 
-from os import path, makedirs, remove
+from os import path, remove
 from settings.paths import Paths
 from torch import save, load
 from torch.nn import Module
 from uuid import uuid4
 
 
-class EarlyStopping:
+class EarlyStopper:
 
     def __init__(self, patience: int):
 

@@ -4,6 +4,7 @@ Author: Nicolas Raymond
 This file is used to store abstract class to use as wrappers for models with the sklearn API
 """
 from numpy import array
+from src.data.processing.datasets import PetaleDataset
 from src.models.base_models import PetaleBinaryClassifier, PetaleRegressor
 from typing import Callable, Optional
 
@@ -26,17 +27,21 @@ class SklearnBinaryClassifierWrapper(PetaleBinaryClassifier):
         self._model = model
         super().__init__(classification_threshold=classification_threshold, weight=weight)
 
-    def fit(self, x_train: array, y_train: array, **kwargs) -> None:
+    def fit(self, dataset: PetaleDataset, **kwargs) -> None:
         """
         Fits the model to the training data
 
         Args:
-            x_train: (N,D) array with D-dimensional samples
-            y_train: (N,1) array with classification labels
+            dataset: PetaleDatasets which items are tuples (x, y) where
+                     - x : (N,D) tensor or array with D-dimensional samples
+                     - y : (N,) tensor or array with classification labels
 
         Returns: None
         """
-        # We set sample weights
+        # We extract train set
+        x_train, y_train = dataset[dataset.train_mask]
+
+        # We get sample weights
         sample_weights = self.get_sample_weights(y_train)
 
         # Call the sklearn fit method
@@ -70,16 +75,20 @@ class SklearnRegressorWrapper(PetaleRegressor):
         """
         self._model = model
 
-    def fit(self, x_train: array, y_train: array, **kwargs) -> None:
+    def fit(self, dataset: PetaleDataset, **kwargs) -> None:
         """
         Fits the model to the training data
 
         Args:
-            x_train: (N,D) array with D-dimensional samples
-            y_train: (N,1) or array with classification labels
+            dataset: PetaleDatasets which items are tuples (x, y) where
+                     - x : (N,D) tensor or array with D-dimensional samples
+                     - y : (N,) tensor or array with classification labels
 
         Returns: None
         """
+        # We extract train set
+        x_train, y_train = dataset[dataset.train_mask]
+
         # Call the sklearn fit method
         self._model.fit(x_train, y_train, **kwargs)
 

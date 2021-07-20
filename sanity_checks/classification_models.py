@@ -41,8 +41,6 @@ if __name__ == '__main__':
                BinaryCrossEntropy(), BalancedAccuracyEntropyRatio()]
 
     # Extraction of data
-    x_train_n, y_train_n = l1_numpy_dataset[train_mask]
-    x_valid_n, y_valid_n = l1_numpy_dataset[valid_mask]
     x_test_n, y_test_n = l1_numpy_dataset[test_mask]
 
     # Weights attributed to class 1
@@ -55,7 +53,7 @@ if __name__ == '__main__':
         Training and evaluation of PetaleRFR
         """
         petale_rfc = PetaleBinaryRFC(n_estimators=1000, max_samples=0.8, weight=w)
-        petale_rfc.fit(x_train_n, y_train_n)
+        petale_rfc.fit(l1_numpy_dataset)
         pred = petale_rfc.predict_proba(x_test_n)
         print("Random Forest Classifier :")
         for m in metrics:
@@ -65,7 +63,7 @@ if __name__ == '__main__':
         Training and evaluation of PetaleXGBC
         """
         petale_xgbc = PetaleBinaryXGBC(subsample=0.8, max_depth=6, weight=w)
-        petale_xgbc.fit(x_train_n, y_train_n)
+        petale_xgbc.fit(l1_numpy_dataset)
         pred = petale_xgbc.predict_proba(x_test_n)
         print("XGBoost Classifier :")
         for m in metrics:
@@ -74,10 +72,9 @@ if __name__ == '__main__':
         """
         Training and evaluation of PetaleTNC
         """
-        petale_tnc = PetaleTNC(cat_idxs=cat_idx, cat_dims=cat_sizes, cat_emb_dim=cat_sizes, device='cpu',
+        petale_tnc = PetaleTNC(cat_idx=cat_idx, cat_sizes=cat_sizes, cat_emb_sizes=cat_sizes, device='cpu',
                                lr=0.08, n_steps=6, n_d=4, n_a=4, gamma=1.5, weight=w)
-        petale_tnc.fit(x_train_n, y_train_n, eval_set=[(x_valid_n, y_valid_n)],
-                       max_epochs=300, patience=50, batch_size=35)
+        petale_tnc.fit(l1_numpy_dataset, max_epochs=300, patience=50, batch_size=35)
         pred = petale_tnc.predict_proba(x_test_n)
         print("TabNet Classifier :")
         for m in metrics:

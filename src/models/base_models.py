@@ -8,6 +8,7 @@ from abc import ABC, abstractmethod
 from numpy import array
 from numpy import where as npwhere
 from numpy import zeros as npzeros
+from src.data.processing.datasets import PetaleDataset
 from torch import tensor, is_tensor
 from torch import where as thwhere
 from torch import zeros as thzeros
@@ -78,13 +79,14 @@ class PetaleBinaryClassifier(ABC):
         return sample_weights
 
     @abstractmethod
-    def fit(self, x_train: Union[tensor, array], y_train: Union[tensor, array], **kwargs) -> None:
+    def fit(self, dataset: PetaleDataset, **kwargs) -> None:
         """
         Fits the model to the training data
 
         Args:
-            x_train: (N,D) tensor or array with D-dimensional samples
-            y_train: (N,1) tensor or array with classification labels
+            dataset: PetaleDatasets which items are tuples (x, y) where
+                     - x : (N,D) tensor or array with D-dimensional samples
+                     - y : (N,) tensor or array with classification labels
 
         Returns: None
         """
@@ -108,13 +110,14 @@ class PetaleRegressor(ABC):
     Skeleton of all Petale regression models
     """
     @abstractmethod
-    def fit(self, x_train: Union[tensor, array], y_train: Union[tensor, array], **kwargs) -> None:
+    def fit(self, dataset: PetaleDataset, **kwargs) -> None:
         """
         Fits the model to the training data
 
         Args:
-            x_train: (N,D) tensor or array with D-dimensional samples
-            y_train: (N,1) tensor or array with classification labels
+            dataset: PetaleDatasets which items are tuples (x, y) where
+                     - x : (N,D) tensor or array with D-dimensional samples
+                     - y : (N,) tensor or array with classification labels
 
         Returns: None
         """

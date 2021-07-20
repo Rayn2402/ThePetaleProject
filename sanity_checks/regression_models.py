@@ -32,9 +32,7 @@ if __name__ == '__main__':
     train_mask, valid_mask, test_mask = masks[0]['train'], masks[0]['valid'], masks[0]['test']
     warmup_numpy_dataset.update_masks(train_mask=train_mask, valid_mask=valid_mask, test_mask=test_mask)
 
-    # Extraction of data
-    x_train_n, y_train_n = warmup_numpy_dataset[train_mask]
-    x_valid_n, y_valid_n = warmup_numpy_dataset[valid_mask]
+    # Extraction of test data
     x_test_n, y_test_n = warmup_numpy_dataset[test_mask]
 
     # Metrics
@@ -44,7 +42,7 @@ if __name__ == '__main__':
     Training and evaluation of PetaleRFR
     """
     petale_rfr = PetaleRFR(n_estimators=500, max_samples=0.8)
-    petale_rfr.fit(x_train_n, y_train_n)
+    petale_rfr.fit(warmup_numpy_dataset)
     pred = petale_rfr.predict(x_test_n)
     print("Random Forest Regressor :")
     for m in metrics:
@@ -54,7 +52,7 @@ if __name__ == '__main__':
     Training and evaluation of PetaleXGBR
     """
     petale_xgbr = PetaleXGBR(subsample=0.8, max_depth=8)
-    petale_xgbr.fit(x_train_n, y_train_n)
+    petale_xgbr.fit(warmup_numpy_dataset)
     pred = petale_xgbr.predict(x_test_n)
     print("XGBoost Regressor :")
     for m in metrics:
@@ -64,8 +62,7 @@ if __name__ == '__main__':
     Training and evaluation of PetaleTNR
     """
     petale_tnr = PetaleTNR(device='cpu', lr=0.01, n_steps=5, n_d=8, n_a=8, gamma=1.5)
-    petale_tnr.fit(x_train_n, y_train_n, eval_set=[(x_valid_n, y_valid_n.reshape(-1, 1))],
-                   max_epochs=300, patience=50, batch_size=30)
+    petale_tnr.fit(warmup_numpy_dataset, max_epochs=300, patience=50, batch_size=30)
     pred = petale_tnr.predict(x_test_n)
     print("TabNet Regressor :")
     for m in metrics:

@@ -16,6 +16,7 @@ if __name__ == '__main__':
     from src.data.processing.datasets import PetaleDataset
     from src.data.processing.sampling import get_warmup_data, extract_masks
     from src.models.random_forest import PetaleRFR
+    from src.models.tabnet_models import PetaleTNR
     from src.models.xgboost_models import PetaleXGBR
     from src.utils.score_metrics import AbsoluteError, Pearson, RootMeanSquaredError
 
@@ -56,5 +57,16 @@ if __name__ == '__main__':
     petale_xgbr.fit(x_train_n, y_train_n)
     pred = petale_xgbr.predict(x_test_n)
     print("XGBoost Regressor :")
+    for m in metrics:
+        print(f"\t{m.name} : {m(pred, y_test_n)}")
+
+    """
+    Training and evaluation of PetaleTNR
+    """
+    petale_tnr = PetaleTNR(device='cpu', lr=0.01, n_steps=5, n_d=8, n_a=8, gamma=1.5)
+    petale_tnr.fit(x_train_n, y_train_n, eval_set=[(x_valid_n, y_valid_n.reshape(-1, 1))],
+                   max_epochs=300, patience=50, batch_size=30)
+    pred = petale_tnr.predict(x_test_n)
+    print("TabNet Regressor :")
     for m in metrics:
         print(f"\t{m.name} : {m(pred, y_test_n)}")

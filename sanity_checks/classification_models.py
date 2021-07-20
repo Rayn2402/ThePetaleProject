@@ -18,6 +18,7 @@ if __name__ == '__main__':
     from src.data.processing.sampling import get_learning_one_data, extract_masks
     from src.data.processing.sampling import CARDIOMETABOLIC_COMPLICATIONS as CMC
     from src.models.random_forest import PetaleBinaryRFC
+    from src.models.tabnet_models import PetaleTNC
     from src.models.xgboost_models import PetaleBinaryXGBC
     from src.utils.score_metrics import BinaryAccuracy, BinaryBalancedAccuracy, BinaryCrossEntropy,\
         BalancedAccuracyEntropyRatio
@@ -27,12 +28,13 @@ if __name__ == '__main__':
 
     # Creation of the dataset
     df, cont_cols, cat_cols = get_learning_one_data(manager, baselines=True, complications=[CMC])
-    l1_numpy_dataset = PetaleDataset(df, CMC, cont_cols, classification=False)
+    l1_numpy_dataset = PetaleDataset(df, CMC, cont_cols, cat_cols, classification=False)
 
     # Setting of the masks
     masks = extract_masks(join(Paths.MASKS, "l1_masks.json"), k=1, l=1)
     train_mask, valid_mask, test_mask = masks[0]['train'], masks[0]['valid'], masks[0]['test']
     l1_numpy_dataset.update_masks(train_mask=train_mask, valid_mask=valid_mask, test_mask=test_mask)
+    cat_idx, cat_sizes = l1_numpy_dataset.cat_idx, l1_numpy_dataset.cat_sizes
 
     # Metrics
     metrics = [BinaryAccuracy(), BinaryBalancedAccuracy(), BinaryBalancedAccuracy("geometric_mean"),
@@ -66,5 +68,17 @@ if __name__ == '__main__':
         petale_xgbc.fit(x_train_n, y_train_n)
         pred = petale_xgbc.predict_proba(x_test_n)
         print("XGBoost Classifier :")
+        for m in metrics:
+            print(f"\t{m.name} : {m(pred, y_test_n)}")
+
+        """
+        Training and evaluation of PetaleTNC
+        """
+        petale_tnc = PetaleTNC(cat_idxs=cat_idx, cat_dims=cat_sizes, cat_emb_dim=cat_sizes, device='cpu',
+                               lr=0.08, n_steps=6, n_d=4, n_a=4, gamma=1.5, weight=w)
+        petale_tnc.fit(x_train_n, y_train_n, eval_set=[(x_valid_n, y_valid_n)],
+                       max_epochs=300, patience=50, batch_size=35)
+        pred = petale_tnc.predict_proba(x_test_n)
+        print("TabNet Classifier :")
         for m in metrics:
             print(f"\t{m.name} : {m(pred, y_test_n)}")

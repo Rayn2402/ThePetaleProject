@@ -6,7 +6,11 @@ to build every other model in the project
 """
 from abc import ABC, abstractmethod
 from numpy import array
-from torch import tensor
+from numpy import where as npwhere
+from numpy import zeros as npzeros
+from torch import tensor, is_tensor
+from torch import where as thwhere
+from torch import zeros as thzeros
 from typing import Optional, Tuple, Union
 
 
@@ -36,30 +40,51 @@ class PetaleBinaryClassifier(ABC):
     def weight(self) -> Optional[float]:
         return self._weight
 
-    def get_sample_weights(self, n0: int, n1: int) -> Tuple[float, float]:
+    def get_sample_weights(self, y_train: Union[tensor, array]) -> Union[tensor, array]:
         """
-        Computes the weights to give to each sample of each class
+        Computes the weights to give to each sample
+
         We need to solve the following equation:
             - n1 * w1 = self.weight
             - n0 * w0 = 1 - self.weight
-        Args:
-            n0: number of samples with label 0
-            n1: number of samples with label 1
 
-        Returns: sample weight for C0, sample weight for C1
+        where n0 is the number of samples with label 0
+        and n1 is the number of samples with label 1
+
+        Args:
+            y_train: (N, 1) tensor or array with labels
+
+        Returns: sample weights
         """
-        return (1 - self.weight)/n0, self.weight/n1
+        # If no weight was provided we return None
+        if self.weight is None:
+            return None
+
+        # Otherwise we return samples' weights in the appropriate format
+        n1 = y_train.sum()              # number of samples with label 1
+        n0 = y_train.shape[0] - n1      # number of samples with label 0
+        w0, w1 = (1 - self.weight) / n0, self.weight / n1  # sample weight for C0, sample weight for C1
+
+        if not is_tensor(y_train):
+            sample_weights = npzeros(y_train.shape)
+            sample_weights[npwhere(y_train == 0)] = w0 * 10  # Multiply by constant factor to impact learning rate
+            sample_weights[npwhere(y_train == 1)] = w1 * 10
+
+        else:
+            sample_weights = thzeros(y_train.shape)
+            sample_weights[thwhere(y_train == 0)] = w0 * 10  # Multiply by constant factor to impact learning rate
+            sample_weights[thwhere(y_train == 1)] = w1 * 10
+
+        return sample_weights
 
     @abstractmethod
-    def fit(self, x_train: Union[tensor, array], y_train: Union[tensor, array],
-            eval_set: Optional[Tuple[Union[tensor, array], Union[tensor, array]]] = None) -> None:
+    def fit(self, x_train: Union[tensor, array], y_train: Union[tensor, array], **kwargs) -> None:
         """
         Fits the model to the training data
 
         Args:
             x_train: (N,D) tensor or array with D-dimensional samples
             y_train: (N,1) tensor or array with classification labels
-            eval_set: Tuple with validation set
 
         Returns: None
         """
@@ -83,15 +108,13 @@ class PetaleRegressor(ABC):
     Skeleton of all Petale regression models
     """
     @abstractmethod
-    def fit(self, x_train: Union[tensor, array], y_train: Union[tensor, array],
-            eval_set: Optional[Tuple[Union[tensor, array], Union[tensor, array]]] = None) -> None:
+    def fit(self, x_train: Union[tensor, array], y_train: Union[tensor, array], **kwargs) -> None:
         """
         Fits the model to the training data
 
         Args:
             x_train: (N,D) tensor or array with D-dimensional samples
             y_train: (N,1) tensor or array with classification labels
-            eval_set: Tuple with validation set
 
         Returns: None
         """

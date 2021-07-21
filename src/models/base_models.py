@@ -12,7 +12,7 @@ from src.data.processing.datasets import PetaleDataset
 from torch import tensor, is_tensor
 from torch import where as thwhere
 from torch import zeros as thzeros
-from typing import Optional, Tuple, Union
+from typing import Optional, Union
 
 
 class PetaleBinaryClassifier(ABC):

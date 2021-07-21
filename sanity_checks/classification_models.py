@@ -41,7 +41,7 @@ if __name__ == '__main__':
                BinaryCrossEntropy(), BalancedAccuracyEntropyRatio()]
 
     # Extraction of data
-    x_test_n, y_test_n = l1_numpy_dataset[test_mask]
+    x_test_n, y_test_n, _ = l1_numpy_dataset[test_mask]
 
     # Weights attributed to class 1
     weights = [0.5, 0.55, 0.65, 0.75, 1]

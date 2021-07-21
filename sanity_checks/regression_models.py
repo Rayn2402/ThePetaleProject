@@ -33,7 +33,7 @@ if __name__ == '__main__':
     warmup_numpy_dataset.update_masks(train_mask=train_mask, valid_mask=valid_mask, test_mask=test_mask)
 
     # Extraction of test data
-    x_test_n, y_test_n = warmup_numpy_dataset[test_mask]
+    x_test_n, y_test_n, _ = warmup_numpy_dataset[test_mask]
 
     # Metrics
     metrics = [AbsoluteError(), Pearson(), RootMeanSquaredError()]

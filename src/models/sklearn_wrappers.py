@@ -39,12 +39,12 @@ class SklearnBinaryClassifierWrapper(PetaleBinaryClassifier):
         Returns: None
         """
         # We extract train set
-        x_train, y_train = dataset[dataset.train_mask]
+        x_train, y_train, _ = dataset[dataset.train_mask]
 
         # We get sample weights
         sample_weights = self.get_sample_weights(y_train)
 
-        # Call the sklearn fit method
+        # Call the fit method
         self._model.fit(x_train, y_train, sample_weight=sample_weights, **kwargs)
 
     def predict_proba(self, x: array) -> array:
@@ -56,7 +56,7 @@ class SklearnBinaryClassifierWrapper(PetaleBinaryClassifier):
 
         Returns: (N,) array
         """
-        # Call sklearn predict_proba method, takes the prediction for class 1 and squeeze the array
+        # Call predict_proba method, takes the prediction for class 1 and squeeze the array
         proba = self._model.predict_proba(x)[:, 1]
 
         return proba.squeeze()
@@ -87,9 +87,9 @@ class SklearnRegressorWrapper(PetaleRegressor):
         Returns: None
         """
         # We extract train set
-        x_train, y_train = dataset[dataset.train_mask]
+        x_train, y_train, _ = dataset[dataset.train_mask]
 
-        # Call the sklearn fit method
+        # Call the fit method
         self._model.fit(x_train, y_train, **kwargs)
 
     def predict(self, x: array) -> array:

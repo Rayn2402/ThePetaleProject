@@ -75,8 +75,9 @@ class PetaleDataset(Dataset):
     def __len__(self) -> int:
         return self._n
 
-    def __getitem__(self, idx: Union[int, List[int]]) -> Tuple[Union[array, tensor], Union[array, tensor]]:
-        return self.x[idx], self.y[idx]
+    def __getitem__(self, idx: Union[int, List[int]]
+                    ) -> Tuple[Union[array, tensor], Union[array, tensor], Union[array, tensor]]:
+        return self.x[idx], self.y[idx], idx
 
     @property
     def classification(self) -> bool:

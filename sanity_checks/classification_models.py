@@ -17,6 +17,7 @@ if __name__ == '__main__':
     from src.data.processing.datasets import PetaleDataset
     from src.data.processing.sampling import get_learning_one_data, extract_masks
     from src.data.processing.sampling import CARDIOMETABOLIC_COMPLICATIONS as CMC
+    from src.models.mlp_models import PetaleBinaryMLPC
     from src.models.random_forest import PetaleBinaryRFC
     from src.models.tabnet_models import PetaleTNC
     from src.models.xgboost_models import PetaleBinaryXGBC
@@ -28,12 +29,14 @@ if __name__ == '__main__':
 
     # Creation of the dataset
     df, cont_cols, cat_cols = get_learning_one_data(manager, baselines=True, complications=[CMC])
-    l1_numpy_dataset = PetaleDataset(df, CMC, cont_cols, cat_cols, classification=False)
+    l1_numpy_dataset = PetaleDataset(df, CMC, cont_cols, cat_cols)
+    l1_tensor_dataset = PetaleDataset(df, CMC, cont_cols, cat_cols, to_tensor=True)
 
     # Setting of the masks
     masks = extract_masks(join(Paths.MASKS, "l1_masks.json"), k=1, l=1)
     train_mask, valid_mask, test_mask = masks[0]['train'], masks[0]['valid'], masks[0]['test']
     l1_numpy_dataset.update_masks(train_mask=train_mask, valid_mask=valid_mask, test_mask=test_mask)
+    l1_tensor_dataset.update_masks(train_mask=train_mask, valid_mask=valid_mask, test_mask=test_mask)
     cat_idx, cat_sizes = l1_numpy_dataset.cat_idx, l1_numpy_dataset.cat_sizes
 
     # Metrics
@@ -42,6 +45,7 @@ if __name__ == '__main__':
 
     # Extraction of data
     x_test_n, y_test_n, _ = l1_numpy_dataset[test_mask]
+    x_test_t, y_test_t, _ = l1_tensor_dataset[test_mask]
 
     # Weights attributed to class 1
     weights = [0.5, 0.55, 0.65, 0.75, 1]
@@ -79,3 +83,14 @@ if __name__ == '__main__':
         print("TabNet Classifier :")
         for m in metrics:
             print(f"\t{m.name} : {m(pred, y_test_n)}")
+
+        """
+        Training and evaluation of PetaleMLPC
+        """
+        petale_mlpc = PetaleBinaryMLPC(layers=[], activation="ReLU", alpha=0, beta=0, lr=0.05,
+                                       num_cont_col=len(cont_cols))
+        petale_mlpc.fit(dataset=l1_tensor_dataset, patience=250, max_epochs=1500)
+        pred = petale_mlpc.predict_proba(x_test_t)
+        print("MLP Classifier :")
+        for m in metrics:
+            print(f"\t{m.name} : {m(pred, y_test_t)}")

@@ -15,6 +15,7 @@ if __name__ == '__main__':
     from src.data.extraction.data_management import PetaleDataManager
     from src.data.processing.datasets import PetaleDataset
     from src.data.processing.sampling import get_warmup_data, extract_masks
+    from src.models.mlp_models import PetaleMLPR
     from src.models.random_forest import PetaleRFR
     from src.models.tabnet_models import PetaleTNR
     from src.models.xgboost_models import PetaleXGBR
@@ -23,17 +24,20 @@ if __name__ == '__main__':
     # Initialization of DataManager and sampler
     manager = PetaleDataManager("rayn2402")
 
-    # Creation of the dataset
+    # Creation of the datasets
     df, target, cont_cols, _ = get_warmup_data(manager)
     warmup_numpy_dataset = PetaleDataset(df, target, cont_cols, classification=False)
+    warmup_tensor_dataset = PetaleDataset(df, target, cont_cols, classification=False, to_tensor=True)
 
     # Setting of the masks
     masks = extract_masks(join(Paths.MASKS, "l0_masks.json"), k=1, l=1)
     train_mask, valid_mask, test_mask = masks[0]['train'], masks[0]['valid'], masks[0]['test']
     warmup_numpy_dataset.update_masks(train_mask=train_mask, valid_mask=valid_mask, test_mask=test_mask)
+    warmup_tensor_dataset.update_masks(train_mask=train_mask, valid_mask=valid_mask, test_mask=test_mask)
 
     # Extraction of test data
     x_test_n, y_test_n, _ = warmup_numpy_dataset[test_mask]
+    x_test_t, y_test_t, _ = warmup_tensor_dataset[test_mask]
 
     # Metrics
     metrics = [AbsoluteError(), Pearson(), RootMeanSquaredError()]
@@ -67,3 +71,14 @@ if __name__ == '__main__':
     print("TabNet Regressor :")
     for m in metrics:
         print(f"\t{m.name} : {m(pred, y_test_n)}")
+
+    """
+    Training and evaluation of PetaleMLPR
+    """
+    petale_mlpr = PetaleMLPR(layers=[], activation="ReLU", alpha=0, beta=0, lr=0.05,
+                             num_cont_col=len(cont_cols))
+    petale_mlpr.fit(dataset=warmup_tensor_dataset, patience=250, max_epochs=1500)
+    pred = petale_mlpr.predict(x_test_t)
+    print("MLP Regressor :")
+    for m in metrics:
+        print(f"\t{m.name} : {m(pred, y_test_t)}")

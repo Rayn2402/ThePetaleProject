@@ -67,7 +67,8 @@ class PetaleTNC(PetaleBinaryClassifier):
         x_train, y_train, _ = dataset[dataset.train_mask]
         eval_set = None
         if len(dataset.valid_mask) != 0:
-            eval_set = [dataset[dataset.valid_mask]]
+            x_valid, y_valid, _ = dataset[dataset.valid_mask]
+            eval_set = [(x_valid, y_valid)]
 
         # We get sample weights
         sample_weights = self.get_sample_weights(y_train)

@@ -10,8 +10,9 @@ import numpy as np
 
 from os import path, remove
 from settings.paths import Paths
-from torch import save, load
+from torch import save, load, tensor
 from torch.nn import Module
+from typing import OrderedDict
 from uuid import uuid4
 
 
@@ -47,7 +48,7 @@ class EarlyStopper:
         # if the score is better than the best score saved we update the best model
         else:
             self.val_loss_min = val_loss
-            save(model, self.file_path)
+            save(model.state_dict(), self.file_path)
             self.counter = 0
 
     def remove_checkpoint(self):
@@ -56,10 +57,10 @@ class EarlyStopper:
         """
         remove(self.file_path)
 
-    def get_best_model(self) -> Module:
+    def get_best_params(self) -> OrderedDict[str, tensor]:
         """
-        Returns the best model saved
+        Returns the best parameters saved
 
-        :return: nn.Module
+        :return: model state dict
         """
         return load(self.file_path)

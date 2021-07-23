@@ -6,7 +6,6 @@ This file is used to test classification models
 
 import sys
 from os.path import join, dirname, realpath
-from torch import tensor
 
 if __name__ == '__main__':
 
@@ -48,7 +47,7 @@ if __name__ == '__main__':
     x_test_t, y_test_t, _ = l1_tensor_dataset[test_mask]
 
     # Weights attributed to class 1
-    weights = [0.5, 0.55, 0.65, 0.75, 1]
+    weights = [0.5, 0.55, 0.65, 0.75, 0.99]
 
     for w in weights:
 
@@ -87,8 +86,8 @@ if __name__ == '__main__':
         """
         Training and evaluation of PetaleMLPC
         """
-        petale_mlpc = PetaleBinaryMLPC(layers=[], activation="ReLU", alpha=0, beta=0, lr=0.05,
-                                       num_cont_col=len(cont_cols))
+        petale_mlpc = PetaleBinaryMLPC(layers=[10, 5], activation="ReLU", alpha=0, beta=0, lr=0.01,
+                                       num_cont_col=len(cont_cols), weight=w)
         petale_mlpc.fit(dataset=l1_tensor_dataset, patience=250, max_epochs=1500)
         pred = petale_mlpc.predict_proba(x_test_t)
         print("MLP Classifier :")

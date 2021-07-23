@@ -6,7 +6,7 @@ This file contains metric used to measure models' performances
 from abc import ABC, abstractmethod
 from numpy import array
 from torch import sqrt, abs, tensor, zeros, mean, prod, sum, pow, from_numpy, is_tensor
-from torch.nn.functional import binary_cross_entropy
+from torch.nn.functional import binary_cross_entropy, softmax
 from typing import Tuple, Union
 
 
@@ -171,16 +171,22 @@ class BinaryClassificationMetric(Metric):
 
     def __call__(self, pred: Union[array, tensor], targets: Union[array, tensor], thresh: float = 0.5) -> float:
         """
-        Converts inputs to tensors than computes the metric and applies rounding
+        Converts inputs to tensors, applies softmax if shape is different than expected
+        and than computes the metric and applies rounding
 
         Args:
             pred: (N,) tensor or array with predicted probabilities of being in class 1
+                  If pred has shape (N, 2) -> unormalized probalities
+
             targets: (N,) tensor or array with ground truth
 
         Returns: rounded metric score
         """
         if not is_tensor(pred):
             pred, targets = self.convert_to_tensors(pred, targets)
+
+        if len(pred.shape) == 2:
+            pred = softmax(pred, dim=1)[:, 1]
 
         return round(self.compute_metric(pred, targets, thresh), self.n_digits)
 

@@ -8,11 +8,11 @@ and PetaleMLPRegressor
 
 from src.data.processing.datasets import PetaleDataset
 from src.training.early_stopping import EarlyStopper
-from src.utils.score_metrics import Metric, BalancedAccuracyEntropyRatio, Reduction, RootMeanSquaredError
-from torch import cat, nn, no_grad, tensor, mean, zeros_like, ones
+from src.utils.score_metrics import Metric, BalancedAccuracyEntropyRatio, RootMeanSquaredError
+from torch import cat, nn, no_grad, tensor, mean, zeros_like, ones, sigmoid
 from torch.nn import Module, ModuleList, Embedding,\
-    Linear, BatchNorm1d, Dropout, Sequential, CrossEntropyLoss, MSELoss
-from torch.nn.functional import l1_loss, mse_loss, softmax
+    Linear, BatchNorm1d, Dropout, Sequential, BCEWithLogitsLoss, MSELoss
+from torch.nn.functional import l1_loss, mse_loss
 from torch.optim import Adam
 from torch.utils.data import DataLoader, SubsetRandomSampler
 from typing import Callable, List, Optional
@@ -325,17 +325,17 @@ class MLP(Module):
         l2_penalty = mean(tensor([mse_loss(w, zeros_like(w)) for w in flatten_params]))
 
         # Computation of loss without reduction
-        loss = self._criterion(pred, y)  # (N,) tensor
+        loss = self._criterion(pred, y.float())  # (N,) tensor
 
         # Computation of loss reduction + elastic penalty
         return (loss * sample_weights / sample_weights.sum()).sum() + self._alpha*l1_penalty + self._beta*l2_penalty
 
 
-class MLPClassifier(MLP):
+class MLPBinaryClassifier(MLP):
     """
     Multilayer perceptron model with entity embedding
     """
-    def __init__(self, output_size: int, layers: List[int], activation: str,
+    def __init__(self, layers: List[int], activation: str,
                  eval_metric: Optional[Metric] = None, dropout: float = 0,
                  alpha: float = 0, beta: float = 0, lr: float = 0.05, num_cont_col: Optional[int] = None,
                  cat_idx: Optional[List[int]] = None, cat_sizes: Optional[List[int]] = None,
@@ -344,7 +344,6 @@ class MLPClassifier(MLP):
         Sets protected attributes using parent's constructor
 
         Args:
-            output_size: the number of nodes in the last layer of the neural network
             layers: list with number of units in each hidden layer
             eval_metric: evaluation metric
             activation: activation function
@@ -358,8 +357,9 @@ class MLPClassifier(MLP):
             cat_sizes: list of integer representing the size of each categorical column
             cat_emb_sizes: list of integer representing the size of each categorical embedding
         """
-        super().__init__(output_size=output_size, layers=layers, activation=activation,
-                         criterion=CrossEntropyLoss(reduction='none'), criterion_name='WCE',
+        eval_metric = eval_metric if eval_metric is not None else BalancedAccuracyEntropyRatio()
+        super().__init__(output_size=1, layers=layers, activation=activation,
+                         criterion=BCEWithLogitsLoss(reduction='none'), criterion_name='WBCE',
                          eval_metric=eval_metric, dropout=dropout, alpha=alpha, beta=beta,
                          lr=lr, num_cont_col=num_cont_col, cat_idx=cat_idx, cat_sizes=cat_sizes,
                          cat_emb_sizes=cat_emb_sizes, verbose=verbose)
@@ -378,7 +378,7 @@ class MLPClassifier(MLP):
         self.eval()
 
         # Execute a forward pass and apply a softmax
-        return softmax(self(x), dim=1)
+        return sigmoid(self(x))
 
 
 class MLPRegressor(MLP):

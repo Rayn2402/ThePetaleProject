@@ -5,15 +5,15 @@ This file is use to store the regression and classification wrappers for MLP bas
 """
 from src.data.processing.datasets import PetaleDataset
 from src.models.base_models import PetaleBinaryClassifier, PetaleRegressor
-from src.models.mlp_base_models import MLPClassifier, MLPRegressor
-from src.utils.score_metrics import Metric, BinaryClassificationMetric, BalancedAccuracyEntropyRatio
+from src.models.mlp_base_models import MLPBinaryClassifier, MLPRegressor
+from src.utils.score_metrics import Metric, BinaryClassificationMetric
 from torch import tensor
 from typing import List, Optional
 
 
 class PetaleBinaryMLPC(PetaleBinaryClassifier):
     """
-    Multilayer perceptron model with entity embedding
+    Multilayer perceptron classification model with entity embedding
     """
     def __init__(self, layers: List[int], activation: str,
                  eval_metric: Optional[BinaryClassificationMetric] = None, dropout: float = 0,
@@ -40,11 +40,10 @@ class PetaleBinaryMLPC(PetaleBinaryClassifier):
             classification_threshold: threshold used to classify a sample in class 1
             weight: weight attributed to class 1
         """
-        eval_metric = eval_metric if eval_metric is not None else BalancedAccuracyEntropyRatio()
-        self.__model = MLPClassifier(output_size=2, layers=layers, activation=activation, eval_metric=eval_metric,
-                                     dropout=dropout, alpha=alpha, beta=beta, lr=lr, num_cont_col=num_cont_col,
-                                     cat_idx=cat_idx, cat_sizes=cat_sizes, cat_emb_sizes=cat_emb_sizes,
-                                     verbose=verbose)
+        self.__model = MLPBinaryClassifier(layers=layers, activation=activation, eval_metric=eval_metric,
+                                           dropout=dropout, alpha=alpha, beta=beta, lr=lr, num_cont_col=num_cont_col,
+                                           cat_idx=cat_idx, cat_sizes=cat_sizes, cat_emb_sizes=cat_emb_sizes,
+                                           verbose=verbose)
 
         super().__init__(classification_threshold=classification_threshold, weight=weight)
 
@@ -80,7 +79,7 @@ class PetaleBinaryMLPC(PetaleBinaryClassifier):
 
         Returns: (N,) tensor
         """
-        return self.__model.predict_proba(x)[:, 1]
+        return self.__model.predict_proba(x)
 
 
 class PetaleMLPR(PetaleRegressor):

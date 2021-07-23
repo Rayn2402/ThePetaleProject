@@ -16,7 +16,7 @@ class PetaleTNC(PetaleBinaryClassifier):
     Class used as a wrapper for TabNet classifier model
     """
     def __init__(self, n_d: int = 8, n_a: int = 8, n_steps: int = 3, gamma: float = 1.3, lr: float = 0.1,
-                 cat_idx: Optional[List[int]] = None, cat_sizes: Optional[List[int]] = None,
+                 beta: float = 0, cat_idx: Optional[List[int]] = None, cat_sizes: Optional[List[int]] = None,
                  cat_emb_sizes: Optional[List[int]] = None, device='cpu', verbose: bool = False,
                  classification_threshold: float = 0.5, weight: Optional[float] = None):
         """
@@ -31,6 +31,7 @@ class PetaleTNC(PetaleBinaryClassifier):
             gamma: This is the coefficient for feature reusage in the masks. A value close to 1 will make
                    mask selection least correlated between layers. Values range from 1.0 to 2.0.
             lr: learning rate
+            beta: L2 penalty coefficient
             cat_idx: List of categorical features indices.
             cat_sizes: List of categorical features number of modalities
             cat_emb_sizes: List of embeddings size for each categorical features.
@@ -44,7 +45,8 @@ class PetaleTNC(PetaleBinaryClassifier):
 
         self.__model = TabNetClassifier(n_d=n_d, n_a=n_a, n_steps=n_steps, gamma=gamma,
                                         cat_idxs=cat_idx, cat_dims=cat_sizes, cat_emb_dim=cat_emb_sizes,
-                                        device_name=device, optimizer_params=dict(lr=lr), verbose=int(verbose))
+                                        device_name=device, optimizer_params=dict(lr=lr, weight_decay=beta),
+                                        verbose=int(verbose))
 
         # Call of parent's constructor
         super().__init__(classification_threshold=classification_threshold, weight=weight)
@@ -93,7 +95,7 @@ class PetaleTNR(PetaleRegressor):
     """
 
     def __init__(self, n_d: int = 8, n_a: int = 8, n_steps: int = 3, gamma: float = 1.3, lr: float = 0.1,
-                 cat_idxs: Optional[List[int]] = None, cat_dims: Optional[List[int]] = None,
+                 beta: float = 0, cat_idxs: Optional[List[int]] = None, cat_dims: Optional[List[int]] = None,
                  cat_emb_dim: Optional[List[int]] = None, device='cpu', verbose: bool = False):
         """
         Creates a TabNet classifier and sets protected attributes using parent's constructor
@@ -107,6 +109,7 @@ class PetaleTNR(PetaleRegressor):
             gamma: This is the coefficient for feature reusage in the masks. A value close to 1 will make
                    mask selection least correlated between layers. Values range from 1.0 to 2.0.
             lr: learning rate
+            beta: L2 penalty coefficient
             cat_idxs: List of categorical features indices.
             cat_dims: List of categorical features number of modalities
             cat_emb_dim: List of embeddings size for each categorical features.
@@ -118,7 +121,8 @@ class PetaleTNR(PetaleRegressor):
 
         self._model = TabNetRegressor(n_d=n_d, n_a=n_a, n_steps=n_steps, gamma=gamma,
                                       cat_idxs=cat_idxs, cat_dims=cat_dims, cat_emb_dim=cat_emb_dim,
-                                      device_name=device, optimizer_params=dict(lr=lr), verbose=int(verbose))
+                                      device_name=device, optimizer_params=dict(lr=lr, weight_decay=beta),
+                                      verbose=int(verbose))
 
     def fit(self, dataset: PetaleDataset, **kwargs) -> None:
         """

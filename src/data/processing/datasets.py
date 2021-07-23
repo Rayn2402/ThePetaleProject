@@ -5,8 +5,8 @@ Files that contains class related to Datasets
 
 """
 
-from dgl import heterograph
-from numpy import array, concatenate
+from dgl import heterograph, DGLHeteroGraph
+from numpy import array, concatenate, where
 from pandas import DataFrame, Series
 from src.data.extraction.constants import *
 from src.data.processing.preprocessing import preprocess_continuous, preprocess_categoricals
@@ -396,9 +396,11 @@ class PetaleDataset(Dataset):
                 assert c in dataframe_columns, f"Column {c} is not part of the given dataframe"
 
 
-class PetaleGNNDataset(PetaleDataset):
+class PetaleStaticGNNDataset(PetaleDataset):
     """
-    Dataset used to train, valid and test our Graph Neural Network
+    Dataset used to train, valid and test our Graph Neural Network.
+    Static means that the edges are based only on the non null categorical values from the
+    original dataframe. Hence, the structure of the graph does not change after masks update (ie. imputation).
     """
 
     def __init__(self, df: DataFrame, target: str,
@@ -415,42 +417,53 @@ class PetaleGNNDataset(PetaleDataset):
             classification: True for classification task, False for regression
 
         """
-        # We initialize protected attributes proper to GNNDataset class
-        self._graph = None
-
         # We use the _init_ of the parent class CustomDataset
         super().__init__(df, target, cont_cols, cat_cols, classification, to_tensor=True)
 
-    def _update_graph(self) -> None:
+        # We initialize the graph attribute proper to GNNDataset class
+        self._graph = self._build_graph()
+        print(self._graph.num_edges())
+
+    def _build_graph(self) -> DGLHeteroGraph:
         """
-        Updates the graph structures and its data once the masks are updated
+        Builds the graph structures
 
         Returns: None
         """
+        # We extract imputed but reinsert nan values into categorical column that were imputed
+        df = self.get_imputed_dataframe()
+        na_row_idx, na_col_idx = where(self.original_data[self.cat_cols].isna().to_numpy())
+        for i, j in zip(na_row_idx, na_col_idx):
+            df.iloc[i, j] = nan
+
         # We look through categorical columns to generate graph structure
-        imp_df = self.get_imputed_dataframe()
         graph_structure = {}
         for e_types, e_values in self.encodings.items():
             edges_start, edges_end = [], []
             for value in e_values.values():
-                idx_subset = imp_df.loc[imp_df[e_types] == value].index.to_numpy()
+                idx_subset = df.loc[df[e_types] == value].index.to_numpy()
                 subset_size = idx_subset.shape[0]
                 for i in range(subset_size):
                     edges_start += [idx_subset[i]]*(subset_size - 1)
                     remaining_idx = list(range(i)) + list(range(i+1, subset_size))
                     edges_end += list(idx_subset[remaining_idx])
-                graph_structure[(PARTICIPANT, e_types, PARTICIPANT)] = (tensor(edges_start), tensor(edges_end))
+                graph_structure[(PARTICIPANT, e_types, PARTICIPANT)] = (tensor(edges_start).long(),
+                                                                        tensor(edges_end).long())
+        return heterograph(graph_structure)
 
-        # We update the internal graph attribute
-        self._graph = heterograph(graph_structure)
+    def _update_nodes_data(self) -> None:
+        """
+        Update nodes numerical data
 
-        # We set the graph data
-        print(self._graph.nodes())
+        Returns: None
+        """
+        for i, c in enumerate(self.cont_cols):
+            self._graph.ndata[c] = self.x_cont[:, i]
 
     def update_masks(self, train_mask: List[int], test_mask: List[int],
                      valid_mask: Optional[List[int]] = None) -> None:
         """
-        Same function as CustomDataset parent to which we add a graph construction component
+        Same function as CustomDataset parent to which we add graph data update
 
         Args:
             train_mask: list of idx to use for training
@@ -460,4 +473,7 @@ class PetaleGNNDataset(PetaleDataset):
         Returns: None
         """
         PetaleDataset.update_masks(self, train_mask, test_mask, valid_mask)
-        self._update_graph()
+
+        # If we are not initializing the dataset
+        if len(test_mask) != 0:
+            self._update_nodes_data()

@@ -460,6 +460,9 @@ class PetaleStaticGNNDataset(PetaleDataset):
         for i, c in enumerate(self.cont_cols):
             self._graph.ndata[c] = self.x_cont[:, i]
 
+    def get_metapaths(self) -> List[str]:
+        return list(self.encodings.keys())
+
     def update_masks(self, train_mask: List[int], test_mask: List[int],
                      valid_mask: Optional[List[int]] = None) -> None:
         """

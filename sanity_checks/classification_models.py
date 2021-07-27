@@ -78,8 +78,9 @@ if __name__ == '__main__':
         Training and evaluation of PetaleTNC
         """
         petale_tnc = PetaleTNC(cat_idx=cat_idx, cat_sizes=cat_sizes, cat_emb_sizes=cat_sizes, device='cpu',
-                               lr=0.08, n_steps=6, n_d=4, n_a=4, gamma=1.5, weight=w)
-        petale_tnc.fit(l1_numpy_dataset, max_epochs=300, patience=50, batch_size=35)
+                               lr=0.08, max_epochs=300, patience=50, batch_size=35, n_steps=6,
+                               n_d=4, n_a=4, gamma=1.5, weight=w)
+        petale_tnc.fit(l1_numpy_dataset)
         pred = petale_tnc.predict_proba(l1_numpy_dataset)
         print("TabNet Classifier :")
         for m in metrics:
@@ -88,9 +89,10 @@ if __name__ == '__main__':
         """
         Training and evaluation of PetaleMLPC
         """
-        petale_mlpc = PetaleBinaryMLPC(layers=[10, 5], activation="ReLU", alpha=0, beta=0, lr=0.01,
+        petale_mlpc = PetaleBinaryMLPC(layers=[10, 10], activation="ReLU", alpha=0, beta=0, lr=0.05,
+                                       batch_size=50, patience=250, max_epochs=1500,
                                        num_cont_col=len(cont_cols), weight=w)
-        petale_mlpc.fit(dataset=l1_tensor_dataset, patience=250, max_epochs=1500)
+        petale_mlpc.fit(l1_tensor_dataset)
         pred = petale_mlpc.predict_proba(l1_tensor_dataset)
         print("MLP Classifier :")
         for m in metrics:

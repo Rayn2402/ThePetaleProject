@@ -65,8 +65,9 @@ if __name__ == '__main__':
     """
     Training and evaluation of PetaleTNR
     """
-    petale_tnr = PetaleTNR(device='cpu', lr=0.01, n_steps=5, n_d=8, n_a=8, gamma=1.5)
-    petale_tnr.fit(warmup_numpy_dataset, max_epochs=300, patience=50, batch_size=30)
+    petale_tnr = PetaleTNR(max_epochs=300, patience=50, batch_size=30,
+                           lr=0.01, n_steps=5, n_d=8, n_a=8, gamma=1.5,)
+    petale_tnr.fit(warmup_numpy_dataset)
     pred = petale_tnr.predict(warmup_numpy_dataset)
     print("TabNet Regressor :")
     for m in metrics:
@@ -76,8 +77,8 @@ if __name__ == '__main__':
     Training and evaluation of PetaleMLPR
     """
     petale_mlpr = PetaleMLPR(layers=[], activation="ReLU", alpha=0, beta=0, lr=0.05,
-                             num_cont_col=len(cont_cols))
-    petale_mlpr.fit(dataset=warmup_tensor_dataset, patience=250, max_epochs=1500)
+                             patience=250, max_epochs=1500, batch_size=51, num_cont_col=len(cont_cols))
+    petale_mlpr.fit(warmup_tensor_dataset)
     pred = petale_mlpr.predict(warmup_tensor_dataset)
     print("MLP Regressor :")
     for m in metrics:

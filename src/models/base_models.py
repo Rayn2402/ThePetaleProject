@@ -84,21 +84,26 @@ class PetaleBinaryClassifier(ABC):
         Fits the model to the training data
 
         Args:
-            dataset: PetaleDatasets which items are tuples (x, y) where
+            dataset: PetaleDatasets which items are tuples (x, y, idx) where
                      - x : (N,D) tensor or array with D-dimensional samples
                      - y : (N,) tensor or array with classification labels
+                     - idx : (N,) tensor or array with idx of samples according to the whole dataset
 
         Returns: None
         """
         raise NotImplementedError
 
     @abstractmethod
-    def predict_proba(self, x: Union[tensor, array]) -> Union[tensor, array]:
+    def predict_proba(self, dataset: PetaleDataset) -> Union[tensor, array]:
         """
         Returns the probabilities of being in class 1 for all samples
+        in the test set
 
         Args:
-            x: (N,D) tensor or array with D-dimensional samples
+            dataset: PetaleDatasets which items are tuples (x, y, idx) where
+                     - x : (N,D) tensor or array with D-dimensional samples
+                     - y : (N,) tensor or array with classification labels
+                     - idx : (N,) tensor or array with idx of samples according to the whole dataset
 
         Returns: (N,) tensor or array
         """
@@ -124,12 +129,15 @@ class PetaleRegressor(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def predict(self, x: Union[tensor, array]) -> Union[tensor, array]:
+    def predict(self, dataset: PetaleDataset) -> Union[tensor, array]:
         """
-        Returns the predicted real-valued targets for all samples
+        Returns the predicted real-valued targets for all samples in the test set
 
         Args:
-            x: (N,D) tensor or array with D-dimensional samples
+            dataset: PetaleDatasets which items are tuples (x, y, idx) where
+                     - x : (N,D) tensor or array with D-dimensional samples
+                     - y : (N,) tensor or array with classification labels
+                     - idx : (N,) tensor or array with idx of samples according to the whole dataset
 
         Returns: (N,) tensor or array
         """

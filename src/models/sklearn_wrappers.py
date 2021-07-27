@@ -32,9 +32,10 @@ class SklearnBinaryClassifierWrapper(PetaleBinaryClassifier):
         Fits the model to the training data
 
         Args:
-            dataset: PetaleDatasets which items are tuples (x, y) where
+            dataset: PetaleDatasets which items are tuples (x, y, idx) where
                      - x : (N,D) tensor or array with D-dimensional samples
                      - y : (N,) tensor or array with classification labels
+                     - idx : (N,) tensor or array with idx of samples according to the whole dataset
 
         Returns: None
         """
@@ -47,17 +48,23 @@ class SklearnBinaryClassifierWrapper(PetaleBinaryClassifier):
         # Call the fit method
         self._model.fit(x_train, y_train, sample_weight=sample_weights, **kwargs)
 
-    def predict_proba(self, x: array) -> array:
+    def predict_proba(self, dataset: PetaleDataset) -> array:
         """
-        Returns the probabilities of being in class 1 for all samples
+        Returns the probabilities of being in class 1 for all samples in the test set
 
         Args:
-            x: (N,D) array with D-dimensional samples
+            dataset: PetaleDatasets which items are tuples (x, y, idx) where
+                     - x : (N,D) tensor or array with D-dimensional samples
+                     - y : (N,) tensor or array with classification labels
+                     - idx : (N,) tensor or array with idx of samples according to the whole dataset
 
         Returns: (N,) array
         """
+        # We extract test set
+        x_test, _, _ = dataset[dataset.test_mask]
+
         # Call predict_proba method, takes the prediction for class 1 and squeeze the array
-        proba = self._model.predict_proba(x)[:, 1]
+        proba = self._model.predict_proba(x_test)[:, 1]
 
         return proba.squeeze()
 
@@ -92,14 +99,20 @@ class SklearnRegressorWrapper(PetaleRegressor):
         # Call the fit method
         self._model.fit(x_train, y_train, **kwargs)
 
-    def predict(self, x: array) -> array:
+    def predict(self, dataset: PetaleDataset) -> array:
         """
-        Returns the predicted real-valued targets for all samples
+        Returns the predicted real-valued targets for all samples in the test set
 
         Args:
-            x: (N,D) array with D-dimensional samples
+            dataset: PetaleDatasets which items are tuples (x, y, idx) where
+                     - x : (N,D) tensor or array with D-dimensional samples
+                     - y : (N,) tensor or array with classification labels
+                     - idx : (N,) tensor or array with idx of samples according to the whole dataset
 
         Returns: (N,) array
         """
+        # We extract test set
+        x_test, _, _ = dataset[dataset.test_mask]
+
         # Call sklearn predict method
-        return self._model.predict(x)
+        return self._model.predict(x_test)

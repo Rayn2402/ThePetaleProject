@@ -56,9 +56,10 @@ class PetaleTNC(PetaleBinaryClassifier):
         Fits the model to the training data
 
         Args:
-            dataset: PetaleDatasets which items are tuples (x, y) where
+            dataset: PetaleDatasets which items are tuples (x, y, idx) where
                      - x : (N,D) tensor or array with D-dimensional samples
                      - y : (N,) tensor or array with classification labels
+                     - idx : (N,) tensor or array with idx of samples according to the whole dataset
             **kwargs: 'batch_size': Number of examples per batch. Large batch sizes are recommended. (default =1024)
                       'max_epochs': Maximum number of epochs for training. (default = 200)
                       'patience': Number of consecutive epochs without improvement (default = 15)
@@ -77,16 +78,22 @@ class PetaleTNC(PetaleBinaryClassifier):
 
         self.__model.fit(x_train, y_train, weights=sample_weights, eval_set=eval_set, **kwargs)
 
-    def predict_proba(self, x: array) -> array:
+    def predict_proba(self, dataset: PetaleDataset) -> array:
         """
-        Returns the probabilities of being in class 1 for all samples
+        Returns the probabilities of being in class 1 for all samples in the test set
 
         Args:
-            x: (N,D) tensor or array with D-dimensional samples
+            dataset: PetaleDatasets which items are tuples (x, y, idx) where
+                     - x : (N,D) tensor or array with D-dimensional samples
+                     - y : (N,) tensor or array with classification labels
+                     - idx : (N,) tensor or array with idx of samples according to the whole dataset
 
         Returns: (N,) array
         """
-        return self.__model.predict_proba(x)[:, 1]
+        # We extract test set
+        x_test, _, _ = dataset[dataset.test_mask]
+
+        return self.__model.predict_proba(x_test)[:, 1]
 
 
 class PetaleTNR(PetaleRegressor):
@@ -129,9 +136,10 @@ class PetaleTNR(PetaleRegressor):
         Fits the model to the training data
 
         Args:
-            dataset: PetaleDatasets which items are tuples (x, y) where
+            dataset: PetaleDatasets which items are tuples (x, y, idx) where
                      - x : (N,D) tensor or array with D-dimensional samples
                      - y : (N,) tensor or array with classification labels
+                     - idx : (N,) tensor or array with idx of samples according to the whole dataset
             **kwargs: 'batch_size': Number of examples per batch. Large batch sizes are recommended. (default =1024)
                       'max_epochs': Maximum number of epochs for training. (default = 200)
                       'patience': Number of consecutive epochs without improvement (default = 15)
@@ -147,13 +155,19 @@ class PetaleTNR(PetaleRegressor):
 
         self._model.fit(x_train, y_train.reshape(-1, 1), eval_set=eval_set, **kwargs)
 
-    def predict(self, x: array) -> array:
+    def predict(self, dataset: PetaleDataset) -> array:
         """
-        Returns the predicted real-valued targets for all samples
+        Returns the predicted real-valued targets for all samples in the test set
 
         Args:
-            x: (N,D) array with D-dimensional samples
+            dataset: PetaleDatasets which items are tuples (x, y, idx) where
+                     - x : (N,D) tensor or array with D-dimensional samples
+                     - y : (N,) tensor or array with classification labels
+                     - idx : (N,) tensor or array with idx of samples according to the whole dataset
 
         Returns: (N,) array
         """
-        return self._model.predict(x).squeeze()
+        # We extract test set
+        x_test, _, _ = dataset[dataset.test_mask]
+
+        return self._model.predict(x_test).squeeze()

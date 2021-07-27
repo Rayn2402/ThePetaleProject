@@ -52,9 +52,10 @@ class PetaleBinaryMLPC(PetaleBinaryClassifier):
         Fits the model to the training data
 
         Args:
-            dataset: PetaleDatasets which items are tuples (x, y) where
-                     - x : (N,D) tensor with D-dimensional samples
-                     - y : (N,) tensor with classification labels
+            dataset: PetaleDatasets which items are tuples (x, y, idx) where
+                     - x : (N,D) tensor or array with D-dimensional samples
+                     - y : (N,) tensor or array with classification labels
+                     - idx : (N,) tensor or array with idx of samples according to the whole dataset
             kwargs:
                 batch_size: int = 55,
                 valid_batch_size: Optional[int] = None
@@ -70,16 +71,23 @@ class PetaleBinaryMLPC(PetaleBinaryClassifier):
         # We run MLP fit method
         self.__model.fit(dataset, sample_weights=sample_weights, **kwargs)
 
-    def predict_proba(self, x: tensor) -> tensor:
+    def predict_proba(self, dataset: PetaleDataset) -> tensor:
         """
         Returns the probabilities of being in class 1 for all samples
+        in the test set
 
         Args:
-            x: (N,D) tensor with D-dimensional samples
+            dataset: PetaleDatasets which items are tuples (x, y, idx) where
+                     - x : (N,D) tensor or array with D-dimensional samples
+                     - y : (N,) tensor or array with classification labels
+                     - idx : (N,) tensor or array with idx of samples according to the whole dataset
 
         Returns: (N,) tensor
         """
-        return self.__model.predict_proba(x)
+        # We extract test set
+        x_test, _, _ = dataset[dataset.test_mask]
+
+        return self.__model.predict_proba(x_test)
 
 
 class PetaleMLPR(PetaleRegressor):
@@ -132,14 +140,20 @@ class PetaleMLPR(PetaleRegressor):
         """
         self.__model.fit(dataset, **kwargs)
 
-    def predict(self, x: tensor) -> tensor:
+    def predict(self, dataset: PetaleDataset) -> tensor:
         """
-        Returns the predicted real-valued targets for all samples
+        Returns the predicted real-valued targets for all samples in the test set
 
         Args:
-            x: (N,D) tensor with D-dimensional samples
+            dataset: PetaleDatasets which items are tuples (x, y, idx) where
+                     - x : (N,D) tensor or array with D-dimensional samples
+                     - y : (N,) tensor or array with classification labels
+                     - idx : (N,) tensor or array with idx of samples according to the whole dataset
 
         Returns: (N,) tensor
         """
-        return self.__model.predict(x)
+        # We extract test set
+        x_test, _, _ = dataset[dataset.test_mask]
+
+        return self.__model.predict(x_test)
 

@@ -6,19 +6,19 @@ This file is used to store the MLP with entity embeddings base model and its chi
 and PetaleMLPRegressor
 """
 
+from src.models.custom_torch_base import TorchCustomModel
 from src.data.processing.datasets import PetaleDataset
 from src.training.early_stopping import EarlyStopper
 from src.utils.score_metrics import Metric, BalancedAccuracyEntropyRatio, RootMeanSquaredError
-from torch import cat, nn, no_grad, tensor, mean, zeros_like, ones, sigmoid
-from torch.nn import Module, ModuleList, Embedding,\
+from torch import cat, nn, no_grad, tensor, ones, sigmoid
+from torch.nn import ModuleList, Embedding,\
     Linear, BatchNorm1d, Dropout, Sequential, BCEWithLogitsLoss, MSELoss
-from torch.nn.functional import l1_loss, mse_loss
 from torch.optim import Adam
 from torch.utils.data import DataLoader, SubsetRandomSampler
 from typing import Callable, List, Optional
 
 
-class MLP(Module):
+class MLP(TorchCustomModel):
     """
     Multilayer perceptron model with entity embedding
     """
@@ -47,25 +47,19 @@ class MLP(Module):
             cat_idx: idx of categorical columns in the dataset
             cat_sizes: list of integer representing the size of each categorical column
             cat_emb_sizes: list of integer representing the size of each categorical embedding
+            verbose: True if we want trace of the training progress
         """
         assert num_cont_col is not None or cat_sizes is not None, "There must be continuous columns" \
                                                                   " or categorical columns"
         # We call parent's constructor
-        Module.__init__(self)
+        super().__init__(criterion=criterion, criterion_name=criterion_name, eval_metric=eval_metric,
+                         alpha=alpha, beta=beta, verbose=verbose)
 
-        # We set protected attributes
-        self._alpha = alpha
-        self._beta = beta
+        # We set protected attributes proper to the model
         self._cat_idx = cat_idx if cat_idx is not None else []
         self._cont_idx = [i for i in range(len(self._cat_idx) + num_cont_col) if i not in self._cat_idx]
-        self._criterion = criterion
-        self._criterion_name = criterion_name
         self._embedding_layers = None
-        self._eval_metric = eval_metric
-        self._evaluations = {i: {self._criterion_name: [], self._eval_metric.name: []} for i in ["train", "valid"]}
         self._lr = lr
-        self._optimizer = None
-        self._verbose = verbose
 
         # We initialize the input_size
         input_size = num_cont_col if num_cont_col is not None else 0
@@ -110,6 +104,7 @@ class MLP(Module):
 
         Args:
             train_loader: training data loader
+            sample_weights: weights of the samples in the loss
 
         Returns: mean epoch loss
         """
@@ -191,7 +186,7 @@ class MLP(Module):
         self._evaluations["valid"][self._criterion_name].append(mean_epoch_loss)
         self._evaluations["valid"][self._eval_metric.name].append(epoch_score / nb_batch)
 
-        # We early stopping status
+        # We check early stopping status
         early_stopper(epoch_loss, self)
 
         if early_stopper.early_stop:
@@ -199,25 +194,6 @@ class MLP(Module):
             return True
 
         return False
-
-    def _generate_progress_func(self, max_epochs: int) -> Callable:
-        """
-        Defines a function that updates the training progress
-
-        Args:
-            max_epochs: maximum number of training epochs
-
-        Returns: function
-        """
-        if self._verbose:
-            def update_progress(epoch: int, mean_epoch_loss: float):
-                if (epoch + 1) % 5 == 0 or (epoch + 1) == max_epochs:
-                    print(f"Epoch {epoch + 1} - Loss : {round(mean_epoch_loss, 4)}")
-        else:
-            def update_progress(*args):
-                pass
-
-        return update_progress
 
     def fit(self, dataset: PetaleDataset, batch_size: int = 55,
             valid_batch_size: Optional[int] = None, max_epochs: int = 200, patience: int = 15,
@@ -307,28 +283,6 @@ class MLP(Module):
         x = cat(new_x, 1)
 
         return self._layers(x).squeeze()
-
-    def loss(self, sample_weights: tensor, pred: tensor, y: tensor) -> tensor:
-        """
-        Calls the criterion and add elastic penalty
-
-        Args:
-            sample_weights: (N,) tensor with weights of samples on which we calculate loss
-            pred: (N, C) tensor if classification with C classes, (N,) tensor for regression
-            y: (N,) tensor with targets
-
-        Returns: tensor with loss value
-        """
-        # Computations of penalties
-        flatten_params = [w.view(-1, 1) for w in self.parameters()]
-        l1_penalty = mean(tensor([l1_loss(w, zeros_like(w)) for w in flatten_params]))
-        l2_penalty = mean(tensor([mse_loss(w, zeros_like(w)) for w in flatten_params]))
-
-        # Computation of loss without reduction
-        loss = self._criterion(pred, y.float())  # (N,) tensor
-
-        # Computation of loss reduction + elastic penalty
-        return (loss * sample_weights / sample_weights.sum()).sum() + self._alpha*l1_penalty + self._beta*l2_penalty
 
 
 class MLPBinaryClassifier(MLP):

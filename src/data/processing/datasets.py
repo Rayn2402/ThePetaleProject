@@ -4,7 +4,7 @@ Authors : Nicolas Raymond
 Files that contains class related to Datasets
 
 """
-
+import dgl
 from dgl import heterograph, DGLHeteroGraph
 from numpy import array, concatenate, where
 from pandas import DataFrame, Series
@@ -422,7 +422,10 @@ class PetaleStaticGNNDataset(PetaleDataset):
 
         # We initialize the graph attribute proper to GNNDataset class
         self._graph = self._build_graph()
-        print(self._graph.num_edges())
+
+    @property
+    def graph(self) -> dgl.DGLHeteroGraph:
+        return self._graph
 
     def _build_graph(self) -> DGLHeteroGraph:
         """
@@ -451,32 +454,5 @@ class PetaleStaticGNNDataset(PetaleDataset):
                                                                         tensor(edges_end).long())
         return heterograph(graph_structure)
 
-    def _update_nodes_data(self) -> None:
-        """
-        Update nodes numerical data
-
-        Returns: None
-        """
-        for i, c in enumerate(self.cont_cols):
-            self._graph.ndata[c] = self.x_cont[:, i]
-
     def get_metapaths(self) -> List[str]:
         return list(self.encodings.keys())
-
-    def update_masks(self, train_mask: List[int], test_mask: List[int],
-                     valid_mask: Optional[List[int]] = None) -> None:
-        """
-        Same function as CustomDataset parent to which we add graph data update
-
-        Args:
-            train_mask: list of idx to use for training
-            test_mask: list of idx to use for test
-            valid_mask: list of idx to use for validation
-
-        Returns: None
-        """
-        PetaleDataset.update_masks(self, train_mask, test_mask, valid_mask)
-
-        # If we are not initializing the dataset
-        if len(test_mask) != 0:
-            self._update_nodes_data()

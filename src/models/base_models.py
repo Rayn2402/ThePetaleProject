@@ -12,30 +12,37 @@ from src.data.processing.datasets import PetaleDataset
 from torch import tensor, is_tensor
 from torch import where as thwhere
 from torch import zeros as thzeros
-from typing import Optional, Union
+from typing import Any, Dict, Optional, Union
 
 
 class PetaleBinaryClassifier(ABC):
     """
     Skeleton of all Petale classification models
     """
-    def __init__(self, classification_threshold: float = 0.5, weight:  Optional[float] = None):
+    def __init__(self, classification_threshold: float = 0.5, weight:  Optional[float] = None,
+                 train_params: Optional[Dict[str, Any]] = None):
         """
         Sets the threshold for binary classification
 
         Args:
             classification_threshold: threshold used to classify a sample in class 1
             weight: weight attributed to class 1
+            train_params: training parameters proper to model for fit function
         """
         if weight is not None:
             assert 0 <= weight <= 1, "weight must be included in range [0, 1]"
 
         self._thresh = classification_threshold
+        self._train_params = train_params if train_params is not None else {}
         self._weight = weight
 
     @property
     def thresh(self) -> float:
         return self._thresh
+
+    @property
+    def train_params(self) -> Dict[str, Any]:
+        return self._train_params
 
     @property
     def weight(self) -> Optional[float]:
@@ -79,7 +86,7 @@ class PetaleBinaryClassifier(ABC):
         return sample_weights
 
     @abstractmethod
-    def fit(self, dataset: PetaleDataset, **kwargs) -> None:
+    def fit(self, dataset: PetaleDataset) -> None:
         """
         Fits the model to the training data
 
@@ -114,8 +121,21 @@ class PetaleRegressor(ABC):
     """
     Skeleton of all Petale regression models
     """
+    def __init__(self, train_params: Optional[Dict[str, Any]] = None):
+        """
+        Sets training parameters
+
+        Args:
+            train_params: training parameters proper to model for fit function
+        """
+        self._train_params = train_params if train_params is not None else {}
+
+    @property
+    def train_params(self) -> Dict[str, Any]:
+        return self._train_params
+
     @abstractmethod
-    def fit(self, dataset: PetaleDataset, **kwargs) -> None:
+    def fit(self, dataset: PetaleDataset) -> None:
         """
         Fits the model to the training data
 

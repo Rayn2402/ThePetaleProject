@@ -17,7 +17,8 @@ class PetaleTNC(PetaleBinaryClassifier):
     """
     def __init__(self, n_d: int = 8, n_a: int = 8, n_steps: int = 3, gamma: float = 1.3, lr: float = 0.1,
                  beta: float = 0, cat_idx: Optional[List[int]] = None, cat_sizes: Optional[List[int]] = None,
-                 cat_emb_sizes: Optional[List[int]] = None, device='cpu', verbose: bool = False,
+                 cat_emb_sizes: Optional[List[int]] = None, batch_size: int = 15, max_epochs: int = 200,
+                 patience: int = 15, device='cpu', verbose: bool = False,
                  classification_threshold: float = 0.5, weight: Optional[float] = None):
         """
         Creates a TabNet classifier and sets protected attributes using parent's constructor
@@ -26,7 +27,7 @@ class PetaleTNC(PetaleBinaryClassifier):
             n_d: Width of the decision prediction layer. Bigger values gives more capacity to the model
                  with the risk of overfitting. Values typically range from 8 to 64.
             n_a: Width of the attention embedding for each mask. According to the paper
-                 n_d=n_a is usually a good choice. (default=8)
+                 n_d=n_a is usually a good choice.
             n_steps: Number of steps in the architecture (usually between 3 and 10)
             gamma: This is the coefficient for feature reusage in the masks. A value close to 1 will make
                    mask selection least correlated between layers. Values range from 1.0 to 2.0.
@@ -35,6 +36,9 @@ class PetaleTNC(PetaleBinaryClassifier):
             cat_idx: List of categorical features indices.
             cat_sizes: List of categorical features number of modalities
             cat_emb_sizes: List of embeddings size for each categorical features.
+            batch_size: Number of examples per batch. Large batch sizes are recommended.
+            max_epochs: Maximum number of epochs for training.
+            patience: Number of consecutive epochs without improvement
             device: 'cpu' or 'gpu'
             verbose: True to show training loss progression
             classification_threshold: threshold used to classify a sample in class 1
@@ -49,9 +53,10 @@ class PetaleTNC(PetaleBinaryClassifier):
                                         verbose=int(verbose))
 
         # Call of parent's constructor
-        super().__init__(classification_threshold=classification_threshold, weight=weight)
+        super().__init__(classification_threshold=classification_threshold, weight=weight,
+                         train_params={'batch_size': batch_size, 'max_epochs': max_epochs, 'patience': patience})
 
-    def fit(self, dataset: PetaleDataset, **kwargs) -> None:
+    def fit(self, dataset: PetaleDataset) -> None:
         """
         Fits the model to the training data
 
@@ -60,9 +65,6 @@ class PetaleTNC(PetaleBinaryClassifier):
                      - x : (N,D) tensor or array with D-dimensional samples
                      - y : (N,) tensor or array with classification labels
                      - idx : (N,) tensor or array with idx of samples according to the whole dataset
-            **kwargs: 'batch_size': Number of examples per batch. Large batch sizes are recommended. (default =1024)
-                      'max_epochs': Maximum number of epochs for training. (default = 200)
-                      'patience': Number of consecutive epochs without improvement (default = 15)
 
         Returns: None
         """
@@ -76,7 +78,7 @@ class PetaleTNC(PetaleBinaryClassifier):
         # We get sample weights
         sample_weights = self.get_sample_weights(y_train)
 
-        self.__model.fit(x_train, y_train, weights=sample_weights, eval_set=eval_set, **kwargs)
+        self.__model.fit(x_train, y_train, weights=sample_weights, eval_set=eval_set, **self.train_params)
 
     def predict_proba(self, dataset: PetaleDataset) -> array:
         """
@@ -103,7 +105,8 @@ class PetaleTNR(PetaleRegressor):
 
     def __init__(self, n_d: int = 8, n_a: int = 8, n_steps: int = 3, gamma: float = 1.3, lr: float = 0.1,
                  beta: float = 0, cat_idxs: Optional[List[int]] = None, cat_dims: Optional[List[int]] = None,
-                 cat_emb_dim: Optional[List[int]] = None, device='cpu', verbose: bool = False):
+                 cat_emb_dim: Optional[List[int]] = None, batch_size: int = 15, max_epochs: int = 200,
+                 patience: int = 15, device='cpu', verbose: bool = False):
         """
         Creates a TabNet classifier and sets protected attributes using parent's constructor
 
@@ -111,7 +114,7 @@ class PetaleTNR(PetaleRegressor):
             n_d: Width of the decision prediction layer. Bigger values gives more capacity to the model
                  with the risk of overfitting. Values typically range from 8 to 64.
             n_a: Width of the attention embedding for each mask. According to the paper
-                 n_d=n_a is usually a good choice. (default=8)
+                 n_d=n_a is usually a good choice.
             n_steps: Number of steps in the architecture (usually between 3 and 10)
             gamma: This is the coefficient for feature reusage in the masks. A value close to 1 will make
                    mask selection least correlated between layers. Values range from 1.0 to 2.0.
@@ -120,6 +123,9 @@ class PetaleTNR(PetaleRegressor):
             cat_idxs: List of categorical features indices.
             cat_dims: List of categorical features number of modalities
             cat_emb_dim: List of embeddings size for each categorical features.
+            batch_size: Number of examples per batch. Large batch sizes are recommended.
+            max_epochs: Maximum number of epochs for training.
+            patience: Number of consecutive epochs without improvement
             device: 'cpu' or 'gpu'
             verbose: True to show training loss progression
         """
@@ -131,7 +137,9 @@ class PetaleTNR(PetaleRegressor):
                                       device_name=device, optimizer_params=dict(lr=lr, weight_decay=beta),
                                       verbose=int(verbose))
 
-    def fit(self, dataset: PetaleDataset, **kwargs) -> None:
+        super().__init__(train_params={'batch_size': batch_size, 'max_epochs': max_epochs, 'patience': patience})
+
+    def fit(self, dataset: PetaleDataset) -> None:
         """
         Fits the model to the training data
 
@@ -140,9 +148,6 @@ class PetaleTNR(PetaleRegressor):
                      - x : (N,D) tensor or array with D-dimensional samples
                      - y : (N,) tensor or array with classification labels
                      - idx : (N,) tensor or array with idx of samples according to the whole dataset
-            **kwargs: 'batch_size': Number of examples per batch. Large batch sizes are recommended. (default =1024)
-                      'max_epochs': Maximum number of epochs for training. (default = 200)
-                      'patience': Number of consecutive epochs without improvement (default = 15)
 
         Returns: None
         """
@@ -153,7 +158,7 @@ class PetaleTNR(PetaleRegressor):
             x_valid, y_valid, _ = dataset[dataset.valid_mask]
             eval_set = [(x_valid, y_valid.reshape(-1, 1))]
 
-        self._model.fit(x_train, y_train.reshape(-1, 1), eval_set=eval_set, **kwargs)
+        self._model.fit(x_train, y_train.reshape(-1, 1), eval_set=eval_set, **self.train_params)
 
     def predict(self, dataset: PetaleDataset) -> array:
         """

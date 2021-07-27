@@ -6,7 +6,7 @@ This file is used to store abstract class to use as wrappers for models with the
 from numpy import array
 from src.data.processing.datasets import PetaleDataset
 from src.models.base_models import PetaleBinaryClassifier, PetaleRegressor
-from typing import Callable, Optional
+from typing import Any, Callable, Dict, Optional
 
 
 class SklearnBinaryClassifierWrapper(PetaleBinaryClassifier):
@@ -14,7 +14,7 @@ class SklearnBinaryClassifierWrapper(PetaleBinaryClassifier):
     Class used as a wrapper for binary classifier with sklearn API
     """
     def __init__(self, model: Callable, classification_threshold: float = 0.5,
-                 weight: Optional[float] = None):
+                 weight: Optional[float] = None, train_params: Optional[Dict[str, Any]] = None):
 
         """
         Sets model protected attribute and other protected attributes via parent's constructor
@@ -23,11 +23,13 @@ class SklearnBinaryClassifierWrapper(PetaleBinaryClassifier):
             model: classification model with sklearn API
             classification_threshold: threshold used to classify a sample in class 1
             weight: weight attributed to class 1
+            train_params: training parameters proper to model for fit function
         """
         self._model = model
-        super().__init__(classification_threshold=classification_threshold, weight=weight)
+        super().__init__(classification_threshold=classification_threshold, weight=weight,
+                         train_params=train_params)
 
-    def fit(self, dataset: PetaleDataset, **kwargs) -> None:
+    def fit(self, dataset: PetaleDataset) -> None:
         """
         Fits the model to the training data
 
@@ -46,7 +48,7 @@ class SklearnBinaryClassifierWrapper(PetaleBinaryClassifier):
         sample_weights = self.get_sample_weights(y_train)
 
         # Call the fit method
-        self._model.fit(x_train, y_train, sample_weight=sample_weights, **kwargs)
+        self._model.fit(x_train, y_train, sample_weight=sample_weights, **self.train_params)
 
     def predict_proba(self, dataset: PetaleDataset) -> array:
         """
@@ -73,16 +75,18 @@ class SklearnRegressorWrapper(PetaleRegressor):
     """
     Class used as a wrapper for regression model with sklearn API
     """
-    def __init__(self, model: Callable):
+    def __init__(self, model: Callable, train_params: Optional[Dict[str, Any]] = None):
         """
         Sets the model protected attribute
 
         Args:
             model: regression model with sklearn API
+            train_params: training parameters proper to model for fit function
         """
         self._model = model
+        super().__init__(train_params=train_params)
 
-    def fit(self, dataset: PetaleDataset, **kwargs) -> None:
+    def fit(self, dataset: PetaleDataset) -> None:
         """
         Fits the model to the training data
 
@@ -97,7 +101,7 @@ class SklearnRegressorWrapper(PetaleRegressor):
         x_train, y_train, _ = dataset[dataset.train_mask]
 
         # Call the fit method
-        self._model.fit(x_train, y_train, **kwargs)
+        self._model.fit(x_train, y_train, **self.train_params)
 
     def predict(self, dataset: PetaleDataset) -> array:
         """

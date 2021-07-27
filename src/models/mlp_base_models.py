@@ -24,7 +24,7 @@ class MLP(TorchCustomModel):
     """
     def __init__(self, output_size: int, layers: List[int], activation: str,
                  criterion: Callable, criterion_name: str, eval_metric: Metric, dropout: float = 0,
-                 alpha: float = 0, beta: float = 0, lr: float = 0.05,  num_cont_col: Optional[int] = None,
+                 alpha: float = 0, beta: float = 0, num_cont_col: Optional[int] = None,
                  cat_idx: Optional[List[int]] = None, cat_sizes: Optional[List[int]] = None,
                  cat_emb_sizes: Optional[List[int]] = None, verbose: bool = False):
 
@@ -41,7 +41,6 @@ class MLP(TorchCustomModel):
             dropout: probability of dropout
             alpha: L1 penalty coefficient
             beta: L2 penalty coefficient
-            lr: learning rate
             num_cont_col: number of numerical continuous columns
                           (equal to number of class in the case of classification)
             cat_idx: idx of categorical columns in the dataset
@@ -59,7 +58,6 @@ class MLP(TorchCustomModel):
         self._cat_idx = cat_idx if cat_idx is not None else []
         self._cont_idx = [i for i in range(len(self._cat_idx) + num_cont_col) if i not in self._cat_idx]
         self._embedding_layers = None
-        self._lr = lr
 
         # We initialize the input_size
         input_size = num_cont_col if num_cont_col is not None else 0
@@ -195,7 +193,7 @@ class MLP(TorchCustomModel):
 
         return False
 
-    def fit(self, dataset: PetaleDataset, batch_size: int = 55,
+    def fit(self, dataset: PetaleDataset, lr: float, batch_size: int = 55,
             valid_batch_size: Optional[int] = None, max_epochs: int = 200, patience: int = 15,
             sample_weights: Optional[tensor] = None) -> None:
         """
@@ -203,6 +201,7 @@ class MLP(TorchCustomModel):
 
         Args:
             dataset: PetaleDataset used to feed data loaders
+            lr: learning rate
             batch_size: size of the batches in the training loader
             valid_batch_size: size of the batches in the valid loader (None = one single batch)
             max_epochs: Maximum number of epochs for training
@@ -236,7 +235,7 @@ class MLP(TorchCustomModel):
         update_progress = self._generate_progress_func(max_epochs)
 
         # We set the optimizer
-        self._optimizer = Adam(self.parameters(), lr=self._lr)
+        self._optimizer = Adam(self.parameters(), lr=lr)
 
         # We execute the epochs
         for epoch in range(max_epochs):
@@ -247,6 +246,8 @@ class MLP(TorchCustomModel):
 
             # We proceed to calculate valid mean epoch loss and apply early stopping if needed
             if self._execute_valid_step(valid_loader, early_stopper):
+                print(f"\nEarly stopping occurred at epoch {epoch} with best_epoch = {epoch - patience}"
+                      f" and best_val_{self._criterion_name} = {round(early_stopper.val_loss_min, 4)}")
                 break
 
         if early_stopping:
@@ -291,7 +292,7 @@ class MLPBinaryClassifier(MLP):
     """
     def __init__(self, layers: List[int], activation: str,
                  eval_metric: Optional[Metric] = None, dropout: float = 0,
-                 alpha: float = 0, beta: float = 0, lr: float = 0.05, num_cont_col: Optional[int] = None,
+                 alpha: float = 0, beta: float = 0, num_cont_col: Optional[int] = None,
                  cat_idx: Optional[List[int]] = None, cat_sizes: Optional[List[int]] = None,
                  cat_emb_sizes: Optional[List[int]] = None, verbose: bool = False):
         """
@@ -304,7 +305,6 @@ class MLPBinaryClassifier(MLP):
             dropout: probability of dropout
             alpha: L1 penalty coefficient
             beta: L2 penalty coefficient
-            lr: learning rate
             num_cont_col: number of numerical continuous columns
                           (equal to number of class in the case of classification)
             cat_idx: idx of categorical columns in the dataset
@@ -315,7 +315,7 @@ class MLPBinaryClassifier(MLP):
         super().__init__(output_size=1, layers=layers, activation=activation,
                          criterion=BCEWithLogitsLoss(reduction='none'), criterion_name='WBCE',
                          eval_metric=eval_metric, dropout=dropout, alpha=alpha, beta=beta,
-                         lr=lr, num_cont_col=num_cont_col, cat_idx=cat_idx, cat_sizes=cat_sizes,
+                         num_cont_col=num_cont_col, cat_idx=cat_idx, cat_sizes=cat_sizes,
                          cat_emb_sizes=cat_emb_sizes, verbose=verbose)
 
     def predict_proba(self, x: tensor) -> tensor:
@@ -341,7 +341,7 @@ class MLPRegressor(MLP):
     """
     def __init__(self, layers: List[int], activation: str,
                  eval_metric: Optional[Metric] = None, dropout: float = 0,
-                 alpha: float = 0, beta: float = 0, lr: float = 0.05, num_cont_col: Optional[int] = None,
+                 alpha: float = 0, beta: float = 0, num_cont_col: Optional[int] = None,
                  cat_idx: Optional[List[int]] = None, cat_sizes: Optional[List[int]] = None,
                  cat_emb_sizes: Optional[List[int]] = None, verbose: bool = False):
         """
@@ -365,7 +365,7 @@ class MLPRegressor(MLP):
         super().__init__(output_size=1, layers=layers, activation=activation,
                          criterion=MSELoss(reduction='none'), criterion_name='MSE',
                          eval_metric=eval_metric, dropout=dropout, alpha=alpha, beta=beta,
-                         lr=lr, num_cont_col=num_cont_col, cat_idx=cat_idx, cat_sizes=cat_sizes,
+                         num_cont_col=num_cont_col, cat_idx=cat_idx, cat_sizes=cat_sizes,
                          cat_emb_sizes=cat_emb_sizes, verbose=verbose)
 
     def predict(self, x: tensor) -> tensor:

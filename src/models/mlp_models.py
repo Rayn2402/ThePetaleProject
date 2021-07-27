@@ -17,10 +17,11 @@ class PetaleBinaryMLPC(PetaleBinaryClassifier):
     """
     def __init__(self, layers: List[int], activation: str,
                  eval_metric: Optional[BinaryClassificationMetric] = None, dropout: float = 0,
-                 alpha: float = 0, beta: float = 0, lr: float = 0.05, num_cont_col: Optional[int] = None,
-                 cat_idx: Optional[List[int]] = None, cat_sizes: Optional[List[int]] = None,
-                 cat_emb_sizes: Optional[List[int]] = None, verbose: bool = False,
-                 classification_threshold: float = 0.5, weight:  Optional[float] = None):
+                 alpha: float = 0, beta: float = 0, lr: float = 0.05, batch_size: int = 55,
+                 valid_batch_size: Optional[int] = None, max_epochs: int = 200, patience: int = 15,
+                 num_cont_col: Optional[int] = None, cat_idx: Optional[List[int]] = None,
+                 cat_sizes: Optional[List[int]] = None, cat_emb_sizes: Optional[List[int]] = None,
+                 verbose: bool = False, classification_threshold: float = 0.5, weight:  Optional[float] = None):
         """
         Build a binary classification MLP and sets protected attributes using parent's constructor
 
@@ -32,6 +33,10 @@ class PetaleBinaryMLPC(PetaleBinaryClassifier):
             alpha: L1 penalty coefficient
             beta: L2 penalty coefficient
             lr: learning rate
+            batch_size: size of the batches in the training loader
+            valid_batch_size: size of the batches in the valid loader (None = one single batch)
+            max_epochs: Maximum number of epochs for training
+            patience: Number of consecutive epochs without improvement
             num_cont_col: number of numerical continuous columns
                           (equal to number of class in the case of classification)
             cat_idx: idx of categorical columns in the dataset
@@ -41,13 +46,15 @@ class PetaleBinaryMLPC(PetaleBinaryClassifier):
             weight: weight attributed to class 1
         """
         self.__model = MLPBinaryClassifier(layers=layers, activation=activation, eval_metric=eval_metric,
-                                           dropout=dropout, alpha=alpha, beta=beta, lr=lr, num_cont_col=num_cont_col,
+                                           dropout=dropout, alpha=alpha, beta=beta, num_cont_col=num_cont_col,
                                            cat_idx=cat_idx, cat_sizes=cat_sizes, cat_emb_sizes=cat_emb_sizes,
                                            verbose=verbose)
 
-        super().__init__(classification_threshold=classification_threshold, weight=weight)
+        super().__init__(classification_threshold=classification_threshold, weight=weight,
+                         train_params={'lr': lr, 'batch_size': batch_size, 'valid_batch_size': valid_batch_size,
+                                       'patience': patience, 'max_epochs': max_epochs})
 
-    def fit(self, dataset: PetaleDataset, **kwargs) -> None:
+    def fit(self, dataset: PetaleDataset) -> None:
         """
         Fits the model to the training data
 
@@ -56,11 +63,6 @@ class PetaleBinaryMLPC(PetaleBinaryClassifier):
                      - x : (N,D) tensor or array with D-dimensional samples
                      - y : (N,) tensor or array with classification labels
                      - idx : (N,) tensor or array with idx of samples according to the whole dataset
-            kwargs:
-                batch_size: int = 55,
-                valid_batch_size: Optional[int] = None
-                max_epochs: int = 200,
-                patience: int = 15
 
         Returns: None
         """
@@ -69,7 +71,7 @@ class PetaleBinaryMLPC(PetaleBinaryClassifier):
         sample_weights = self.get_sample_weights(y)
 
         # We run MLP fit method
-        self.__model.fit(dataset, sample_weights=sample_weights, **kwargs)
+        self.__model.fit(dataset, sample_weights=sample_weights, **self.train_params)
 
     def predict_proba(self, dataset: PetaleDataset) -> tensor:
         """
@@ -96,7 +98,8 @@ class PetaleMLPR(PetaleRegressor):
     """
     def __init__(self, layers: List[int], activation: str, eval_metric: Optional[Metric] = None,
                  dropout: float = 0, alpha: float = 0, beta: float = 0, lr: float = 0.05,
-                 num_cont_col: Optional[int] = None, cat_idx: Optional[List[int]] = None,
+                 batch_size: int = 55, valid_batch_size: Optional[int] = None, max_epochs: int = 200,
+                 patience: int = 15, num_cont_col: Optional[int] = None, cat_idx: Optional[List[int]] = None,
                  cat_sizes: Optional[List[int]] = None, cat_emb_sizes: Optional[List[int]] = None,
                  verbose: bool = False):
         """
@@ -110,6 +113,10 @@ class PetaleMLPR(PetaleRegressor):
             alpha: L1 penalty coefficient
             beta: L2 penalty coefficient
             lr: learning rate
+            batch_size: size of the batches in the training loader
+            valid_batch_size: size of the batches in the valid loader (None = one single batch)
+            max_epochs: Maximum number of epochs for training
+            patience: Number of consecutive epochs without improvement
             num_cont_col: number of numerical continuous columns
                           (equal to number of class in the case of classification)
             cat_idx: idx of categorical columns in the dataset
@@ -119,26 +126,25 @@ class PetaleMLPR(PetaleRegressor):
         # Creation of the model
         self.__model = MLPRegressor(layers=layers, activation=activation,
                                     eval_metric=eval_metric, dropout=dropout, alpha=alpha, beta=beta,
-                                    lr=lr, num_cont_col=num_cont_col, cat_idx=cat_idx, cat_sizes=cat_sizes,
+                                    num_cont_col=num_cont_col, cat_idx=cat_idx, cat_sizes=cat_sizes,
                                     cat_emb_sizes=cat_emb_sizes, verbose=verbose)
+        # Call of parent's constructor
+        super().__init__(train_params={'lr': lr, 'batch_size': batch_size, 'valid_batch_size': valid_batch_size,
+                                       'patience': patience, 'max_epochs': max_epochs})
 
-    def fit(self, dataset: PetaleDataset, **kwargs) -> None:
+    def fit(self, dataset: PetaleDataset) -> None:
         """
         Fits the model to the training data
 
         Args:
-            dataset: PetaleDatasets which items are tuples (x, y) where
-                     - x : (N,D) tensor with D-dimensional samples
-                     - y : (N,) tensor with classification labels
-            kwargs:
-                batch_size: int = 55,
-                valid_batch_size: Optional[int] = None
-                max_epochs: int = 200,
-                patience: int = 15
+            dataset: PetaleDatasets which items are tuples (x, y, idx) where
+                     - x : (N,D) tensor or array with D-dimensional samples
+                     - y : (N,) tensor or array with classification labels
+                     - idx : (N,) tensor or array with idx of samples according to the whole dataset
 
         Returns: None
         """
-        self.__model.fit(dataset, **kwargs)
+        self.__model.fit(dataset, **self.train_params)
 
     def predict(self, dataset: PetaleDataset) -> tensor:
         """

@@ -36,8 +36,8 @@ if __name__ == '__main__':
     warmup_tensor_dataset.update_masks(train_mask=train_mask, valid_mask=valid_mask, test_mask=test_mask)
 
     # Extraction of test data
-    x_test_n, y_test_n, _ = warmup_numpy_dataset[test_mask]
-    x_test_t, y_test_t, _ = warmup_tensor_dataset[test_mask]
+    _, y_test_n, _ = warmup_numpy_dataset[test_mask]
+    _, y_test_t, _ = warmup_tensor_dataset[test_mask]
 
     # Metrics
     metrics = [AbsoluteError(), Pearson(), RootMeanSquaredError()]
@@ -47,7 +47,7 @@ if __name__ == '__main__':
     """
     petale_rfr = PetaleRFR(n_estimators=500, max_samples=0.8)
     petale_rfr.fit(warmup_numpy_dataset)
-    pred = petale_rfr.predict(x_test_n)
+    pred = petale_rfr.predict(warmup_numpy_dataset)
     print("Random Forest Regressor :")
     for m in metrics:
         print(f"\t{m.name} : {m(pred, y_test_n)}")
@@ -57,7 +57,7 @@ if __name__ == '__main__':
     """
     petale_xgbr = PetaleXGBR(subsample=0.8, max_depth=8)
     petale_xgbr.fit(warmup_numpy_dataset)
-    pred = petale_xgbr.predict(x_test_n)
+    pred = petale_xgbr.predict(warmup_numpy_dataset)
     print("XGBoost Regressor :")
     for m in metrics:
         print(f"\t{m.name} : {m(pred, y_test_n)}")
@@ -67,7 +67,7 @@ if __name__ == '__main__':
     """
     petale_tnr = PetaleTNR(device='cpu', lr=0.01, n_steps=5, n_d=8, n_a=8, gamma=1.5)
     petale_tnr.fit(warmup_numpy_dataset, max_epochs=300, patience=50, batch_size=30)
-    pred = petale_tnr.predict(x_test_n)
+    pred = petale_tnr.predict(warmup_numpy_dataset)
     print("TabNet Regressor :")
     for m in metrics:
         print(f"\t{m.name} : {m(pred, y_test_n)}")
@@ -78,7 +78,7 @@ if __name__ == '__main__':
     petale_mlpr = PetaleMLPR(layers=[], activation="ReLU", alpha=0, beta=0, lr=0.05,
                              num_cont_col=len(cont_cols))
     petale_mlpr.fit(dataset=warmup_tensor_dataset, patience=250, max_epochs=1500)
-    pred = petale_mlpr.predict(x_test_t)
+    pred = petale_mlpr.predict(warmup_tensor_dataset)
     print("MLP Regressor :")
     for m in metrics:
         print(f"\t{m.name} : {m(pred, y_test_t)}")

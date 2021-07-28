@@ -49,7 +49,7 @@ class TorchBinaryClassifierWrapper(PetaleBinaryClassifier):
         sample_weights = self.get_sample_weights(y_train)
 
         # Call the fit method
-        self._model.fit(dataset, sample_weight=sample_weights, **self.train_params)
+        self._model.fit(dataset, sample_weights=sample_weights, **self.train_params)
 
     def predict_proba(self, dataset: PetaleDataset) -> tensor:
         """

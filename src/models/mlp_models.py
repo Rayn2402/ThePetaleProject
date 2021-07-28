@@ -3,15 +3,13 @@ Author: Nicolas Raymond
 
 This file is use to store the regression and classification wrappers for MLP base model
 """
-from src.data.processing.datasets import PetaleDataset
-from src.models.base_models import PetaleBinaryClassifier, PetaleRegressor
 from src.models.mlp_base_models import MLPBinaryClassifier, MLPRegressor
+from src.models.torch_wrappers import TorchBinaryClassifierWrapper, TorchRegressorWrapper
 from src.utils.score_metrics import Metric, BinaryClassificationMetric
-from torch import tensor
 from typing import List, Optional
 
 
-class PetaleBinaryMLPC(PetaleBinaryClassifier):
+class PetaleBinaryMLPC(TorchBinaryClassifierWrapper):
     """
     Multilayer perceptron classification model with entity embedding
     """
@@ -45,54 +43,18 @@ class PetaleBinaryMLPC(PetaleBinaryClassifier):
             classification_threshold: threshold used to classify a sample in class 1
             weight: weight attributed to class 1
         """
-        self.__model = MLPBinaryClassifier(layers=layers, activation=activation, eval_metric=eval_metric,
-                                           dropout=dropout, alpha=alpha, beta=beta, num_cont_col=num_cont_col,
-                                           cat_idx=cat_idx, cat_sizes=cat_sizes, cat_emb_sizes=cat_emb_sizes,
-                                           verbose=verbose)
+        # Model creation
+        model = MLPBinaryClassifier(layers=layers, activation=activation, eval_metric=eval_metric,
+                                    dropout=dropout, alpha=alpha, beta=beta, num_cont_col=num_cont_col,
+                                    cat_idx=cat_idx, cat_sizes=cat_sizes, cat_emb_sizes=cat_emb_sizes,
+                                    verbose=verbose)
 
-        super().__init__(classification_threshold=classification_threshold, weight=weight,
+        super().__init__(model=model, classification_threshold=classification_threshold, weight=weight,
                          train_params={'lr': lr, 'batch_size': batch_size, 'valid_batch_size': valid_batch_size,
                                        'patience': patience, 'max_epochs': max_epochs})
 
-    def fit(self, dataset: PetaleDataset) -> None:
-        """
-        Fits the model to the training data
 
-        Args:
-            dataset: PetaleDatasets which items are tuples (x, y, idx) where
-                     - x : (N,D) tensor or array with D-dimensional samples
-                     - y : (N,) tensor or array with classification labels
-                     - idx : (N,) tensor or array with idx of samples according to the whole dataset
-
-        Returns: None
-        """
-        # We extract sample weights
-        _, y, _ = dataset[list(range(len(dataset)))]
-        sample_weights = self.get_sample_weights(y)
-
-        # We run MLP fit method
-        self.__model.fit(dataset, sample_weights=sample_weights, **self.train_params)
-
-    def predict_proba(self, dataset: PetaleDataset) -> tensor:
-        """
-        Returns the probabilities of being in class 1 for all samples
-        in the test set
-
-        Args:
-            dataset: PetaleDatasets which items are tuples (x, y, idx) where
-                     - x : (N,D) tensor or array with D-dimensional samples
-                     - y : (N,) tensor or array with classification labels
-                     - idx : (N,) tensor or array with idx of samples according to the whole dataset
-
-        Returns: (N,) tensor
-        """
-        # We extract test set
-        x_test, _, _ = dataset[dataset.test_mask]
-
-        return self.__model.predict_proba(x_test)
-
-
-class PetaleMLPR(PetaleRegressor):
+class PetaleMLPR(TorchRegressorWrapper):
     """
     Class used as a wrapper for MLP regression model
     """
@@ -124,42 +86,13 @@ class PetaleMLPR(PetaleRegressor):
             cat_emb_sizes: list of integer representing the size of each categorical embedding
         """
         # Creation of the model
-        self.__model = MLPRegressor(layers=layers, activation=activation,
-                                    eval_metric=eval_metric, dropout=dropout, alpha=alpha, beta=beta,
-                                    num_cont_col=num_cont_col, cat_idx=cat_idx, cat_sizes=cat_sizes,
-                                    cat_emb_sizes=cat_emb_sizes, verbose=verbose)
+        model = MLPRegressor(layers=layers, activation=activation,
+                             eval_metric=eval_metric, dropout=dropout, alpha=alpha, beta=beta,
+                             num_cont_col=num_cont_col, cat_idx=cat_idx, cat_sizes=cat_sizes,
+                             cat_emb_sizes=cat_emb_sizes, verbose=verbose)
+
         # Call of parent's constructor
-        super().__init__(train_params={'lr': lr, 'batch_size': batch_size, 'valid_batch_size': valid_batch_size,
+        super().__init__(model=model,
+                         train_params={'lr': lr, 'batch_size': batch_size, 'valid_batch_size': valid_batch_size,
                                        'patience': patience, 'max_epochs': max_epochs})
-
-    def fit(self, dataset: PetaleDataset) -> None:
-        """
-        Fits the model to the training data
-
-        Args:
-            dataset: PetaleDatasets which items are tuples (x, y, idx) where
-                     - x : (N,D) tensor or array with D-dimensional samples
-                     - y : (N,) tensor or array with classification labels
-                     - idx : (N,) tensor or array with idx of samples according to the whole dataset
-
-        Returns: None
-        """
-        self.__model.fit(dataset, **self.train_params)
-
-    def predict(self, dataset: PetaleDataset) -> tensor:
-        """
-        Returns the predicted real-valued targets for all samples in the test set
-
-        Args:
-            dataset: PetaleDatasets which items are tuples (x, y, idx) where
-                     - x : (N,D) tensor or array with D-dimensional samples
-                     - y : (N,) tensor or array with classification labels
-                     - idx : (N,) tensor or array with idx of samples according to the whole dataset
-
-        Returns: (N,) tensor
-        """
-        # We extract test set
-        x_test, _, _ = dataset[dataset.test_mask]
-
-        return self.__model.predict(x_test)
 

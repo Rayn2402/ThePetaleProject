@@ -13,8 +13,7 @@ from src.utils.score_metrics import Metric, BalancedAccuracyEntropyRatio, RootMe
 from torch import cat, nn, no_grad, tensor, ones, sigmoid
 from torch.nn import ModuleList, Embedding,\
     Linear, BatchNorm1d, Dropout, Sequential, BCEWithLogitsLoss, MSELoss
-from torch.optim import Adam
-from torch.utils.data import DataLoader, SubsetRandomSampler
+from torch.utils.data import DataLoader
 from typing import Callable, List, Optional
 
 
@@ -96,12 +95,12 @@ class MLP(TorchCustomModel):
         # We save all our layers in self.layers
         self._layers = Sequential(*all_layers)
 
-    def _execute_train_step(self, train_loader: DataLoader, sample_weights: tensor) -> float:
+    def _execute_train_step(self, train_data: DataLoader, sample_weights: tensor) -> float:
         """
         Executes one training epoch
 
         Args:
-            train_loader: training data loader
+            train_data: training data loader
             sample_weights: weights of the samples in the loss
 
         Returns: mean epoch loss
@@ -111,7 +110,7 @@ class MLP(TorchCustomModel):
         epoch_loss, epoch_score = 0, 0
 
         # We execute one training step
-        for item in train_loader:
+        for item in train_data:
 
             # We extract the data
             x, y, idx = item
@@ -135,7 +134,7 @@ class MLP(TorchCustomModel):
             self._optimizer.step()
 
         # We save mean epoch loss and mean epoch score
-        nb_batch = len(train_loader)
+        nb_batch = len(train_data)
         mean_epoch_loss = epoch_loss/nb_batch
         self._evaluations["train"][self._criterion_name].append(mean_epoch_loss)
         self._evaluations["train"][self._eval_metric.name].append(epoch_score/nb_batch)
@@ -188,70 +187,9 @@ class MLP(TorchCustomModel):
         early_stopper(epoch_loss, self)
 
         if early_stopper.early_stop:
-            self.load_state_dict(early_stopper.get_best_params())
             return True
 
         return False
-
-    def fit(self, dataset: PetaleDataset, lr: float, batch_size: int = 55,
-            valid_batch_size: Optional[int] = None, max_epochs: int = 200, patience: int = 15,
-            sample_weights: Optional[tensor] = None) -> None:
-        """
-        Fits the model to the training data
-
-        Args:
-            dataset: PetaleDataset used to feed data loaders
-            lr: learning rate
-            batch_size: size of the batches in the training loader
-            valid_batch_size: size of the batches in the valid loader (None = one single batch)
-            max_epochs: Maximum number of epochs for training
-            patience: Number of consecutive epochs without improvement
-            sample_weights: (N,) tensor with weights of the samples in the training set
-
-        Returns: None
-        """
-        # We check the validity of the samples' weights
-        dataset_size = len(dataset)
-        if sample_weights is not None:
-            assert(sample_weights.shape[0] == dataset_size), f"Sample weights as length {sample_weights.shape[0]}" \
-                                                              f" while dataset as length {dataset_size}"
-        else:
-            sample_weights = ones(dataset_size)/dataset_size
-
-        # We create the training data loader
-        train_loader = DataLoader(dataset, batch_size=min(len(dataset.train_mask), batch_size),
-                                  sampler=SubsetRandomSampler(dataset.train_mask))
-
-        # We create the valid data loader
-        valid_size, valid_loader, = len(dataset.valid_mask), None
-        early_stopper, early_stopping = None, False
-        if valid_size != 0:
-            valid_bs = valid_batch_size if valid_batch_size is not None else valid_size
-            valid_loader = DataLoader(dataset, batch_size=min(valid_size, valid_bs),
-                                      sampler=SubsetRandomSampler(dataset.valid_mask))
-            early_stopper, early_stopping = EarlyStopper(patience), True
-
-        # We init the update function
-        update_progress = self._generate_progress_func(max_epochs)
-
-        # We set the optimizer
-        self._optimizer = Adam(self.parameters(), lr=lr)
-
-        # We execute the epochs
-        for epoch in range(max_epochs):
-
-            # We calculate training mean epoch loss on all batches
-            mean_epoch_loss = self._execute_train_step(train_loader, sample_weights)
-            update_progress(epoch, mean_epoch_loss)
-
-            # We proceed to calculate valid mean epoch loss and apply early stopping if needed
-            if self._execute_valid_step(valid_loader, early_stopper):
-                print(f"\nEarly stopping occurred at epoch {epoch} with best_epoch = {epoch - patience}"
-                      f" and best_val_{self._criterion_name} = {round(early_stopper.val_loss_min, 4)}")
-                break
-
-        if early_stopping:
-            early_stopper.remove_checkpoint()
 
     def forward(self, x: tensor) -> tensor:
         """

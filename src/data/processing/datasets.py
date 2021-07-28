@@ -4,8 +4,8 @@ Authors : Nicolas Raymond
 Files that contains class related to Datasets
 
 """
-import dgl
-from dgl import heterograph, DGLHeteroGraph
+
+from dgl import heterograph, DGLHeteroGraph, node_subgraph
 from numpy import array, concatenate, where
 from pandas import DataFrame, Series
 from src.data.extraction.constants import *
@@ -424,8 +424,37 @@ class PetaleStaticGNNDataset(PetaleDataset):
         self._graph = self._build_graph()
 
     @property
-    def graph(self) -> dgl.DGLHeteroGraph:
+    def graph(self) -> DGLHeteroGraph:
         return self._graph
+
+    def get_subgraph(self, idx: List[int]) -> DGLHeteroGraph:
+        """
+        Returns heterogeneous subgraph with only nodes associated to idx in the list
+
+        Args:
+            idx: list of idx such as masks
+
+        Returns: heterogeneous graph
+        """
+        return node_subgraph(self.graph, nodes=idx, store_ids=True)
+
+    def get_train_subgraph(self) -> DGLHeteroGraph:
+        """
+        Returns subgraph associated to training set
+        """
+        return self.get_subgraph(idx=self.train_mask)
+
+    def get_valid_subgraph(self) -> DGLHeteroGraph:
+        """
+        Returns subgraph associated to validation
+        """
+        return self.get_subgraph(idx=(self.train_mask + self.valid_mask))
+
+    def get_test_subgraph(self) -> DGLHeteroGraph:
+        """
+        Returns subgraph associated to test
+        """
+        return self.get_subgraph(idx=(self.train_mask + self.test_mask))
 
     def _build_graph(self) -> DGLHeteroGraph:
         """
@@ -454,5 +483,5 @@ class PetaleStaticGNNDataset(PetaleDataset):
                                                                         tensor(edges_end).long())
         return heterograph(graph_structure)
 
-    def get_metapaths(self) -> List[str]:
-        return list(self.encodings.keys())
+    def get_metapaths(self) -> List[List[str]]:
+        return [[key] for key in self.encodings.keys()]

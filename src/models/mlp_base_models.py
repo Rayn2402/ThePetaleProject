@@ -318,21 +318,27 @@ class MLPBinaryClassifier(MLP):
                          num_cont_col=num_cont_col, cat_idx=cat_idx, cat_sizes=cat_sizes,
                          cat_emb_sizes=cat_emb_sizes, verbose=verbose)
 
-    def predict_proba(self, x: tensor) -> tensor:
+    def predict_proba(self, dataset: PetaleDataset) -> tensor:
         """
-        Predict classes' probabilities for all samples
+        Returns the probabilities of being in class 1 for all samples in the test set
 
         Args:
-            x: (N,D) tensor with D-dimensional samples
+            dataset: PetaleDatasets which items are tuples (x, y, idx) where
+                     - x : (N,D) tensor or array with D-dimensional samples
+                     - y : (N,) tensor or array with classification labels
+                     - idx : (N,) tensor or array with idx of samples according to the whole dataset
 
-
-        Returns: (N, C) tensor where C is the number of classes
+        Returns: (N,) array
         """
+        # Extraction of test set
+        x_test, _, _ = dataset[dataset.test_mask]
+
         # Set model for evaluation
         self.eval()
 
         # Execute a forward pass and apply a softmax
-        return sigmoid(self(x))
+        with no_grad():
+            return sigmoid(self(x_test))
 
 
 class MLPRegressor(MLP):
@@ -368,17 +374,24 @@ class MLPRegressor(MLP):
                          num_cont_col=num_cont_col, cat_idx=cat_idx, cat_sizes=cat_sizes,
                          cat_emb_sizes=cat_emb_sizes, verbose=verbose)
 
-    def predict(self, x: tensor) -> tensor:
+    def predict(self, dataset: PetaleDataset) -> tensor:
         """
-        Returns the predicted real-valued targets for all samples
+        Returns the predicted real-valued targets for all samples in the test set
 
         Args:
-            x: (N,D) tensor or array with D-dimensional samples
+            dataset: PetaleDatasets which items are tuples (x, y, idx) where
+                     - x : (N,D) tensor or array with D-dimensional samples
+                     - y : (N,) tensor or array with classification labels
+                     - idx : (N,) tensor or array with idx of samples according to the whole dataset
 
-        Returns: (N,) tensor or array
+        Returns: (N,) array
         """
+        # Extraction of test set
+        x_test, _, _ = dataset[dataset.test_mask]
+
         # Set model for evaluation
         self.eval()
 
         # Execute a forward pass and apply a softmax
-        return self(x)
+        with no_grad():
+            return self(x_test)

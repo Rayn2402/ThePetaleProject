@@ -417,6 +417,9 @@ class PetaleStaticGNNDataset(PetaleDataset):
             classification: True for classification task, False for regression
 
         """
+        # Sets train, valid and test subgraphs data to default value
+        self._subgraphs = {'train': tuple(), 'valid': tuple(), 'test': tuple()}
+
         # We use the _init_ of the parent class CustomDataset
         super().__init__(df, target, cont_cols, cat_cols, classification, to_tensor=True)
 
@@ -427,7 +430,19 @@ class PetaleStaticGNNDataset(PetaleDataset):
     def graph(self) -> DGLHeteroGraph:
         return self._graph
 
-    def get_subgraph(self, idx: List[int]) -> DGLHeteroGraph:
+    @property
+    def train_subgraph(self) -> Tuple[DGLHeteroGraph, List[int], Dict[int, int]]:
+        return self._subgraphs['train']
+
+    @property
+    def test_subgraph(self) -> Tuple[DGLHeteroGraph, List[int], Dict[int, int]]:
+        return self._subgraphs['test']
+
+    @property
+    def valid_subgraph(self) -> Tuple[DGLHeteroGraph, List[int], Dict[int, int]]:
+        return self._subgraphs['valid']
+
+    def extract_subgraph_from_graph(self, idx: List[int]) -> DGLHeteroGraph:
         """
         Returns heterogeneous subgraph with only nodes associated to idx in the list
 
@@ -437,24 +452,6 @@ class PetaleStaticGNNDataset(PetaleDataset):
         Returns: heterogeneous graph
         """
         return node_subgraph(self.graph, nodes=idx, store_ids=True)
-
-    def get_train_subgraph(self) -> DGLHeteroGraph:
-        """
-        Returns subgraph associated to training set
-        """
-        return self.get_subgraph(idx=self.train_mask)
-
-    def get_valid_subgraph(self) -> DGLHeteroGraph:
-        """
-        Returns subgraph associated to validation
-        """
-        return self.get_subgraph(idx=(self.train_mask + self.valid_mask))
-
-    def get_test_subgraph(self) -> DGLHeteroGraph:
-        """
-        Returns subgraph associated to test
-        """
-        return self.get_subgraph(idx=(self.train_mask + self.test_mask))
 
     def _build_graph(self) -> DGLHeteroGraph:
         """
@@ -483,5 +480,43 @@ class PetaleStaticGNNDataset(PetaleDataset):
                                                                         tensor(edges_end).long())
         return heterograph(graph_structure)
 
+    def _set_subgraphs_data(self) -> None:
+        """
+        Sets subgraphs data after masks update.
+        """
+        # Set the subgraph associated to training set and a map matching each training
+        # index to its physical position in the train mask
+        self._subgraphs['train'] = (self.extract_subgraph_from_graph(idx=self.train_mask),
+                                    self.train_mask, {v: i for i, v in enumerate(self.train_mask)})
+
+        # Set the subgraph associated to test and a map matching each test
+        # index to its physical position in the train + test mask
+        train_test_mask = self.train_mask + self.test_mask
+        self._subgraphs['test'] = (self.extract_subgraph_from_graph(idx=train_test_mask),
+                                   train_test_mask, {v: i for i, v in enumerate(train_test_mask)})
+
+        if len(self.valid_mask) != 0:
+            # Set the subgraph associated to validation and a map matching each valid
+            # index to its physical position in the train + valid mask
+            train_valid_mask = self.train_mask + self.valid_mask
+            self._subgraphs['valid'] = (self.extract_subgraph_from_graph(idx=train_valid_mask),
+                                        train_valid_mask, {v: i for i, v in enumerate(train_valid_mask)})
+
     def get_metapaths(self) -> List[List[str]]:
         return [[key] for key in self.encodings.keys()]
+
+    def update_masks(self, train_mask: List[int], test_mask: List[int],
+                     valid_mask: Optional[List[int]] = None) -> None:
+        """
+        First, updates the train, valid and test masks and preprocess the data available
+        according to the current statistics of the training data.
+
+        Second, updates train, valid and test subgraph and idx map.
+
+        """
+        # We first update masks as usual for datasets
+        PetaleDataset.update_masks(self, train_mask, test_mask, valid_mask)
+
+        # If we are not calling update_masks for initialization purpose
+        if len(test_mask) != 0:
+            self._set_subgraphs_data()

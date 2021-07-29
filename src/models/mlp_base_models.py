@@ -298,7 +298,6 @@ class MLPRegressor(MLP):
             dropout: probability of dropout
             alpha: L1 penalty coefficient
             beta: L2 penalty coefficient
-            lr: learning rate
             num_cont_col: number of numerical continuous columns
                           (equal to number of class in the case of classification)
             cat_idx: idx of categorical columns in the dataset

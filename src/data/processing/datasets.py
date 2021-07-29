@@ -442,17 +442,6 @@ class PetaleStaticGNNDataset(PetaleDataset):
     def valid_subgraph(self) -> Tuple[DGLHeteroGraph, List[int], Dict[int, int]]:
         return self._subgraphs['valid']
 
-    def extract_subgraph_from_graph(self, idx: List[int]) -> DGLHeteroGraph:
-        """
-        Returns heterogeneous subgraph with only nodes associated to idx in the list
-
-        Args:
-            idx: list of idx such as masks
-
-        Returns: heterogeneous graph
-        """
-        return node_subgraph(self.graph, nodes=idx, store_ids=True)
-
     def _build_graph(self) -> DGLHeteroGraph:
         """
         Builds the graph structures
@@ -486,21 +475,31 @@ class PetaleStaticGNNDataset(PetaleDataset):
         """
         # Set the subgraph associated to training set and a map matching each training
         # index to its physical position in the train mask
-        self._subgraphs['train'] = (self.extract_subgraph_from_graph(idx=self.train_mask),
-                                    self.train_mask, {v: i for i, v in enumerate(self.train_mask)})
+        self._subgraphs['train'] = (*self.get_arbitrary_subgraph(idx=self.train_mask), self.train_mask)
 
         # Set the subgraph associated to test and a map matching each test
         # index to its physical position in the train + test mask
         train_test_mask = self.train_mask + self.test_mask
-        self._subgraphs['test'] = (self.extract_subgraph_from_graph(idx=train_test_mask),
-                                   train_test_mask, {v: i for i, v in enumerate(train_test_mask)})
+        self._subgraphs['test'] = (*self.get_arbitrary_subgraph(idx=train_test_mask), train_test_mask)
 
         if len(self.valid_mask) != 0:
             # Set the subgraph associated to validation and a map matching each valid
             # index to its physical position in the train + valid mask
             train_valid_mask = self.train_mask + self.valid_mask
-            self._subgraphs['valid'] = (self.extract_subgraph_from_graph(idx=train_valid_mask),
-                                        train_valid_mask, {v: i for i, v in enumerate(train_valid_mask)})
+            self._subgraphs['valid'] = (*self.get_arbitrary_subgraph(idx=train_valid_mask), train_valid_mask)
+
+    def get_arbitrary_subgraph(self, idx: List[int]) -> Tuple[DGLHeteroGraph, Dict[int, int]]:
+        """
+        Returns
+        1 - heterogeneous subgraph with only nodes associated to idx in the list
+        2-  dictionary mapping each idx to each position in the list
+
+        Args:
+            idx: list of idx such as masks
+
+        Returns: heterogeneous graph
+        """
+        return node_subgraph(self.graph, nodes=idx, store_ids=True), {v: i for i, v in enumerate(idx)}
 
     def get_metapaths(self) -> List[List[str]]:
         return [[key] for key in self.encodings.keys()]

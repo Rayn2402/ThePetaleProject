@@ -139,30 +139,30 @@ class TorchCustomModel(Module, ABC):
 
     @staticmethod
     def _create_train_objects(dataset: PetaleDataset, batch_size: int
-                              ) -> Union[DataLoader, Tuple[DataLoader, DGLHeteroGraph]]:
+                              ) -> Union[DataLoader, Tuple[DataLoader, PetaleStaticGNNDataset]]:
         """
-        Creates objects proper to training (train dataloader and train graph)
+        Creates objects proper to training
         Args:
             dataset: PetaleDataset used to feed data loaders
             batch_size: size of the batches in the train loader
 
-        Returns: train loader, DGLHeterograph
+        Returns: train loader, PetaleDataset
 
         """
         # Creation of training loader
         train_data = DataLoader(dataset, batch_size=min(len(dataset.train_mask), batch_size),
                                 sampler=SubsetRandomSampler(dataset.train_mask))
 
-        # If the dataset is a GNN dataset, we include the train subgraph into train data
+        # If the dataset is a GNN dataset, we include it into train data
         if isinstance(dataset, PetaleStaticGNNDataset):
-            train_data = (train_data, dataset.get_train_subgraph())
+            train_data = (train_data, dataset)
 
         return train_data
 
     @staticmethod
     def _create_validation_objects(dataset: PetaleDataset, valid_batch_size: Optional[int], patience: int
                                    ) -> Tuple[Optional[EarlyStopper],
-                                              Optional[Union[DataLoader, Tuple[DataLoader, DGLHeteroGraph]]]]:
+                                              Optional[Union[DataLoader, Tuple[DataLoader, PetaleStaticGNNDataset]]]]:
         """
         Creates the object used for validation during the training
 
@@ -171,7 +171,7 @@ class TorchCustomModel(Module, ABC):
             valid_batch_size: size of the batches in the valid loader (None = one single batch)
             patience: Number of consecutive epochs without improvement
 
-        Returns: early stopper, (Dataloader, DGLHeteroGraph)
+        Returns: early stopper, (Dataloader, PetaleDataset)
 
         """
         # We create the valid data loader
@@ -188,9 +188,9 @@ class TorchCustomModel(Module, ABC):
             valid_data = DataLoader(dataset, batch_size=valid_bs, sampler=SubsetRandomSampler(dataset.valid_mask))
             early_stopper = EarlyStopper(patience)
 
-            # If the dataset is a GNN dataset, we include the valid subgraph into valid data
+            # If the dataset is a GNN dataset, we include it into train data
             if isinstance(dataset, PetaleStaticGNNDataset):
-                valid_data = (valid_data, dataset.get_valid_subgraph())
+                valid_data = (valid_data, dataset)
 
         return early_stopper, valid_data
 
@@ -217,13 +217,13 @@ class TorchCustomModel(Module, ABC):
         return sample_weights
 
     @abstractmethod
-    def _execute_train_step(self, train_data: Union[DataLoader, Tuple[DataLoader, DGLHeteroGraph]],
+    def _execute_train_step(self, train_data: Union[DataLoader, Tuple[DataLoader, PetaleStaticGNNDataset]],
                             sample_weights: tensor) -> float:
         """
         Executes one training epoch
 
         Args:
-            train_data: training data loader or tuple (train loader, train subgraph)
+            train_data: training data loader or tuple (train loader, dataset)
             sample_weights: weights of the samples in the loss
 
         Returns: mean epoch loss
@@ -231,13 +231,13 @@ class TorchCustomModel(Module, ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def _execute_valid_step(self, valid_data: Optional[Union[DataLoader, Tuple[DataLoader, DGLHeteroGraph]]],
+    def _execute_valid_step(self, valid_data: Optional[Union[DataLoader, Tuple[DataLoader, PetaleStaticGNNDataset]]],
                             early_stopper: Optional[EarlyStopper]) -> bool:
         """
         Executes an inference step on the validation data
 
         Args:
-            valid_data: valid data loader or tuple (valid loader, valid subgraph)
+            valid_data: valid data loader or tuple (valid loader, dataset)
             early_stopper: early stopper keeping track of validation loss
 
         Returns: True if we need to early stop

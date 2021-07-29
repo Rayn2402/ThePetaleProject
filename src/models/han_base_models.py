@@ -5,18 +5,18 @@ This file stores all components related to Heterogeneous Graph Attention Network
 The code was mainly taken from this DGL code example : https://github.com/dmlc/dgl/tree/master/examples/pytorch/han
 """
 
-import dgl
 
+from dgl import DGLHeteroGraph, metapath_reachable_graph
 from dgl.nn.pytorch import GATConv
 from src.data.processing.datasets import PetaleStaticGNNDataset
 from src.models.custom_torch_base import TorchCustomModel
 from src.training.early_stopping import EarlyStopper
-from src.utils.score_metrics import Metric
-from torch import tensor, softmax, stack, no_grad, ones
-from torch.nn import Linear, Module, ModuleList, Sequential, Tanh
+from src.utils.score_metrics import Metric, BinaryClassificationMetric, BalancedAccuracyEntropyRatio
+from torch import tensor, softmax, stack, no_grad, ones, sigmoid
+from torch.nn import BCEWithLogitsLoss, Linear, Module, ModuleList, Sequential, Tanh
 from torch.nn.functional import elu
-from torch.optim import Adam
-from typing import Callable, List, Optional, Union
+from torch.utils.data import DataLoader
+from typing import Callable, List, Optional, Tuple, Union
 
 
 class SemanticAttention(Module):
@@ -99,7 +99,7 @@ class HANLayer(Module):
         self._cached_graph = None
         self._cached_coalesced_graph = {}
 
-    def forward(self, g: dgl.DGLHeteroGraph, h: tensor) -> tensor:
+    def forward(self, g: DGLHeteroGraph, h: tensor) -> tensor:
 
         # We initialize storage for semantic embeddings
         semantic_embeddings = []
@@ -109,7 +109,7 @@ class HANLayer(Module):
             self._cached_graph = g
             self._cached_coalesced_graph.clear()
             for meta_path in self.meta_paths:
-                self._cached_coalesced_graph[meta_path] = dgl.metapath_reachable_graph(g, meta_path)
+                self._cached_coalesced_graph[meta_path] = metapath_reachable_graph(g, meta_path)
 
         # For each meta path we proceed to a forward pass in a GAT
         for i, meta_path in enumerate(self.meta_paths):
@@ -124,7 +124,7 @@ class HANLayer(Module):
 
 
 class HAN(TorchCustomModel):
-    def __init__(self, meta_paths: List[Union[str, List[str]]], in_size: int, hidden_size: int,
+    def __init__(self, meta_paths: List[List[str]], in_size: int, hidden_size: int,
                  out_size: int, num_heads: List[int], dropout: float,
                  criterion: Callable, criterion_name: str, eval_metric: Metric,
                  alpha: float = 0, beta: float = 0, verbose: bool = False
@@ -133,13 +133,17 @@ class HAN(TorchCustomModel):
         Creates n HAN layers, where n is the number of attention heads
 
         Args:
-            meta_paths: List of metapaths, each meta path is
-                        a list of edge types or a string of a single edge type
+            meta_paths: List of metapaths, each meta path is a list of edge types
             in_size: input size (number of features per node)
             hidden_size: size of embedding learnt within each attention head
             out_size: output size (number of node in last layer)
             num_heads: List with int representing the number of attention heads per layer
             dropout: dropout probability
+            criterion: loss function of our model
+            criterion_name: name of the loss function of our model
+            eval_metric: evaluation metric
+            alpha: L1 penalty coefficient
+            beta: L2 penalty coefficient
         """
         # Call of parent's constructor
         super().__init__(criterion=criterion, criterion_name=criterion_name, eval_metric=eval_metric,
@@ -158,126 +162,174 @@ class HAN(TorchCustomModel):
         # Attribute dedicated to training
         self._optimizer = None
 
-    def _execute_train_step(self, dataset: PetaleStaticGNNDataset, sample_weights: tensor) -> float:
+    def _execute_train_step(self, train_data: Tuple[DataLoader, PetaleStaticGNNDataset], sample_weights: tensor) -> float:
         """
-        Executes a single forward pass with all nodes and computes loss
-        and gradients using train mask only
+        Executes one training epoch
 
         Args:
-            dataset: Dataset containing the graph and the nodes' features
+            train_data: tuple (train loader, dataset)
             sample_weights: weights of the samples in the loss
 
-        Returns: epoch loss
+        Returns: mean epoch loss
         """
-        # We put the model in train mode
+
+        # We set the model for training
         self.train()
+        epoch_loss, epoch_score = 0, 0
 
-        # We clear the gradients
-        self._optimizer.zero_grad()
+        # We extract train loader, dataset
+        train_loader, dataset = train_data
 
-        # We execute a forward pass and calculate the loss on training set
-        train_idx = dataset.train_mask
-        output = self(dataset.graph, dataset.x_cont)
-        loss = self.loss(sample_weights[train_idx], output[train_idx], dataset.y[train_idx])
-        score = self.eval_metric(output[train_idx])
+        # We extract train_subgraph, train_mask and train_idx_map
+        train_subgraph, train_mask, train_idx_map = dataset.train_subgraph
 
-        # We proceed to backpropagation
-        loss.backward()
-        self._optimizer.step()
+        # We execute one training step
+        for item in train_loader:
 
-        # We save the loss and the score
-        self._evaluations["train"][self._criterion_name].append(loss)
-        self._evaluations["train"][self._eval_metric.name].append(score)
+            # We extract the data
+            _, y, idx = item
 
-        return loss
+            # We map original idx to their position in the train mask
+            pos_idx = [train_idx_map[i.item()] for i in idx]
 
-    def _execute_valid_step(self, dataset: PetaleStaticGNNDataset, early_stopper: EarlyStopper) -> bool:
+            # We clear the gradients
+            self._optimizer.zero_grad()
+
+            # We perform the forward pass
+            output = self(train_subgraph, dataset.x_cont[train_mask])
+
+            # We calculate the loss and the score
+            loss = self.loss(sample_weights[idx], output[pos_idx], y)
+            score = self._eval_metric(output[pos_idx], y)
+            epoch_loss += loss.item()
+            epoch_score += score
+
+            # We perform the backward pass
+            loss.backward()
+
+            # We perform a single optimization step (parameter update)
+            self._optimizer.step()
+
+        # We save mean epoch loss and mean epoch score
+        nb_batch = len(train_data)
+        mean_epoch_loss = epoch_loss / nb_batch
+        self._evaluations["train"][self._criterion_name].append(mean_epoch_loss)
+        self._evaluations["train"][self._eval_metric.name].append(epoch_score / nb_batch)
+
+        return mean_epoch_loss
+
+    def _execute_valid_step(self, valid_data: Optional[Tuple[DataLoader, PetaleStaticGNNDataset]],
+                            early_stopper: EarlyStopper) -> bool:
         """
-        Executes a validation step to apply early stopping if needed
+        Executes an inference step on the validation data and apply early stopping if needed
 
         Args:
-            dataset: Dataset containing the graph and the nodes' features
-            early_stopper: object used validate the training progress and prevent overfitting
+            valid_data: tuple (valid loader, dataset)
+            early_stopper: early stopper keeping track of validation loss
 
-        Returns: True, if we need to early stop
+        Returns: True if we need to early stop
         """
+        # We extract train loader, dataset
+        valid_loader, dataset = valid_data
+
+        # We extract valid_subgraph, mask (train + valid) and valid_idx_map
+        valid_subgraph, mask, valid_idx_map = dataset.valid_subgraph
+
         # We check if there is validation to do
-        if early_stopper is None:
+        if valid_loader is None:
             return False
 
-        # We put the model in eval mode
+        # Set model for evaluation
         self.eval()
+        epoch_loss, epoch_score = 0, 0
 
-        # We execute a forward pass and compute the loss and the score on the valid set
-        valid_idx = dataset.valid_mask
-        sample_weights = ones(len(valid_idx))/len(valid_idx)  # Equal sample weights for valid (1/n)
+        # We execute one inference step on validation set
         with no_grad():
 
-            output = self(dataset.graph, dataset.x_cont)
-            loss = self.loss(sample_weights, output[valid_idx], dataset.y[valid_idx])
-            score = self.eval_metric(output[valid_idx])
+            for item in valid_loader:
 
-        # We save the loss and the score
-        self._evaluations["valid"][self._criterion_name].append(loss)
-        self._evaluations["valid"][self._eval_metric.name].append(score)
+                # We extract the data
+                _, y, idx = item
+
+                # We map original idx to their position in the train mask
+                pos_idx = [valid_idx_map[i.item()] for i in idx]
+
+                # We perform the forward pass: compute predicted outputs by passing inputs to the model
+                output = self(valid_subgraph, dataset.x_cont[mask])
+
+                # We calculate the loss and the score
+                batch_size = len(idx)
+                sample_weights = ones(batch_size) / batch_size  # Sample weights are equal for validation (1/N)
+                loss = self.loss(sample_weights, output[pos_idx], y)
+                score = self._eval_metric(output[pos_idx], y)
+                epoch_loss += loss.item()
+                epoch_score += score
+
+        # We save mean epoch loss and mean epoch score
+        nb_batch = len(valid_loader)
+        mean_epoch_loss = epoch_loss / nb_batch
+        self._evaluations["valid"][self._criterion_name].append(mean_epoch_loss)
+        self._evaluations["valid"][self._eval_metric.name].append(epoch_score / nb_batch)
 
         # We check early stopping status
-        early_stopper(loss, self)
+        early_stopper(epoch_loss, self)
 
         if early_stopper.early_stop:
-            self.load_state_dict(early_stopper.get_best_params())
             return True
 
         return False
 
-    def forward(self, g: dgl.DGLHeteroGraph, h: tensor):
+    def forward(self, g: DGLHeteroGraph, h: tensor):
 
         # We make a forward pass through han layers
         for gnn in self.gnn_layers:
             h = gnn(g, h)
 
         # We pass the final embedding through a linear layer
-        return self.linear_layer(h)
+        return self.linear_layer(h).squeeze()
 
-    def fit(self, dataset: PetaleStaticGNNDataset, lr: float, max_epochs: int = 200, patience: int = 15,
-            sample_weights: Optional[tensor] = None) -> None:
+
+class HANBinaryClassifier(HAN):
+    """
+    Heterogeneous graph attention network binary classifier
+    """
+    def __init__(self, meta_paths: List[List[str]], in_size: int, hidden_size: int,
+                 num_heads: int, dropout: float, eval_metric: Optional[BinaryClassificationMetric] = None,
+                 alpha: float = 0, beta: float = 0, verbose: bool = False
+                 ):
         """
-        Fits the model to the training data
+        Sets protected attributes of the HAN model
 
         Args:
-            dataset: PetaleDatasets which stores an heterogeneous graph
-            lr: learning rate
-            max_epochs: Maximum number of epochs for training
-            patience: Number of consecutive epochs without improvement
-            sample_weights: (N,) tensor with weights of the samples in the training set
-
-        Returns: None
+            meta_paths: List of metapaths, each meta path is a list of edge types
+            in_size: input size (number of features per node)
+            hidden_size: size of embedding learnt within each attention head
+            num_heads: int representing the number of attention heads
+            dropout: dropout probability
         """
-        # We check if there is a validation set
-        if len(dataset.valid_mask) != 0:
-            early_stopper, early_stopping = EarlyStopper(patience), True
-        else:
-            early_stopper, early_stopping = None, False
+        # Call parent's constructor
+        eval_metric = eval_metric if eval_metric is not None else BalancedAccuracyEntropyRatio()
+        super().__init__(meta_paths=meta_paths, in_size=in_size, hidden_size=hidden_size,
+                         out_size=1, num_heads=[num_heads], dropout=dropout,
+                         criterion=BCEWithLogitsLoss(reduction='none'), criterion_name='WBCE',
+                         eval_metric=eval_metric, alpha=alpha, beta=beta, verbose=verbose)
 
-        # We initialize the optimizer
-        self._optimizer = Adam(self.parameters(), lr=lr)
+    def predict_proba(self, dataset: PetaleStaticGNNDataset) -> tensor:
+        """
+        Predict probability of being in class 1 for all samples in the test set
 
-        # We init the update function
-        update_progress = self._generate_progress_func(max_epochs)
-
-        # We execute the training loop
-        for epoch in range(max_epochs):
-
-            # We execute a training step
-            loss = self._execute_train_step(dataset, sample_weights)
-            update_progress(epoch, loss)
-
-            # We execute a validation step and check for early stopping
-            if self._execute_valid_step(dataset, early_stopper):
-                break
-
-        if early_stopping:
-            early_stopper.remove_checkpoint()
+        Args:
+            dataset: PetaleDatasets which stores an heterogeneous graph and nodes' features
 
 
+        Returns: (N, C) tensor where C is the number of classes
+        """
+        # Set model for evaluation
+        self.eval()
+
+        # Execute a forward pass and apply a softmax
+        with no_grad():
+            test_graph, mask, test_idx_map = dataset.test_subgraph
+            pos_idx = [test_idx_map[i] for i in dataset.test_mask]
+            return sigmoid(self(test_graph, dataset.x_cont[mask]))[pos_idx]
 

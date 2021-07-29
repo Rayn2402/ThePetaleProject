@@ -181,7 +181,7 @@ class HAN(TorchCustomModel):
         train_loader, dataset = train_data
 
         # We extract train_subgraph, train_mask and train_idx_map
-        train_subgraph, train_mask, train_idx_map = dataset.train_subgraph
+        train_subgraph, train_idx_map, train_mask = dataset.train_subgraph
 
         # We execute one training step
         for item in train_loader:
@@ -233,7 +233,7 @@ class HAN(TorchCustomModel):
         valid_loader, dataset = valid_data
 
         # We extract valid_subgraph, mask (train + valid) and valid_idx_map
-        valid_subgraph, mask, valid_idx_map = dataset.valid_subgraph
+        valid_subgraph, valid_idx_map, mask = dataset.valid_subgraph
 
         # We check if there is validation to do
         if valid_loader is None:
@@ -314,22 +314,34 @@ class HANBinaryClassifier(HAN):
                          criterion=BCEWithLogitsLoss(reduction='none'), criterion_name='WBCE',
                          eval_metric=eval_metric, alpha=alpha, beta=beta, verbose=verbose)
 
-    def predict_proba(self, dataset: PetaleStaticGNNDataset) -> tensor:
+    def predict_proba(self, dataset: PetaleStaticGNNDataset, mask: Optional[List[int]] = None) -> tensor:
         """
-        Predict probability of being in class 1 for all samples in the test set
+        Returns the probabilities of being in class 1 for all samples
+        in a particular set (default = test)
 
         Args:
-            dataset: PetaleDatasets which stores an heterogeneous graph and nodes' features
+            dataset: PetaleDatasets which items are tuples (x, y, idx) where
+                     - x : (N,D) tensor or array with D-dimensional samples
+                     - y : (N,) tensor or array with classification labels
+                     - idx : (N,) tensor or array with idx of samples according to the whole dataset
+            mask: List of dataset idx for which we want to predict proba
 
-
-        Returns: (N, C) tensor where C is the number of classes
+        Returns: (N,) tensor or array
         """
+        # We extract subgraph data (we add training data for graph convolution)
+        if mask is not None:
+            mask_with_train = list(set(mask + dataset.train_mask))
+            g, idx_map = dataset.get_arbitrary_subgraph(mask_with_train)
+        else:
+            mask = dataset.test_mask
+            g, idx_map, mask_with_train = dataset.test_subgraph
+        print(mask)
+
         # Set model for evaluation
         self.eval()
 
         # Execute a forward pass and apply a softmax
         with no_grad():
-            test_graph, mask, test_idx_map = dataset.test_subgraph
-            pos_idx = [test_idx_map[i] for i in dataset.test_mask]
-            return sigmoid(self(test_graph, dataset.x_cont[mask]))[pos_idx]
+            pos_idx = [idx_map[i] for i in mask]
+            return sigmoid(self(g, dataset.x_cont[mask_with_train]))[pos_idx]
 

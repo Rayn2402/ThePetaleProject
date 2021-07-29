@@ -256,27 +256,32 @@ class MLPBinaryClassifier(MLP):
                          num_cont_col=num_cont_col, cat_idx=cat_idx, cat_sizes=cat_sizes,
                          cat_emb_sizes=cat_emb_sizes, verbose=verbose)
 
-    def predict_proba(self, dataset: PetaleDataset) -> tensor:
+    def predict_proba(self, dataset: PetaleDataset, mask: Optional[List[int]] = None) -> tensor:
         """
-        Returns the probabilities of being in class 1 for all samples in the test set
+        Returns the probabilities of being in class 1 for all samples
+        in a particular set (default = test)
 
         Args:
             dataset: PetaleDatasets which items are tuples (x, y, idx) where
                      - x : (N,D) tensor or array with D-dimensional samples
                      - y : (N,) tensor or array with classification labels
                      - idx : (N,) tensor or array with idx of samples according to the whole dataset
+            mask: List of dataset idx for which we want to predict proba
 
-        Returns: (N,) array
+        Returns: (N,) tensor or array
         """
-        # Extraction of test set
-        x_test, _, _ = dataset[dataset.test_mask]
+        # We set the mask
+        mask = mask if mask is not None else dataset.test_mask
+
+        # We extract the appropriate set
+        x, _, _ = dataset[mask]
 
         # Set model for evaluation
         self.eval()
 
         # Execute a forward pass and apply a softmax
         with no_grad():
-            return sigmoid(self(x_test))
+            return sigmoid(self(x))
 
 
 class MLPRegressor(MLP):

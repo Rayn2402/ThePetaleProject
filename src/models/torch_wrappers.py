@@ -7,7 +7,7 @@ This file store the classification and regression wrapper classes for torch cust
 from src.models.base_models import PetaleBinaryClassifier, PetaleRegressor
 from src.data.processing.datasets import PetaleDataset
 from torch import tensor
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 
 class TorchBinaryClassifierWrapper(PetaleBinaryClassifier):
@@ -51,20 +51,22 @@ class TorchBinaryClassifierWrapper(PetaleBinaryClassifier):
         # Call the fit method
         self._model.fit(dataset, sample_weights=sample_weights, **self.train_params)
 
-    def predict_proba(self, dataset: PetaleDataset) -> tensor:
+    def predict_proba(self, dataset: PetaleDataset, mask: Optional[List[int]] = None) -> tensor:
         """
-        Returns the probabilities of being in class 1 for all samples in the test set
+        Returns the probabilities of being in class 1 for all samples
+        in a particular set (default = test)
 
         Args:
             dataset: PetaleDatasets which items are tuples (x, y, idx) where
                      - x : (N,D) tensor or array with D-dimensional samples
                      - y : (N,) tensor or array with classification labels
                      - idx : (N,) tensor or array with idx of samples according to the whole dataset
+            mask: List of dataset idx for which we want to predict proba
 
-        Returns: (N,) array
+        Returns: (N,) tensor or array
         """
         # Call predict_proba method, takes the prediction for class 1 and squeeze the array
-        proba = self._model.predict_proba(dataset)
+        proba = self._model.predict_proba(dataset, mask)
 
         return proba.squeeze()
 

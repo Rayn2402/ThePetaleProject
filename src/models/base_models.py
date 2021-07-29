@@ -5,14 +5,15 @@ This file defines the abstract Regressor and Classifier classes that must be use
 to build every other model in the project
 """
 from abc import ABC, abstractmethod
-from numpy import array
+from numpy import array, argmin, argmax, power, linspace
 from numpy import where as npwhere
 from numpy import zeros as npzeros
 from src.data.processing.datasets import PetaleDataset
+from src.utils.score_metrics import BinaryClassificationMetric, Direction
 from torch import tensor, is_tensor
 from torch import where as thwhere
 from torch import zeros as thzeros
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 
 class PetaleBinaryClassifier(ABC):
@@ -47,6 +48,29 @@ class PetaleBinaryClassifier(ABC):
     @property
     def weight(self) -> Optional[float]:
         return self._weight
+
+    def find_optimal_threshold(self, dataset: PetaleDataset, metric: BinaryClassificationMetric) -> None:
+        """
+        Finds the optimal classification threshold for binary classification
+
+        Args:
+            dataset: PetaleDatasets which items are tuples (x, y, idx) where
+                     - x : (N,D) tensor or array with D-dimensional samples
+                     - y : (N,) tensor or array with classification labels
+                     - idx : (N,) tensor or array with idx of samples according to the whole dataset
+        """
+        # We predict proba
+        proba = self.predict_proba(dataset, dataset.train_mask)
+
+        # For multiple threshold value with calculate the metric
+        thresholds = linspace(start=0.50, stop=0.95, num=9)
+        scores = array([metric(proba, dataset.y[dataset.train_mask], t) for t in thresholds])
+
+        # We return the optimal threshold
+        if metric.direction == Direction.MINIMIZE:
+            self._thresh = thresholds[argmin(scores)]
+        else:
+            self._thresh = thresholds[argmax(scores)]
 
     def get_sample_weights(self, y_train: Union[tensor, array]) -> Union[tensor, array]:
         """
@@ -101,16 +125,17 @@ class PetaleBinaryClassifier(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def predict_proba(self, dataset: PetaleDataset) -> Union[tensor, array]:
+    def predict_proba(self, dataset: PetaleDataset, mask: Optional[List[int]] = None) -> Union[tensor, array]:
         """
         Returns the probabilities of being in class 1 for all samples
-        in the test set
+        in a particular set (default = test)
 
         Args:
             dataset: PetaleDatasets which items are tuples (x, y, idx) where
                      - x : (N,D) tensor or array with D-dimensional samples
                      - y : (N,) tensor or array with classification labels
                      - idx : (N,) tensor or array with idx of samples according to the whole dataset
+            mask: List of dataset idx for which we want to predict proba
 
         Returns: (N,) tensor or array
         """

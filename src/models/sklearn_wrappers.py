@@ -6,7 +6,7 @@ This file is used to store abstract class to use as wrappers for models with the
 from numpy import array
 from src.data.processing.datasets import PetaleDataset
 from src.models.base_models import PetaleBinaryClassifier, PetaleRegressor
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, List, Dict, Optional
 
 
 class SklearnBinaryClassifierWrapper(PetaleBinaryClassifier):
@@ -50,23 +50,28 @@ class SklearnBinaryClassifierWrapper(PetaleBinaryClassifier):
         # Call the fit method
         self._model.fit(x_train, y_train, sample_weight=sample_weights, **self.train_params)
 
-    def predict_proba(self, dataset: PetaleDataset) -> array:
+    def predict_proba(self, dataset: PetaleDataset, mask: Optional[List[int]] = None) -> array:
         """
-        Returns the probabilities of being in class 1 for all samples in the test set
+        Returns the probabilities of being in class 1 for all samples
+        in a particular set (default = test)
 
         Args:
             dataset: PetaleDatasets which items are tuples (x, y, idx) where
-                     - x : (N,D) tensor or array with D-dimensional samples
-                     - y : (N,) tensor or array with classification labels
-                     - idx : (N,) tensor or array with idx of samples according to the whole dataset
+                     - x : (N,D) array with D-dimensional samples
+                     - y : (N,) array with classification labels
+                     - idx : (N,) array with idx of samples according to the whole dataset
+            mask: List of dataset idx for which we want to predict proba
 
-        Returns: (N,) array
+        Returns: (N,) tensor or array
         """
-        # We extract test set
-        x_test, _, _ = dataset[dataset.test_mask]
+        # We set the mask
+        mask = mask if mask is not None else dataset.test_mask
+
+        # We extract the appropriate set
+        x, _, _ = dataset[mask]
 
         # Call predict_proba method, takes the prediction for class 1 and squeeze the array
-        proba = self._model.predict_proba(x_test)[:, 1]
+        proba = self._model.predict_proba(x)[:, 1]
 
         return proba.squeeze()
 

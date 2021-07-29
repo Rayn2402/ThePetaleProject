@@ -14,8 +14,10 @@ if __name__ == '__main__':
     from settings.paths import Paths
     from src.data.extraction.data_management import PetaleDataManager
     from src.data.processing.datasets import PetaleDataset, PetaleStaticGNNDataset
-    from src.data.processing.sampling import get_learning_one_data, extract_masks, SIGNIFICANT
+    from src.data.processing.sampling import get_learning_one_data, extract_masks, SIGNIFICANT, ALL
     from src.data.processing.sampling import CARDIOMETABOLIC_COMPLICATIONS as CMC
+    from src.data.processing.sampling import COMPLICATIONS
+    from src.models.han_models import PetaleBinaryHANC
     from src.models.mlp_models import PetaleBinaryMLPC
     from src.models.random_forest import PetaleBinaryRFC
     from src.models.tabnet_models import PetaleTNC
@@ -27,7 +29,8 @@ if __name__ == '__main__':
     manager = PetaleDataManager("rayn2402")
 
     # Creation of the dataset
-    df, cont_cols, cat_cols = get_learning_one_data(manager, baselines=True, complications=[CMC], genes=SIGNIFICANT)
+    df, cont_cols, cat_cols = get_learning_one_data(manager, baselines=True, complications=[CMC],
+                                                    genes=SIGNIFICANT)
     l1_numpy_dataset = PetaleDataset(df, CMC, cont_cols, cat_cols)
     l1_tensor_dataset = PetaleDataset(df, CMC, cont_cols, cat_cols, to_tensor=True)
     l1_gnn_dataset = PetaleStaticGNNDataset(df, CMC, cont_cols, cat_cols)
@@ -49,7 +52,7 @@ if __name__ == '__main__':
     _, y_test_t, _ = l1_tensor_dataset[test_mask]
 
     # Weights attributed to class 1
-    weights = [0.5, 0.55, 0.65, 0.75, 0.99]
+    weights = [0.5, 0.55]
 
     for w in weights:
 
@@ -95,5 +98,18 @@ if __name__ == '__main__':
         petale_mlpc.fit(l1_tensor_dataset)
         pred = petale_mlpc.predict_proba(l1_tensor_dataset)
         print("MLP Classifier :")
+        for m in metrics:
+            print(f"\t{m.name} : {m(pred, y_test_t)}")
+
+        """
+        Training and evaluation of PetaleBinaryHANC
+        """
+        petale_hanc = PetaleBinaryHANC(meta_paths=l1_gnn_dataset.get_metapaths(),
+                                       in_size=len(l1_gnn_dataset.cont_cols), hidden_size=15, alpha=0, beta=0.001,
+                                       num_heads=10, lr=0.01, batch_size=62, max_epochs=200, patience=100, weight=w,
+                                       verbose=True)
+        petale_hanc.fit(l1_gnn_dataset)
+        pred = petale_hanc.predict_proba(l1_gnn_dataset)
+        print("HAN Classifier :")
         for m in metrics:
             print(f"\t{m.name} : {m(pred, y_test_t)}")

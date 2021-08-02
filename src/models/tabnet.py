@@ -6,7 +6,7 @@ This file is used to implement wrappers for TabNet regression and classification
 from numpy import array
 
 from src.data.processing.datasets import PetaleDataset
-from src.models.base_models import PetaleBinaryClassifier, PetaleRegressor
+from src.models.abstract_models.base_models import PetaleBinaryClassifier, PetaleRegressor
 from pytorch_tabnet.tab_model import TabNetClassifier, TabNetRegressor
 from typing import Optional, List
 

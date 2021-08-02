@@ -5,7 +5,7 @@ This file is used to store abstract class to use as wrappers for models with the
 """
 from numpy import array
 from src.data.processing.datasets import PetaleDataset
-from src.models.base_models import PetaleBinaryClassifier, PetaleRegressor
+from src.models.abstract_models.base_models import PetaleBinaryClassifier, PetaleRegressor
 from typing import Any, Callable, List, Dict, Optional
 
 

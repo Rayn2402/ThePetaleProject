@@ -4,7 +4,7 @@ Author: Nicolas Raymond
 This file store the classification and regression wrapper classes for torch custom model
 """
 
-from src.models.base_models import PetaleBinaryClassifier, PetaleRegressor
+from src.models.abstract_models.base_models import PetaleBinaryClassifier, PetaleRegressor
 from src.data.processing.datasets import PetaleDataset
 from torch import tensor
 from typing import Any, Callable, Dict, List, Optional

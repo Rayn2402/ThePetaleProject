@@ -4,7 +4,7 @@ Author: Nicolas Raymond
 This file is use to store the regression and classification wrappers for HAN models
 """
 from src.models.torch_wrappers import TorchBinaryClassifierWrapper
-from src.models.han_base_models import HANBinaryClassifier
+from src.models.abstract_models.han_base_models import HANBinaryClassifier
 from src.utils.score_metrics import BinaryClassificationMetric
 from typing import List, Optional
 

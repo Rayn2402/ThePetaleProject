@@ -3,7 +3,7 @@ Author: Nicolas Raymond
 
 This file is use to store the regression and classification wrappers for MLP models
 """
-from src.models.mlp_base_models import MLPBinaryClassifier, MLPRegressor
+from src.models.abstract_models.mlp_base_models import MLPBinaryClassifier, MLPRegressor
 from src.models.torch_wrappers import TorchBinaryClassifierWrapper, TorchRegressorWrapper
 from src.utils.score_metrics import Metric, BinaryClassificationMetric
 from typing import List, Optional

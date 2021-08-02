@@ -5,7 +5,7 @@ This file is used wrap the xgboost models within PetaleClassifier and PetaleRegr
 abstract classes.
 """
 
-from src.models.sklearn_wrappers import SklearnBinaryClassifierWrapper, SklearnRegressorWrapper
+from src.models.wrappers.sklearn_wrappers import SklearnBinaryClassifierWrapper, SklearnRegressorWrapper
 from typing import Optional
 from xgboost import XGBClassifier, XGBRegressor
 

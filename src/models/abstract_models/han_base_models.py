@@ -9,7 +9,7 @@ The code was mainly taken from this DGL code example : https://github.com/dmlc/d
 from dgl import DGLHeteroGraph, metapath_reachable_graph
 from dgl.nn.pytorch import GATConv
 from src.data.processing.datasets import PetaleStaticGNNDataset
-from src.models.custom_torch_base import TorchCustomModel
+from src.models.abstract_models.custom_torch_base import TorchCustomModel
 from src.training.early_stopping import EarlyStopper
 from src.utils.score_metrics import Metric, BinaryClassificationMetric, BinaryCrossEntropy
 from torch import tensor, softmax, stack, no_grad, ones, sigmoid

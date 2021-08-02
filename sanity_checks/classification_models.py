@@ -16,12 +16,11 @@ if __name__ == '__main__':
     from src.data.processing.datasets import PetaleDataset, PetaleStaticGNNDataset
     from src.data.processing.sampling import get_learning_one_data, extract_masks, SIGNIFICANT, ALL
     from src.data.processing.sampling import CARDIOMETABOLIC_COMPLICATIONS as CMC
-    from src.data.processing.sampling import COMPLICATIONS
-    from src.models.han_models import PetaleBinaryHANC
-    from src.models.mlp_models import PetaleBinaryMLPC
+    from src.models.han import PetaleBinaryHANC
+    from src.models.mlp import PetaleBinaryMLPC
     from src.models.random_forest import PetaleBinaryRFC
-    from src.models.tabnet_models import PetaleTNC
-    from src.models.xgboost_models import PetaleBinaryXGBC
+    from src.models.tabnet import PetaleTNC
+    from src.models.xgboost_ import PetaleBinaryXGBC
     from src.utils.score_metrics import BinaryAccuracy, BinaryBalancedAccuracy, BinaryCrossEntropy,\
         BalancedAccuracyEntropyRatio
 
@@ -110,8 +109,7 @@ if __name__ == '__main__':
         """
         petale_hanc = PetaleBinaryHANC(meta_paths=l1_gnn_dataset.get_metapaths(),
                                        in_size=len(l1_gnn_dataset.cont_cols), hidden_size=15, alpha=0, beta=0.001,
-                                       num_heads=10, lr=0.01, batch_size=62, max_epochs=200, patience=100, weight=w,
-                                       verbose=True)
+                                       num_heads=10, lr=0.01, batch_size=62, max_epochs=200, patience=100, weight=w)
         petale_hanc.fit(l1_gnn_dataset)
         petale_hanc.find_optimal_threshold(l1_gnn_dataset, metrics[2])
         pred = petale_hanc.predict_proba(l1_gnn_dataset)

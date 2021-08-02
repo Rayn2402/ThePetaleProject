@@ -62,32 +62,35 @@ if __name__ == '__main__':
         """
         petale_rfc = PetaleBinaryRFC(n_estimators=1000, max_samples=0.8, weight=w)
         petale_rfc.fit(l1_numpy_dataset)
+        petale_rfc.find_optimal_threshold(l1_numpy_dataset, metrics[2])
         pred = petale_rfc.predict_proba(l1_numpy_dataset)
         print("Random Forest Classifier :")
         for m in metrics:
-            print(f"\t{m.name} : {m(pred, y_test_n)}")
+            print(f"\t{m.name} : {m(pred, y_test_n, thresh=petale_rfc.thresh)}")
 
         """
         Training and evaluation of PetaleXGBC
         """
         petale_xgbc = PetaleBinaryXGBC(subsample=0.8, max_depth=6, weight=w)
         petale_xgbc.fit(l1_numpy_dataset)
+        petale_xgbc.find_optimal_threshold(l1_numpy_dataset, metrics[2])
         pred = petale_xgbc.predict_proba(l1_numpy_dataset)
         print("XGBoost Classifier :")
         for m in metrics:
-            print(f"\t{m.name} : {m(pred, y_test_n)}")
+            print(f"\t{m.name} : {m(pred, y_test_n, thresh=petale_xgbc.thresh)}")
 
         """
         Training and evaluation of PetaleTNC
         """
         petale_tnc = PetaleTNC(cat_idx=cat_idx, cat_sizes=cat_sizes, cat_emb_sizes=cat_sizes, device='cpu',
-                               lr=0.08, max_epochs=300, patience=50, batch_size=35, n_steps=6,
+                               lr=0.08, max_epochs=300, patience=100, batch_size=35, n_steps=6,
                                n_d=4, n_a=4, gamma=1.5, weight=w)
         petale_tnc.fit(l1_numpy_dataset)
+        petale_tnc.find_optimal_threshold(l1_numpy_dataset, metrics[2])
         pred = petale_tnc.predict_proba(l1_numpy_dataset)
         print("TabNet Classifier :")
         for m in metrics:
-            print(f"\t{m.name} : {m(pred, y_test_n)}")
+            print(f"\t{m.name} : {m(pred, y_test_n, thresh=petale_tnc.thresh)}")
 
         """
         Training and evaluation of PetaleMLPC
@@ -96,6 +99,7 @@ if __name__ == '__main__':
                                        batch_size=50, patience=250, max_epochs=1500,
                                        num_cont_col=len(cont_cols), weight=w)
         petale_mlpc.fit(l1_tensor_dataset)
+        petale_mlpc.find_optimal_threshold(l1_tensor_dataset, metrics[2])
         pred = petale_mlpc.predict_proba(l1_tensor_dataset)
         print("MLP Classifier :")
         for m in metrics:
@@ -109,6 +113,7 @@ if __name__ == '__main__':
                                        num_heads=10, lr=0.01, batch_size=62, max_epochs=200, patience=100, weight=w,
                                        verbose=True)
         petale_hanc.fit(l1_gnn_dataset)
+        petale_hanc.find_optimal_threshold(l1_gnn_dataset, metrics[2])
         pred = petale_hanc.predict_proba(l1_gnn_dataset)
         print("HAN Classifier :")
         for m in metrics:

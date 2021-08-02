@@ -6,7 +6,7 @@ abstract classes
 """
 
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
-from src.models.sklearn_wrappers import SklearnBinaryClassifierWrapper, SklearnRegressorWrapper
+from src.models.wrappers.sklearn_wrappers import SklearnBinaryClassifierWrapper, SklearnRegressorWrapper
 from typing import Optional
 
 

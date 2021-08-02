@@ -6,7 +6,7 @@ This file is used to store the MLP with entity embeddings base model and its chi
 and PetaleMLPRegressor
 """
 
-from src.models.custom_torch_base import TorchCustomModel
+from src.models.abstract_models.custom_torch_base import TorchCustomModel
 from src.data.processing.datasets import PetaleDataset
 from src.training.early_stopping import EarlyStopper
 from src.utils.score_metrics import Metric, BinaryCrossEntropy, RootMeanSquaredError

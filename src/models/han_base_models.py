@@ -11,7 +11,7 @@ from dgl.nn.pytorch import GATConv
 from src.data.processing.datasets import PetaleStaticGNNDataset
 from src.models.custom_torch_base import TorchCustomModel
 from src.training.early_stopping import EarlyStopper
-from src.utils.score_metrics import Metric, BinaryClassificationMetric, BalancedAccuracyEntropyRatio
+from src.utils.score_metrics import Metric, BinaryClassificationMetric, BinaryCrossEntropy
 from torch import tensor, softmax, stack, no_grad, ones, sigmoid
 from torch.nn import BCEWithLogitsLoss, Linear, Module, ModuleList, Sequential, Tanh
 from torch.nn.functional import elu
@@ -309,10 +309,10 @@ class HANBinaryClassifier(HAN):
             dropout: dropout probability
         """
         # Call parent's constructor
-        eval_metric = eval_metric if eval_metric is not None else BalancedAccuracyEntropyRatio()
+        eval_metric = eval_metric if eval_metric is not None else BinaryCrossEntropy()
         super().__init__(meta_paths=meta_paths, in_size=in_size, hidden_size=hidden_size,
                          out_size=1, num_heads=[num_heads], dropout=dropout,
-                         criterion=BCEWithLogitsLoss(reduction='none'), criterion_name='BACC/BCE',
+                         criterion=BCEWithLogitsLoss(reduction='none'), criterion_name='WBCE',
                          eval_metric=eval_metric, alpha=alpha, beta=beta, verbose=verbose)
 
     def predict_proba(self, dataset: PetaleStaticGNNDataset, mask: Optional[List[int]] = None) -> tensor:
@@ -336,7 +336,6 @@ class HANBinaryClassifier(HAN):
         else:
             mask = dataset.test_mask
             g, idx_map, mask_with_train = dataset.test_subgraph
-        print(mask)
 
         # Set model for evaluation
         self.eval()

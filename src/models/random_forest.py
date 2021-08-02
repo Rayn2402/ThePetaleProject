@@ -32,7 +32,8 @@ class PetaleBinaryRFC(SklearnBinaryClassifierWrapper):
         super().__init__(model=RandomForestClassifier(n_estimators=n_estimators,
                                                       min_samples_split=min_samples_split,
                                                       max_features=max_features,
-                                                      max_samples=max_samples),
+                                                      max_samples=max_samples,
+                                                      criterion="entropy"),
                          classification_threshold=classification_threshold, weight=weight)
 
 

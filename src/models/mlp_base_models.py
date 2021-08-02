@@ -9,7 +9,7 @@ and PetaleMLPRegressor
 from src.models.custom_torch_base import TorchCustomModel
 from src.data.processing.datasets import PetaleDataset
 from src.training.early_stopping import EarlyStopper
-from src.utils.score_metrics import Metric, BalancedAccuracyEntropyRatio, RootMeanSquaredError
+from src.utils.score_metrics import Metric, BinaryCrossEntropy, RootMeanSquaredError
 from torch import cat, nn, no_grad, tensor, ones, sigmoid
 from torch.nn import ModuleList, Embedding,\
     Linear, BatchNorm1d, Dropout, Sequential, BCEWithLogitsLoss, MSELoss
@@ -250,7 +250,7 @@ class MLPBinaryClassifier(MLP):
             cat_sizes: list of integer representing the size of each categorical column
             cat_emb_sizes: list of integer representing the size of each categorical embedding
         """
-        eval_metric = eval_metric if eval_metric is not None else BalancedAccuracyEntropyRatio()
+        eval_metric = eval_metric if eval_metric is not None else BinaryCrossEntropy()
         super().__init__(output_size=1, layers=layers, activation=activation,
                          criterion=BCEWithLogitsLoss(reduction='none'), criterion_name='WBCE',
                          eval_metric=eval_metric, dropout=dropout, alpha=alpha, beta=beta,

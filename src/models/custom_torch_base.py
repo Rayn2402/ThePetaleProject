@@ -5,7 +5,6 @@ This file is used to store the base skeleton of custom pytorch models
 """
 
 from abc import ABC, abstractmethod
-from dgl import DGLHeteroGraph
 from src.data.processing.datasets import PetaleDataset, PetaleStaticGNNDataset
 from src.training.early_stopping import EarlyStopper
 from src.utils.score_metrics import Metric
@@ -106,7 +105,7 @@ class TorchCustomModel(Module, ABC):
             # We proceed to calculate valid mean epoch loss and apply early stopping if needed
             if self._execute_valid_step(valid_data, early_stopper):
                 print(f"\nEarly stopping occurred at epoch {epoch} with best_epoch = {epoch - patience}"
-                      f" and best_val_{self._criterion_name} = {round(early_stopper.val_loss_min, 4)}")
+                      f" and best_val_{self._criterion_name} = {round(early_stopper.val_score_min, 4)}")
                 break
 
         if early_stopper is not None:
@@ -159,8 +158,7 @@ class TorchCustomModel(Module, ABC):
 
         return train_data
 
-    @staticmethod
-    def _create_validation_objects(dataset: PetaleDataset, valid_batch_size: Optional[int], patience: int
+    def _create_validation_objects(self, dataset: PetaleDataset, valid_batch_size: Optional[int], patience: int
                                    ) -> Tuple[Optional[EarlyStopper],
                                               Optional[Union[DataLoader, Tuple[DataLoader, PetaleStaticGNNDataset]]]]:
         """
@@ -186,7 +184,7 @@ class TorchCustomModel(Module, ABC):
             # We create the valid loader
             valid_bs = min(valid_size, valid_bs)
             valid_data = DataLoader(dataset, batch_size=valid_bs, sampler=SubsetRandomSampler(dataset.valid_mask))
-            early_stopper = EarlyStopper(patience)
+            early_stopper = EarlyStopper(patience, self._eval_metric.direction)
 
             # If the dataset is a GNN dataset, we include it into train data
             if isinstance(dataset, PetaleStaticGNNDataset):

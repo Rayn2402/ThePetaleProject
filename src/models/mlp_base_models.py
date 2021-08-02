@@ -180,11 +180,12 @@ class MLP(TorchCustomModel):
         # We save mean epoch loss and mean epoch score
         nb_batch = len(valid_loader)
         mean_epoch_loss = epoch_loss / nb_batch
+        mean_epoch_score = epoch_score / nb_batch
         self._evaluations["valid"][self._criterion_name].append(mean_epoch_loss)
-        self._evaluations["valid"][self._eval_metric.name].append(epoch_score / nb_batch)
+        self._evaluations["valid"][self._eval_metric.name].append(mean_epoch_score)
 
         # We check early stopping status
-        early_stopper(epoch_loss, self)
+        early_stopper(mean_epoch_score, self)
 
         if early_stopper.early_stop:
             return True

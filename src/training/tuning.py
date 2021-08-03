@@ -7,7 +7,6 @@ Files that contains the logic related to hyper parameters tuning
 """
 import ray
 
-from abc import ABC, abstractmethod
 from copy import deepcopy
 from optuna import create_study
 from optuna.importance import get_param_importances, FanovaImportanceEvaluator
@@ -30,9 +29,9 @@ from torch import mean, tensor
 from typing import Any, Callable, Dict, List, Optional, Union, Tuple
 
 
-class Objective(ABC):
+class Objective:
     """
-    Base class to create objective functions to use with the tuner
+    Objective function to use with the tuner
     """
     def __init__(self, dataset: PetaleDataset, masks: Dict[int, Dict[str, List[int]]],
                  hps: Dict[str, Dict[str, Any]], fixed_params: Dict[str, Any], metric: Metric,

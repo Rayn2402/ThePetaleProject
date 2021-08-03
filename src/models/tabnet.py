@@ -12,7 +12,7 @@ from pytorch_tabnet.tab_model import TabNetClassifier, TabNetRegressor
 from typing import Optional, List
 
 
-class PetaleTNC(PetaleBinaryClassifier):
+class PetaleBinaryTNC(PetaleBinaryClassifier):
     """
     Class used as a wrapper for TabNet classifier model
     """
@@ -58,7 +58,7 @@ class PetaleTNC(PetaleBinaryClassifier):
                          train_params={'batch_size': batch_size, 'max_epochs': max_epochs, 'patience': patience})
 
     @staticmethod
-    def hps():
+    def get_hps():
         return list(TabNetHP())
 
     def fit(self, dataset: PetaleDataset) -> None:
@@ -151,7 +151,7 @@ class PetaleTNR(PetaleRegressor):
         super().__init__(train_params={'batch_size': batch_size, 'max_epochs': max_epochs, 'patience': patience})
 
     @staticmethod
-    def hps():
+    def get_hps():
         return list(TabNetHP())
 
     def fit(self, dataset: PetaleDataset) -> None:
@@ -197,7 +197,8 @@ class TabNetHP:
     """
     TabNet's hyperparameters
     """
-    BETA = NumericalIntHP("beta")
+    BATCH_SIZE = NumericalIntHP("batch_size")
+    BETA = NumericalContinuousHP("beta")
     GAMMA = NumericalContinuousHP("gamma")
     N_A = NumericalIntHP("n_a")
     N_D = NumericalIntHP("n_d")
@@ -206,5 +207,5 @@ class TabNetHP:
     WEIGHT = NumericalContinuousHP("weight")
 
     def __iter__(self):
-        return iter([self.BETA, self.GAMMA, self.N_A, self.N_D,
+        return iter([self.BATCH_SIZE, self.BETA, self.GAMMA, self.N_A, self.N_D,
                      self.N_STEPS, self.LR, self.WEIGHT])

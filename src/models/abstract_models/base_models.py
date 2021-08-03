@@ -115,7 +115,7 @@ class PetaleBinaryClassifier(ABC):
 
     @staticmethod
     @abstractmethod
-    def hps():
+    def get_hps():
         raise NotImplementedError
 
     @abstractmethod
@@ -170,7 +170,7 @@ class PetaleRegressor(ABC):
 
     @staticmethod
     @abstractmethod
-    def hps():
+    def get_hps():
         raise NotImplementedError
 
     @abstractmethod

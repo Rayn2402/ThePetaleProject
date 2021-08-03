@@ -5,10 +5,11 @@ This file defines the abstract Regressor and Classifier classes that must be use
 to build every other model in the project
 """
 from abc import ABC, abstractmethod
-from numpy import array, argmin, argmax, power, linspace
+from numpy import array, argmin, argmax, linspace
 from numpy import where as npwhere
 from numpy import zeros as npzeros
 from src.data.processing.datasets import PetaleDataset
+from src.utils.hyperparameters import HP, NumericalIntHP
 from src.utils.score_metrics import BinaryClassificationMetric, Direction
 from torch import tensor, is_tensor
 from torch import where as thwhere
@@ -20,7 +21,8 @@ class PetaleBinaryClassifier(ABC):
     """
     Skeleton of all Petale classification models
     """
-    def __init__(self, classification_threshold: float = 0.5, weight:  Optional[float] = None,
+    def __init__(self, classification_threshold: float = 0.5,
+                 weight:  Optional[float] = None,
                  train_params: Optional[Dict[str, Any]] = None):
         """
         Sets the threshold for binary classification
@@ -58,6 +60,8 @@ class PetaleBinaryClassifier(ABC):
                      - x : (N,D) tensor or array with D-dimensional samples
                      - y : (N,) tensor or array with classification labels
                      - idx : (N,) tensor or array with idx of samples according to the whole dataset
+
+            metric: Binary classification metric used to find optimal threshold
         """
         # We predict proba
         proba = self.predict_proba(dataset, dataset.train_mask)
@@ -109,6 +113,11 @@ class PetaleBinaryClassifier(ABC):
 
         return sample_weights
 
+    @staticmethod
+    @abstractmethod
+    def hps():
+        raise NotImplementedError
+
     @abstractmethod
     def fit(self, dataset: PetaleDataset) -> None:
         """
@@ -158,6 +167,11 @@ class PetaleRegressor(ABC):
     @property
     def train_params(self) -> Dict[str, Any]:
         return self._train_params
+
+    @staticmethod
+    @abstractmethod
+    def hps():
+        raise NotImplementedError
 
     @abstractmethod
     def fit(self, dataset: PetaleDataset) -> None:

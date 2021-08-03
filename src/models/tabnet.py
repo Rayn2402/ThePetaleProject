@@ -7,6 +7,7 @@ from numpy import array
 
 from src.data.processing.datasets import PetaleDataset
 from src.models.abstract_models.base_models import PetaleBinaryClassifier, PetaleRegressor
+from src.utils.hyperparameters import HP, CategoricalHP, NumericalIntHP, NumericalContinuousHP
 from pytorch_tabnet.tab_model import TabNetClassifier, TabNetRegressor
 from typing import Optional, List
 
@@ -55,6 +56,10 @@ class PetaleTNC(PetaleBinaryClassifier):
         # Call of parent's constructor
         super().__init__(classification_threshold=classification_threshold, weight=weight,
                          train_params={'batch_size': batch_size, 'max_epochs': max_epochs, 'patience': patience})
+
+    @staticmethod
+    def hps():
+        return list(TabNetHP())
 
     def fit(self, dataset: PetaleDataset) -> None:
         """
@@ -145,6 +150,10 @@ class PetaleTNR(PetaleRegressor):
 
         super().__init__(train_params={'batch_size': batch_size, 'max_epochs': max_epochs, 'patience': patience})
 
+    @staticmethod
+    def hps():
+        return list(TabNetHP())
+
     def fit(self, dataset: PetaleDataset) -> None:
         """
         Fits the model to the training data
@@ -182,3 +191,20 @@ class PetaleTNR(PetaleRegressor):
         x_test, _, _ = dataset[dataset.test_mask]
 
         return self._model.predict(x_test).squeeze()
+
+
+class TabNetHP:
+    """
+    TabNet's hyperparameters
+    """
+    BETA = NumericalIntHP("beta")
+    GAMMA = NumericalContinuousHP("gamma")
+    N_A = NumericalIntHP("n_a")
+    N_D = NumericalIntHP("n_d")
+    N_STEPS = NumericalIntHP("n_steps")
+    LR = NumericalContinuousHP("lr")
+    WEIGHT = NumericalContinuousHP("weight")
+
+    def __iter__(self):
+        return iter([self.BETA, self.GAMMA, self.N_A, self.N_D,
+                     self.N_STEPS, self.LR, self.WEIGHT])

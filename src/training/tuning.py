@@ -34,7 +34,7 @@ class Objective:
     Objective function to use with the tuner
     """
     def __init__(self, dataset: PetaleDataset, masks: Dict[int, Dict[str, List[int]]],
-                 hps: Dict[str, Dict[str, Any]], fixed_params: Dict[str, Any], metric: Metric,
+                 hps: Dict[str, Dict[str, Any]], fixed_params: Optional[Dict[str, Any]], metric: Metric,
                  model_constructor: Callable, gpu_device: bool = False):
         """
         Sets protected and public attributes
@@ -44,6 +44,8 @@ class Objective:
             masks: dict with list of idx to use as train, valid and test masks
             hps: dictionary with information on the hyperparameters we want to tune
             metric: callable metric we want to optimize with hyperparameters (not used for backpropagation)
+            model_constructor: Callable object that builds a model using hyperparameters and fixed params
+            gpu_device: True if we want to use a gpu
         """
         # We validate the given hyperparameters
         for hp in model_constructor.get_hps():
@@ -51,7 +53,7 @@ class Objective:
 
         # We set protected attributes
         self._dataset = dataset
-        self._fixed_params = fixed_params
+        self._fixed_params = fixed_params if fixed_params is not None else {}
         self._hps = hps
         self._masks = masks
         self._metric = metric

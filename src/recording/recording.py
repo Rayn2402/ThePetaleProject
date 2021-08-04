@@ -271,7 +271,6 @@ def set_info(data):
     """
     for section in data.keys():
         for key in data[section].keys():
-            print(type(data[section][key][VALUES][0]))
             if not isinstance(data[section][key][VALUES][0], str):
                 data[section][key][
                     INFO] = f"{round(mean(data[section][key][VALUES]), 4)} +- {round(std(data[section][key][VALUES]), 4)} " \

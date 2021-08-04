@@ -30,9 +30,9 @@ class Evaluator:
 
     def __init__(self, model_constructor: Callable,
                  dataset: PetaleDataset, masks: Dict[int, Dict[str, List[int]]],
-                 hps: Dict[str, Dict[str, Any]], n_trials: int, fixed_params: Dict[str, Any],
-                 evaluation_metrics: List[Metric], seed: Optional[int] = None,
-                 gpu_device: bool = False, evaluation_name: Optional[str] = None,
+                 hps: Dict[str, Dict[str, Any]], n_trials: int,
+                 evaluation_metrics: List[Metric], fixed_params: Optional[Dict[str, Any]] = None,
+                 seed: Optional[int] = None, gpu_device: bool = False, evaluation_name: Optional[str] = None,
                  feature_selector: Optional[FeatureSelector] = None,
                  fixed_params_update_function: Optional[Callable] = None,
                  save_hps_importance: Optional[bool] = False,
@@ -74,7 +74,7 @@ class Evaluator:
         self._gpu_device = gpu_device
         self._feature_selector = feature_selector
         self._feature_selection_count = {feature: 0 for feature in self._dataset.original_data.columns}
-        self._fixed_params = fixed_params
+        self._fixed_params = fixed_params if fixed_params is not None else {}
         self._hps = hps
         self._masks = masks
         self._tuner = Tuner(n_trials=n_trials,
@@ -165,8 +165,6 @@ class Evaluator:
 
             # We perform the hps tuning to get the best hps
             best_hps, hps_importance = self._tuner.tune()
-            print(best_hps)
-            print(self._fixed_params)
 
             # We save the hyperparameters
             print(f"\nHyperparameter tuning done - K = {k}\n")
@@ -199,7 +197,7 @@ class Evaluator:
                 if not is_tensor(pred):
                     pred = from_numpy(pred)
                 pred = (pred >= model.thresh).long()
-                recorder.record_data_info('thresh', model.thresh)
+                recorder.record_data_info('thresh', str(model.thresh))
 
             else:
                 pred = model.predict(subset)
@@ -238,7 +236,6 @@ class Evaluator:
         """
         # We update fixed parameters according to the subset
         self._fixed_params = self._update_fixed_params(subset)
-        print(self._fixed_params)
 
         return Objective(dataset=subset, masks=masks, hps=self._hps, fixed_params=self._fixed_params,
                          metric=self.evaluation_metrics[-1], model_constructor=self.model_constructor,

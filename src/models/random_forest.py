@@ -7,6 +7,7 @@ abstract classes
 
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from src.models.wrappers.sklearn_wrappers import SklearnBinaryClassifierWrapper, SklearnRegressorWrapper
+from src.utils.hyperparameters import CategoricalHP, NumericalContinuousHP, NumericalIntHP
 from typing import Optional
 
 
@@ -36,11 +37,16 @@ class PetaleBinaryRFC(SklearnBinaryClassifierWrapper):
                                                       criterion="entropy"),
                          classification_threshold=classification_threshold, weight=weight)
 
+    @staticmethod
+    def get_hps():
+        return list(RandomForestHP()) + [RandomForestHP.WEIGHT]
+
 
 class PetaleRFR(SklearnRegressorWrapper):
     """
     Sklearn random forest regressor wrapper
     """
+
     def __init__(self, n_estimators: int = 100, min_samples_split: int = 2,
                  max_features: str = "auto", max_samples: float = 1):
         """
@@ -55,3 +61,21 @@ class PetaleRFR(SklearnRegressorWrapper):
                                                      min_samples_split=min_samples_split,
                                                      max_features=max_features,
                                                      max_samples=max_samples))
+
+    @staticmethod
+    def get_hps():
+        return list(RandomForestHP())
+
+
+class RandomForestHP:
+    """
+    Random forest's hyperparameters
+    """
+    MAX_FEATURES = CategoricalHP("max_features")
+    MAX_SAMPLES = NumericalContinuousHP("max_samples")
+    MIN_SAMPLES_SPLIT = NumericalIntHP("min_samples_split")
+    N_ESTIMATORS = NumericalIntHP("n_estimators")
+    WEIGHT = NumericalContinuousHP("weight")
+
+    def __iter__(self):
+        return iter([self.MAX_FEATURES, self.MAX_SAMPLES, self.MIN_SAMPLES_SPLIT, self.N_ESTIMATORS])

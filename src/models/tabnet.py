@@ -7,7 +7,7 @@ from numpy import array
 
 from src.data.processing.datasets import PetaleDataset
 from src.models.abstract_models.base_models import PetaleBinaryClassifier, PetaleRegressor
-from src.utils.hyperparameters import HP, CategoricalHP, NumericalIntHP, NumericalContinuousHP
+from src.utils.hyperparameters import NumericalIntHP, NumericalContinuousHP
 from pytorch_tabnet.tab_model import TabNetClassifier, TabNetRegressor
 from typing import Optional, List
 
@@ -59,7 +59,7 @@ class PetaleBinaryTNC(PetaleBinaryClassifier):
 
     @staticmethod
     def get_hps():
-        return list(TabNetHP())
+        return list(TabNetHP()) + [TabNetHP.WEIGHT]
 
     def fit(self, dataset: PetaleDataset) -> None:
         """
@@ -207,5 +207,4 @@ class TabNetHP:
     WEIGHT = NumericalContinuousHP("weight")
 
     def __iter__(self):
-        return iter([self.BATCH_SIZE, self.BETA, self.GAMMA, self.N_A, self.N_D,
-                     self.N_STEPS, self.LR, self.WEIGHT])
+        return iter([self.BATCH_SIZE, self.BETA, self.GAMMA, self.N_A, self.N_D, self.N_STEPS, self.LR])

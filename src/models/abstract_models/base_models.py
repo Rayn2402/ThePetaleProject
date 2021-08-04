@@ -9,7 +9,6 @@ from numpy import array, argmin, argmax, linspace
 from numpy import where as npwhere
 from numpy import zeros as npzeros
 from src.data.processing.datasets import PetaleDataset
-from src.utils.hyperparameters import HP, NumericalIntHP
 from src.utils.score_metrics import BinaryClassificationMetric, Direction
 from torch import tensor, is_tensor
 from torch import where as thwhere
@@ -67,7 +66,7 @@ class PetaleBinaryClassifier(ABC):
         proba = self.predict_proba(dataset, dataset.train_mask)
 
         # For multiple threshold value with calculate the metric
-        thresholds = linspace(start=0.50, stop=0.95, num=9)
+        thresholds = linspace(start=0.05, stop=0.95, num=18)
         scores = array([metric(proba, dataset.y[dataset.train_mask], t) for t in thresholds])
 
         # We return the optimal threshold

@@ -6,6 +6,7 @@ abstract classes.
 """
 
 from src.models.wrappers.sklearn_wrappers import SklearnBinaryClassifierWrapper, SklearnRegressorWrapper
+from src.utils.hyperparameters import CategoricalHP, NumericalContinuousHP, NumericalIntHP
 from typing import Optional
 from xgboost import XGBClassifier, XGBRegressor
 
@@ -42,6 +43,10 @@ class PetaleBinaryXGBC(SklearnBinaryClassifierWrapper):
                          classification_threshold=classification_threshold,
                          weight=weight)
 
+    @staticmethod
+    def get_hps():
+        return list(XGBoostHP()) + [XGBoostHP.WEIGHT]
+
 
 class PetaleXGBR(SklearnRegressorWrapper):
     """
@@ -67,4 +72,23 @@ class PetaleXGBR(SklearnRegressorWrapper):
                                             subsample=subsample,
                                             reg_alpha=alpha,
                                             reg_lambda=beta))
+
+    @staticmethod
+    def get_hps():
+        return list(XGBoostHP())
+
+
+class XGBoostHP:
+    """
+    XGBoost's hyperparameters
+    """
+    ALPHA = NumericalContinuousHP("alpha")
+    BETA = NumericalContinuousHP("beta")
+    LR = NumericalContinuousHP("lr")
+    MAX_DEPTH = NumericalIntHP("max_depth")
+    SUBSAMPLE = NumericalContinuousHP("subsample")
+    WEIGHT = NumericalContinuousHP("weight")
+
+    def __iter__(self):
+        return iter([self.ALPHA, self.BETA, self.LR, self.MAX_DEPTH, self.SUBSAMPLE])
 

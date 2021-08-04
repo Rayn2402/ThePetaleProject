@@ -40,10 +40,10 @@ class Objective:
         Sets protected and public attributes
 
         Args:
-            dataset: custom dataset containing the whole learning dataset needed for our evaluation
+            dataset: custom dataset containing all the data needed for our evaluations
             masks: dict with list of idx to use as train, valid and test masks
             hps: dictionary with information on the hyperparameters we want to tune
-            metric: callable metric we want to optimize (not used for backpropagation)
+            metric: callable metric we want to optimize with hyperparameters (not used for backpropagation)
         """
         # We validate the given hyperparameters
         for hp in model_constructor.get_hps():
@@ -80,7 +80,7 @@ class Objective:
         suggested_hps = {k: f(trial) for k, f in self._getters.items()}
 
         # We execute parallel evaluations
-        futures = [self._run_parallel_evaluations.remote(masks=m, hps=suggested_hps) for k,m in self._masks.items()]
+        futures = [self._run_parallel_evaluations.remote(masks=m, hps=suggested_hps) for k, m in self._masks.items()]
         scores = ray.get(futures)
 
         # We take the mean of the scores
@@ -218,7 +218,7 @@ class Objective:
         Returns: dictionary with hyperparameters' values
 
         """
-        return {hp: self._hps[hp.name].get(Range.VALUE, trial.params.get(hp.name))
+        return {hp.name: self._hps[hp.name].get(Range.VALUE, trial.params.get(hp.name))
                 for hp in self._model_constructor.get_hps()}
 
 

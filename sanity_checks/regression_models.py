@@ -15,10 +15,10 @@ if __name__ == '__main__':
     from src.data.extraction.data_management import PetaleDataManager
     from src.data.processing.datasets import PetaleDataset
     from src.data.processing.sampling import get_warmup_data, extract_masks
-    from src.models.mlp_models import PetaleMLPR
+    from src.models.mlp import PetaleMLPR
     from src.models.random_forest import PetaleRFR
-    from src.models.tabnet_models import PetaleTNR
-    from src.models.xgboost_models import PetaleXGBR
+    from src.models.tabnet import PetaleTNR
+    from src.models.xgboost_ import PetaleXGBR
     from src.utils.score_metrics import AbsoluteError, Pearson, RootMeanSquaredError
 
     # Initialization of DataManager and sampler

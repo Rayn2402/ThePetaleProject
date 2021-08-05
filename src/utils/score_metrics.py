@@ -491,7 +491,7 @@ class Sensitivity(BinaryClassificationMetric):
         conf_mat = self.get_confusion_matrix(pred, targets, thresh)
 
         # We compute TP/(TP + FN)
-        return conf_mat[1, 1]/(conf_mat[1, 1] + conf_mat[1, 0])
+        return (conf_mat[1, 1]/(conf_mat[1, 1] + conf_mat[1, 0])).item()
 
 
 class Specificity(BinaryClassificationMetric):
@@ -522,7 +522,7 @@ class Specificity(BinaryClassificationMetric):
         conf_mat = self.get_confusion_matrix(pred, targets, thresh)
 
         # We compute TN/(TN + FP)
-        return conf_mat[0, 0] / (conf_mat[0, 0] + conf_mat[0, 1])
+        return (conf_mat[0, 0] / (conf_mat[0, 0] + conf_mat[0, 1])).item()
 
 
 

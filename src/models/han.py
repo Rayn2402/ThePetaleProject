@@ -5,6 +5,7 @@ This file is use to store the regression and classification wrappers for HAN mod
 """
 from src.models.wrappers.torch_wrappers import TorchBinaryClassifierWrapper
 from src.models.abstract_models.han_base_models import HANBinaryClassifier
+from src.utils.hyperparameters import NumericalIntHP, NumericalContinuousHP
 from src.utils.score_metrics import BinaryClassificationMetric
 from typing import List, Optional
 
@@ -46,3 +47,22 @@ class PetaleBinaryHANC(TorchBinaryClassifierWrapper):
         super().__init__(model=model, classification_threshold=classification_threshold, weight=weight,
                          train_params={'lr': lr, 'batch_size': batch_size, 'valid_batch_size': valid_batch_size,
                                        'patience': patience, 'max_epochs': max_epochs})
+
+    @staticmethod
+    def get_hps():
+        return list(HanHP()) + [HanHP.WEIGHT]
+
+
+class HanHP:
+    """
+    Han's hyperparameters
+    """
+    ALPHA = NumericalContinuousHP("alpha")
+    BATCH_SIZE = NumericalIntHP("batch_size")
+    BETA = NumericalContinuousHP("beta")
+    HIDDEN_SIZE = NumericalIntHP("hidden_size")
+    NUM_HEADS = NumericalIntHP("num_heads")
+    WEIGHT = NumericalContinuousHP("weight")
+
+    def __iter__(self):
+        return iter([self.ALPHA, self.BATCH_SIZE, self.BETA, self.HIDDEN_SIZE, self.NUM_HEADS])

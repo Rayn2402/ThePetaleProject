@@ -109,6 +109,9 @@ if __name__ == '__main__':
     # Initialization of feature selector
     feature_selector = FeatureSelector(0.95)
 
+    # We start a timer for the whole experiment
+    first_start = time.time()
+
     """
     TabNet experiment
     """
@@ -288,3 +291,5 @@ if __name__ == '__main__':
         evaluator.nested_cross_valid()
 
         print("Time Taken for Logistic Regression (minutes): ", round((time.time() - start) / 60, 2))
+
+    print("Overall time (minutes): ", round((time.time() - first_start) / 60, 2))

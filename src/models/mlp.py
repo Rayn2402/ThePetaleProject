@@ -5,6 +5,7 @@ This file is use to store the regression and classification wrappers for MLP mod
 """
 from src.models.abstract_models.mlp_base_models import MLPBinaryClassifier, MLPRegressor
 from src.models.wrappers.torch_wrappers import TorchBinaryClassifierWrapper, TorchRegressorWrapper
+from src.utils.hyperparameters import CategoricalHP, NumericalIntHP, NumericalContinuousHP
 from src.utils.score_metrics import Metric, BinaryClassificationMetric
 from typing import List, Optional
 
@@ -13,7 +14,7 @@ class PetaleBinaryMLPC(TorchBinaryClassifierWrapper):
     """
     Multilayer perceptron classification model with entity embedding
     """
-    def __init__(self, layers: List[int], activation: str,
+    def __init__(self, n_layer: int, n_unit: int, activation: str,
                  eval_metric: Optional[BinaryClassificationMetric] = None, dropout: float = 0,
                  alpha: float = 0, beta: float = 0, lr: float = 0.05, batch_size: int = 55,
                  valid_batch_size: Optional[int] = None, max_epochs: int = 200, patience: int = 15,
@@ -24,7 +25,8 @@ class PetaleBinaryMLPC(TorchBinaryClassifierWrapper):
         Build a binary classification MLP and sets protected attributes using parent's constructor
 
         Args:
-            layers: list with number of units in each hidden layer
+            n_layer: number of hidden layer
+            n_unit: number of units in each hidden layer
             eval_metric: evaluation metric
             activation: activation function
             dropout: probability of dropout
@@ -44,7 +46,7 @@ class PetaleBinaryMLPC(TorchBinaryClassifierWrapper):
             weight: weight attributed to class 1
         """
         # Model creation
-        model = MLPBinaryClassifier(layers=layers, activation=activation, eval_metric=eval_metric,
+        model = MLPBinaryClassifier(layers=[n_unit]*n_layer, activation=activation, eval_metric=eval_metric,
                                     dropout=dropout, alpha=alpha, beta=beta, num_cont_col=num_cont_col,
                                     cat_idx=cat_idx, cat_sizes=cat_sizes, cat_emb_sizes=cat_emb_sizes,
                                     verbose=verbose)
@@ -53,12 +55,16 @@ class PetaleBinaryMLPC(TorchBinaryClassifierWrapper):
                          train_params={'lr': lr, 'batch_size': batch_size, 'valid_batch_size': valid_batch_size,
                                        'patience': patience, 'max_epochs': max_epochs})
 
+    @staticmethod
+    def get_hps():
+        return list(MLPHP()) + [MLPHP.WEIGHT]
+
 
 class PetaleMLPR(TorchRegressorWrapper):
     """
     Class used as a wrapper for MLP regression model
     """
-    def __init__(self, layers: List[int], activation: str, eval_metric: Optional[Metric] = None,
+    def __init__(self, n_layer: int, n_unit: int, activation: str, eval_metric: Optional[Metric] = None,
                  dropout: float = 0, alpha: float = 0, beta: float = 0, lr: float = 0.05,
                  batch_size: int = 55, valid_batch_size: Optional[int] = None, max_epochs: int = 200,
                  patience: int = 15, num_cont_col: Optional[int] = None, cat_idx: Optional[List[int]] = None,
@@ -68,7 +74,8 @@ class PetaleMLPR(TorchRegressorWrapper):
         Builds and MLP regressor
 
         Args:
-            layers: list with number of units in each hidden layer
+            n_layer: number of hidden layer
+            n_unit: number of units in each hidden layer
             eval_metric: evaluation metric
             activation: activation function
             dropout: probability of dropout
@@ -86,7 +93,7 @@ class PetaleMLPR(TorchRegressorWrapper):
             cat_emb_sizes: list of integer representing the size of each categorical embedding
         """
         # Creation of the model
-        model = MLPRegressor(layers=layers, activation=activation,
+        model = MLPRegressor(layers=[n_unit]*n_layer, activation=activation,
                              eval_metric=eval_metric, dropout=dropout, alpha=alpha, beta=beta,
                              num_cont_col=num_cont_col, cat_idx=cat_idx, cat_sizes=cat_sizes,
                              cat_emb_sizes=cat_emb_sizes, verbose=verbose)
@@ -96,3 +103,24 @@ class PetaleMLPR(TorchRegressorWrapper):
                          train_params={'lr': lr, 'batch_size': batch_size, 'valid_batch_size': valid_batch_size,
                                        'patience': patience, 'max_epochs': max_epochs})
 
+    @staticmethod
+    def get_hps():
+        return list(MLPHP())
+
+
+class MLPHP:
+    """
+    MLP's hyperparameters
+    """
+    ACTIVATION = CategoricalHP("activation")
+    ALPHA = NumericalContinuousHP("alpha")
+    BATCH_SIZE = NumericalIntHP("batch_size")
+    BETA = NumericalContinuousHP("beta")
+    LR = NumericalContinuousHP("lr")
+    N_LAYER = NumericalIntHP("n_layer")
+    N_UNIT = NumericalIntHP("n_unit")
+    WEIGHT = NumericalContinuousHP("weight")
+
+    def __iter__(self):
+        return iter([self.ACTIVATION, self.ALPHA, self.BATCH_SIZE, self.BETA, self.LR,
+                     self.N_LAYER, self.N_UNIT])

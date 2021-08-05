@@ -14,15 +14,15 @@ if __name__ == '__main__':
     from settings.paths import Paths
     from src.data.extraction.data_management import PetaleDataManager
     from src.data.processing.datasets import PetaleDataset, PetaleStaticGNNDataset
-    from src.data.processing.sampling import get_learning_one_data, extract_masks, SIGNIFICANT, ALL
+    from src.data.processing.sampling import get_learning_one_data, extract_masks, SIGNIFICANT
     from src.data.processing.sampling import CARDIOMETABOLIC_COMPLICATIONS as CMC
     from src.models.han import PetaleBinaryHANC
     from src.models.mlp import PetaleBinaryMLPC
     from src.models.random_forest import PetaleBinaryRFC
-    from src.models.tabnet import PetaleTNC
+    from src.models.tabnet import PetaleBinaryTNC
     from src.models.xgboost_ import PetaleBinaryXGBC
     from src.utils.score_metrics import BinaryAccuracy, BinaryBalancedAccuracy, BinaryCrossEntropy,\
-        BalancedAccuracyEntropyRatio
+        BalancedAccuracyEntropyRatio, Sensitivity, Specificity, Reduction
 
     # Initialization of DataManager and sampler
     manager = PetaleDataManager("rayn2402")
@@ -43,8 +43,8 @@ if __name__ == '__main__':
     cat_idx, cat_sizes = l1_numpy_dataset.cat_idx, l1_numpy_dataset.cat_sizes
 
     # Metrics
-    metrics = [BinaryAccuracy(), BinaryBalancedAccuracy(), BinaryBalancedAccuracy("geometric_mean"),
-               BinaryCrossEntropy(), BalancedAccuracyEntropyRatio()]
+    metrics = [BinaryAccuracy(), BinaryBalancedAccuracy(), BinaryBalancedAccuracy(Reduction.GEO_MEAN),
+               BinaryCrossEntropy(), BalancedAccuracyEntropyRatio(), Sensitivity(), Specificity()]
 
     # Extraction of data
     _, y_test_n, _ = l1_numpy_dataset[test_mask]
@@ -59,7 +59,7 @@ if __name__ == '__main__':
         """
         Training and evaluation of PetaleRFR
         """
-        petale_rfc = PetaleBinaryRFC(n_estimators=1000, max_samples=0.8, weight=w)
+        petale_rfc = PetaleBinaryRFC(n_estimators=1500, max_samples=0.8, weight=w)
         petale_rfc.fit(l1_numpy_dataset)
         petale_rfc.find_optimal_threshold(l1_numpy_dataset, metrics[2])
         pred = petale_rfc.predict_proba(l1_numpy_dataset)
@@ -79,11 +79,12 @@ if __name__ == '__main__':
             print(f"\t{m.name} : {m(pred, y_test_n, thresh=petale_xgbc.thresh)}")
 
         """
-        Training and evaluation of PetaleTNC
+        Training and evaluation of PetaleBinaryTNC
         """
-        petale_tnc = PetaleTNC(cat_idx=cat_idx, cat_sizes=cat_sizes, cat_emb_sizes=cat_sizes, device='cpu',
+        petale_tnc = PetaleBinaryTNC(cat_idx=cat_idx, cat_sizes=cat_sizes, cat_emb_sizes=cat_sizes, device='cpu',
                                lr=0.08, max_epochs=300, patience=100, batch_size=35, n_steps=6,
                                n_d=4, n_a=4, gamma=1.5, weight=w)
+
         petale_tnc.fit(l1_numpy_dataset)
         petale_tnc.find_optimal_threshold(l1_numpy_dataset, metrics[2])
         pred = petale_tnc.predict_proba(l1_numpy_dataset)
@@ -94,7 +95,7 @@ if __name__ == '__main__':
         """
         Training and evaluation of PetaleMLPC
         """
-        petale_mlpc = PetaleBinaryMLPC(layers=[10, 10], activation="ReLU", alpha=0, beta=0, lr=0.05,
+        petale_mlpc = PetaleBinaryMLPC(n_layer=3, n_unit=5, activation="PReLU", alpha=0, beta=0, lr=0.05,
                                        batch_size=50, patience=250, max_epochs=1500,
                                        num_cont_col=len(cont_cols), weight=w)
         petale_mlpc.fit(l1_tensor_dataset)

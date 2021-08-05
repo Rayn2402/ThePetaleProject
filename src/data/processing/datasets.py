@@ -519,3 +519,16 @@ class PetaleStaticGNNDataset(PetaleDataset):
         # If we are not calling update_masks for initialization purpose
         if len(test_mask) != 0:
             self._set_subgraphs_data()
+
+    def create_subset(self, cont_cols: Optional[List[str]] = None, cat_cols: List[str] = None) -> Any:
+        """
+        Returns a subset of the current dataset using the given cont_cols and cat_cols
+
+        Args:
+            cont_cols: list of continuous columns
+            cat_cols: list of categorical columns
+
+        Returns: instance of the same class
+        """
+        subset = self._retrieve_subset_from_original(cont_cols, cat_cols)
+        return PetaleStaticGNNDataset(subset, self.target, cont_cols, cat_cols, self.classification)

@@ -61,8 +61,9 @@ class HanHP:
     BATCH_SIZE = NumericalIntHP("batch_size")
     BETA = NumericalContinuousHP("beta")
     HIDDEN_SIZE = NumericalIntHP("hidden_size")
+    LR = NumericalContinuousHP("lr")
     NUM_HEADS = NumericalIntHP("num_heads")
     WEIGHT = NumericalContinuousHP("weight")
 
     def __iter__(self):
-        return iter([self.ALPHA, self.BATCH_SIZE, self.BETA, self.HIDDEN_SIZE, self.NUM_HEADS])
+        return iter([self.ALPHA, self.BATCH_SIZE, self.BETA, self.HIDDEN_SIZE, self.LR, self.NUM_HEADS])

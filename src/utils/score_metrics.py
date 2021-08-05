@@ -203,6 +203,29 @@ class BinaryClassificationMetric(Metric):
         else:
             return pred, targets
 
+    @staticmethod
+    def get_confusion_matrix(pred_proba: tensor, targets: tensor, thresh: float) -> tensor:
+        """
+        Returns the confusion matrix
+
+        Args:
+            pred_proba: (N,) tensor with with predicted probabilities of being in class 1
+            targets: (N,) tensor with ground truth
+            thresh: probability threshold that must be reach by a sample to be classified into class 1
+
+        Returns: (2,2) tensor
+
+        """
+        # We initialize an empty confusion matrix
+        conf_matrix = zeros(2, 2)
+
+        # We fill the confusion matrix
+        pred_labels = (pred_proba >= thresh).long()
+        for t, p in zip(targets, pred_labels):
+            conf_matrix[t, p] += 1
+
+        return conf_matrix
+
     @abstractmethod
     def compute_metric(self, pred: tensor, targets: tensor, thresh: float) -> float:
         """
@@ -374,34 +397,12 @@ class BinaryBalancedAccuracy(BinaryClassificationMetric):
         Returns: float
         """
         # We get confusion matrix
-        pred_labels = (pred >= thresh).long()
-        conf_mat = self.get_confusion_matrix(pred_labels, targets)
+        conf_mat = self.get_confusion_matrix(pred, targets, thresh)
 
         # We get TNR and TPR
         correct_rates = conf_mat.diag() / conf_mat.sum(dim=1)
 
         return self._reduction(correct_rates).item()
-
-    @staticmethod
-    def get_confusion_matrix(pred: tensor, targets: tensor) -> tensor:
-        """
-        Returns the confusion matrix
-
-        Args:
-            pred: (N,) tensor with predicted labels
-            targets: (N,) tensor with ground truth
-
-        Returns: (2,2) tensor
-
-        """
-        # We initialize an empty confusion matrix
-        conf_matrix = zeros(2, 2)
-
-        # We fill the confusion matrix
-        for t, p in zip(targets, pred):
-            conf_matrix[t, p] += 1
-
-        return conf_matrix
 
 
 class BinaryCrossEntropy(BinaryClassificationMetric):
@@ -459,6 +460,69 @@ class BalancedAccuracyEntropyRatio(BinaryClassificationMetric):
         Returns: float
         """
         return self.bbacc(pred, targets, thresh)/self.bce(pred, targets)
+
+
+class Sensitivity(BinaryClassificationMetric):
+    """
+    Callable class that computes the sensitivity -> TP/(TP + FN)
+    """
+    def __init__(self, n_digits: int = 5):
+        """
+        Sets the protected attribute of the object using parent's constructor
+
+        Args:
+            n_digits: n_digits: number of digits kept for the score
+        """
+        super().__init__(direction=Direction.MAXIMIZE, name="Sensitivity", n_digits=n_digits)
+
+    def compute_metric(self, pred: tensor, targets: tensor, thresh: float) -> float:
+        """
+        Computes the sensitivity score
+
+        Args:
+            pred: (N,) tensor with predicted labels
+            targets: (N,) tensor with ground truth
+            thresh: probability threshold that must be reach by a sample to be classified into class 1
+
+        Returns: float
+        """
+
+        # We first extract the confusion matrix
+        conf_mat = self.get_confusion_matrix(pred, targets, thresh)
+
+        # We compute TP/(TP + FN)
+        return conf_mat[1, 1]/(conf_mat[1, 1] + conf_mat[1, 0])
+
+
+class Specificity(BinaryClassificationMetric):
+    """
+    Callable class that computes the specificity -> TN/(FP + TN)
+    """
+    def __init__(self, n_digits: int = 5):
+        """
+        Sets the protected attribute of the object using parent's constructor
+
+        Args:
+            n_digits: n_digits: number of digits kept for the score
+        """
+        super().__init__(direction=Direction.MAXIMIZE, name="Specificity", n_digits=n_digits)
+
+    def compute_metric(self, pred: tensor, targets: tensor, thresh: float) -> float:
+        """
+        Computes the specificity score
+
+        Args:
+            pred: (N,) tensor with predicted labels
+            targets: (N,) tensor with ground truth
+            thresh: probability threshold that must be reach by a sample to be classified into class 1
+
+        Returns: float
+        """
+        # We first extract the confusion matrix
+        conf_mat = self.get_confusion_matrix(pred, targets, thresh)
+
+        # We compute TN/(TN + FP)
+        return conf_mat[0, 0] / (conf_mat[0, 0] + conf_mat[0, 1])
 
 
 

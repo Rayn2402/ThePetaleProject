@@ -2,6 +2,7 @@
 This file consists of all the experiments made on the l1 dataset
 """
 from os.path import dirname, realpath, join
+from copy import deepcopy
 import sys
 import argparse
 import time
@@ -65,7 +66,7 @@ if __name__ == '__main__':
     from settings.paths import Paths
     from src.data.processing.datasets import PetaleDataset, PetaleStaticGNNDataset
     from src.data.processing.feature_selection import FeatureSelector
-    from src.data.processing.sampling import get_learning_one_data, extract_masks
+    from src.data.processing.sampling import get_learning_one_data, extract_masks, push_valid_to_train
     from src.models.han import PetaleBinaryHANC
     from src.models.mlp import PetaleBinaryMLPC
     from src.models.tabnet import PetaleBinaryTNC
@@ -99,6 +100,8 @@ if __name__ == '__main__':
                                                     complications=[complication])
     # Extraction of masks
     masks = extract_masks(join(Paths.MASKS, "l1_masks.json"), k=args.nb_outer_splits, l=args.nb_inner_splits)
+    masks_without_val = deepcopy(masks)
+    masks_without_val = push_valid_to_train(masks_without_val)
 
     # Initialization of the dictionary containing the evaluation metrics
     evaluation_metrics = [BinaryAccuracy(), BinaryBalancedAccuracy(),
@@ -158,7 +161,7 @@ if __name__ == '__main__':
         dataset = PetaleDataset(df, complication, cont_cols, cat_cols)
 
         # Creation of the evaluator
-        evaluator = Evaluator(model_constructor=PetaleBinaryRFC, dataset=dataset, masks=masks,
+        evaluator = Evaluator(model_constructor=PetaleBinaryRFC, dataset=dataset, masks=masks_without_val,
                               evaluation_name=f"L1_RandomForest_{args.complication}_{args.genes}",
                               hps=RF_HPS, n_trials=100, evaluation_metrics=evaluation_metrics,
                               feature_selector=feature_selector, save_hps_importance=True,
@@ -181,7 +184,7 @@ if __name__ == '__main__':
         dataset = PetaleDataset(df, complication, cont_cols, cat_cols)
 
         # Creation of the evaluator
-        evaluator = Evaluator(model_constructor=PetaleBinaryXGBC, dataset=dataset, masks=masks,
+        evaluator = Evaluator(model_constructor=PetaleBinaryXGBC, dataset=dataset, masks=masks_without_val,
                               evaluation_name=f"L1_XGBoost_{args.complication}_{args.genes}",
                               hps=XGBOOST_HPS, n_trials=100, evaluation_metrics=evaluation_metrics,
                               feature_selector=feature_selector, save_hps_importance=True,
@@ -280,7 +283,7 @@ if __name__ == '__main__':
         fixed_params = update_fixed_params(dataset)
 
         # Creation of evaluator
-        evaluator = Evaluator(model_constructor=PetaleBinaryMLPC, dataset=dataset, masks=masks,
+        evaluator = Evaluator(model_constructor=PetaleBinaryMLPC, dataset=dataset, masks=masks_without_val,
                               evaluation_name=f"L1_Logit_{args.complication}_{args.genes}",
                               hps=LOGIT_HPS, n_trials=100, evaluation_metrics=evaluation_metrics,
                               feature_selector=feature_selector, fixed_params=fixed_params,

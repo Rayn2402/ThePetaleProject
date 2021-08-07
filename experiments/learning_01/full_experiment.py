@@ -28,7 +28,7 @@ def argument_parser():
     parser.add_argument('-comp', '--complication', type=str, default='bone',
                         choices=['bone', 'cardio', 'neuro', 'all'],
                         help='Choices of health complication to predict')
-    parser.add_argument('-gen', '--genes', nargs='*', type=str, default=[None, 'significant', 'all'],
+    parser.add_argument('-gen', '--genes', nargs='*', type=str, default=[None, 'significant'],
                         help="Selection of genes to incorporate into the dataset")
 
     # Models selection
@@ -245,40 +245,6 @@ if __name__ == '__main__':
             print("Time Taken for MLP (minutes): ", round((time.time() - start) / 60, 2))
 
         """
-        HAN experiment
-        """
-        if args.han:
-
-            # Start timer
-            start = time.time()
-
-            # Creation of the dataset
-            df, cont_cols, cat_cols = data_dict[gene]
-            dataset = PetaleStaticGNNDataset(df, complication, cont_cols, cat_cols)
-
-            # Creation of function to update fixed params
-            def update_fixed_params(dts):
-                return {'meta_paths': dts.get_metapaths(), 'in_size': len(dts.cont_cols),
-                        'max_epochs': 250, 'patience': 15}
-
-
-            # Saving of original fixed params for HAN
-            fixed_params = update_fixed_params(dataset)
-
-            # Creation of the evaluator
-            evaluator = Evaluator(model_constructor=PetaleBinaryHANC, dataset=dataset, masks=masks,
-                                  evaluation_name=f"L1_HAN_{args.complication}_{gene}",
-                                  hps=HAN_HPS, n_trials=50, evaluation_metrics=evaluation_metrics,
-                                  fixed_params=fixed_params, fixed_params_update_function=update_fixed_params,
-                                  feature_selector=feature_selector, save_hps_importance=True,
-                                  save_optimization_history=True)
-
-            # Evaluation
-            evaluator.nested_cross_valid()
-
-            print("Time Taken for HAN (minutes): ", round((time.time() - start) / 60, 2))
-
-        """
         Logistic regression experiment
         """
         if args.logistic_regression:
@@ -312,6 +278,40 @@ if __name__ == '__main__':
             evaluator.nested_cross_valid()
 
             print("Time Taken for Logistic Regression (minutes): ", round((time.time() - start) / 60, 2))
+
+        """
+        HAN experiment
+        """
+        if args.han:
+
+            # Start timer
+            start = time.time()
+
+            # Creation of the dataset
+            df, cont_cols, cat_cols = data_dict[gene]
+            dataset = PetaleStaticGNNDataset(df, complication, cont_cols, cat_cols)
+
+            # Creation of function to update fixed params
+            def update_fixed_params(dts):
+                return {'meta_paths': dts.get_metapaths(), 'in_size': len(dts.cont_cols),
+                        'max_epochs': 250, 'patience': 15}
+
+
+            # Saving of original fixed params for HAN
+            fixed_params = update_fixed_params(dataset)
+
+            # Creation of the evaluator
+            evaluator = Evaluator(model_constructor=PetaleBinaryHANC, dataset=dataset, masks=masks,
+                                  evaluation_name=f"L1_HAN_{args.complication}_{gene}",
+                                  hps=HAN_HPS, n_trials=50, evaluation_metrics=evaluation_metrics,
+                                  fixed_params=fixed_params, fixed_params_update_function=update_fixed_params,
+                                  feature_selector=feature_selector, save_hps_importance=True,
+                                  save_optimization_history=True)
+
+            # Evaluation
+            evaluator.nested_cross_valid()
+
+            print("Time Taken for HAN (minutes): ", round((time.time() - start) / 60, 2))
 
         print(f"\nTime Taken for Genes = {gene}  (minutes): ", round((time.time() - gene_start) / 60, 2), "\n")
 

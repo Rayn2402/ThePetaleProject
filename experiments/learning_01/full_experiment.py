@@ -28,7 +28,7 @@ def argument_parser():
     parser.add_argument('-comp', '--complication', type=str, default='bone',
                         choices=['bone', 'cardio', 'neuro', 'all'],
                         help='Choices of health complication to predict')
-    parser.add_argument('-gen', '--genes', nargs='*', type=str, default=[None, 'significant'],
+    parser.add_argument('-gen', '--genes', nargs='*', type=str, default=[None, 'significant', 'all'],
                         help="Selection of genes to incorporate into the dataset")
 
     # Models selection
@@ -107,7 +107,9 @@ if __name__ == '__main__':
         data_dict[gene] = (df, cont_cols, cat_cols)
 
     # Extraction of masks
-    masks = extract_masks(join(Paths.MASKS, "l1_masks.json"), k=args.nb_outer_splits, l=args.nb_inner_splits)
+    masks = extract_masks(join(Paths.MASKS, "l1_masks_2.json"), k=args.nb_outer_splits, l=args.nb_inner_splits)
+    gnn_masks = extract_masks(join(Paths.MASKS, "l1_masks_2.json"), k=args.nb_outer_splits,
+                              l=min(args.nb_inner_splits, 2))
     masks_without_val = deepcopy(masks)
     push_valid_to_train(masks_without_val)
 
@@ -151,7 +153,7 @@ if __name__ == '__main__':
             # Creation of the evaluator
             evaluator = Evaluator(model_constructor=PetaleBinaryTNC, dataset=dataset,
                                   evaluation_name=f"L1_TabNet_{args.complication}_{gene}",
-                                  masks=masks, hps=TAB_HPS, n_trials=100, fixed_params=fixed_params,
+                                  masks=masks, hps=TAB_HPS, n_trials=200, fixed_params=fixed_params,
                                   fixed_params_update_function=update_fixed_params,
                                   feature_selector=feature_selector,
                                   evaluation_metrics=evaluation_metrics,
@@ -177,7 +179,7 @@ if __name__ == '__main__':
             # Creation of the evaluator
             evaluator = Evaluator(model_constructor=PetaleBinaryRFC, dataset=dataset, masks=masks_without_val,
                                   evaluation_name=f"L1_RandomForest_{args.complication}_{gene}",
-                                  hps=RF_HPS, n_trials=100, evaluation_metrics=evaluation_metrics,
+                                  hps=RF_HPS, n_trials=200, evaluation_metrics=evaluation_metrics,
                                   feature_selector=feature_selector, save_hps_importance=True,
                                   save_optimization_history=True)
 
@@ -234,7 +236,7 @@ if __name__ == '__main__':
             # Creation of evaluator
             evaluator = Evaluator(model_constructor=PetaleBinaryMLPC, dataset=dataset, masks=masks,
                                   evaluation_name=f"L1_MLP_{args.complication}_{gene}",
-                                  hps=MLP_HPS, n_trials=100, evaluation_metrics=evaluation_metrics,
+                                  hps=MLP_HPS, n_trials=200, evaluation_metrics=evaluation_metrics,
                                   feature_selector=feature_selector, fixed_params=fixed_params,
                                   fixed_params_update_function=update_fixed_params,
                                   save_hps_importance=True, save_optimization_history=True)
@@ -269,7 +271,7 @@ if __name__ == '__main__':
             # Creation of evaluator
             evaluator = Evaluator(model_constructor=PetaleBinaryMLPC, dataset=dataset, masks=masks_without_val,
                                   evaluation_name=f"L1_Logit_{args.complication}_{gene}",
-                                  hps=LOGIT_HPS, n_trials=100, evaluation_metrics=evaluation_metrics,
+                                  hps=LOGIT_HPS, n_trials=200, evaluation_metrics=evaluation_metrics,
                                   feature_selector=feature_selector, fixed_params=fixed_params,
                                   fixed_params_update_function=update_fixed_params,
                                   save_hps_importance=True, save_optimization_history=True)
@@ -301,9 +303,9 @@ if __name__ == '__main__':
             fixed_params = update_fixed_params(dataset)
 
             # Creation of the evaluator
-            evaluator = Evaluator(model_constructor=PetaleBinaryHANC, dataset=dataset, masks=masks,
+            evaluator = Evaluator(model_constructor=PetaleBinaryHANC, dataset=dataset, masks=gnn_masks,
                                   evaluation_name=f"L1_HAN_{args.complication}_{gene}",
-                                  hps=HAN_HPS, n_trials=50, evaluation_metrics=evaluation_metrics,
+                                  hps=HAN_HPS, n_trials=100, evaluation_metrics=evaluation_metrics,
                                   fixed_params=fixed_params, fixed_params_update_function=update_fixed_params,
                                   feature_selector=feature_selector, save_hps_importance=True,
                                   save_optimization_history=True)

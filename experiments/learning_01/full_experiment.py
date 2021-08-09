@@ -109,7 +109,7 @@ if __name__ == '__main__':
     # Extraction of masks
     masks = extract_masks(join(Paths.MASKS, "l1_masks_2.json"), k=args.nb_outer_splits, l=args.nb_inner_splits)
     gnn_masks = extract_masks(join(Paths.MASKS, "l1_masks_2.json"), k=args.nb_outer_splits,
-                              l=min(args.nb_inner_splits, 2))
+                              l=min(args.nb_inner_splits, 3))
     masks_without_val = deepcopy(masks)
     push_valid_to_train(masks_without_val)
 
@@ -203,7 +203,7 @@ if __name__ == '__main__':
             # Creation of the evaluator
             evaluator = Evaluator(model_constructor=PetaleBinaryXGBC, dataset=dataset, masks=masks_without_val,
                                   evaluation_name=f"L1_XGBoost_{args.complication}_{gene}",
-                                  hps=XGBOOST_HPS, n_trials=100, evaluation_metrics=evaluation_metrics,
+                                  hps=XGBOOST_HPS, n_trials=200, evaluation_metrics=evaluation_metrics,
                                   feature_selector=feature_selector, save_hps_importance=True,
                                   save_optimization_history=True)
 

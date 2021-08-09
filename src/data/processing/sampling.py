@@ -210,7 +210,7 @@ class RandomStratifiedSampler:
     @staticmethod
     def is_categorical(targets: Union[tensor, array]) -> bool:
         """
-        Check if the number of unique values is greater than the quarter of the length of the targets sequence
+        Check if the number of unique values is lower than the quarter of the length of the targets sequence
 
         Args:
             targets: sequence of float/int used for stratification
@@ -218,7 +218,7 @@ class RandomStratifiedSampler:
         Returns: bool
         """
         target_list_copy = list(targets)
-        return len(set(target_list_copy)) > 0.25*len(target_list_copy)
+        return len(set(target_list_copy)) < 0.25*len(target_list_copy)
 
     @staticmethod
     def mimic_classes(targets: Union[tensor, array, List[Any]]) -> array:

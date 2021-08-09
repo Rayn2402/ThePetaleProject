@@ -77,6 +77,7 @@ class Evaluator:
         self._fixed_params = fixed_params if fixed_params is not None else {}
         self._hps = hps
         self._masks = masks
+        self._hp_tuning = (n_trials > 0)
         self._tuner = Tuner(n_trials=n_trials,
                             save_hps_importance=save_hps_importance,
                             save_parallel_coordinates=save_parallel_coordinates,
@@ -158,20 +159,23 @@ class Evaluator:
                 recorder.record_data_info(name, mask_length)
 
             # We update the tuner to perform the hyperparameters optimization
-            print(f"\nHyperparameter tuning started - K = {k}\n")
-            self._tuner.update_tuner(study_name=f"{self.evaluation_name}_{k}",
-                                     objective=self._create_objective(masks=in_masks, subset=subset),
-                                     saving_path=saving_path)
+            if self._hp_tuning:
+                print(f"\nHyperparameter tuning started - K = {k}\n")
+                self._tuner.update_tuner(study_name=f"{self.evaluation_name}_{k}",
+                                         objective=self._create_objective(masks=in_masks, subset=subset),
+                                         saving_path=saving_path)
 
-            # We perform the hps tuning to get the best hps
-            best_hps, hps_importance = self._tuner.tune()
+                # We perform the hps tuning to get the best hps
+                best_hps, hps_importance = self._tuner.tune()
 
-            # We save the hyperparameters
-            print(f"\nHyperparameter tuning done - K = {k}\n")
-            recorder.record_hyperparameters(best_hps)
+                # We save the hyperparameters
+                print(f"\nHyperparameter tuning done - K = {k}\n")
+                recorder.record_hyperparameters(best_hps)
 
-            # We save the hyperparameters importance
-            recorder.record_hyperparameters_importance(hps_importance)
+                # We save the hyperparameters importance
+                recorder.record_hyperparameters_importance(hps_importance)
+            else:
+                best_hps = {}
 
             # We create a model with the best hps
             model = self.model_constructor(**best_hps, **self._fixed_params)

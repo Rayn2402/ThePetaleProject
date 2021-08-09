@@ -12,11 +12,12 @@ from src.models.random_forest import RandomForestHP
 from src.models.xgboost_ import XGBoostHP
 from src.training.enums import Range
 
+
 TAB_HPS = {
     TabNetHP.BATCH_SIZE.name: {
-        Range.MIN: 25,
-        Range.MAX: 50,
-        Range.STEP: 5
+        Range.MIN: 16,
+        Range.MAX: 46,
+        Range.STEP: 10
     },
     TabNetHP.BETA.name: {
         Range.MIN: 0,
@@ -104,9 +105,9 @@ HAN_HPS = {
         Range.MAX: 1
     },
     HanHP.BATCH_SIZE.name: {
-        Range.MIN: 25,
-        Range.MAX: 50,
-        Range.STEP: 5
+        Range.MIN: 16,
+        Range.MAX: 46,
+        Range.STEP: 10
     },
     HanHP.BETA.name: {
         Range.MIN: 0,
@@ -140,9 +141,9 @@ MLP_HPS = {
         Range.MAX: 1
     },
     MLPHP.BATCH_SIZE.name: {
-        Range.MIN: 25,
-        Range.MAX: 50,
-        Range.STEP: 5
+        Range.MIN: 16,
+        Range.MAX: 46,
+        Range.STEP: 10
     },
     MLPHP.BETA.name: {
         Range.MIN: 0,
@@ -175,9 +176,9 @@ LOGIT_HPS = {
         Range.MAX: 1
     },
     MLPHP.BATCH_SIZE.name: {
-        Range.MIN: 25,
-        Range.MAX: 50,
-        Range.STEP: 5
+        Range.MIN: 16,
+        Range.MAX: 46,
+        Range.STEP: 10
     },
     MLPHP.BETA.name: {
         Range.MIN: 0,

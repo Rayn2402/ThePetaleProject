@@ -108,7 +108,7 @@ class SklearnRegressorWrapper(PetaleRegressor):
         # Call the fit method
         self._model.fit(x_train, y_train, **self.train_params)
 
-    def predict(self, dataset: PetaleDataset) -> array:
+    def predict(self, dataset: PetaleDataset, mask: Optional[List[int]] = None) -> array:
         """
         Returns the predicted real-valued targets for all samples in the test set
 
@@ -117,11 +117,15 @@ class SklearnRegressorWrapper(PetaleRegressor):
                      - x : (N,D) tensor or array with D-dimensional samples
                      - y : (N,) tensor or array with classification labels
                      - idx : (N,) tensor or array with idx of samples according to the whole dataset
+            mask: List of dataset idx for which we want to make predictions
 
         Returns: (N,) array
         """
-        # We extract test set
-        x_test, _, _ = dataset[dataset.test_mask]
+        # We set the mask
+        mask = mask if mask is not None else dataset.test_mask
+
+        # We extract the data
+        x, _, _ = dataset[mask]
 
         # Call sklearn predict method
-        return self._model.predict(x_test)
+        return self._model.predict(x)

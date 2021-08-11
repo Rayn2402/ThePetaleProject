@@ -122,7 +122,7 @@ class TorchRegressorWrapper(PetaleRegressor):
         """
         self._model.plot_evaluations(save_path=save_path)
 
-    def predict(self, dataset: PetaleDataset) -> tensor:
+    def predict(self, dataset: PetaleDataset, mask: Optional[List[int]] = None) -> tensor:
         """
         Returns the predicted real-valued targets for all samples in the test set
 
@@ -131,9 +131,10 @@ class TorchRegressorWrapper(PetaleRegressor):
                      - x : (N,D) tensor or array with D-dimensional samples
                      - y : (N,) tensor or array with classification labels
                      - idx : (N,) tensor or array with idx of samples according to the whole dataset
+            mask: List of dataset idx for which we want to make predictions
 
         Returns: (N,) array
         """
 
         # Call sklearn predict method
-        return self._model.predict(dataset)
+        return self._model.predict(dataset, mask)

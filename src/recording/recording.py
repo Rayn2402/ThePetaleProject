@@ -11,7 +11,7 @@ import os
 import pickle
 
 from collections import Counter
-from numpy import std, min, max, mean, median, arange, argmax
+from numpy import std, min, max, mean, median, arange
 from src.models.abstract_models.base_models import PetaleBinaryClassifier, PetaleRegressor
 from src.recording.constants import *
 from torch import tensor, save
@@ -37,8 +37,8 @@ class Recorder:
         # We store the protected attributes
         self._data = {NAME: evaluation_name, INDEX: index,
                       DATA_INFO: {}, HYPERPARAMETERS: {},
-                      HYPERPARAMETER_IMPORTANCE: {}, METRICS: {},
-                      COEFFICIENT: {}, RESULTS: {}}
+                      HYPERPARAMETER_IMPORTANCE: {}, METRICS: {'train': {}, 'test': {}},
+                      COEFFICIENT: {}, RESULTS: {'train': {}, 'test': {}}}
 
         self._path = os.path.join(recordings_path, evaluation_name, f"Split_{index}")
 
@@ -130,22 +130,24 @@ class Recorder:
             filepath = os.path.join(self._path, "model.sav")
             pickle.dump(model, open(filepath, "wb"))
 
-    def record_scores(self, score: float, metric: str) -> None:
+    def record_scores(self, score: float, metric: str, test: bool = True) -> None:
         """
         Saves the score associated to a metric
 
         Args:
             score: float
             metric: name of the metric
+            test: True if the scores are recorded for the test set
 
         Returns: None
 
         """
         # We save the score of the given metric
-        self._data[METRICS][metric] = round(score, 6)
+        split = 'test' if test else 'train'
+        self._data[METRICS][split][metric] = round(score, 6)
 
     def record_predictions(self, ids: List[str], predictions: tensor,
-                           target: tensor) -> None:
+                           target: tensor, test: bool = True) -> None:
         """
         Save the predictions of a given model for each patient ids
 
@@ -153,19 +155,21 @@ class Recorder:
             ids: patient/participant ids
             predictions: predicted class or regression value
             target: target value
+            test: True if the predictions are recorded for the test set
 
         Returns: None
 
         """
         # We save the predictions
+        split = 'test' if test else 'train'
         if len(predictions.shape) == 0:
             for j, id_ in enumerate(ids):
-                self._data[RESULTS][id_] = {
+                self._data[RESULTS][split][id_] = {
                     PREDICTION: predictions[j].item(),
                     TARGET: target[j].item()}
         else:
             for j, id_ in enumerate(ids):
-                self._data[RESULTS][id_] = {
+                self._data[RESULTS][split][id_] = {
                     PREDICTION: predictions[j].tolist(),
                     TARGET: target[j].item()}
 

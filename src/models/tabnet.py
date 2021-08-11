@@ -3,11 +3,12 @@ Author: Nicolas Raymond
 
 This file is used to implement wrappers for TabNet regression and classification models
 """
-from numpy import array
+from numpy import array, ones
 
 from src.data.processing.datasets import PetaleDataset
 from src.models.abstract_models.base_models import PetaleBinaryClassifier, PetaleRegressor
 from src.utils.hyperparameters import NumericalIntHP, NumericalContinuousHP
+from src.utils.visualization import visualize_epoch_progression
 from pytorch_tabnet.tab_model import TabNetClassifier, TabNetRegressor
 from typing import Optional, List
 
@@ -82,9 +83,30 @@ class PetaleBinaryTNC(PetaleBinaryClassifier):
 
         # We get sample weights
         sample_weights = self.get_sample_weights(y_train)
+        if sample_weights is None:
+            sample_weights = ones(len(y_train))/len(y_train)
 
         self.__model.fit(x_train, y_train, weights=sample_weights, eval_set=eval_set, eval_metric=["logloss"],
                          **self.train_params)
+
+    def plot_evaluations(self, save_path: Optional[str] = None) -> None:
+        """
+        Plots the training and valid curves saved
+
+        Args:
+            save_path: path were the figures will be saved
+
+        Returns: None
+        """
+        # Extraction of data
+        train_loss = self.__model.history['loss']
+        valid_loss = self.__model.history['val_0_logloss']
+
+        # Figure construction
+        visualize_epoch_progression(train_history=[train_loss],
+                                    valid_history=[valid_loss],
+                                    progression_type=['WBCE'],
+                                    path=save_path)
 
     def predict_proba(self, dataset: PetaleDataset, mask: Optional[List[int]] = None) -> array:
         """
@@ -143,10 +165,10 @@ class PetaleTNR(PetaleRegressor):
         if cat_idxs is None:
             cat_idxs, cat_dims, cat_emb_dim = [], [], 1
 
-        self._model = TabNetRegressor(n_d=n_d, n_a=n_a, n_steps=n_steps, gamma=gamma,
-                                      cat_idxs=cat_idxs, cat_dims=cat_dims, cat_emb_dim=cat_emb_dim,
-                                      device_name=device, optimizer_params=dict(lr=lr, weight_decay=beta),
-                                      verbose=int(verbose))
+        self.__model = TabNetRegressor(n_d=n_d, n_a=n_a, n_steps=n_steps, gamma=gamma,
+                                       cat_idxs=cat_idxs, cat_dims=cat_dims, cat_emb_dim=cat_emb_dim,
+                                       device_name=device, optimizer_params=dict(lr=lr, weight_decay=beta),
+                                       verbose=int(verbose))
 
         super().__init__(train_params={'batch_size': batch_size, 'max_epochs': max_epochs, 'patience': patience})
 
@@ -173,7 +195,26 @@ class PetaleTNR(PetaleRegressor):
             x_valid, y_valid, _ = dataset[dataset.valid_mask]
             eval_set = [(x_valid, y_valid.reshape(-1, 1))]
 
-        self._model.fit(x_train, y_train.reshape(-1, 1), eval_set=eval_set, **self.train_params)
+        self.__model.fit(x_train, y_train.reshape(-1, 1), eval_set=eval_set, **self.train_params)
+
+    def plot_evaluations(self, save_path: Optional[str] = None) -> None:
+        """
+        Plots the training and valid curves saved
+
+        Args:
+            save_path: path were the figures will be saved
+
+        Returns: None
+        """
+        # Extraction of data
+        train_loss = self.__model.history['loss']
+        valid_loss = self.__model.history['val_0_logloss']
+
+        # Figure construction
+        visualize_epoch_progression(train_history=[train_loss],
+                                    valid_history=[valid_loss],
+                                    progression_type=['WBCE'],
+                                    path=save_path)
 
     def predict(self, dataset: PetaleDataset) -> array:
         """
@@ -190,7 +231,7 @@ class PetaleTNR(PetaleRegressor):
         # We extract test set
         x_test, _, _ = dataset[dataset.test_mask]
 
-        return self._model.predict(x_test).squeeze()
+        return self.__model.predict(x_test).squeeze()
 
 
 class TabNetHP:

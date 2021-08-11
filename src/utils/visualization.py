@@ -116,15 +116,15 @@ def visualize_epoch_progression(train_history: List[tensor], valid_history: List
 
     for i in range(len(train_history)):
 
-        nb_epochs = train_history[i].shape[0]
-        if nb_epochs != valid_history[i].shape[0]:
+        nb_epochs = len(train_history[i])
+        if nb_epochs != len(valid_history[i]):
             raise Exception("Both train and valid tensors must be of the same shape")
 
         epochs = range(nb_epochs)
 
         plt.subplot(1, 2, i+1)
-        plt.plot(epochs, train_history[i], label=f'train {progression_type[i]}')
-        plt.plot(epochs, valid_history[i], label=f'valid {progression_type[i]}')
+        plt.plot(epochs, train_history[i], label=f'train')
+        plt.plot(epochs, valid_history[i], label=f'valid')
 
         plt.legend()
 

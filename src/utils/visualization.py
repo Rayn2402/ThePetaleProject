@@ -113,23 +113,34 @@ def visualize_epoch_progression(train_history: List[tensor], valid_history: List
     :param path: (string) determines where to save the plots
     """
     plt.figure(figsize=(12, 8))
+    if len(train_history) == 1:
 
-    for i in range(len(train_history)):
-
-        nb_epochs = len(train_history[i])
-        if nb_epochs != len(valid_history[i]):
-            raise Exception("Both train and valid tensors must be of the same shape")
-
-        epochs = range(nb_epochs)
-
-        plt.subplot(1, 2, i+1)
-        plt.plot(epochs, train_history[i], label=f'train')
-        plt.plot(epochs, valid_history[i], label=f'valid')
+        x = range(len(train_history[0]))
+        plt.plot(x, train_history[0], label=f'train')
+        plt.plot(x, valid_history[0], label=f'valid')
 
         plt.legend()
 
         plt.xlabel('Epochs')
-        plt.ylabel(progression_type[i])
+        plt.ylabel(progression_type[0])
+    else:
+        for i in range(len(train_history)):
 
+            nb_epochs = len(train_history[i])
+            if nb_epochs != len(valid_history[i]):
+                raise Exception("Both train and valid tensors must be of the same shape")
+
+            epochs = range(nb_epochs)
+
+            plt.subplot(1, 2, i+1)
+            plt.plot(epochs, train_history[i], label=f'train')
+            plt.plot(epochs, valid_history[i], label=f'valid')
+
+            plt.legend()
+
+            plt.xlabel('Epochs')
+            plt.ylabel(progression_type[i])
+
+    plt.tight_layout()
     plt.savefig(join(path, "epochs_progression.png"))
     plt.close()

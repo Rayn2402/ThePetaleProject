@@ -216,7 +216,7 @@ class PetaleTNR(PetaleRegressor):
                                     progression_type=['WBCE'],
                                     path=save_path)
 
-    def predict(self, dataset: PetaleDataset) -> array:
+    def predict(self, dataset: PetaleDataset, mask: Optional[List[int]] = None) -> array:
         """
         Returns the predicted real-valued targets for all samples in the test set
 
@@ -225,13 +225,17 @@ class PetaleTNR(PetaleRegressor):
                      - x : (N,D) tensor or array with D-dimensional samples
                      - y : (N,) tensor or array with classification labels
                      - idx : (N,) tensor or array with idx of samples according to the whole dataset
+            mask: List of dataset idx for which we want to make predictions
 
         Returns: (N,) array
         """
-        # We extract test set
-        x_test, _, _ = dataset[dataset.test_mask]
+        # We set the mask
+        mask = mask if mask is not None else dataset.test_mask
 
-        return self.__model.predict(x_test).squeeze()
+        # We extract test set
+        x, _, _ = dataset[mask]
+
+        return self.__model.predict(x).squeeze()
 
 
 class TabNetHP:

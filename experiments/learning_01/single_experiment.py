@@ -63,7 +63,7 @@ if __name__ == '__main__':
 
     # Imports specific to project
     sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
-    from hps.l1_hps import TAB_HPS, RF_HPS, XGBOOST_HPS, HAN_HPS, MLP_HPS, LOGIT_HPS
+    from hps.l1_hps import TAB_HPS, RF_HPS, HAN_HPS, MLP_HPS, LOGIT_HPS, XGBOOST_HPS
     from settings.paths import Paths
     from src.data.processing.datasets import PetaleDataset, PetaleStaticGNNDataset
     from src.data.processing.feature_selection import FeatureSelector
@@ -144,13 +144,13 @@ if __name__ == '__main__':
             # Saving of original fixed params for TabNet
             fixed_params = {'cat_idx': dts.cat_idx, 'cat_sizes': dts.cat_sizes,
                             'cat_emb_sizes': dts.cat_sizes, 'max_epochs': 300,
-                            'patience': 100, 'lr': 0.08, 'batch_size': 35, 'n_steps': 6,
+                            'patience': 100, 'lr': 0.08, 'batch_size': 36, 'n_steps': 6,
                             'n_d': 4, 'n_a': 4, 'gamma': 1.5, 'weight': 0.55}
 
             # Creation of the evaluator
-            evaluator = Evaluator(model_constructor=PetaleBinaryTNC, dataset=dataset,
+            evaluator = Evaluator(model_constructor=PetaleBinaryTNC, dataset=dts,
                                   evaluation_name=f"L1_TabNet_{args.complication}_{gene}_no_tuning",
-                                  masks=masks, hps=TAB_HPS, n_trials=200, fixed_params=fixed_params,
+                                  masks=masks, hps=TAB_HPS, n_trials=0, fixed_params=fixed_params,
                                   feature_selector=feature_selector,
                                   evaluation_metrics=evaluation_metrics,
                                   save_hps_importance=True, save_optimization_history=True)
@@ -178,7 +178,7 @@ if __name__ == '__main__':
             # Creation of the evaluator
             evaluator = Evaluator(model_constructor=PetaleBinaryRFC, dataset=dataset, masks=masks_without_val,
                                   evaluation_name=f"L1_RandomForest_{args.complication}_{gene}_no_tuning",
-                                  hps=RF_HPS, n_trials=200, fixed_params=fixed_params,
+                                  hps=RF_HPS, n_trials=0, fixed_params=fixed_params,
                                   evaluation_metrics=evaluation_metrics, feature_selector=feature_selector,
                                   save_hps_importance=True, save_optimization_history=True)
 
@@ -205,7 +205,7 @@ if __name__ == '__main__':
             # Creation of the evaluator
             evaluator = Evaluator(model_constructor=PetaleBinaryXGBC, dataset=dataset, masks=masks_without_val,
                                   evaluation_name=f"L1_XGBoost_{args.complication}_{gene}_no_tuning",
-                                  hps=XGBOOST_HPS, n_trials=200, fixed_params=fixed_params,
+                                  hps=XGBOOST_HPS, n_trials=0, fixed_params=fixed_params,
                                   evaluation_metrics=evaluation_metrics, feature_selector=feature_selector,
                                   save_hps_importance=True, save_optimization_history=True)
 
@@ -234,9 +234,9 @@ if __name__ == '__main__':
                             'batch_size': 36, 'weight': 0.55}
 
             # Creation of evaluator
-            evaluator = Evaluator(model_constructor=PetaleBinaryMLPC, dataset=dataset, masks=masks,
+            evaluator = Evaluator(model_constructor=PetaleBinaryMLPC, dataset=dts, masks=masks,
                                   evaluation_name=f"L1_MLP_{args.complication}_{gene}_no_tuning",
-                                  hps=MLP_HPS, n_trials=200, evaluation_metrics=evaluation_metrics,
+                                  hps=MLP_HPS, n_trials=0, evaluation_metrics=evaluation_metrics,
                                   feature_selector=feature_selector, fixed_params=fixed_params,
                                   save_hps_importance=True, save_optimization_history=True)
 
@@ -265,9 +265,9 @@ if __name__ == '__main__':
                             'batch_size': 36, 'weight': 0.55}
 
             # Creation of evaluator
-            evaluator = Evaluator(model_constructor=PetaleBinaryMLPC, dataset=dataset, masks=masks_without_val,
+            evaluator = Evaluator(model_constructor=PetaleBinaryMLPC, dataset=dts, masks=masks_without_val,
                                   evaluation_name=f"L1_Logit_{args.complication}_{gene}_no_tuning",
-                                  hps=LOGIT_HPS, n_trials=200, evaluation_metrics=evaluation_metrics,
+                                  hps=LOGIT_HPS, n_trials=0, evaluation_metrics=evaluation_metrics,
                                   feature_selector=feature_selector, fixed_params=fixed_params,
                                   save_hps_importance=True, save_optimization_history=True)
 
@@ -294,9 +294,9 @@ if __name__ == '__main__':
                             'num_heads': 10, 'lr': 0.01, 'batch_size': 36, 'weight': 0.55}
 
             # Creation of the evaluator
-            evaluator = Evaluator(model_constructor=PetaleBinaryHANC, dataset=dataset, masks=gnn_masks,
+            evaluator = Evaluator(model_constructor=PetaleBinaryHANC, dataset=dts, masks=gnn_masks,
                                   evaluation_name=f"L1_HAN_{args.complication}_{gene}_no_tuning",
-                                  hps=HAN_HPS, n_trials=100, evaluation_metrics=evaluation_metrics,
+                                  hps=HAN_HPS, n_trials=0, evaluation_metrics=evaluation_metrics,
                                   fixed_params=fixed_params, feature_selector=feature_selector,
                                   save_hps_importance=True, save_optimization_history=True)
 

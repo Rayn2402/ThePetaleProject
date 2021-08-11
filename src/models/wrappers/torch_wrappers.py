@@ -51,6 +51,17 @@ class TorchBinaryClassifierWrapper(PetaleBinaryClassifier):
         # Call the fit method
         self._model.fit(dataset, sample_weights=sample_weights, **self.train_params)
 
+    def plot_evaluations(self, save_path: Optional[str] = None) -> None:
+        """
+        Plots the training and valid curves saved
+
+        Args:
+            save_path: path were the figures will be saved
+
+        Returns: None
+        """
+        self._model.plot_evaluations(save_path=save_path)
+
     def predict_proba(self, dataset: PetaleDataset, mask: Optional[List[int]] = None) -> tensor:
         """
         Returns the probabilities of being in class 1 for all samples
@@ -99,6 +110,17 @@ class TorchRegressorWrapper(PetaleRegressor):
         """
         # Call the fit method
         self._model.fit(dataset, **self.train_params)
+
+    def plot_evaluations(self, save_path: Optional[str] = None) -> None:
+        """
+        Plots the training and valid curves saved
+
+        Args:
+            save_path: path were the figures will be saved
+
+        Returns: None
+        """
+        self._model.plot_evaluations(save_path=save_path)
 
     def predict(self, dataset: PetaleDataset) -> tensor:
         """

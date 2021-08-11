@@ -8,36 +8,48 @@ File that contains class related to the Early Stopping
 import numpy as np
 
 
-from os import path, makedirs, remove
+from os import path, remove
 from settings.paths import Paths
-from torch import save, load
+from src.utils.score_metrics import Direction
+from torch import save, load, tensor
 from torch.nn import Module
+from typing import OrderedDict
 from uuid import uuid4
 
 
-class EarlyStopping:
+class EarlyStopper:
 
-    def __init__(self, patience: int):
-
+    def __init__(self, patience: int, direction: str):
         """
-        Creates a class that will be responsible of the early stopping when training the model
+        Sets protected attributes of early stopper and define comparison
+         method according to given direction
 
-        :param patience: int representing how long to wait after last time validation loss improved.
+        Args:
+            patience: number of epochs without improvement
+            direction: "minimize" or "maximize"
         """
+        # Set public attribute
         self.patience = patience
         self.early_stop = False
         self.counter = 0
         self.best_model = None
-        self.val_loss_min = np.inf
         self.file_path = path.join(Paths.CHECKPOINTS, f"{uuid4()}.pt")
 
-    def __call__(self, val_loss: float, model: Module) -> None:
+        # Set comparison method
+        if direction == Direction.MINIMIZE:
+            self.val_score_min = np.inf
+            self.is_better = lambda x, y: x < y
+        else:
+            self.val_score_min = -np.inf
+            self.is_better = lambda x, y: x > y
+
+    def __call__(self, val_score: float, model: Module) -> None:
         """
         Method called to perform the early stopping logic
         """
 
         # if the score is worst than the best score we increment the counter
-        if val_loss > self.val_loss_min:
+        if not self.is_better(val_score, self.val_score_min):
             self.counter += 1
 
             # if the counter reach the patience we early stop
@@ -46,8 +58,8 @@ class EarlyStopping:
 
         # if the score is better than the best score saved we update the best model
         else:
-            self.val_loss_min = val_loss
-            save(model, self.file_path)
+            self.val_score_min = val_score
+            save(model.state_dict(), self.file_path)
             self.counter = 0
 
     def remove_checkpoint(self):
@@ -56,10 +68,10 @@ class EarlyStopping:
         """
         remove(self.file_path)
 
-    def get_best_model(self) -> Module:
+    def get_best_params(self) -> OrderedDict[str, tensor]:
         """
-        Returns the best model saved
+        Returns the best parameters saved
 
-        :return: nn.Module
+        :return: model state dict
         """
         return load(self.file_path)

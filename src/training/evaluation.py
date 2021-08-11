@@ -7,39 +7,34 @@ File that contains the class related to the evaluation of the models
 """
 import ray
 
-from abc import ABC, abstractmethod
 from copy import deepcopy
 from numpy.random import seed as np_seed
 from os import path, makedirs
 from settings.paths import Paths
-from sklearn.ensemble import RandomForestClassifier
-from src.data.processing.datasets import PetaleNNDataset, PetaleRFDataset, PetaleLinearModelDataset, CustomDataset
+from src.data.processing.datasets import PetaleDataset
 from src.data.processing.feature_selection import FeatureSelector
-from src.models.models_generation import NNModelGenerator, build_elasticnet
-from src.models.nn_models import NNClassifier, NNRegression
+from src.models.abstract_models.base_models import PetaleBinaryClassifier, PetaleRegressor
 from src.recording.recording import Recorder, compare_prediction_recordings, \
     get_evaluation_recap, plot_hyperparameter_importance_chart
-from src.training.enums import *
-from src.training.training import NNTrainer, RFTrainer, ElasticNetTrainer, Trainer
-from src.training.tuning import Tuner, NNObjective, RFObjective, ElasticNetObjective, Objective
+from src.training.tuning import Tuner, Objective
 from src.utils.score_metrics import Metric
 from time import strftime
-from torch import manual_seed
-from torch.nn import Module
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from torch import manual_seed, is_tensor, from_numpy
+from typing import Any, Callable, Dict, List, Optional
 
 
-class Evaluator(ABC):
+class Evaluator:
     """
     Abstract class representing the skeleton of the objects used for model evaluation
     """
 
-    def __init__(self, model_generator: Callable,
-                 dataset: CustomDataset, masks: Dict[int, Dict[str, List[int]]],
-                 hps: Dict[str, Dict[str, Any]], n_trials: int, optimization_metric: Metric,
-                 evaluation_metrics: Dict[str, Metric], seed: Optional[int] = None,
-                 device: Optional[str] = "cpu", evaluation_name: Optional[str] = None,
+    def __init__(self, model_constructor: Callable,
+                 dataset: PetaleDataset, masks: Dict[int, Dict[str, List[int]]],
+                 hps: Dict[str, Dict[str, Any]], n_trials: int,
+                 evaluation_metrics: List[Metric], fixed_params: Optional[Dict[str, Any]] = None,
+                 seed: Optional[int] = None, gpu_device: bool = False, evaluation_name: Optional[str] = None,
                  feature_selector: Optional[FeatureSelector] = None,
+                 fixed_params_update_function: Optional[Callable] = None,
                  save_hps_importance: Optional[bool] = False,
                  save_parallel_coordinates: Optional[bool] = False,
                  save_optimization_history: Optional[bool] = False):
@@ -47,19 +42,20 @@ class Evaluator(ABC):
         Set protected and public attributes of the abstract class
 
         Args:
-            model_generator: callable object used to generate a model according to a set of hyperparameters
+            model_constructor: callable object used to generate a model according to a set of hyperparameters
             dataset: custom dataset containing the whole learning dataset needed for our evaluation
             masks: dict with list of idx to use as train, valid and test masks
             hps: dictionary with information on the hyperparameters we want to tune
+            fixed_params: dictionary with parameters used by the model constructor for building model
             n_trials: number of hyperparameters sets sampled within each inner validation loop
-            optimization_metric: function that hyperparameters must optimize
-            evaluation_metrics: dict where keys are names of metrics and values are functions
-                                that will be used to calculate the score of the associated metric
-                                on the test sets of the outer loops
+            evaluation_metrics: list of metrics to evaluate on models built for each outer split.
+                                The last one is used for hyperparameter optimization
             seed: random state used for reproducibility
-            device: "cpu" or "gpu"
+            gpu_device: True if we want to use the gpu
             evaluation_name: name of the results file saved at the recordings_path
             feature_selector: feature selector object used to proceed to feature selection during nested cross valid
+            fixed_params_update_function: function to update fixed params dictionary from PetaleSubset after
+                                          feature selection. Might be necessary for model with entity embedding.
             save_hps_importance: True if we want to plot the hyperparameters importance graph after tuning
             save_parallel_coordinates: True if we want to plot the parallel coordinates graph after tuning
             save_optimization_history: True if we want to plot the optimization history graph after tuning
@@ -73,16 +69,15 @@ class Evaluator(ABC):
             makedirs(Paths.EXPERIMENTS_RECORDS, exist_ok=True)
             evaluation_name = f"{strftime('%Y%m%d-%H%M%S')}"
 
-        # We check the availability of the device choice
-        assert device == "cpu" or device == "gpu", "Device must be 'cpu' or 'gpu'"
-
         # We set protected attributes
         self._dataset = dataset
-        self._device = device
+        self._gpu_device = gpu_device
         self._feature_selector = feature_selector
         self._feature_selection_count = {feature: 0 for feature in self._dataset.original_data.columns}
+        self._fixed_params = fixed_params if fixed_params is not None else {}
         self._hps = hps
         self._masks = masks
+        self._hp_tuning = (n_trials > 0)
         self._tuner = Tuner(n_trials=n_trials,
                             save_hps_importance=save_hps_importance,
                             save_parallel_coordinates=save_parallel_coordinates,
@@ -91,12 +86,17 @@ class Evaluator(ABC):
 
         # We set the public attributes
         self.evaluation_name = evaluation_name
-        self.model_generator = model_generator
-        self.optimization_metric = optimization_metric
+        self.model_constructor = model_constructor
         self.evaluation_metrics = evaluation_metrics
         self.seed = seed
 
-    def extract_subset(self, records_path: str) -> CustomDataset:
+        # We set the fixed params update method
+        if fixed_params_update_function is not None:
+            self._update_fixed_params = fixed_params_update_function
+        else:
+            self._update_fixed_params = lambda _: self._fixed_params
+
+    def extract_subset(self, records_path: str) -> PetaleDataset:
         """
         Executes the feature selection process, save the subset in the protected attributes
         and save a record of the procedure in at the "record_path".
@@ -159,49 +159,62 @@ class Evaluator(ABC):
                 recorder.record_data_info(name, mask_length)
 
             # We update the tuner to perform the hyperparameters optimization
-            print(f"\nHyperparameter tuning started - K = {k}\n")
-            self._tuner.update_tuner(study_name=f"{self.evaluation_name}_{k}",
-                                     objective=self._create_objective(masks=in_masks, subset=subset),
-                                     saving_path=saving_path)
+            if self._hp_tuning:
+                print(f"\nHyperparameter tuning started - K = {k}\n")
+                self._tuner.update_tuner(study_name=f"{self.evaluation_name}_{k}",
+                                         objective=self._create_objective(masks=in_masks, subset=subset),
+                                         saving_path=saving_path)
 
-            # We perform the hps tuning to get the best hps
-            best_hps, hps_importance = self._tuner.tune()
+                # We perform the hps tuning to get the best hps
+                best_hps, hps_importance = self._tuner.tune()
 
-            # We save the hyperparameters
-            print(f"\nHyperparameter tuning done - K = {k}\n")
-            recorder.record_hyperparameters(best_hps)
+                # We save the hyperparameters
+                print(f"\nHyperparameter tuning done - K = {k}\n")
+                recorder.record_hyperparameters(best_hps)
 
-            # We save the hyperparameters importance
-            recorder.record_hyperparameters_importance(hps_importance)
+                # We save the hyperparameters importance
+                recorder.record_hyperparameters_importance(hps_importance)
+            else:
+                best_hps = {}
 
-            # We create a model and a trainer with the best hps
-            model, trainer = self._create_model_and_trainer(best_hps)
+            # We create a model with the best hps
+            model = self.model_constructor(**best_hps, **self._fixed_params)
 
             # We train our model with the best hps
             print(f"\nFinal model training - K = {k}\n")
             subset.update_masks(train_mask=train_mask, valid_mask=valid_mask, test_mask=test_mask)
-            trainer.fit(dataset=subset, visualization=True, path=saving_path)
+            model.fit(dataset=subset)
 
             # We save the trained model
-            recorder.record_model(model=trainer.model)
+            # TO DO
 
-            # We extract x_cont, x_cat and target from the test set
-            inputs, targets = trainer.extract_data(subset[test_mask])
+            # We extract ids and targets of the test set
             ids = [subset.ids[i] for i in test_mask]
+            _, y, _ = subset[subset.test_mask]
 
-            # We get the predictions
-            predictions = trainer.predict(**inputs, log_prob=True)
+            # We get the predictions and save the evaluation metric scores
+            if isinstance(model, PetaleBinaryClassifier):
+                model.find_optimal_threshold(dataset=subset, metric=self.evaluation_metrics[-1])
+                pred = model.predict_proba(subset)
+                for metric in self.evaluation_metrics:
+                    recorder.record_scores(score=metric(pred, y, thresh=model.thresh), metric=metric.name)
+                if not is_tensor(pred):
+                    pred = from_numpy(pred)
+                pred = (pred >= model.thresh).long()
+                recorder.record_data_info('thresh', str(model.thresh))
+
+            else:
+                pred = model.predict(subset)
+                for metric in self.evaluation_metrics:
+                    recorder.record_scores(score=metric(pred, y), metric=metric.name)
 
             # We save the predictions
-            recorder.record_predictions(predictions=predictions, ids=ids, target=targets)
+            recorder.record_predictions(predictions=pred, ids=ids, target=y)
 
-            # We save the scores associated to the different evaluation metric
-            for metric_name, f in self.evaluation_metrics.items():
-                recorder.record_scores(score=f(predictions, targets), metric=metric_name)
-
-            # We save all the data collected in a file
+            # We save all the data collected in one file
             recorder.generate_file()
 
+            # We generate a plot that compares predictions to ground_truth
             compare_prediction_recordings(evaluations=[self.evaluation_name],
                                           split_index=k, recording_path=Paths.EXPERIMENTS_RECORDS)
 
@@ -215,20 +228,7 @@ class Evaluator(ABC):
         # We shutdown ray
         ray.shutdown()
 
-    @abstractmethod
-    def _create_model_and_trainer(self, best_hps: Dict[str, Any]) -> Tuple[Callable, Trainer]:
-        """
-        Returns a model built according to the best hyperparameters given and a trainer
-
-        Args:
-            best_hps: hyperparameters to use in order to build the model
-
-        Returns: model and trainer
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def _create_objective(self, masks: Dict[int, Dict[str, List[int]]], subset: CustomDataset) -> Objective:
+    def _create_objective(self, masks: Dict[int, Dict[str, List[int]]], subset: PetaleDataset) -> Objective:
         """
         Creates an adapted objective function to pass to our tuner
 
@@ -238,248 +238,9 @@ class Evaluator(ABC):
 
         Returns: objective function
         """
-        raise NotImplementedError
+        # We update fixed parameters according to the subset
+        self._fixed_params = self._update_fixed_params(subset)
 
-
-class ElasticNetEvaluator(Evaluator):
-    """
-    Object charged to evaluate performances of ElasticNet model over multiple splits
-    """
-    def __init__(self, dataset: PetaleLinearModelDataset, masks: Dict[int, Dict[str, List[int]]],
-                 hps: Dict[str, Dict[str, Any]], n_trials: int, optimization_metric: Metric,
-                 evaluation_metrics: Dict[str, Metric], seed: Optional[int] = None,
-                 feature_selector: Optional[FeatureSelector] = None,
-                 evaluation_name: Optional[str] = None, save_hps_importance: Optional[bool] = False,
-                 save_parallel_coordinates: Optional[bool] = False, save_optimization_history: Optional[bool] = False):
-        """
-        Sets protected and public attributes of the class
-
-        Args:
-            dataset: custom dataset containing the whole learning dataset needed for our evaluation
-            masks: dict with list of idx to use as train, valid and test masks
-            hps: dictionary with information on the hyperparameters we want to tune
-            n_trials: number of hyperparameters sets sampled within each inner validation loop
-            optimization_metric: function that hyperparameters must optimize
-            evaluation_metrics: dict where keys are names of metrics and values are functions
-                                that will be used to calculate the score of the associated metric
-                                on the test sets of the outer loops
-            seed: random state used for reproducibility
-            feature_selector: feature selector object used to proceed to feature selection during nested cross valid
-            evaluation_name: name of the results file saved at the recordings_path
-            save_hps_importance: True if we want to plot the hyperparameters importance graph after tuning
-            save_parallel_coordinates: True if we want to plot the parallel coordinates graph after tuning
-            save_optimization_history: True if we want to plot the optimization history graph after tuning
-        """
-
-        # We call parent's constructor
-        super().__init__(model_generator=build_elasticnet, dataset=dataset, masks=masks, hps=hps,
-                         n_trials=n_trials, optimization_metric=optimization_metric, feature_selector=feature_selector,
-                         evaluation_metrics=evaluation_metrics, seed=seed, evaluation_name=evaluation_name,
-                         save_hps_importance=save_hps_importance, save_parallel_coordinates=save_parallel_coordinates,
-                         save_optimization_history=save_optimization_history)
-
-    def _create_model_and_trainer(self, best_hps: Dict[str, Any]) -> Tuple[Callable, ElasticNetTrainer]:
-        """
-        Returns a model built according to the best hyperparameters given and a trainer
-
-        Args:
-            best_hps: hyperparameters to use in order to build the model
-
-        Returns: model and trainer
-        """
-        model = self.model_generator(alpha=best_hps[ElasticNetHP.ALPHA], beta=best_hps[ElasticNetHP.BETA])
-        trainer = ElasticNetTrainer(model=model, metric=self.optimization_metric)
-
-        return model, trainer
-
-    def _create_objective(self, masks: Dict[int, Dict[str, List[int]]], subset: PetaleLinearModelDataset
-                          ) -> ElasticNetObjective:
-        """
-        Creates an adapted objective function to pass to our tuner
-
-        Args:
-            masks: inner masks for hyperparameters tuning
-            subset: subset of the original dataset after feature selection
-
-        Returns: objective function
-        """
-        return ElasticNetObjective(dataset=subset, masks=masks, hps=self._hps,
-                                   metric=self.optimization_metric)
-
-
-class NNEvaluator(Evaluator):
-    """
-    Object charged to evaluate performances of Neural Network model over multiple splits
-    """
-    def __init__(self, dataset: PetaleNNDataset, masks: Dict[int, Dict[str, List[int]]],
-                 hps: Dict[str, Dict[str, Any]], n_trials: int,
-                 optimization_metric: Metric, evaluation_metrics: Dict[str, Metric], max_epochs: int,
-                 early_stopping: bool, seed: Optional[int] = None,
-                 feature_selector: Optional[FeatureSelector] = None,
-                 device: Optional[str] = "cpu", evaluation_name: Optional[str] = None,
-                 save_hps_importance: Optional[bool] = False,
-                 save_parallel_coordinates: Optional[bool] = False,
-                 save_optimization_history: Optional[bool] = False):
-
-        """
-        Sets protected and public attributes of the class
-
-        Args:
-            dataset: custom dataset containing the whole learning dataset needed for our evaluation
-            masks: dict with list of idx to use as train, valid and test masks
-            hps: dictionary with information on the hyperparameters we want to tune
-            n_trials: number of hyperparameters sets sampled within each inner validation loop
-            optimization_metric: function that hyperparameters must optimize
-            evaluation_metrics: dict where keys are names of metrics and values are functions
-                                that will be used to calculate the score of the associated metric
-                                on the test sets of the outer loops
-            max_epochs: maximal number of epochs that a trainer can execute with or without early stopping
-            early_stopping: True if we want to use early stopping
-            seed: random state used for reproducibility
-            feature_selector: feature selector object used to proceed to feature selection during nested cross valid
-            device: "cpu" or "gpu"
-            evaluation_name: name of the results file saved at the recordings_path
-            save_hps_importance: True if we want to plot the hyperparameters importance graph after tuning
-            save_parallel_coordinates: True if we want to plot the parallel coordinates graph after tuning
-            save_optimization_history: True if we want to plot the optimization history graph after tuning
-        """
-        # We call parent's constructor
-        super().__init__(model_generator=self._create_model_generator(dataset), dataset=dataset,
-                         masks=masks, hps=hps, n_trials=n_trials, optimization_metric=optimization_metric,
-                         evaluation_metrics=evaluation_metrics, seed=seed, device=device,
-                         feature_selector=feature_selector, evaluation_name=evaluation_name,
-                         save_hps_importance=save_hps_importance,
-                         save_parallel_coordinates=save_parallel_coordinates,
-                         save_optimization_history=save_optimization_history)
-
-        # We set other protected attribute
-        self._max_epochs = max_epochs
-        self._early_stopping = early_stopping
-
-    def _create_model_and_trainer(self, best_hps: Dict[str, Any]) -> Tuple[Module, NNTrainer]:
-        """
-        Creates a neural networks and a its trainer using the best hyperparameters
-
-        Args:
-            best_hps: dictionary of hyperparameters
-
-        Returns: model and trainer
-        """
-        model = self.model_generator(layers=best_hps[NeuralNetsHP.LAYERS],
-                                     dropout=best_hps[NeuralNetsHP.DROPOUT],
-                                     activation=best_hps[NeuralNetsHP.ACTIVATION])
-
-        trainer = NNTrainer(model=model, metric=self.optimization_metric, lr=best_hps[NeuralNetsHP.LR],
-                            batch_size=best_hps[NeuralNetsHP.BATCH_SIZE],
-                            epochs=self._max_epochs, early_stopping=self._early_stopping,
-                            device=self._device, in_trial=False)
-
-        return model, trainer
-
-    def _create_objective(self, masks: Dict[int, Dict[str, List[int]]], subset: PetaleNNDataset) -> NNObjective:
-        """
-        Creates an adapted objective function to pass to our tuner
-
-        Args:
-            masks: inner masks for hyperparameters tuning
-            subset: subset of the original dataset after feature selection
-
-        Returns: objective function
-        """
-        # We update the model generator since some categorical features might
-        # have been removed
-        self.model_generator.update_cat_sizes(subset.cat_sizes)
-        return NNObjective(model_generator=self.model_generator, dataset=subset, masks=masks,
-                           hps=self._hps, device=self._device, metric=self.optimization_metric,
-                           n_epochs=self._max_epochs, early_stopping=self._early_stopping)
-
-    @staticmethod
-    def _create_model_generator(dataset: PetaleNNDataset) -> Callable:
-        """
-        Creates the object used to generates nn architectures
-        Args:
-            dataset: PetaleNNDataset
-
-        Returns: Model generator function
-        """
-        if dataset.classification:
-            constructor = NNClassifier
-            output_size = len(dataset.original_data[dataset.target].unique())
-        else:
-            constructor = NNRegression
-            output_size = None
-
-        return NNModelGenerator(model_class=constructor,
-                                num_cont_col=len(dataset.cont_cols),
-                                cat_sizes=dataset.cat_sizes,
-                                output_size=output_size)
-
-
-class RFEvaluator(Evaluator):
-    """
-    Object charged to evaluate performances of Random Forest classifier model over multiple splits
-    """
-    def __init__(self, dataset: PetaleRFDataset, masks: Dict[int, Dict[str, List[int]]],
-                 hps: Dict[str, Dict[str, Any]], n_trials: int, optimization_metric: Metric,
-                 evaluation_metrics: Dict[str, Metric],
-                 seed: Optional[int] = None, evaluation_name: Optional[str] = None,
-                 feature_selector: Optional[FeatureSelector] = None,
-                 save_hps_importance: Optional[bool] = False,
-                 save_parallel_coordinates: Optional[bool] = False,
-                 save_optimization_history: Optional[bool] = False):
-        """
-        Sets protected and public attributes of the class
-
-        Args:
-            dataset: custom dataset containing the whole learning dataset needed for our evaluation
-            masks: dict with list of idx to use as train, valid and test masks
-            hps: dictionary with information on the hyperparameters we want to tune
-            n_trials: number of hyperparameters sets sampled within each inner validation loop
-            optimization_metric: function that hyperparameters must optimize
-            evaluation_metrics: dict where keys are names of metrics and values are functions
-                                that will be used to calculate the score of the associated metric
-                                on the test sets of the outer loops
-            seed: random state used for reproducibility
-            evaluation_name: name of the results file saved at the recordings_path
-            feature_selector: feature selector object used to proceed to feature selection during nested cross valid
-            save_hps_importance: True if we want to plot the hyperparameters importance graph after tuning
-            save_parallel_coordinates: True if we want to plot the parallel coordinates graph after tuning
-            save_optimization_history: True if we want to plot the optimization history graph after tuning
-        """
-        # We call parent's constructor
-        super().__init__(model_generator=RandomForestClassifier, dataset=dataset, masks=masks,
-                         hps=hps, n_trials=n_trials, optimization_metric=optimization_metric,
-                         evaluation_metrics=evaluation_metrics, seed=seed, evaluation_name=evaluation_name,
-                         feature_selector=feature_selector, save_hps_importance=save_hps_importance,
-                         save_parallel_coordinates=save_parallel_coordinates,
-                         save_optimization_history=save_optimization_history)
-
-    def _create_model_and_trainer(self, best_hps: Dict[str, Any]) -> Tuple[RandomForestClassifier, RFTrainer]:
-        """
-        Creates a random forest classifier and its trainer according to the best hyperparameters
-
-        Args:
-            best_hps: dictionary of hyperparameters
-
-        Returns: model and trainer
-        """
-        model = self.model_generator(n_estimators=best_hps[RandomForestsHP.N_ESTIMATORS],
-                                     max_features=best_hps[RandomForestsHP.MAX_FEATURES],
-                                     max_depth=best_hps[RandomForestsHP.MAX_DEPTH],
-                                     max_samples=best_hps[RandomForestsHP.MAX_SAMPLES])
-
-        trainer = RFTrainer(model=model, metric=self.optimization_metric)
-
-        return model, trainer
-
-    def _create_objective(self, masks: Dict[int, Dict[str, List[int]]], subset: PetaleRFDataset) -> RFObjective:
-        """
-        Creates an adapted objective function to pass to our tuner
-
-        Args:
-            masks: inner masks for hyperparameters tuning
-            subset: subset of the original dataset after feature selection
-
-        Returns: objective function
-        """
-        return RFObjective(dataset=subset, masks=masks, hps=self._hps, metric=self.optimization_metric)
+        return Objective(dataset=subset, masks=masks, hps=self._hps, fixed_params=self._fixed_params,
+                         metric=self.evaluation_metrics[-1], model_constructor=self.model_constructor,
+                         gpu_device=self._gpu_device)

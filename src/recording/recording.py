@@ -10,9 +10,10 @@ import matplotlib.pyplot as plt
 import os
 import pickle
 
+from collections import Counter
 from numpy import std, min, max, mean, median, arange, argmax
+from src.models.abstract_models.base_models import PetaleBinaryClassifier, PetaleRegressor
 from src.recording.constants import *
-from sklearn.ensemble import RandomForestClassifier
 from torch import tensor, save
 from torch.nn import Module
 from typing import Any, Dict, List, Union
@@ -111,7 +112,7 @@ class Recorder:
         for key in hyperparameter_importance.keys():
             self._data[HYPERPARAMETER_IMPORTANCE][key] = round(hyperparameter_importance[key], 4)
 
-    def record_model(self, model: Union[Module, RandomForestClassifier]) -> None:
+    def record_model(self, model: Union[PetaleBinaryClassifier, PetaleRegressor]) -> None:
         """
         Saves a model using pickle
 
@@ -270,12 +271,16 @@ def set_info(data):
     """
     for section in data.keys():
         for key in data[section].keys():
-            data[section][key][
-                INFO] = f"{round(mean(data[section][key][VALUES]), 4)} +- {round(std(data[section][key][VALUES]), 4)} " \
-                        f"[{median(data[section][key][VALUES])}; {min(data[section][key][VALUES])}" \
-                        f"-{max(data[section][key][VALUES])}]"
-            data[section][key][MEAN] = mean(data[section][key][VALUES])
-            data[section][key][STD] = std(data[section][key][VALUES])
+            if not isinstance(data[section][key][VALUES][0], str):
+                data[section][key][
+                    INFO] = f"{round(mean(data[section][key][VALUES]), 4)} +- {round(std(data[section][key][VALUES]), 4)} " \
+                            f"[{median(data[section][key][VALUES])}; {min(data[section][key][VALUES])}" \
+                            f"-{max(data[section][key][VALUES])}]"
+                data[section][key][MEAN] = mean(data[section][key][VALUES])
+                data[section][key][STD] = std(data[section][key][VALUES])
+            else:
+                counts = Counter(data[section][key][VALUES])
+                data[section][key][INFO] = str(dict(counts))
 
 
 def plot_hyperparameter_importance_chart(evaluation_name, recordings_path):
@@ -349,7 +354,7 @@ def compare_prediction_recordings(evaluations, split_index, recording_path=""):
         with open(path, "r") as read_file:
             all_data.append(json.load(read_file))
 
-    comparaison_possible = True
+    comparison_possible = True
     ids = list(all_data[0]["results"].keys())
 
     # We check if the two evaluations are made on the same patients
@@ -357,16 +362,16 @@ def compare_prediction_recordings(evaluations, split_index, recording_path=""):
         if i == 0:
             continue
         if len(data["results"]) != len(all_data[0]["results"]):
-            comparaison_possible = False
+            comparison_possible = False
             break
         id_to_compare = list(data["results"].keys())
 
         for j, id in enumerate(id_to_compare):
             if id != ids[j]:
-                comparaison_possible = False
+                comparison_possible = False
                 break
 
-    assert comparaison_possible is True, "Different patients present in the given evaluations"
+    assert comparison_possible is True, "Different patients present in the given evaluations"
 
     target, ids, all_predictions = [], [], []
 
@@ -375,10 +380,9 @@ def compare_prediction_recordings(evaluations, split_index, recording_path=""):
         all_predictions.append([])
         for id, item in data["results"].items():
             if i == 0:
-                ids.append((id))
+                ids.append(id)
                 target.append(item["target"])
-            all_predictions[i].append(argmax(item["prediction"]) if isinstance(item["prediction"], list)
-                                      else item["prediction"])
+            all_predictions[i].append(item["prediction"])
 
     # We sort all the predictions and the ids based on the target
     indexes = list(range(len(target)))

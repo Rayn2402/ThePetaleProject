@@ -5,27 +5,23 @@ Files that contains class related to Datasets
 
 """
 
-from abc import ABC, abstractmethod
-from dgl import heterograph
-from numpy import array, concatenate
+from dgl import heterograph, DGLHeteroGraph, node_subgraph
+from numpy import array, concatenate, where
 from pandas import DataFrame, Series
-from sklearn.preprocessing import PolynomialFeatures
 from src.data.extraction.constants import *
 from src.data.processing.preprocessing import preprocess_continuous, preprocess_categoricals
-from src.data.processing.transforms import CategoricalTransform as CaT
-from src.data.processing.transforms import ContinuousTransform as ConT
 from torch.utils.data import Dataset
-from torch import from_numpy, tensor, empty
+from torch import from_numpy, tensor, cat
 from typing import Optional, List, Callable, Tuple, Union, Any, Dict
 
 
-class CustomDataset(ABC):
+class PetaleDataset(Dataset):
     """
     Scaffolding of all dataset classes implemented for our experiments
     """
     def __init__(self, df: DataFrame, target: str,
                  cont_cols: Optional[List[str]] = None, cat_cols: Optional[List[str]] = None,
-                 classification: bool = True, target_to_tensor: bool = False):
+                 classification: bool = True, to_tensor: bool = False):
         """
         Sets protected and public attributes of our custom dataset class
 
@@ -35,48 +31,53 @@ class CustomDataset(ABC):
             cont_cols: list of column names associated with continuous data
             cat_cols: list of column names associated with categorical data
             classification: True for classification task, False for regression
-            target_to_tensor: True if we want the targets to be in a tensor, False for numpy array
+            to_tensor: True if we want the features and targets in tensors, False for numpy arrays
 
         """
+        # Validations of inputs
         assert PARTICIPANT in df.columns, "Patients' ids missing from the dataframe."
         assert (cont_cols is not None or cat_cols is not None), "At least a list of continuous columns" \
                                                                 " or a list of categorical columns must be given."
         for columns in [cont_cols, cat_cols]:
             self._check_columns_validity(df, columns)
 
-        # We call super init since we're using ABC
-        super().__init__()
-
-        # Set protected attributes
-        self._ids = list(df[PARTICIPANT].values)
-        self._target = target
-        self._train_mask, self._valid_mask, self._test_mask = [], None, []
-        self._original_data = df
-        self._n = df.shape[0]
+        # Set default protected attributes
         self._classification = classification
-        self._x = df.drop([PARTICIPANT, target], axis=1).copy()
+        self._ids = list(df[PARTICIPANT].values)
+        self._n = df.shape[0]
+        self._original_data = df
+        self._target = target
+        self._to_tensor = to_tensor
+        self._train_mask, self._valid_mask, self._test_mask = [], None, []
         self._x_cat, self._x_cont = None, None
-        self._y = self._initialize_targets(df[target], classification, target_to_tensor)
+        self._y = self._initialize_targets(df[target], classification, to_tensor)
 
-        # Set public attributes
-        self.cont_cols = cont_cols
-        self.cat_cols = cat_cols
+        # Set default public attributes
+        self.cont_cols, self.cont_idx = cont_cols, []
+        self.cat_cols, self.cat_idx = cat_cols, []
 
-        # We set a "getter" method to get modes categorical columns and also extract encodings
+        # Define protected feature "getter" method
+        self._x = self._define_feature_getter(cont_cols, cat_cols, to_tensor)
+
+        # We set a "getter" method to get modes of categorical columns and we also extract encodings
         self._get_modes, self._encodings = self._define_categorical_stats_getter(cat_cols)
 
         # We set a "getter" method to get mu ans std of continuous columns
         self._get_mu_and_std = self._define_numerical_stats_getter(cont_cols)
 
-        # We set two "setter" methods to update available data after masks update
-        self._set_numerical = self._define_numerical_data_setter(cont_cols)
-        self._set_categorical = self._define_categorical_data_setter(cat_cols)
+        # We set two "setter" methods to preprocess available data after masks update
+        self._set_numerical = self._define_numerical_data_setter(cont_cols, to_tensor)
+        self._set_categorical = self._define_categorical_data_setter(cat_cols, to_tensor)
 
         # We update current training mask with all the data
         self.update_masks(list(range(self._n)), [], [])
 
     def __len__(self) -> int:
         return self._n
+
+    def __getitem__(self, idx: Union[int, List[int]]
+                    ) -> Tuple[Union[array, tensor], Union[array, tensor], Union[array, tensor]]:
+        return self.x[idx], self.y[idx], idx
 
     @property
     def classification(self) -> bool:
@@ -118,7 +119,7 @@ class CustomDataset(ABC):
 
     @property
     def x(self) -> DataFrame:
-        return self._x
+        return self._x()
 
     @property
     def x_cat(self) -> Optional[Union[array, tensor]]:
@@ -143,12 +144,12 @@ class CustomDataset(ABC):
         Returns: None
         """
         # We apply an ordinal encoding to categorical columns
-        self._x[self.cat_cols], _ = preprocess_categoricals(self._original_data[self.cat_cols].copy(),
-                                                            mode=modes, encodings=self._encodings)
-        # We update x_cat protected attribute
-        self._set_x_cat()
+        x_cat, _ = preprocess_categoricals(self._original_data[self.cat_cols].copy(),
+                                           mode=modes, encodings=self._encodings)
+        self._x_cat = x_cat.to_numpy(dtype=int)
 
-    def _define_categorical_data_setter(self, cat_cols: Optional[List[str]] = None) -> Callable:
+    def _define_categorical_data_setter(self, cat_cols: Optional[List[str]] = None,
+                                        to_tensor: bool = False) -> Callable:
         """
         Defines the function used to set categorical data after masks update
         """
@@ -159,6 +160,13 @@ class CustomDataset(ABC):
             return set_categorical
 
         else:
+            if to_tensor:
+                def set_categorical(modes: Optional[Series]) -> None:
+                    self._categorical_setter(modes)
+                    self._x_cat = from_numpy(self._x_cat).long()
+
+                return set_categorical
+
             return self._categorical_setter
 
     def _define_categorical_stats_getter(self, cat_cols: Optional[List[str]] = None
@@ -183,7 +191,48 @@ class CustomDataset(ABC):
 
         return get_modes, encodings
 
-    def _define_numerical_data_setter(self, cont_cols: Optional[List[str]] = None) -> Callable:
+    def _define_feature_getter(self, cont_cols: Optional[List[str]] = None,
+                               cat_cols: Optional[List[str]] = None, to_tensor: bool = False) -> Callable:
+        """
+        Defines the method used to extract features (processed data) available for training
+        """
+
+        if cont_cols is None:
+
+            # Only categorical column idx
+            self.cat_idx = list(range(len(cat_cols)))
+
+            # Only categorical feature extracted by the getter
+            def x() -> Union[tensor, array]:
+                return self.x_cat
+
+        elif cat_cols is None:
+
+            # Only continuous column idx
+            self.cont_idx = list(range(len(cont_cols)))
+
+            # Only continuous features extracted by the getter
+            def x() -> Union[tensor, array]:
+                return self.x_cont
+
+        else:
+            # Continuous and categorical column idx
+            nb_cont_cols = len(cont_cols)
+            self.cont_idx = list(range(nb_cont_cols))
+            self.cat_idx = [i + nb_cont_cols for i in range(len(cat_cols))]
+
+            # Continuous and categorical features extracted by the getter
+            if not to_tensor:
+                def x() -> Union[tensor, array]:
+                    return concatenate((self.x_cont, self.x_cat), axis=1)
+            else:
+                def x() -> Union[tensor, array]:
+                    return cat((self.x_cont, self.x_cat), dim=1)
+
+        return x
+
+    def _define_numerical_data_setter(self, cont_cols: Optional[List[str]] = None,
+                                      to_tensor: bool = False) -> Callable:
         """
         Defines the function used to set numerical continuous data after masks update
         """
@@ -193,6 +242,13 @@ class CustomDataset(ABC):
 
             return set_numerical
         else:
+            if to_tensor:
+                def set_numerical(mu: Optional[Series], std: Optional[Series]) -> None:
+                    self._numerical_setter(mu, std)
+                    self._x_cont = from_numpy(self._x_cont).float()
+
+                return set_numerical
+
             return self._numerical_setter
 
     def _define_numerical_stats_getter(self, cont_cols: Optional[List[str]] = None) -> Callable:
@@ -225,13 +281,13 @@ class CustomDataset(ABC):
         Returns: None
         """
         # We fill missing with means and normalize the data
-        self._x[self.cont_cols] = preprocess_continuous(self._original_data[self.cont_cols].copy(), mu, std)
+        x_cont = preprocess_continuous(self._original_data[self.cont_cols].copy(), mu, std)
 
-        # We update x_cont protected attribute
-        self._set_x_cont()
+        # We apply the basis function
+        self._x_cont = x_cont.to_numpy(dtype=float)
 
-    def _retrieve_original_data_subset(self, cont_cols: Optional[List[str]] = None, cat_cols: List[str] = None
-                                       ) -> DataFrame:
+    def _retrieve_subset_from_original(self, cont_cols: Optional[List[str]] = None,
+                                       cat_cols: List[str] = None) -> DataFrame:
         """
         Returns a copy of a subset of the original dataframe
 
@@ -249,23 +305,31 @@ class CustomDataset(ABC):
 
         return self.original_data[[PARTICIPANT, self._target] + selected_cols].copy()
 
-    def _set_x_cat(self) -> None:
+    def get_imputed_dataframe(self):
         """
-        Abstract method that takes imputed categorical data and convert it
-        to proper format for training
+        Returns a copy of the original pandas dataframe where missing values are imputed according to
+        the training mask.
+        """
+        imputed_df = self.original_data.drop([PARTICIPANT, self.target], axis=1).copy()
+        if self.cont_cols is not None:
+            imputed_df[self.cont_cols] = self._x_cont
+        if self.cat_cols is not None:
+            imputed_df[self.cat_cols] = self._x_cat
 
-        Returns: None
-        """
-        pass
+        return imputed_df
 
-    def _set_x_cont(self) -> None:
+    def create_subset(self, cont_cols: Optional[List[str]] = None, cat_cols: List[str] = None) -> Any:
         """
-        Abstract method that takes imputed continuous data and convert it
-        to proper format for training
+        Returns a subset of the current dataset using the given cont_cols and cat_cols
 
-        Returns: None
+        Args:
+            cont_cols: list of continuous columns
+            cat_cols: list of categorical columns
+
+        Returns: instance of the same class
         """
-        pass
+        subset = self._retrieve_subset_from_original(cont_cols, cat_cols)
+        return PetaleDataset(subset, self.target, cont_cols, cat_cols, self.classification, self._to_tensor)
 
     def current_train_stats(self) -> Tuple[Optional[Series], Optional[Series], Optional[Series]]:
         """
@@ -287,7 +351,8 @@ class CustomDataset(ABC):
         according to the current statistics of the training data
         """
         # We set the new masks values
-        self._train_mask, self._valid_mask, self._test_mask = train_mask, valid_mask, test_mask
+        self._train_mask, self._test_mask = train_mask, test_mask
+        self._valid_mask = valid_mask if valid_mask is not None else []
 
         # We compute the current values of mu, std, modes and encodings
         mu, std, modes = self.current_train_stats()
@@ -295,23 +360,6 @@ class CustomDataset(ABC):
         # We update the data that will be available via __get_item__
         self._set_numerical(mu, std)
         self._set_categorical(modes)
-
-    @abstractmethod
-    def __getitem__(self, idx: Union[int, List[int]]) -> Any:
-        raise NotImplementedError
-
-    @abstractmethod
-    def create_subset(self, cont_cols: Optional[List[str]] = None, cat_cols: List[str] = None) -> Any:
-        """
-        Returns a subset of the current dataset using the given cont_cols and cat_cols
-
-        Args:
-            cont_cols: list of continuous columns
-            cat_cols: list of categorical columns
-
-        Returns: instance of the same class
-        """
-        raise NotImplementedError
 
     @staticmethod
     def _initialize_targets(targets_column: Series, classification: bool,
@@ -348,221 +396,11 @@ class CustomDataset(ABC):
                 assert c in dataframe_columns, f"Column {c} is not part of the given dataframe"
 
 
-class PetaleNNDataset(CustomDataset, Dataset):
+class PetaleStaticGNNDataset(PetaleDataset):
     """
-    Dataset used to train, valid and tests our neural network models
-    """
-    def __init__(self, df: DataFrame, target: str,
-                 cont_cols: Optional[List[str]] = None, cat_cols: Optional[List[str]] = None,
-                 classification: bool = True):
-        """
-        Sets protected and public attributes of our custom dataset class
-
-        Args:
-            df: dataframe with the original data
-            target: name of the column with the targets
-            cont_cols: list of column names associated with continuous data
-            cat_cols: list of column names associated with categorical data
-            classification: True for classification task, False for regression
-
-        """
-        # We use the _init_ of the parent class CustomDataset
-        CustomDataset.__init__(self, df, target, cont_cols, cat_cols, classification,
-                               target_to_tensor=True)
-
-        # We define the item getter function
-        self._item_getter = self._define_item_getter(cont_cols, cat_cols)
-
-    def __len__(self) -> int:
-        return CustomDataset.__len__(self)
-
-    def __getitem__(self, idx: Any) -> Tuple[tensor, tensor, tensor]:
-        return self._item_getter(idx)
-
-    def _define_item_getter(self, cont_cols: Optional[List[str]] = None,
-                            cat_cols: Optional[List[str]] = None) -> Callable:
-        """
-        Defines the function that must be used by __get_item__ in order to get data
-        Args:
-            cont_cols: list of column names associated with continuous data
-            cat_cols: list of column names associated with categorical data
-
-        Returns: item_getter function
-        """
-        if cont_cols is None:
-            def item_getter(idx: Any) -> Tuple[tensor, tensor, tensor]:
-                return empty(0), self.x_cat[idx, :], self.y[idx]
-
-        elif cat_cols is None:
-            def item_getter(idx: Any) -> Tuple[tensor, tensor, tensor]:
-                return self.x_cont[idx, :], empty(0), self.y[idx]
-
-        else:
-            def item_getter(idx: Any) -> Tuple[tensor, tensor, tensor]:
-                return self.x_cont[idx, :], self.x_cat[idx, :], self.y[idx]
-
-        return item_getter
-
-    def _set_x_cat(self) -> None:
-        """
-        Sets x_cat protected attribute after masks update
-        Returns: None
-        """
-        self._x_cat = CaT.to_tensor(self.x[self.cat_cols])
-
-    def _set_x_cont(self) -> None:
-        """
-        Sets x_cont protected attribute after masks update
-        Returns: None
-        """
-        self._x_cont = ConT.to_tensor(self.x[self.cont_cols])
-
-    def create_subset(self, cont_cols: Optional[List[str]] = None, cat_cols: List[str] = None
-                      ) -> CustomDataset:
-        """
-        Create a PetaleNNDataset from the current dataset, using the given column names
-
-        Args:
-            cont_cols: list of continuous columns
-            cat_cols: list of categorical columns
-
-        Returns: instance of the same class
-        """
-
-        return PetaleNNDataset(self._retrieve_original_data_subset(cont_cols, cat_cols), self._target,
-                               cont_cols, cat_cols, self.classification)
-
-
-class PetaleRFDataset(CustomDataset):
-    """
-    Dataset used to train, valid and tests our random forest models
-    """
-    def __init__(self, df: DataFrame, target: str,
-                 cont_cols: Optional[List[str]] = None, cat_cols: Optional[List[str]] = None,
-                 classification: bool = True):
-        """
-        Sets protected and public attributes of our custom dataset class
-
-        Args:
-            df: dataframe with the original data
-            target: name of the column with the targets
-            cont_cols: list of column names associated with continuous data
-            cat_cols: list of column names associated with categorical data
-            classification: True for classification task, False for regression
-
-        """
-        # We use the _init_ of the parent class
-        super().__init__(df, target, cont_cols, cat_cols, classification)
-
-    def __getitem__(self, idx) -> Tuple[Series, array]:
-        return self.x.iloc[idx], self.y[idx]
-
-    def create_subset(self, cont_cols: Optional[List[str]] = None, cat_cols: List[str] = None
-                      ) -> CustomDataset:
-        """
-        Create a PetaleRFDataset from the current dataset, using the given column names
-
-        Args:
-            cont_cols: list of continuous columns
-            cat_cols: list of categorical columns
-
-        Returns: instance of the same class
-        """
-        return PetaleRFDataset(self._retrieve_original_data_subset(cont_cols, cat_cols), self._target,
-                               cont_cols, cat_cols, self.classification)
-
-
-class PetaleLinearModelDataset(CustomDataset):
-    """
-    Dataset used to train and test our linear models from sklearn
-    """
-
-    def __init__(self, df: DataFrame, target: str,
-                 cont_cols: Optional[List[str]] = None, cat_cols: Optional[List[str]] = None,
-                 classification: bool = True,  polynomial_degree: int = 1, include_bias: bool = True):
-        """
-        Sets protected and public attributes of our custom dataset class
-
-        Args:
-            df: dataframe with the original data
-            target: name of the column with the targets
-            cont_cols: list of column names associated with continuous data
-            cat_cols: list of column names associated with categorical data
-            classification: True for classification task, False for regression
-            polynomial_degree: degree of polynomial basis function to apply to the data
-            include_bias: True if we want to include bias to the original data
-        """
-        # We set the protected attributes
-        self._polynomial_degree = polynomial_degree
-        self._bias = include_bias
-        self._basis_function = PolynomialFeatures(degree=polynomial_degree, include_bias=include_bias)
-
-        # We use the _init_ of the parent class
-        super().__init__(df, target, cont_cols, cat_cols, classification)
-
-        # We define the item getter function
-        self._item_getter = self._define_item_getter(cont_cols, cat_cols)
-
-    def __getitem__(self, idx) -> Tuple[array, array]:
-        return self._item_getter(idx)
-
-    def _define_item_getter(self, cont_cols: Optional[List[str]] = None,
-                            cat_cols: Optional[List[str]] = None) -> Callable:
-        """
-        Defines the function that must be used by __get_item__ in order to get data
-        Args:
-            cont_cols: list of column names associated with continuous data
-            cat_cols: list of column names associated with categorical data
-
-        Returns: item_getter function
-        """
-        if cont_cols is None:
-            def item_getter(idx: Any) -> Tuple[array, array]:
-                return self.x_cat[idx, :], self.y[idx]
-
-        elif cat_cols is None:
-            def item_getter(idx: Any) -> Tuple[array, array]:
-                return self.x_cont[idx, :], self.y[idx]
-
-        else:
-            def item_getter(idx: Any) -> Tuple[array, array]:
-                return concatenate((self.x_cont[idx, :], self.x_cat[idx, :]), axis=1), self.y[idx]
-
-        return item_getter
-
-    def _set_x_cat(self) -> None:
-        """
-        Sets x_cat protected attribute after masks update
-        Returns: None
-        """
-        self._x_cat = self.x[self.cat_cols].to_numpy(dtype=int)
-
-    def _set_x_cont(self) -> None:
-        """
-        Sets x_cont protected attribute after masks update
-        Returns: None
-        """
-        self._x_cont = self._basis_function.fit_transform(self.x[self.cont_cols].to_numpy(dtype=float))
-
-    def create_subset(self, cont_cols: Optional[List[str]] = None, cat_cols: List[str] = None
-                      ) -> CustomDataset:
-        """
-        Create a PetaleLinearModelDataset from the current dataset, using the given column names
-
-        Args:
-            cont_cols: list of continuous columns
-            cat_cols: list of categorical columns
-
-        Returns: instance of the same class
-        """
-        return PetaleLinearModelDataset(self._retrieve_original_data_subset(cont_cols, cat_cols),
-                                        self._target, cont_cols, cat_cols, self.classification,
-                                        self._polynomial_degree, self._bias)
-
-
-class PetaleGNNDataset(PetaleNNDataset):
-    """
-    Dataset used to train, valid and test our Graph Neural Network
+    Dataset used to train, valid and test our Graph Neural Network.
+    Static means that the edges are based only on the non null categorical values from the
+    original dataframe. Hence, the structure of the graph does not change after masks update (ie. imputation).
     """
 
     def __init__(self, df: DataFrame, target: str,
@@ -579,48 +417,118 @@ class PetaleGNNDataset(PetaleNNDataset):
             classification: True for classification task, False for regression
 
         """
-        # We initialize protected attributes proper to GNNDataset class
-        self._graph = None
+        # Sets train, valid and test subgraphs data to default value
+        self._subgraphs = {'train': tuple(), 'valid': tuple(), 'test': tuple()}
 
         # We use the _init_ of the parent class CustomDataset
-        super().__init__(df, target, cont_cols, cat_cols, classification)
+        super().__init__(df, target, cont_cols, cat_cols, classification, to_tensor=True)
 
-    def _update_graph(self) -> None:
+        # We initialize the graph attribute proper to GNNDataset class
+        self._graph = self._build_graph()
+
+    @property
+    def graph(self) -> DGLHeteroGraph:
+        return self._graph
+
+    @property
+    def train_subgraph(self) -> Tuple[DGLHeteroGraph, List[int], Dict[int, int]]:
+        return self._subgraphs['train']
+
+    @property
+    def test_subgraph(self) -> Tuple[DGLHeteroGraph, List[int], Dict[int, int]]:
+        return self._subgraphs['test']
+
+    @property
+    def valid_subgraph(self) -> Tuple[DGLHeteroGraph, List[int], Dict[int, int]]:
+        return self._subgraphs['valid']
+
+    def _build_graph(self) -> DGLHeteroGraph:
         """
-        Updates the graph structures and its data once the masks are updated
+        Builds the graph structures
 
         Returns: None
         """
+        # We extract imputed but reinsert nan values into categorical column that were imputed
+        df = self.get_imputed_dataframe()
+        na_row_idx, na_col_idx = where(self.original_data[self.cat_cols].isna().to_numpy())
+        for i, j in zip(na_row_idx, na_col_idx):
+            df.iloc[i, j] = nan
+
         # We look through categorical columns to generate graph structure
         graph_structure = {}
         for e_types, e_values in self.encodings.items():
             edges_start, edges_end = [], []
             for value in e_values.values():
-                idx_subset = self.x.loc[self._x[e_types] == value].index.to_numpy()
+                idx_subset = df.loc[df[e_types] == value].index.to_numpy()
                 subset_size = idx_subset.shape[0]
                 for i in range(subset_size):
                     edges_start += [idx_subset[i]]*(subset_size - 1)
                     remaining_idx = list(range(i)) + list(range(i+1, subset_size))
                     edges_end += list(idx_subset[remaining_idx])
-                graph_structure[(PARTICIPANT, e_types, PARTICIPANT)] = (tensor(edges_start), tensor(edges_end))
+                graph_structure[(PARTICIPANT, e_types, PARTICIPANT)] = (tensor(edges_start).long(),
+                                                                        tensor(edges_end).long())
+        return heterograph(graph_structure)
 
-        # We update the internal graph attribute
-        self._graph = heterograph(graph_structure)
+    def _set_subgraphs_data(self) -> None:
+        """
+        Sets subgraphs data after masks update.
+        """
+        # Set the subgraph associated to training set and a map matching each training
+        # index to its physical position in the train mask
+        self._subgraphs['train'] = (*self.get_arbitrary_subgraph(idx=self.train_mask), self.train_mask)
 
-        # We set the graph data
-        print(self._graph.nodes())
+        # Set the subgraph associated to test and a map matching each test
+        # index to its physical position in the train + test mask
+        train_test_mask = self.train_mask + self.test_mask
+        self._subgraphs['test'] = (*self.get_arbitrary_subgraph(idx=train_test_mask), train_test_mask)
+
+        if len(self.valid_mask) != 0:
+            # Set the subgraph associated to validation and a map matching each valid
+            # index to its physical position in the train + valid mask
+            train_valid_mask = self.train_mask + self.valid_mask
+            self._subgraphs['valid'] = (*self.get_arbitrary_subgraph(idx=train_valid_mask), train_valid_mask)
+
+    def get_arbitrary_subgraph(self, idx: List[int]) -> Tuple[DGLHeteroGraph, Dict[int, int]]:
+        """
+        Returns
+        1 - heterogeneous subgraph with only nodes associated to idx in the list
+        2-  dictionary mapping each idx to each position in the list
+
+        Args:
+            idx: list of idx such as masks
+
+        Returns: heterogeneous graph
+        """
+        return node_subgraph(self.graph, nodes=idx, store_ids=True), {v: i for i, v in enumerate(idx)}
+
+    def get_metapaths(self) -> List[List[str]]:
+        return [[key] for key in self.encodings.keys()]
 
     def update_masks(self, train_mask: List[int], test_mask: List[int],
                      valid_mask: Optional[List[int]] = None) -> None:
         """
-        Same function as CustomDataset parent to which we add a graph construction component
+        First, updates the train, valid and test masks and preprocess the data available
+        according to the current statistics of the training data.
+
+        Second, updates train, valid and test subgraph and idx map.
+
+        """
+        # We first update masks as usual for datasets
+        PetaleDataset.update_masks(self, train_mask, test_mask, valid_mask)
+
+        # If we are not calling update_masks for initialization purpose
+        if len(test_mask) != 0:
+            self._set_subgraphs_data()
+
+    def create_subset(self, cont_cols: Optional[List[str]] = None, cat_cols: List[str] = None) -> Any:
+        """
+        Returns a subset of the current dataset using the given cont_cols and cat_cols
 
         Args:
-            train_mask: list of idx to use for training
-            test_mask: list of idx to use for test
-            valid_mask: list of idx to use for validation
+            cont_cols: list of continuous columns
+            cat_cols: list of categorical columns
 
-        Returns: None
+        Returns: instance of the same class
         """
-        CustomDataset.update_masks(self, train_mask, test_mask, valid_mask)
-        self._update_graph()
+        subset = self._retrieve_subset_from_original(cont_cols, cat_cols)
+        return PetaleStaticGNNDataset(subset, self.target, cont_cols, cat_cols, self.classification)

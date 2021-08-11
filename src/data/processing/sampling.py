@@ -4,7 +4,7 @@ Author : Nicolas Raymond
 This file contains the Sampler class used to separate test sets from train sets
 """
 
-from src.data.processing.datasets import CustomDataset
+from src.data.processing.datasets import PetaleDataset
 from itertools import product
 from json import load
 from numpy import array
@@ -29,7 +29,7 @@ class RandomStratifiedSampler:
     Object uses in order to generate lists of indexes to use as train, valid
     and test masks for outer and inner validation loops.
     """
-    def __init__(self, dataset: CustomDataset,
+    def __init__(self, dataset: PetaleDataset,
                  n_out_split: int, n_in_split: int, valid_size: float = 0.20, test_size: float = 0.20,
                  random_state: Optional[int] = None, alpha: int = 4, patience: int = 100):
         """
@@ -178,7 +178,8 @@ class RandomStratifiedSampler:
         self.__dataset.update_masks(train_mask, test_mask, valid_mask)
 
         # We extract train dataframe
-        train_df = self.__dataset.x.iloc[train_mask]
+        imputed_df = self.__dataset.get_imputed_dataframe()
+        train_df = imputed_df.iloc[train_mask]
 
         # We check if all categories of categorical columns are in the training set
         for cat, values in self.__unique_encodings.items():
@@ -195,7 +196,7 @@ class RandomStratifiedSampler:
         for mask in other_masks:
 
             # We extract the subset
-            subset_df = self.__dataset.x.iloc[mask]
+            subset_df = imputed_df.iloc[mask]
 
             # We check if all numerical values are not extreme outliers according to the train mask
             for cont_col, (q1, q3) in train_quantiles.items():
@@ -207,9 +208,9 @@ class RandomStratifiedSampler:
             return True
 
     @staticmethod
-    def is_categorical(targets: Union[tensor, array, List[Any]]) -> bool:
+    def is_categorical(targets: Union[tensor, array]) -> bool:
         """
-        Check if the number of unique values is greater than the quarter of the length of the targets sequence
+        Check if the number of unique values is lower than the quarter of the length of the targets sequence
 
         Args:
             targets: sequence of float/int used for stratification
@@ -217,7 +218,7 @@ class RandomStratifiedSampler:
         Returns: bool
         """
         target_list_copy = list(targets)
-        return len(set(target_list_copy)) > 0.25*len(target_list_copy)
+        return len(set(target_list_copy)) < 0.25*len(target_list_copy)
 
     @staticmethod
     def mimic_classes(targets: Union[tensor, array, List[Any]]) -> array:

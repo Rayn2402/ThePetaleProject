@@ -1,0 +1,94 @@
+"""
+Author: Nicolas Raymond
+
+This file is used wrap the xgboost models within PetaleClassifier and PetaleRegressor
+abstract classes.
+"""
+
+from src.models.wrappers.sklearn_wrappers import SklearnBinaryClassifierWrapper, SklearnRegressorWrapper
+from src.utils.hyperparameters import CategoricalHP, NumericalContinuousHP, NumericalIntHP
+from typing import Optional
+from xgboost import XGBClassifier, XGBRegressor
+
+
+class PetaleBinaryXGBC(SklearnBinaryClassifierWrapper):
+    """
+    XGBoost classifier wrapper
+    """
+    def __init__(self, lr: float = 0.3, max_depth: int = 6, subsample: float = 1, alpha: float = 0,
+                 beta: float = 0, classification_threshold: int = 0.5, weight: Optional[float] = None):
+        """
+        Sets protected attributes using parent
+        Args:
+            lr: Step size shrinkage used in update to prevents overfitting. After each boosting step, we can
+                directly get the weights of new features, and eta shrinks the feature weights to make the
+                boosting process more conservative.
+            max_depth: Maximum depth of a tree. Increasing this value will make the model more complex
+                       and more likely to overfit.
+            subsample: Subsample ratio of the training instances. Setting it to 0.5 means that XGBoost would randomly
+                       sample half of the training data prior to growing trees.
+            alpha: L1 regularization term on weights.
+            beta: L2 regularization term on weights
+            classification_threshold: threshold used to classify a sample in class 1
+            weight: weight attributed to class 1
+        """
+        super().__init__(model=XGBClassifier(learning_rate=lr,
+                                             max_depth=max_depth,
+                                             subsample=subsample,
+                                             reg_alpha=alpha,
+                                             reg_lambda=beta,
+                                             use_label_encoder=False,
+                                             objective="binary:logistic",
+                                             eval_metric="logloss"),
+                         classification_threshold=classification_threshold,
+                         weight=weight)
+
+    @staticmethod
+    def get_hps():
+        return list(XGBoostHP()) + [XGBoostHP.WEIGHT]
+
+
+class PetaleXGBR(SklearnRegressorWrapper):
+    """
+    XGBoost regressor wrapper
+    """
+    def __init__(self, lr: float = 0.3, max_depth: int = 6, subsample: float = 1, alpha: float = 0,
+                 beta: float = 0):
+        """
+        Sets protected attributes using parent
+        Args:
+            lr: Step size shrinkage used in update to prevents overfitting. After each boosting step, we can
+                directly get the weights of new features, and eta shrinks the feature weights to make the
+                boosting process more conservative.
+            max_depth: Maximum depth of a tree. Increasing this value will make the model more complex
+                       and more likely to overfit.
+            subsample: Subsample ratio of the training instances. Setting it to 0.5 means that XGBoost would randomly
+                       sample half of the training data prior to growing trees.
+            alpha: L1 regularization term on weights.
+            beta: L2 regularization term on weights
+        """
+        super().__init__(model=XGBRegressor(learning_rate=lr,
+                                            max_depth=max_depth,
+                                            subsample=subsample,
+                                            reg_alpha=alpha,
+                                            reg_lambda=beta))
+
+    @staticmethod
+    def get_hps():
+        return list(XGBoostHP())
+
+
+class XGBoostHP:
+    """
+    XGBoost's hyperparameters
+    """
+    ALPHA = NumericalContinuousHP("alpha")
+    BETA = NumericalContinuousHP("beta")
+    LR = NumericalContinuousHP("lr")
+    MAX_DEPTH = NumericalIntHP("max_depth")
+    SUBSAMPLE = NumericalContinuousHP("subsample")
+    WEIGHT = NumericalContinuousHP("weight")
+
+    def __iter__(self):
+        return iter([self.ALPHA, self.BETA, self.LR, self.MAX_DEPTH, self.SUBSAMPLE])
+

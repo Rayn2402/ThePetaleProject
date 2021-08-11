@@ -1,6 +1,9 @@
 """
- File used to store hyperparameters used for sanity checks
+Author: Nicolas Raymond
+
+File used to store hyperparameters used for l1 phase's experiments
 """
+
 
 from src.models.mlp import MLPHP
 from src.models.han import HanHP
@@ -9,11 +12,12 @@ from src.models.random_forest import RandomForestHP
 from src.models.xgboost_ import XGBoostHP
 from src.training.enums import Range
 
+
 TAB_HPS = {
     TabNetHP.BATCH_SIZE.name: {
-        Range.MIN: 25,
-        Range.MAX: 50,
-        Range.STEP: 5
+        Range.MIN: 16,
+        Range.MAX: 46,
+        Range.STEP: 10
     },
     TabNetHP.BETA.name: {
         Range.MIN: 0,
@@ -101,9 +105,9 @@ HAN_HPS = {
         Range.MAX: 1
     },
     HanHP.BATCH_SIZE.name: {
-        Range.MIN: 25,
-        Range.MAX: 50,
-        Range.STEP: 5
+        Range.MIN: 16,
+        Range.MAX: 46,
+        Range.STEP: 10
     },
     HanHP.BETA.name: {
         Range.MIN: 0,
@@ -137,9 +141,9 @@ MLP_HPS = {
         Range.MAX: 1
     },
     MLPHP.BATCH_SIZE.name: {
-        Range.MIN: 25,
-        Range.MAX: 50,
-        Range.STEP: 5
+        Range.MIN: 16,
+        Range.MAX: 46,
+        Range.STEP: 10
     },
     MLPHP.BETA.name: {
         Range.MIN: 0,
@@ -156,6 +160,39 @@ MLP_HPS = {
     MLPHP.N_UNIT.name: {
         Range.MIN: 2,
         Range.MAX: 10
+    },
+    MLPHP.WEIGHT.name: {
+        Range.MIN: 0.50,
+        Range.MAX: 0.80
+    },
+}
+
+LOGIT_HPS = {
+    MLPHP.ACTIVATION.name: {
+        Range.VALUE: "PReLU"
+    },
+    MLPHP.ALPHA.name: {
+        Range.MIN: 0,
+        Range.MAX: 1
+    },
+    MLPHP.BATCH_SIZE.name: {
+        Range.MIN: 16,
+        Range.MAX: 46,
+        Range.STEP: 10
+    },
+    MLPHP.BETA.name: {
+        Range.MIN: 0,
+        Range.MAX: 1
+    },
+    MLPHP.LR.name: {
+        Range.MIN: 0.001,
+        Range.MAX: 0.5
+    },
+    MLPHP.N_LAYER.name: {
+        Range.VALUE: 0
+    },
+    MLPHP.N_UNIT.name: {
+        Range.VALUE: 5
     },
     MLPHP.WEIGHT.name: {
         Range.MIN: 0.50,

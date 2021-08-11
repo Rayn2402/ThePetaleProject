@@ -185,6 +185,10 @@ class Evaluator:
             subset.update_masks(train_mask=train_mask, valid_mask=valid_mask, test_mask=test_mask)
             model.fit(dataset=subset)
 
+            # We save plots associated to training
+            if hasattr(model, 'plot_evaluations'):
+                model.plot_evaluations(save_path=saving_path)
+
             # We save the trained model
             # TO DO
 

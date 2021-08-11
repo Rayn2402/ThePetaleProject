@@ -187,7 +187,7 @@ class PetaleRegressor(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def predict(self, dataset: PetaleDataset) -> Union[tensor, array]:
+    def predict(self, dataset: PetaleDataset, mask: Optional[List[int]] = None) -> Union[tensor, array]:
         """
         Returns the predicted real-valued targets for all samples in the test set
 
@@ -196,6 +196,7 @@ class PetaleRegressor(ABC):
                      - x : (N,D) tensor or array with D-dimensional samples
                      - y : (N,) tensor or array with classification labels
                      - idx : (N,) tensor or array with idx of samples according to the whole dataset
+            mask: List of dataset idx for which we want to make predictions
 
         Returns: (N,) tensor or array
         """

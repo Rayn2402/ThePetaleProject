@@ -190,7 +190,7 @@ class Evaluator:
                 model.plot_evaluations(save_path=saving_path)
 
             # We save the trained model
-            # TO DO
+            model.save_model(path=saving_path)
 
             # We get the predictions and save the evaluation metric scores
             self._record_scores_and_pred(model, recorder, subset)

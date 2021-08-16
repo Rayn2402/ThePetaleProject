@@ -37,8 +37,8 @@ class Recorder:
         # We store the protected attributes
         self._data = {NAME: evaluation_name, INDEX: index,
                       DATA_INFO: {}, HYPERPARAMETERS: {},
-                      HYPERPARAMETER_IMPORTANCE: {}, METRICS: {'train': {}, 'test': {}},
-                      COEFFICIENT: {}, RESULTS: {'train': {}, 'test': {}}}
+                      HYPERPARAMETER_IMPORTANCE: {}, TRAIN_METRICS: {}, TEST_METRICS: {},
+                      COEFFICIENT: {}, TRAIN_RESULTS: {}, TEST_RESULTS: {}}
 
         self._path = os.path.join(recordings_path, evaluation_name, f"Split_{index}")
 
@@ -143,8 +143,8 @@ class Recorder:
 
         """
         # We save the score of the given metric
-        split = 'test' if test else 'train'
-        self._data[METRICS][split][metric] = round(score, 6)
+        section = TEST_METRICS if test else TRAIN_METRICS
+        self._data[section][metric] = round(score, 6)
 
     def record_predictions(self, ids: List[str], predictions: tensor,
                            target: tensor, test: bool = True) -> None:
@@ -161,15 +161,15 @@ class Recorder:
 
         """
         # We save the predictions
-        split = 'test' if test else 'train'
+        section = TEST_RESULTS if test else TRAIN_RESULTS
         if len(predictions.shape) == 0:
             for j, id_ in enumerate(ids):
-                self._data[RESULTS][split][id_] = {
+                self._data[RESULTS][section][id_] = {
                     PREDICTION: predictions[j].item(),
                     TARGET: target[j].item()}
         else:
             for j, id_ in enumerate(ids):
-                self._data[RESULTS][split][id_] = {
+                self._data[RESULTS][section][id_] = {
                     PREDICTION: predictions[j].tolist(),
                     TARGET: target[j].item()}
 
@@ -188,7 +188,8 @@ def get_evaluation_recap(evaluation_name, recordings_path):
     folders.sort(key=lambda x: int(x.split("_")[1]))
 
     data = {
-        METRICS: {}
+        TRAIN_METRICS: {},
+        TEST_METRICS: {}
     }
     hyperparameter_importance_keys = None
     hyperparameters_keys = None
@@ -196,20 +197,21 @@ def get_evaluation_recap(evaluation_name, recordings_path):
     coefficient_keys = None
 
     for folder in folders:
+
         # We open the json file containing the info of each split
         with open(os.path.join(path, folder, json_file), "r") as read_file:
             split_data = json.load(read_file)
 
-        # We collect the info of the different metrics
+        # We collect the info of the different metrics for train and test set
         if metrics_keys is None:
-            metrics_keys = split_data[METRICS].keys()
+            metrics_keys = split_data[TEST_METRICS].keys()
             for key in metrics_keys:
-                data[METRICS][key] = {
-                    VALUES: [],
-                    INFO: ""
-                }
+                data[TRAIN_METRICS][key] = {VALUES: [], INFO: ""}
+                data[TEST_METRICS][key] = {VALUES: [], INFO: ""}
+
         for key in metrics_keys:
-            data[METRICS][key][VALUES].append(split_data[METRICS][key])
+            data[TRAIN_METRICS][key][VALUES].append(split_data[TRAIN_METRICS][key])
+            data[TEST_METRICS][key][VALUES].append(split_data[TEST_METRICS][key])
 
         # We collect the info of the different hyperparameter importance
         if HYPERPARAMETER_IMPORTANCE in split_data.keys():

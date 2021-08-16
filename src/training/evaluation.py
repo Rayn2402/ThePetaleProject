@@ -249,7 +249,7 @@ class Evaluator:
             model.find_optimal_threshold(dataset=subset, metric=self.evaluation_metrics[-1])
             recorder.record_data_info('thresh', str(model.thresh))
 
-            for mask in [subset.train_mask, subset.test_mask]:
+            for mask, test_bool in [(subset.train_mask, False), (subset.test_mask, True)]:
 
                 # We compute prediction
                 pred = model.predict_proba(subset, mask)
@@ -260,7 +260,8 @@ class Evaluator:
 
                 # We record all metric scores
                 for metric in self.evaluation_metrics:
-                    recorder.record_scores(score=metric(pred, y, thresh=model.thresh), metric=metric.name)
+                    recorder.record_scores(score=metric(pred, y, thresh=model.thresh),
+                                           metric=metric.name, test=test_bool)
 
                 if not is_tensor(pred):
                     pred = from_numpy(pred)
@@ -269,10 +270,10 @@ class Evaluator:
                 pred = (pred >= model.thresh).long()
 
                 # We save the predictions
-                recorder.record_predictions(predictions=pred, ids=ids, target=y)
+                recorder.record_predictions(predictions=pred, ids=ids, target=y, test=test_bool)
 
         else:   # If instead the model is for regression
-            for mask in [subset.train_mask, subset.test_mask]:
+            for mask, test_bool in [(subset.train_mask, False), (subset.test_mask, True)]:
 
                 # We extract ids and targets
                 ids = [subset.ids[i] for i in mask]
@@ -283,7 +284,7 @@ class Evaluator:
 
                 # We record all metric scores
                 for metric in self.evaluation_metrics:
-                    recorder.record_scores(score=metric(pred, y), metric=metric.name)
+                    recorder.record_scores(score=metric(pred, y), metric=metric.name, test=test_bool)
 
                     # We save the predictions
-                    recorder.record_predictions(predictions=pred, ids=ids, target=y)
+                    recorder.record_predictions(predictions=pred, ids=ids, target=y, test=test_bool)

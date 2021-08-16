@@ -250,21 +250,21 @@ x   }
             general_data = json.load(read_file)
 
         main_metrics = ""
-        for key in general_data["metrics"].keys():
+        for key in general_data["test_metrics"].keys():
             main_metrics += f"""
                     <div class="metric-section col center" style="text-align:center">
                         <div class="label">
                             {key}
                         </div>
                         <div class="info">
-                            {general_data["metrics"][key]["info"]}
+                            {general_data["test_metrics"][key]["info"]}
                         </div>
                     x</div>
                 """
 
             main_image = f"""
                     <img src={os.path.join(path, evaluation,"hyperparameters_importance_recap.png")} >
-                """ if os.path.exists(os.path.join(path, evaluation,"hyperparameters_importance_recap.png")) else ""
+                """ if os.path.exists(os.path.join(path, evaluation, "hyperparameters_importance_recap.png")) else ""
 
         # We add the general section
         mains = f"""<div class="main {"hidden" if i != 0 else None}" id="{evaluation}General">
@@ -338,14 +338,14 @@ x   }
 
             # We add the metrics section
             metric_section = ""
-            for key in data["metrics"].keys():
+            for key in data["test_metrics"].keys():
                 metric_section += f"""
                     <div class="metric-section col center">
                         <div class="label">
                             {key}
                         </div>
                         <div class="info">
-                            {data["metrics"][key]}
+                            {data["test_metrics"][key]}
                         </div>
                     </div>
                 """

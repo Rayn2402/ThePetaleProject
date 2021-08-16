@@ -46,6 +46,10 @@ TAB_HPS = {
 }
 
 RF_HPS = {
+    RandomForestHP.MAX_DEPTH.name: {
+        Range.MIN: 5,
+        Range.MAX: 20
+    },
     RandomForestHP.MAX_FEATURES.name: {
         Range.VALUES: ["sqrt", "log2"],
     },

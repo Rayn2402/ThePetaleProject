@@ -28,6 +28,9 @@ def argument_parser():
 
     parser.add_argument('-tc', '--target_column', type=str, help="Name of the column to use as target")
 
+    parser.add_argument('-rc', '--removed_columns', nargs='*', type=str, default=[],
+                        help="Columns to remove from dataframe before creating mask")
+
     parser.add_argument('-s', '--seed', type=int, default=SEED,
                         help=f"Seed value used to create masks (default = {SEED})")
 
@@ -43,11 +46,11 @@ def argument_parser():
                         help=f"IQR multiplier used to check numerical variable range validity"
                              f" of the test and valid masks (default = {SAMPLING_OUTLIER_ALPHA})")
 
-    parser.add_argument('-k', '--nb_out_split', type=int, default=20,
-                        help="Number of outer splits masks to produce (default = 20)")
+    parser.add_argument('-k', '--nb_out_split', type=int, default=10,
+                        help="Number of outer splits masks to produce (default = 10)")
 
-    parser.add_argument('-l', '--nb_in_split', type=int, default=20,
-                        help="Number of inner splits masks to produce (default = 20)")
+    parser.add_argument('-l', '--nb_in_split', type=int, default=10,
+                        help="Number of inner splits masks to produce (default = 10)")
 
     arguments = parser.parse_args()
 
@@ -71,7 +74,11 @@ if __name__ == '__main__':
     # We retrieve the table needed
     df = data_manager.get_table(args.table)
 
-    # We extract an holdout set from the whole dataframe using a sampler
+    # We remove unnecessary columns
+    columns = [c for c in df.columns if c not in args.removed_columns]
+    df = df[columns]
+
+    # We create stratified mask according to the target columns
     cont_cols = list(retrieve_numerical(df, []).columns.values)
     cat_cols = [c for c in df.columns.values if c not in [PARTICIPANT, args.target_column] + cont_cols]
     dataset = PetaleDataset(df, args.target_column, cont_cols=cont_cols, cat_cols=cat_cols)

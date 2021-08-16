@@ -3,6 +3,9 @@ Author: Nicolas Raymond
 
 This file is used to store abstract class to use as wrappers for models with the sklearn API
 """
+import os
+import pickle
+
 from numpy import array
 from src.data.processing.datasets import PetaleDataset
 from src.models.abstract_models.base_models import PetaleBinaryClassifier, PetaleRegressor
@@ -75,6 +78,19 @@ class SklearnBinaryClassifierWrapper(PetaleBinaryClassifier):
 
         return proba.squeeze()
 
+    def save_model(self, path: str) -> None:
+        """
+        Saves the model
+
+        Args:
+            path: save path
+
+        Returns: None
+        """
+        # We save the model with pickle
+        filepath = os.path.join(path, "sklearn_model.sav")
+        pickle.dump(self._model, open(filepath, "wb"))
+
 
 class SklearnRegressorWrapper(PetaleRegressor):
     """
@@ -129,3 +145,16 @@ class SklearnRegressorWrapper(PetaleRegressor):
 
         # Call sklearn predict method
         return self._model.predict(x)
+
+    def save_model(self, path: str) -> None:
+        """
+        Saves the model
+
+        Args:
+            path: save path
+
+        Returns: None
+        """
+        # We save the model with pickle
+        filepath = os.path.join(path, "sklearn_model.sav")
+        pickle.dump(self._model, open(filepath, "wb"))

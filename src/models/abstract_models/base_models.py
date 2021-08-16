@@ -66,7 +66,7 @@ class PetaleBinaryClassifier(ABC):
         proba = self.predict_proba(dataset, dataset.train_mask)
 
         # For multiple threshold value with calculate the metric
-        thresholds = linspace(start=0.05, stop=0.95, num=18)
+        thresholds = linspace(start=0.01, stop=0.95, num=95)
         scores = array([metric(proba, dataset.y[dataset.train_mask], t) for t in thresholds])
 
         # We return the optimal threshold
@@ -149,6 +149,18 @@ class PetaleBinaryClassifier(ABC):
         """
         raise NotImplementedError
 
+    @abstractmethod
+    def save_model(self, path: str) -> None:
+        """
+        Saves the model
+
+        Args:
+            path: save path
+
+        Returns: None
+        """
+        raise NotImplementedError
+
 
 class PetaleRegressor(ABC):
     """
@@ -199,5 +211,17 @@ class PetaleRegressor(ABC):
             mask: List of dataset idx for which we want to make predictions
 
         Returns: (N,) tensor or array
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def save_model(self, path: str) -> None:
+        """
+        Saves the model
+
+        Args:
+            path: save path
+
+        Returns: None
         """
         raise NotImplementedError

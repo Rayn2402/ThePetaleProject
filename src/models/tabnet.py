@@ -3,8 +3,9 @@ Author: Nicolas Raymond
 
 This file is used to implement wrappers for TabNet regression and classification models
 """
-from numpy import array, ones
 
+import os
+from numpy import array, ones
 from src.data.processing.datasets import PetaleDataset
 from src.models.abstract_models.base_models import PetaleBinaryClassifier, PetaleRegressor
 from src.utils.hyperparameters import NumericalIntHP, NumericalContinuousHP
@@ -130,6 +131,17 @@ class PetaleBinaryTNC(PetaleBinaryClassifier):
 
         return self.__model.predict_proba(x)[:, 1]
 
+    def save_model(self, path: str) -> None:
+        """
+        Saves the model
+
+        Args:
+            path: save path
+
+        Returns: None
+        """
+        self.__model.save_model(os.path.join(path, "model"))
+
 
 class PetaleTNR(PetaleRegressor):
     """
@@ -236,6 +248,17 @@ class PetaleTNR(PetaleRegressor):
         x, _, _ = dataset[mask]
 
         return self.__model.predict(x).squeeze()
+
+    def save_model(self, path: str) -> None:
+        """
+        Saves the model
+
+        Args:
+            path: save path
+
+        Returns: None
+        """
+        self.__model.save_model(os.path.join(path, "model"))
 
 
 class TabNetHP:

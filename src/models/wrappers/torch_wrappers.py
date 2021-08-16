@@ -4,9 +4,10 @@ Author: Nicolas Raymond
 This file store the classification and regression wrapper classes for torch custom model
 """
 
+import os
 from src.models.abstract_models.base_models import PetaleBinaryClassifier, PetaleRegressor
 from src.data.processing.datasets import PetaleDataset
-from torch import tensor
+from torch import tensor, save
 from typing import Any, Callable, Dict, List, Optional
 
 
@@ -81,6 +82,18 @@ class TorchBinaryClassifierWrapper(PetaleBinaryClassifier):
 
         return proba.squeeze()
 
+    def save_model(self, path: str) -> None:
+        """
+        Saves the model
+
+        Args:
+            path: save path
+
+        Returns: None
+        """
+
+        save(self._model, os.path.join(path, "torch_model.pt"))
+
 
 class TorchRegressorWrapper(PetaleRegressor):
     """
@@ -138,3 +151,15 @@ class TorchRegressorWrapper(PetaleRegressor):
 
         # Call sklearn predict method
         return self._model.predict(dataset, mask)
+
+    def save_model(self, path: str) -> None:
+        """
+        Saves the model
+
+        Args:
+            path: save path
+
+        Returns: None
+        """
+
+        save(self._model, os.path.join(path, "torch_model.pt"))

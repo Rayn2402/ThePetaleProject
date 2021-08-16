@@ -114,7 +114,7 @@ class Recorder:
 
     def record_model(self, model: Union[PetaleBinaryClassifier, PetaleRegressor]) -> None:
         """
-        Saves a model using pickle
+        Saves a model using pickle or torch save function
 
         Args:
             model: model to save
@@ -164,14 +164,14 @@ class Recorder:
         section = TEST_RESULTS if test else TRAIN_RESULTS
         if len(predictions.shape) == 0:
             for j, id_ in enumerate(ids):
-                self._data[RESULTS][section][id_] = {
-                    PREDICTION: predictions[j].item(),
-                    TARGET: target[j].item()}
+                self._data[section][str(id_)] = {
+                    PREDICTION: str(predictions[j].item()),
+                    TARGET: str(target[j].item())}
         else:
             for j, id_ in enumerate(ids):
-                self._data[RESULTS][section][id_] = {
-                    PREDICTION: predictions[j].tolist(),
-                    TARGET: target[j].item()}
+                self._data[section][str(id_)] = {
+                    PREDICTION: str(predictions[j].tolist()),
+                    TARGET: str(target[j].item())}
 
 
 def get_evaluation_recap(evaluation_name, recordings_path):
@@ -361,16 +361,16 @@ def compare_prediction_recordings(evaluations, split_index, recording_path=""):
             all_data.append(json.load(read_file))
 
     comparison_possible = True
-    ids = list(all_data[0]["results"].keys())
+    ids = list(all_data[0][TEST_RESULTS].keys())
 
     # We check if the two evaluations are made on the same patients
     for i, data in enumerate(all_data):
         if i == 0:
             continue
-        if len(data["results"]) != len(all_data[0]["results"]):
+        if len(data[TEST_RESULTS]) != len(all_data[0][TEST_RESULTS]):
             comparison_possible = False
             break
-        id_to_compare = list(data["results"].keys())
+        id_to_compare = list(data[TEST_RESULTS].keys())
 
         for j, id in enumerate(id_to_compare):
             if id != ids[j]:
@@ -384,11 +384,11 @@ def compare_prediction_recordings(evaluations, split_index, recording_path=""):
     # We gather the needed data from the recordings
     for i, data in enumerate(all_data):
         all_predictions.append([])
-        for id, item in data["results"].items():
+        for id, item in data[TEST_RESULTS].items():
             if i == 0:
                 ids.append(id)
-                target.append(item["target"])
-            all_predictions[i].append(item["prediction"])
+                target.append(item[TARGET])
+            all_predictions[i].append(item[PREDICTION])
 
     # We sort all the predictions and the ids based on the target
     indexes = list(range(len(target)))
@@ -412,7 +412,7 @@ def compare_prediction_recordings(evaluations, split_index, recording_path=""):
     # We add the legend of the plot
     plt.legend()
 
-    plt.title("visualization of the predictions and the ground truth")
+    plt.title("Test set predictions and ground truth")
 
     # We save the plot
     plt.savefig(os.path.join(recording_path, evaluations[0], f"Split_{split_index}",

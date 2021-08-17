@@ -5,7 +5,8 @@ This file is used to test the evaluator class with all models, using boston hous
 """
 
 import sys
-from os.path import join, dirname, realpath
+from copy import deepcopy
+from os.path import dirname, realpath
 from pandas import DataFrame
 from sklearn.datasets import load_boston
 
@@ -16,7 +17,7 @@ if __name__ == '__main__':
     from sanity_checks.hps import TAB_HPS, RF_HPS, XGBOOST_HPS, MLP_HPS, HAN_HPS
     from src.data.extraction.constants import SEED, PARTICIPANT
     from src.data.processing.datasets import PetaleDataset, PetaleStaticGNNDataset
-    from src.data.processing.sampling import RandomStratifiedSampler
+    from src.data.processing.sampling import RandomStratifiedSampler, push_valid_to_train
     from src.models.han import PetaleHANR
     from src.models.mlp import PetaleMLPR
     from src.models.random_forest import PetaleRFR
@@ -44,6 +45,10 @@ if __name__ == '__main__':
     sampler = RandomStratifiedSampler(dataset=dataset, n_out_split=3, n_in_split=3,
                                       random_state=SEED, alpha=15)
     masks = sampler()
+
+    # Creation of another mask without valid
+    masks_without_val = deepcopy(masks)
+    push_valid_to_train(masks_without_val)
 
     # Initialization of the dictionary containing the evaluation metrics
     evaluation_metrics = [SquaredError(), AbsoluteError(), Pearson(), RootMeanSquaredError()]
@@ -75,7 +80,7 @@ if __name__ == '__main__':
     """
     Test with RF
     """
-    evaluator = Evaluator(model_constructor=PetaleRFR, dataset=dataset, masks=masks,
+    evaluator = Evaluator(model_constructor=PetaleRFR, dataset=dataset, masks=masks_without_val,
                           hps=RF_HPS, n_trials=100, evaluation_metrics=evaluation_metrics,
                           evaluation_name='RF_test',
                           save_hps_importance=True, save_optimization_history=True)
@@ -85,7 +90,7 @@ if __name__ == '__main__':
     """
     Test with XGBoost
     """
-    evaluator = Evaluator(model_constructor=PetaleXGBR, dataset=dataset, masks=masks,
+    evaluator = Evaluator(model_constructor=PetaleXGBR, dataset=dataset, masks=masks_without_val,
                           hps=XGBOOST_HPS, n_trials=100, evaluation_metrics=evaluation_metrics,
                           evaluation_name='XGBoost_test',
                           save_hps_importance=True, save_optimization_history=True)

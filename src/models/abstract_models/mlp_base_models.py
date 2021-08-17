@@ -9,7 +9,7 @@ and PetaleMLPRegressor
 from src.models.abstract_models.custom_torch_base import TorchCustomModel
 from src.data.processing.datasets import PetaleDataset
 from src.training.early_stopping import EarlyStopper
-from src.utils.score_metrics import Metric, BinaryCrossEntropy, RootMeanSquaredError
+from src.utils.score_metrics import Metric, BinaryCrossEntropy, SquaredError
 from torch import cat, nn, no_grad, tensor, ones, sigmoid
 from torch.nn import ModuleList, Embedding,\
     Linear, BatchNorm1d, Dropout, Sequential, BCEWithLogitsLoss, MSELoss
@@ -310,7 +310,7 @@ class MLPRegressor(MLP):
             cat_sizes: list of integer representing the size of each categorical column
             cat_emb_sizes: list of integer representing the size of each categorical embedding
         """
-        eval_metric = eval_metric if eval_metric is not None else RootMeanSquaredError()
+        eval_metric = eval_metric if eval_metric is not None else SquaredError()
         super().__init__(output_size=1, layers=layers, activation=activation,
                          criterion=MSELoss(reduction='none'), criterion_name='MSE',
                          eval_metric=eval_metric, dropout=dropout, alpha=alpha, beta=beta,

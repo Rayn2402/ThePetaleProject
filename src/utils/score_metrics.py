@@ -307,6 +307,42 @@ class AbsoluteError(RegressionMetric):
         return self._reduction(abs(pred - targets)).item()
 
 
+class SquaredError(RegressionMetric):
+    """
+    Callable class that computes root mean-squared error
+    """
+    def __init__(self, reduction: str = Reduction.MEAN, n_digits: int = 5):
+        """
+        Sets protected attributes using parent's constructor
+
+        Args:
+            reduction: "mean" for mean squared error and "sum" for the sum of the squared errors
+            n_digits: number of digits kept for the score
+        """
+        assert reduction in [Reduction.MEAN, Reduction.SUM], f"Reduction must be in {[Reduction.MEAN, Reduction.SUM]}"
+
+        if reduction == Reduction.MEAN:
+            name = "MSE"
+            self._reduction = mean
+        else:
+            name = "SE"
+            self._reduction = sum
+
+        super().__init__(direction=Direction.MINIMIZE, name=name, n_digits=n_digits)
+
+    def compute_metric(self, pred: tensor, targets: tensor) -> float:
+        """
+        Computes the root mean-squared error between predictions and targets
+
+        Args:
+            pred: (N,) tensor with predicted labels
+            targets: (N,) tensor with ground truth
+
+        Returns: float
+        """
+        return self._reduction((pred - targets) ** 2).item()
+
+
 class RootMeanSquaredError(RegressionMetric):
     """
     Callable class that computes root mean-squared error

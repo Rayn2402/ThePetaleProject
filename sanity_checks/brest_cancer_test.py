@@ -5,25 +5,23 @@ This file is used to test the evaluator class with all models, using breast canc
 """
 
 import sys
-from os.path import join, dirname, realpath
+from copy import deepcopy
+from os.path import dirname, realpath
 from sklearn.datasets import load_breast_cancer
 
 if __name__ == '__main__':
 
     # Imports specific to project
     sys.path.append(dirname(dirname(realpath(__file__))))
-    import numpy
     from sanity_checks.hps import TAB_HPS, RF_HPS, XGBOOST_HPS, MLP_HPS
-    from settings.paths import Paths
     from src.data.extraction.constants import SEED, PARTICIPANT
-    from src.data.processing.datasets import PetaleDataset, PetaleStaticGNNDataset
-    from src.data.processing.sampling import RandomStratifiedSampler
-    from src.models.han import PetaleBinaryHANC
+    from src.data.processing.datasets import PetaleDataset
+    from src.data.processing.sampling import RandomStratifiedSampler, push_valid_to_train
     from src.models.mlp import PetaleBinaryMLPC
     from src.models.random_forest import PetaleBinaryRFC
     from src.models.tabnet import PetaleBinaryTNC
     from src.models.xgboost_ import PetaleBinaryXGBC
-    from src.utils.score_metrics import BinaryAccuracy, BinaryBalancedAccuracy, BinaryCrossEntropy,\
+    from src.utils.score_metrics import BinaryAccuracy, BinaryBalancedAccuracy,\
         BalancedAccuracyEntropyRatio, Sensitivity, Specificity, Reduction
     from src.training.evaluation import Evaluator
 
@@ -43,6 +41,10 @@ if __name__ == '__main__':
                                       random_state=SEED, alpha=10)
     masks = sampler()
 
+    # Creation of another mask without valid
+    masks_without_val = deepcopy(masks)
+    push_valid_to_train(masks_without_val)
+
     # Initialization of the dictionary containing the evaluation metrics
     evaluation_metrics = [BinaryAccuracy(), BinaryBalancedAccuracy(),
                           BinaryBalancedAccuracy(Reduction.GEO_MEAN),
@@ -56,15 +58,12 @@ if __name__ == '__main__':
     dataset = PetaleDataset(df, target, cont_col)
 
     # Saving of fixed params for TabNet
-    fixed_params = {'cat_idx': [], 'cat_sizes': [],
-                    'cat_emb_sizes': [], 'max_epochs': 250,
-                    'patience': 50}
-
     def update_fixed_params(subset):
         return {'cat_idx': [], 'cat_sizes': [],
                 'cat_emb_sizes': [], 'max_epochs': 250,
                 'patience': 50}
 
+    fixed_params = update_fixed_params(dataset)
 
     # Creation of the evaluator
     evaluator = Evaluator(model_constructor=PetaleBinaryTNC, dataset=dataset,
@@ -79,7 +78,7 @@ if __name__ == '__main__':
     """
     Evaluator validation with RF
     """
-    evaluator = Evaluator(model_constructor=PetaleBinaryRFC, dataset=dataset, masks=masks,
+    evaluator = Evaluator(model_constructor=PetaleBinaryRFC, dataset=dataset, masks=masks_without_val,
                           hps=RF_HPS, n_trials=100, evaluation_metrics=evaluation_metrics,
                           evaluation_name='RF_test',
                           save_hps_importance=True, save_optimization_history=True)
@@ -89,7 +88,7 @@ if __name__ == '__main__':
     """
     Evaluator validation with XGBoost
     """
-    evaluator = Evaluator(model_constructor=PetaleBinaryXGBC, dataset=dataset, masks=masks,
+    evaluator = Evaluator(model_constructor=PetaleBinaryXGBC, dataset=dataset, masks=masks_without_val,
                           hps=XGBOOST_HPS, n_trials=100, evaluation_metrics=evaluation_metrics,
                           evaluation_name='XGBoost_test',
                           save_hps_importance=True, save_optimization_history=True)
@@ -102,15 +101,12 @@ if __name__ == '__main__':
     dataset_mlp = PetaleDataset(df, target, cont_col, to_tensor=True)
 
     # Saving of fixed_params for MLP
-    fixed_params = {'max_epochs': 250, 'patience': 50, 'num_cont_col': len(dataset_mlp.cont_cols),
-                    'cat_idx': dataset_mlp.cat_idx, 'cat_sizes': dataset_mlp.cat_sizes,
-                    'cat_emb_sizes': dataset_mlp.cat_sizes}
-
     def update_fixed_params(subset):
         return {'max_epochs': 250, 'patience': 50, 'num_cont_col': len(subset.cont_cols),
                 'cat_idx': subset.cat_idx, 'cat_sizes': subset.cat_sizes,
                 'cat_emb_sizes': subset.cat_sizes}
 
+    fixed_params = update_fixed_params(dataset_mlp)
 
     evaluator = Evaluator(model_constructor=PetaleBinaryMLPC, dataset=dataset_mlp, masks=masks,
                           hps=MLP_HPS, n_trials=100, evaluation_metrics=evaluation_metrics,

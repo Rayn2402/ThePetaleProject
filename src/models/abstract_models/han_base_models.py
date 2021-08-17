@@ -11,9 +11,10 @@ from dgl.nn.pytorch import GATConv
 from src.data.processing.datasets import PetaleStaticGNNDataset
 from src.models.abstract_models.custom_torch_base import TorchCustomModel
 from src.training.early_stopping import EarlyStopper
-from src.utils.score_metrics import Metric, BinaryClassificationMetric, BinaryCrossEntropy
+from src.utils.score_metrics import Metric, BinaryClassificationMetric, BinaryCrossEntropy,\
+    RegressionMetric, SquaredError
 from torch import tensor, softmax, stack, no_grad, ones, sigmoid
-from torch.nn import BCEWithLogitsLoss, Linear, Module, ModuleList, Sequential, Tanh
+from torch.nn import BCEWithLogitsLoss, Linear, Module, ModuleList, MSELoss, Sequential, Tanh
 from torch.nn.functional import elu
 from torch.utils.data import DataLoader
 from typing import Callable, List, Optional, Tuple, Union
@@ -345,3 +346,58 @@ class HANBinaryClassifier(HAN):
             pos_idx = [idx_map[i] for i in mask]
             return sigmoid(self(g, dataset.x_cont[mask_with_train]))[pos_idx]
 
+
+class HANRegressor(HAN):
+    """
+    Heterogeneous graph attention network binary classifier
+    """
+    def __init__(self, meta_paths: List[List[str]], in_size: int, hidden_size: int,
+                 num_heads: int, dropout: float, eval_metric: Optional[RegressionMetric] = None,
+                 alpha: float = 0, beta: float = 0, verbose: bool = False
+                 ):
+        """
+        Sets protected attributes of the HAN model
+
+        Args:
+            meta_paths: List of metapaths, each meta path is a list of edge types
+            in_size: input size (number of features per node)
+            hidden_size: size of embedding learnt within each attention head
+            num_heads: int representing the number of attention heads
+            dropout: dropout probability
+        """
+        # Call parent's constructor
+        eval_metric = eval_metric if eval_metric is not None else SquaredError()
+        super().__init__(meta_paths=meta_paths, in_size=in_size, hidden_size=hidden_size,
+                         out_size=1, num_heads=[num_heads], dropout=dropout,
+                         criterion=MSELoss(reduction='none'), criterion_name='MSE',
+                         eval_metric=eval_metric, alpha=alpha, beta=beta, verbose=verbose)
+
+    def predict(self, dataset: PetaleStaticGNNDataset, mask: Optional[List[int]] = None) -> tensor:
+        """
+        Returns the real-valued predictions for all samples
+        in a particular set (default = test)
+
+        Args:
+            dataset: PetaleDatasets which items are tuples (x, y, idx) where
+                     - x : (N,D) tensor or array with D-dimensional samples
+                     - y : (N,) tensor or array with classification labels
+                     - idx : (N,) tensor or array with idx of samples according to the whole dataset
+            mask: List of dataset idx for which we want to predict proba
+
+        Returns: (N,) tensor or array
+        """
+        # We extract subgraph data (we add training data for graph convolution)
+        if mask is not None:
+            mask_with_train = list(set(mask + dataset.train_mask))
+            g, idx_map = dataset.get_arbitrary_subgraph(mask_with_train)
+        else:
+            mask = dataset.test_mask
+            g, idx_map, mask_with_train = dataset.test_subgraph
+
+        # Set model for evaluation
+        self.eval()
+
+        # Execute a forward pass and apply a softmax
+        with no_grad():
+            pos_idx = [idx_map[i] for i in mask]
+            return self(g, dataset.x_cont[mask_with_train])[pos_idx]

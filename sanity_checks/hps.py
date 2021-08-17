@@ -40,9 +40,8 @@ TAB_HPS = {
         Range.MAX: 0.5
     },
     TabNetHP.WEIGHT.name: {
-        Range.MIN: 0.50,
-        Range.MAX: 0.80
-    }
+        Range.VALUE: 0.50,
+    },
 }
 
 RF_HPS = {
@@ -67,9 +66,8 @@ RF_HPS = {
         Range.STEP: 250,
     },
     RandomForestHP.WEIGHT.name: {
-        Range.MIN: 0.50,
-        Range.MAX: 0.80
-    }
+        Range.VALUE: 0.50,
+    },
 }
 
 XGBOOST_HPS = {
@@ -94,9 +92,8 @@ XGBOOST_HPS = {
         Range.MAX: 1
     },
     XGBoostHP.WEIGHT.name: {
-        Range.MIN: 0.50,
-        Range.MAX: 0.80
-    }
+        Range.VALUE: 0.50,
+    },
 }
 
 HAN_HPS = {
@@ -127,9 +124,8 @@ HAN_HPS = {
         Range.MAX: 10
     },
     HanHP.WEIGHT.name: {
-        Range.MIN: 0.50,
-        Range.MAX: 0.80
-    }
+        Range.VALUE: 0.50,
+    },
 }
 
 MLP_HPS = {
@@ -162,7 +158,6 @@ MLP_HPS = {
         Range.MAX: 10
     },
     MLPHP.WEIGHT.name: {
-        Range.MIN: 0.50,
-        Range.MAX: 0.80
+        Range.VALUE: 0.50,
     },
 }

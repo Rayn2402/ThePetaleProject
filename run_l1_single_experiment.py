@@ -21,6 +21,10 @@ def argument_parser():
     parser.add_argument('-comp', '--complication', type=str, default='bone',
                         choices=['bone', 'cardio', 'neuro', 'all'], help='Choice of health complication to predict')
 
+    # Feature selection
+    parser.add_argument('-f', '--feature_selection', default=False, action='store_true',
+                        help='True if we want to proceed to feature selection')
+
     arguments = parser.parse_args()
 
     return arguments
@@ -34,12 +38,13 @@ if __name__ == '__main__':
     # Extraction of file path
     FILE = str(join(Paths.L1_EXPERIMENT_SCRIPTS, "single_experiment.py"))
 
-    # Creation of log file name
-    log_file = f'{args.complication}.log'
-
-    # Creation of commands
+    # Creation of base commands
     cmd = ['python', FILE, '-base', '-comp', args.complication, '-han', '-logit', '-mlp',
            '-rf', '-xg', '-tab']
+
+    # Creation of commands with feature selection
+    if args.feature_selection:
+        cmd += ['-f']
 
     # Run of experiments
     check_call(cmd)

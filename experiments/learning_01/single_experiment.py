@@ -30,6 +30,8 @@ def argument_parser():
                         help='Choices of health complication to predict')
     parser.add_argument('-gen', '--genes', nargs='*', type=str, default=[None, 'significant', 'all'],
                         help="Selection of genes to incorporate into the dataset")
+    parser.add_argument('-f', '--feature_selection', default=False, action='store_true',
+                        help='True if we want to proceed to feature selection')
 
     # Models selection
     parser.add_argument('-han', '--han', default=False, action='store_true',
@@ -86,12 +88,18 @@ if __name__ == '__main__':
     complication = args.complication
     if complication == 'bone':
         complication = BONE_COMPLICATIONS
+        mask_file = 'l1_bone_mask.json'
+
     elif complication == 'cardio':
         complication = CARDIOMETABOLIC_COMPLICATIONS
+        mask_file = 'l1_cardio_mask.json'
+
     elif complication == 'neuro':
         complication = NEUROCOGNITIVE_COMPLICATIONS
+        mask_file = 'l1_neuro_mask.json'
     else:
         complication = COMPLICATIONS
+        mask_file = 'l1_general_mask.json'
 
     # Extraction of genes choices
     genes_choices = args.genes
@@ -107,9 +115,7 @@ if __name__ == '__main__':
         data_dict[gene] = (df, cont_cols, cat_cols)
 
     # Extraction of masks
-    masks = extract_masks(join(Paths.MASKS, "l1_masks_2.json"), k=args.nb_outer_splits, l=args.nb_inner_splits)
-    gnn_masks = extract_masks(join(Paths.MASKS, "l1_masks_2.json"), k=args.nb_outer_splits,
-                              l=min(args.nb_inner_splits, 3))
+    masks = extract_masks(join(Paths.MASKS, mask_file), k=args.nb_outer_splits, l=args.nb_inner_splits)
     masks_without_val = deepcopy(masks)
     push_valid_to_train(masks_without_val)
 
@@ -120,7 +126,10 @@ if __name__ == '__main__':
                           BalancedAccuracyEntropyRatio(Reduction.GEO_MEAN)]
 
     # Initialization of feature selector
-    feature_selector = FeatureSelector(0.95)
+    if args.feature_selection:
+        feature_selector = FeatureSelector(0.95)
+    else:
+        feature_selector = None
 
     # We start a timer for the whole experiment
     first_start = time.time()
@@ -142,15 +151,20 @@ if __name__ == '__main__':
             dts = PetaleDataset(df, complication, cont_cols, cat_cols)
 
             # Saving of original fixed params for TabNet
-            fixed_params = {'cat_idx': dts.cat_idx, 'cat_sizes': dts.cat_sizes,
-                            'cat_emb_sizes': dts.cat_sizes, 'max_epochs': 300,
-                            'patience': 100, 'lr': 0.08, 'batch_size': 36, 'n_steps': 6,
-                            'n_d': 4, 'n_a': 4, 'gamma': 1.5, 'weight': 0.55}
+            def update_fixed_params(subset):
+                return {'cat_idx': subset.cat_idx, 'cat_sizes': subset.cat_sizes,
+                        'cat_emb_sizes': subset.cat_sizes, 'max_epochs': 300, 'beta': 0.8,
+                        'patience': 100, 'lr': 0.01, 'batch_size': 36, 'n_steps': 5,
+                        'n_d': 4, 'n_a': 4, 'gamma': 1.5, 'weight': 0.50}
+
+            fixed_params = update_fixed_params(dts)
 
             # Creation of the evaluator
             evaluator = Evaluator(model_constructor=PetaleBinaryTNC, dataset=dts,
-                                  evaluation_name=f"L1_TabNet_{args.complication}_{gene}_no_tuning",
+                                  evaluation_name=f"L1_TabNet_{args.complication}_{gene}_no_tuning_"
+                                                  f"{args.feature_selection}",
                                   masks=masks, hps=TAB_HPS, n_trials=0, fixed_params=fixed_params,
+                                  fixed_params_update_function=update_fixed_params,
                                   feature_selector=feature_selector,
                                   evaluation_metrics=evaluation_metrics,
                                   save_hps_importance=True, save_optimization_history=True)
@@ -173,11 +187,12 @@ if __name__ == '__main__':
             dataset = PetaleDataset(df, complication, cont_cols, cat_cols)
 
             # Saving of original fixed params
-            fixed_params = {'n_estimators': 1500, 'max_samples': 0.8, 'weight': 0.55}
+            fixed_params = {'n_estimators': 3000, 'max_samples': 0.8, 'max_depth': 5, 'weight': 0.50}
 
             # Creation of the evaluator
             evaluator = Evaluator(model_constructor=PetaleBinaryRFC, dataset=dataset, masks=masks_without_val,
-                                  evaluation_name=f"L1_RandomForest_{args.complication}_{gene}_no_tuning",
+                                  evaluation_name=f"L1_RandomForest_{args.complication}_{gene}_no_tuning_"
+                                                  f"{args.feature_selection}",
                                   hps=RF_HPS, n_trials=0, fixed_params=fixed_params,
                                   evaluation_metrics=evaluation_metrics, feature_selector=feature_selector,
                                   save_hps_importance=True, save_optimization_history=True)
@@ -200,11 +215,12 @@ if __name__ == '__main__':
             dataset = PetaleDataset(df, complication, cont_cols, cat_cols)
 
             # Saving of fixed params
-            fixed_params = {'subsample': 0.8, 'max_dept': 6, 'weight': 0.55}
+            fixed_params = {'max_depth': 6, 'lr': 0.01, 'weight': 0.50}
 
             # Creation of the evaluator
             evaluator = Evaluator(model_constructor=PetaleBinaryXGBC, dataset=dataset, masks=masks_without_val,
-                                  evaluation_name=f"L1_XGBoost_{args.complication}_{gene}_no_tuning",
+                                  evaluation_name=f"L1_XGBoost_{args.complication}_{gene}_no_tuning_"
+                                                  f"{args.feature_selection}",
                                   hps=XGBOOST_HPS, n_trials=0, fixed_params=fixed_params,
                                   evaluation_metrics=evaluation_metrics, feature_selector=feature_selector,
                                   save_hps_importance=True, save_optimization_history=True)
@@ -227,17 +243,22 @@ if __name__ == '__main__':
             dts = PetaleDataset(df, complication, cont_cols, cat_cols, to_tensor=True)
 
             # Creation of function to update fixed params
-            fixed_params = {'max_epochs': 500, 'patience': 50, 'num_cont_col': len(dts.cont_cols),
-                            'cat_idx': dts.cat_idx, 'cat_sizes': dts.cat_sizes,
-                            'cat_emb_sizes': dts.cat_sizes, 'n_layer': 3, 'n_unit': 5,
-                            'activation': "PReLU", 'alpha': 0, 'beta': 0, 'lr': 0.05,
-                            'batch_size': 36, 'weight': 0.55}
+            def update_fixed_params(subset):
+                return {'max_epochs': 500, 'patience': 50, 'num_cont_col': len(subset.cont_cols),
+                        'cat_idx': subset.cat_idx, 'cat_sizes': subset.cat_sizes,
+                        'cat_emb_sizes': subset.cat_sizes, 'n_layer': 3, 'n_unit': 5,
+                        'activation': "PReLU", 'alpha': 0.5, 'beta': 0.5, 'lr': 0.01,
+                        'batch_size': 36, 'weight': 0.50}
+
+            fixed_params = update_fixed_params(dts)
 
             # Creation of evaluator
             evaluator = Evaluator(model_constructor=PetaleBinaryMLPC, dataset=dts, masks=masks,
-                                  evaluation_name=f"L1_MLP_{args.complication}_{gene}_no_tuning",
+                                  evaluation_name=f"L1_MLP_{args.complication}_{gene}_no_tuning_"
+                                                  f"{args.feature_selection}",
                                   hps=MLP_HPS, n_trials=0, evaluation_metrics=evaluation_metrics,
                                   feature_selector=feature_selector, fixed_params=fixed_params,
+                                  fixed_params_update_function=update_fixed_params,
                                   save_hps_importance=True, save_optimization_history=True)
 
             # Evaluation
@@ -255,20 +276,25 @@ if __name__ == '__main__':
 
             # Creation of the dataset
             df, cont_cols, cat_cols = data_dict[gene]
-            dataset = PetaleDataset(df, complication, cont_cols, cat_cols, to_tensor=True)
+            dts = PetaleDataset(df, complication, cont_cols, cat_cols, to_tensor=True)
 
             # Creation of function to update fixed params
-            fixed_params = {'max_epochs': 1500, 'patience': 200, 'num_cont_col': len(dts.cont_cols),
-                            'cat_idx': dts.cat_idx, 'cat_sizes': dts.cat_sizes,
-                            'cat_emb_sizes': dts.cat_sizes, 'n_layer': 0, 'n_unit': 5,
-                            'activation': "PReLU", 'alpha': 0, 'beta': 0, 'lr': 0.05,
-                            'batch_size': 36, 'weight': 0.55}
+            def update_fixed_params(subset):
+                return {'max_epochs': 1500, 'patience': 200, 'num_cont_col': len(subset.cont_cols),
+                        'cat_idx': subset.cat_idx, 'cat_sizes': subset.cat_sizes,
+                        'cat_emb_sizes': subset.cat_sizes, 'n_layer': 0, 'n_unit': 5,
+                        'activation': "PReLU", 'alpha': 0, 'beta': 0, 'lr': 0.05,
+                        'batch_size': 36, 'weight': 0.50}
+
+            fixed_params = update_fixed_params(dts)
 
             # Creation of evaluator
             evaluator = Evaluator(model_constructor=PetaleBinaryMLPC, dataset=dts, masks=masks_without_val,
-                                  evaluation_name=f"L1_Logit_{args.complication}_{gene}_no_tuning",
+                                  evaluation_name=f"L1_Logit_{args.complication}_{gene}_no_tuning_"
+                                                  f"{args.feature_selection}",
                                   hps=LOGIT_HPS, n_trials=0, evaluation_metrics=evaluation_metrics,
                                   feature_selector=feature_selector, fixed_params=fixed_params,
+                                  fixed_params_update_function=update_fixed_params,
                                   save_hps_importance=True, save_optimization_history=True)
 
             # Evaluation
@@ -289,15 +315,20 @@ if __name__ == '__main__':
             dts = PetaleStaticGNNDataset(df, complication, cont_cols, cat_cols)
 
             # Saving of fixed params
-            fixed_params = {'meta_paths': dts.get_metapaths(), 'in_size': len(dts.cont_cols),
-                            'max_epochs': 250, 'patience': 25, 'hidden_size': 15, 'alpha': 0, 'beta': 0,
-                            'num_heads': 10, 'lr': 0.01, 'batch_size': 36, 'weight': 0.55}
+            def update_fixed_params(subset):
+                return {'meta_paths': subset.get_metapaths(), 'in_size': len(subset.cont_cols),
+                        'max_epochs': 250, 'patience': 25, 'hidden_size': 15, 'alpha': 0.5, 'beta': 0.5,
+                        'num_heads': 10, 'lr': 0.01, 'batch_size': 36, 'weight': 0.50}
+
+            fixed_params = update_fixed_params(dts)
 
             # Creation of the evaluator
-            evaluator = Evaluator(model_constructor=PetaleBinaryHANC, dataset=dts, masks=gnn_masks,
-                                  evaluation_name=f"L1_HAN_{args.complication}_{gene}_no_tuning",
+            evaluator = Evaluator(model_constructor=PetaleBinaryHANC, dataset=dts, masks=masks,
+                                  evaluation_name=f"L1_HAN_{args.complication}_{gene}_no_tuning_"
+                                                  f"{args.feature_selection}",
                                   hps=HAN_HPS, n_trials=0, evaluation_metrics=evaluation_metrics,
                                   fixed_params=fixed_params, feature_selector=feature_selector,
+                                  fixed_params_update_function=update_fixed_params,
                                   save_hps_importance=True, save_optimization_history=True)
 
             # Evaluation

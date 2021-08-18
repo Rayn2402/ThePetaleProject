@@ -9,7 +9,7 @@ and PetaleMLPRegressor
 from src.models.abstract_models.custom_torch_base import TorchCustomModel
 from src.data.processing.datasets import PetaleDataset
 from src.training.early_stopping import EarlyStopper
-from src.utils.score_metrics import Metric, BinaryCrossEntropy, RootMeanSquaredError
+from src.utils.score_metrics import Metric, BinaryCrossEntropy, SquaredError
 from torch import cat, nn, no_grad, tensor, ones, sigmoid
 from torch.nn import ModuleList, Embedding,\
     Linear, BatchNorm1d, Dropout, Sequential, BCEWithLogitsLoss, MSELoss
@@ -310,14 +310,14 @@ class MLPRegressor(MLP):
             cat_sizes: list of integer representing the size of each categorical column
             cat_emb_sizes: list of integer representing the size of each categorical embedding
         """
-        eval_metric = eval_metric if eval_metric is not None else RootMeanSquaredError()
+        eval_metric = eval_metric if eval_metric is not None else SquaredError()
         super().__init__(output_size=1, layers=layers, activation=activation,
                          criterion=MSELoss(reduction='none'), criterion_name='MSE',
                          eval_metric=eval_metric, dropout=dropout, alpha=alpha, beta=beta,
                          num_cont_col=num_cont_col, cat_idx=cat_idx, cat_sizes=cat_sizes,
                          cat_emb_sizes=cat_emb_sizes, verbose=verbose)
 
-    def predict(self, dataset: PetaleDataset) -> tensor:
+    def predict(self, dataset: PetaleDataset, mask: Optional[List[int]] = None) -> tensor:
         """
         Returns the predicted real-valued targets for all samples in the test set
 
@@ -326,15 +326,19 @@ class MLPRegressor(MLP):
                      - x : (N,D) tensor or array with D-dimensional samples
                      - y : (N,) tensor or array with classification labels
                      - idx : (N,) tensor or array with idx of samples according to the whole dataset
+            mask: List of dataset idx for which we want to make predictions
 
         Returns: (N,) array
         """
-        # Extraction of test set
-        x_test, _, _ = dataset[dataset.test_mask]
+        # We set the mask
+        mask = mask if mask is not None else dataset.test_mask
+
+        # Extraction of data
+        x, _, _ = dataset[mask]
 
         # Set model for evaluation
         self.eval()
 
         # Execute a forward pass and apply a softmax
         with no_grad():
-            return self(x_test)
+            return self(x)

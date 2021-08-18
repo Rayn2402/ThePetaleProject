@@ -4,9 +4,10 @@ Author: Nicolas Raymond
 This file store the classification and regression wrapper classes for torch custom model
 """
 
+import os
 from src.models.abstract_models.base_models import PetaleBinaryClassifier, PetaleRegressor
 from src.data.processing.datasets import PetaleDataset
-from torch import tensor
+from torch import tensor, save
 from typing import Any, Callable, Dict, List, Optional
 
 
@@ -51,6 +52,17 @@ class TorchBinaryClassifierWrapper(PetaleBinaryClassifier):
         # Call the fit method
         self._model.fit(dataset, sample_weights=sample_weights, **self.train_params)
 
+    def plot_evaluations(self, save_path: Optional[str] = None) -> None:
+        """
+        Plots the training and valid curves saved
+
+        Args:
+            save_path: path were the figures will be saved
+
+        Returns: None
+        """
+        self._model.plot_evaluations(save_path=save_path)
+
     def predict_proba(self, dataset: PetaleDataset, mask: Optional[List[int]] = None) -> tensor:
         """
         Returns the probabilities of being in class 1 for all samples
@@ -69,6 +81,18 @@ class TorchBinaryClassifierWrapper(PetaleBinaryClassifier):
         proba = self._model.predict_proba(dataset, mask)
 
         return proba.squeeze()
+
+    def save_model(self, path: str) -> None:
+        """
+        Saves the model
+
+        Args:
+            path: save path
+
+        Returns: None
+        """
+
+        save(self._model, os.path.join(path, "torch_model.pt"))
 
 
 class TorchRegressorWrapper(PetaleRegressor):
@@ -100,7 +124,18 @@ class TorchRegressorWrapper(PetaleRegressor):
         # Call the fit method
         self._model.fit(dataset, **self.train_params)
 
-    def predict(self, dataset: PetaleDataset) -> tensor:
+    def plot_evaluations(self, save_path: Optional[str] = None) -> None:
+        """
+        Plots the training and valid curves saved
+
+        Args:
+            save_path: path were the figures will be saved
+
+        Returns: None
+        """
+        self._model.plot_evaluations(save_path=save_path)
+
+    def predict(self, dataset: PetaleDataset, mask: Optional[List[int]] = None) -> tensor:
         """
         Returns the predicted real-valued targets for all samples in the test set
 
@@ -109,9 +144,22 @@ class TorchRegressorWrapper(PetaleRegressor):
                      - x : (N,D) tensor or array with D-dimensional samples
                      - y : (N,) tensor or array with classification labels
                      - idx : (N,) tensor or array with idx of samples according to the whole dataset
+            mask: List of dataset idx for which we want to make predictions
 
         Returns: (N,) array
         """
 
         # Call sklearn predict method
-        return self._model.predict(dataset)
+        return self._model.predict(dataset, mask)
+
+    def save_model(self, path: str) -> None:
+        """
+        Saves the model
+
+        Args:
+            path: save path
+
+        Returns: None
+        """
+
+        save(self._model, os.path.join(path, "torch_model.pt"))

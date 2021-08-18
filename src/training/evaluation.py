@@ -20,7 +20,7 @@ from src.training.tuning import Tuner, Objective
 from src.utils.score_metrics import Metric
 from time import strftime
 from torch import manual_seed, is_tensor, from_numpy
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Union
 
 
 class Evaluator:
@@ -185,31 +185,15 @@ class Evaluator:
             subset.update_masks(train_mask=train_mask, valid_mask=valid_mask, test_mask=test_mask)
             model.fit(dataset=subset)
 
-            # We save the trained model
-            # TO DO
+            # We save plots associated to training
+            if hasattr(model, 'plot_evaluations'):
+                model.plot_evaluations(save_path=saving_path)
 
-            # We extract ids and targets of the test set
-            ids = [subset.ids[i] for i in test_mask]
-            _, y, _ = subset[subset.test_mask]
+            # We save the trained model
+            model.save_model(path=saving_path)
 
             # We get the predictions and save the evaluation metric scores
-            if isinstance(model, PetaleBinaryClassifier):
-                model.find_optimal_threshold(dataset=subset, metric=self.evaluation_metrics[-1])
-                pred = model.predict_proba(subset)
-                for metric in self.evaluation_metrics:
-                    recorder.record_scores(score=metric(pred, y, thresh=model.thresh), metric=metric.name)
-                if not is_tensor(pred):
-                    pred = from_numpy(pred)
-                pred = (pred >= model.thresh).long()
-                recorder.record_data_info('thresh', str(model.thresh))
-
-            else:
-                pred = model.predict(subset)
-                for metric in self.evaluation_metrics:
-                    recorder.record_scores(score=metric(pred, y), metric=metric.name)
-
-            # We save the predictions
-            recorder.record_predictions(predictions=pred, ids=ids, target=y)
+            self._record_scores_and_pred(model, recorder, subset)
 
             # We save all the data collected in one file
             recorder.generate_file()
@@ -244,3 +228,63 @@ class Evaluator:
         return Objective(dataset=subset, masks=masks, hps=self._hps, fixed_params=self._fixed_params,
                          metric=self.evaluation_metrics[-1], model_constructor=self.model_constructor,
                          gpu_device=self._gpu_device)
+
+    def _record_scores_and_pred(self, model: Union[PetaleBinaryClassifier, PetaleRegressor],
+                                recorder: Recorder, subset: PetaleDataset) -> None:
+        """
+        Records the scores associated to train and test set and also save the prediction linked to
+        each individual
+
+        Args:
+            model: model trained with best found hyperparameters
+            recorder: object recording information about splits evaluations
+            subset: dataset with remaining features from feature selection
+
+        Returns: None
+        """
+        # If the model is a classifier
+        if subset.classification:
+
+            # We find the optimal threshold and save it
+            model.find_optimal_threshold(dataset=subset, metric=self.evaluation_metrics[-1])
+            recorder.record_data_info('thresh', str(model.thresh))
+
+            for mask, test_bool in [(subset.train_mask, False), (subset.test_mask, True)]:
+
+                # We compute prediction
+                pred = model.predict_proba(subset, mask)
+
+                # We extract ids and targets
+                ids = [subset.ids[i] for i in mask]
+                _, y, _ = subset[mask]
+
+                # We record all metric scores
+                for metric in self.evaluation_metrics:
+                    recorder.record_scores(score=metric(pred, y, thresh=model.thresh),
+                                           metric=metric.name, test=test_bool)
+
+                if not is_tensor(pred):
+                    pred = from_numpy(pred)
+
+                # We get the final predictions from the soft predictions
+                pred = (pred >= model.thresh).long()
+
+                # We save the predictions
+                recorder.record_predictions(predictions=pred, ids=ids, target=y, test=test_bool)
+
+        else:   # If instead the model is for regression
+            for mask, test_bool in [(subset.train_mask, False), (subset.test_mask, True)]:
+
+                # We extract ids and targets
+                ids = [subset.ids[i] for i in mask]
+                _, y, _ = subset[mask]
+
+                # We get the real-valued predictions
+                pred = model.predict(subset, mask)
+
+                # We record all metric scores
+                for metric in self.evaluation_metrics:
+                    recorder.record_scores(score=metric(pred, y), metric=metric.name, test=test_bool)
+
+                    # We save the predictions
+                    recorder.record_predictions(predictions=pred, ids=ids, target=y, test=test_bool)

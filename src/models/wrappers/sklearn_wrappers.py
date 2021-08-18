@@ -3,6 +3,9 @@ Author: Nicolas Raymond
 
 This file is used to store abstract class to use as wrappers for models with the sklearn API
 """
+import os
+import pickle
+
 from numpy import array
 from src.data.processing.datasets import PetaleDataset
 from src.models.abstract_models.base_models import PetaleBinaryClassifier, PetaleRegressor
@@ -75,6 +78,19 @@ class SklearnBinaryClassifierWrapper(PetaleBinaryClassifier):
 
         return proba.squeeze()
 
+    def save_model(self, path: str) -> None:
+        """
+        Saves the model
+
+        Args:
+            path: save path
+
+        Returns: None
+        """
+        # We save the model with pickle
+        filepath = os.path.join(path, "sklearn_model.sav")
+        pickle.dump(self._model, open(filepath, "wb"))
+
 
 class SklearnRegressorWrapper(PetaleRegressor):
     """
@@ -108,7 +124,7 @@ class SklearnRegressorWrapper(PetaleRegressor):
         # Call the fit method
         self._model.fit(x_train, y_train, **self.train_params)
 
-    def predict(self, dataset: PetaleDataset) -> array:
+    def predict(self, dataset: PetaleDataset, mask: Optional[List[int]] = None) -> array:
         """
         Returns the predicted real-valued targets for all samples in the test set
 
@@ -117,11 +133,28 @@ class SklearnRegressorWrapper(PetaleRegressor):
                      - x : (N,D) tensor or array with D-dimensional samples
                      - y : (N,) tensor or array with classification labels
                      - idx : (N,) tensor or array with idx of samples according to the whole dataset
+            mask: List of dataset idx for which we want to make predictions
 
         Returns: (N,) array
         """
-        # We extract test set
-        x_test, _, _ = dataset[dataset.test_mask]
+        # We set the mask
+        mask = mask if mask is not None else dataset.test_mask
+
+        # We extract the data
+        x, _, _ = dataset[mask]
 
         # Call sklearn predict method
-        return self._model.predict(x_test)
+        return self._model.predict(x)
+
+    def save_model(self, path: str) -> None:
+        """
+        Saves the model
+
+        Args:
+            path: save path
+
+        Returns: None
+        """
+        # We save the model with pickle
+        filepath = os.path.join(path, "sklearn_model.sav")
+        pickle.dump(self._model, open(filepath, "wb"))

@@ -15,8 +15,8 @@ from src.training.enums import Range
 
 TAB_HPS = {
     TabNetHP.BATCH_SIZE.name: {
-        Range.MIN: 16,
-        Range.MAX: 46,
+        Range.MIN: 15,
+        Range.MAX: 55,
         Range.STEP: 10
     },
     TabNetHP.BETA.name: {
@@ -109,8 +109,8 @@ HAN_HPS = {
         Range.MAX: 1
     },
     HanHP.BATCH_SIZE.name: {
-        Range.MIN: 16,
-        Range.MAX: 46,
+        Range.MIN: 15,
+        Range.MAX: 55,
         Range.STEP: 10
     },
     HanHP.BETA.name: {
@@ -145,8 +145,8 @@ MLP_HPS = {
         Range.MAX: 1
     },
     MLPHP.BATCH_SIZE.name: {
-        Range.MIN: 16,
-        Range.MAX: 46,
+        Range.MIN: 15,
+        Range.MAX: 55,
         Range.STEP: 10
     },
     MLPHP.BETA.name: {
@@ -180,8 +180,8 @@ LOGIT_HPS = {
         Range.MAX: 1
     },
     MLPHP.BATCH_SIZE.name: {
-        Range.MIN: 16,
-        Range.MAX: 46,
+        Range.MIN: 15,
+        Range.MAX: 55,
         Range.STEP: 10
     },
     MLPHP.BETA.name: {

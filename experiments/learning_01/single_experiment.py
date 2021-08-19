@@ -78,7 +78,7 @@ if __name__ == '__main__':
     from src.training.evaluation import Evaluator
     from src.data.extraction.constants import *
     from src.data.extraction.data_management import PetaleDataManager
-    from src.utils.score_metrics import BinaryAccuracy, BinaryBalancedAccuracy, \
+    from src.utils.score_metrics import AUC, BinaryAccuracy, BinaryBalancedAccuracy, \
         BalancedAccuracyEntropyRatio, Sensitivity, Specificity, Reduction
 
     # Arguments parsing
@@ -120,7 +120,7 @@ if __name__ == '__main__':
     push_valid_to_train(masks_without_val)
 
     # Initialization of the dictionary containing the evaluation metrics
-    evaluation_metrics = [BinaryAccuracy(), BinaryBalancedAccuracy(),
+    evaluation_metrics = [AUC(), BinaryAccuracy(), BinaryBalancedAccuracy(),
                           BinaryBalancedAccuracy(Reduction.GEO_MEAN),
                           Sensitivity(), Specificity(),
                           BalancedAccuracyEntropyRatio(Reduction.GEO_MEAN)]

@@ -115,7 +115,7 @@ if __name__ == '__main__':
     # Extraction of masks
     masks = extract_masks(join(Paths.MASKS, mask_file), k=args.nb_outer_splits, l=args.nb_inner_splits)
     gnn_masks = extract_masks(join(Paths.MASKS, mask_file), k=args.nb_outer_splits,
-                              l=min(args.nb_inner_splits, 3))
+                              l=min(args.nb_inner_splits, 2))
     masks_without_val = deepcopy(masks)
     push_valid_to_train(masks_without_val)
 

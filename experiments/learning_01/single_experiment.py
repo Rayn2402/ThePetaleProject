@@ -280,7 +280,7 @@ if __name__ == '__main__':
 
             # Creation of function to update fixed params
             def update_fixed_params(subset):
-                return {'max_epochs': 1500, 'patience': 200, 'num_cont_col': len(subset.cont_cols),
+                return {'max_epochs': 50, 'patience': 200, 'num_cont_col': len(subset.cont_cols),
                         'cat_idx': subset.cat_idx, 'cat_sizes': subset.cat_sizes,
                         'cat_emb_sizes': subset.cat_sizes, 'n_layer': 0, 'n_unit': 5,
                         'activation': "PReLU", 'alpha': 0, 'beta': 0, 'lr': 0.05,

@@ -266,7 +266,7 @@ if __name__ == '__main__':
 
             # Creation of function to update fixed params
             def update_fixed_params(dts):
-                return {'max_epochs': 1500, 'patience': 200, 'num_cont_col': len(dts.cont_cols),
+                return {'max_epochs': 250, 'patience': 200, 'num_cont_col': len(dts.cont_cols),
                         'cat_idx': dts.cat_idx, 'cat_sizes': dts.cat_sizes,
                         'cat_emb_sizes': dts.cat_sizes}
 

@@ -153,6 +153,9 @@ class Evaluator:
             # We proceed to feature selection
             subset = self.extract_subset(records_path=saving_path)
 
+            # We udpate fixed parameters according to the subset
+            self._fixed_params = self._update_fixed_params(subset)
+
             # We record the data count
             for name, mask in [("train_set", train_mask), ("valid_set", valid_mask), ("test_set", test_mask)]:
                 mask_length = len(mask) if mask is not None else 0
@@ -161,6 +164,8 @@ class Evaluator:
             # We update the tuner to perform the hyperparameters optimization
             if self._hp_tuning:
                 print(f"\nHyperparameter tuning started - K = {k}\n")
+
+                # We update the tuner
                 self._tuner.update_tuner(study_name=f"{self.evaluation_name}_{k}",
                                          objective=self._create_objective(masks=in_masks, subset=subset),
                                          saving_path=saving_path)
@@ -222,8 +227,6 @@ class Evaluator:
 
         Returns: objective function
         """
-        # We update fixed parameters according to the subset
-        self._fixed_params = self._update_fixed_params(subset)
 
         return Objective(dataset=subset, masks=masks, hps=self._hps, fixed_params=self._fixed_params,
                          metric=self.evaluation_metrics[-1], model_constructor=self.model_constructor,

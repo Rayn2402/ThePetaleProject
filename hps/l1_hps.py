@@ -15,8 +15,8 @@ from src.training.enums import Range
 
 TAB_HPS = {
     TabNetHP.BATCH_SIZE.name: {
-        Range.MIN: 16,
-        Range.MAX: 46,
+        Range.MIN: 15,
+        Range.MAX: 55,
         Range.STEP: 10
     },
     TabNetHP.BETA.name: {
@@ -50,6 +50,11 @@ TAB_HPS = {
 }
 
 RF_HPS = {
+    RandomForestHP.MAX_LEAF_NODES.name: {
+        Range.MIN: 5,
+        Range.MAX: 100,
+        Range.STEP: 5,
+    },
     RandomForestHP.MAX_FEATURES.name: {
         Range.VALUES: ["sqrt", "log2"],
     },
@@ -90,8 +95,7 @@ XGBOOST_HPS = {
         Range.MAX: 10,
     },
     XGBoostHP.SUBSAMPLE.name: {
-        Range.MIN: 0.65,
-        Range.MAX: 1
+        Range.VALUE: 1,
     },
     XGBoostHP.WEIGHT.name: {
         Range.MIN: 0.50,
@@ -105,8 +109,8 @@ HAN_HPS = {
         Range.MAX: 1
     },
     HanHP.BATCH_SIZE.name: {
-        Range.MIN: 16,
-        Range.MAX: 46,
+        Range.MIN: 15,
+        Range.MAX: 55,
         Range.STEP: 10
     },
     HanHP.BETA.name: {
@@ -141,8 +145,8 @@ MLP_HPS = {
         Range.MAX: 1
     },
     MLPHP.BATCH_SIZE.name: {
-        Range.MIN: 16,
-        Range.MAX: 46,
+        Range.MIN: 15,
+        Range.MAX: 55,
         Range.STEP: 10
     },
     MLPHP.BETA.name: {
@@ -176,8 +180,8 @@ LOGIT_HPS = {
         Range.MAX: 1
     },
     MLPHP.BATCH_SIZE.name: {
-        Range.MIN: 16,
-        Range.MAX: 46,
+        Range.MIN: 15,
+        Range.MAX: 55,
         Range.STEP: 10
     },
     MLPHP.BETA.name: {

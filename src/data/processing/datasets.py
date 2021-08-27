@@ -5,7 +5,7 @@ Files that contains class related to Datasets
 
 """
 
-from dgl import heterograph, DGLHeteroGraph, node_subgraph
+from dgl import graph, heterograph, DGLGraph, DGLHeteroGraph, node_subgraph
 from numpy import array, concatenate, where
 from pandas import DataFrame, Series
 from src.data.extraction.constants import *
@@ -318,6 +318,46 @@ class PetaleDataset(Dataset):
 
         return imputed_df
 
+    def build_homogeneous_graph(self, cat_cols: Optional[List[str]] = None) -> DGLGraph:
+        """
+        Builds and undirected homogeneous graph from the categorical columns mentioned
+        Args:
+            cat_cols: list of categorical columns
+
+        Returns: Undirected homogeneous graph
+        """
+        # We make sure that given categorical columns are ok
+        if cat_cols is not None:
+            for c in cat_cols:
+                assert c in self.cat_cols, f"Unrecognized categorical column name : {c}"
+        else:
+            cat_cols = self.cat_cols
+
+        # We extract imputed dataframe but reinsert nan values into categorical column that were imputed
+        df = self.get_imputed_dataframe()
+        na_row_idx, na_col_idx = where(self.original_data[self.cat_cols].isna().to_numpy())
+        for i, j in zip(na_row_idx, na_col_idx):
+            df.iloc[i, j] = nan
+
+        # We look through categorical columns to generate graph structure
+        u, v = [], []
+        for e_types, e_values in self.encodings.items():
+            if e_types in cat_cols:
+                for value in e_values.values():
+                    idx_subset = df.loc[df[e_types] == value].index.to_numpy()
+                    subset_size = idx_subset.shape[0]
+
+                    # For patient with common value we add edges in both direction
+                    for i in range(subset_size):
+                        u += [idx_subset[i]] * (subset_size - 1)
+                        remaining_idx = list(range(i)) + list(range(i + 1, subset_size))
+                        v += list(idx_subset[remaining_idx])
+
+        # We turn u,v into tensors
+        u, v = tensor(u).long(), tensor(v).long()
+
+        return graph((u, v))
+
     def create_subset(self, cont_cols: Optional[List[str]] = None, cat_cols: List[str] = None) -> Any:
         """
         Returns a subset of the current dataset using the given cont_cols and cat_cols
@@ -398,7 +438,7 @@ class PetaleDataset(Dataset):
 
 class PetaleStaticGNNDataset(PetaleDataset):
     """
-    Dataset used to train, valid and test our Graph Neural Network.
+    Dataset used to train, valid and test Graph Neural Network.
     Static means that the edges are based only on the non null categorical values from the
     original dataframe. Hence, the structure of the graph does not change after masks update (ie. imputation).
     """
@@ -448,7 +488,7 @@ class PetaleStaticGNNDataset(PetaleDataset):
 
         Returns: None
         """
-        # We extract imputed but reinsert nan values into categorical column that were imputed
+        # We extract imputed dataframe but reinsert nan values into categorical column that were imputed
         df = self.get_imputed_dataframe()
         na_row_idx, na_col_idx = where(self.original_data[self.cat_cols].isna().to_numpy())
         for i, j in zip(na_row_idx, na_col_idx):

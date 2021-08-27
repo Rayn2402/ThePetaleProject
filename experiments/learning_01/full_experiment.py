@@ -76,7 +76,7 @@ if __name__ == '__main__':
     from src.training.evaluation import Evaluator
     from src.data.extraction.constants import *
     from src.data.extraction.data_management import PetaleDataManager
-    from src.utils.score_metrics import BinaryAccuracy, BinaryBalancedAccuracy, \
+    from src.utils.score_metrics import AUC, BinaryAccuracy, BinaryBalancedAccuracy, \
         BalancedAccuracyEntropyRatio, Sensitivity, Specificity, Reduction
 
     # Arguments parsing
@@ -86,12 +86,18 @@ if __name__ == '__main__':
     complication = args.complication
     if complication == 'bone':
         complication = BONE_COMPLICATIONS
+        mask_file = 'l1_bone_mask.json'
+
     elif complication == 'cardio':
         complication = CARDIOMETABOLIC_COMPLICATIONS
+        mask_file = 'l1_cardio_mask.json'
+
     elif complication == 'neuro':
         complication = NEUROCOGNITIVE_COMPLICATIONS
+        mask_file = 'l1_neuro_mask.json'
     else:
         complication = COMPLICATIONS
+        mask_file = 'l1_general_mask.json'
 
     # Extraction of genes choices
     genes_choices = args.genes
@@ -107,14 +113,14 @@ if __name__ == '__main__':
         data_dict[gene] = (df, cont_cols, cat_cols)
 
     # Extraction of masks
-    masks = extract_masks(join(Paths.MASKS, "l1_masks_2.json"), k=args.nb_outer_splits, l=args.nb_inner_splits)
-    gnn_masks = extract_masks(join(Paths.MASKS, "l1_masks_2.json"), k=args.nb_outer_splits,
-                              l=min(args.nb_inner_splits, 3))
+    masks = extract_masks(join(Paths.MASKS, mask_file), k=args.nb_outer_splits, l=args.nb_inner_splits)
+    gnn_masks = extract_masks(join(Paths.MASKS, mask_file), k=args.nb_outer_splits,
+                              l=min(args.nb_inner_splits, 2))
     masks_without_val = deepcopy(masks)
     push_valid_to_train(masks_without_val)
 
     # Initialization of the dictionary containing the evaluation metrics
-    evaluation_metrics = [BinaryAccuracy(), BinaryBalancedAccuracy(),
+    evaluation_metrics = [AUC(), BinaryAccuracy(), BinaryBalancedAccuracy(),
                           BinaryBalancedAccuracy(Reduction.GEO_MEAN),
                           Sensitivity(), Specificity(),
                           BalancedAccuracyEntropyRatio(Reduction.GEO_MEAN)]
@@ -260,7 +266,7 @@ if __name__ == '__main__':
 
             # Creation of function to update fixed params
             def update_fixed_params(dts):
-                return {'max_epochs': 1500, 'patience': 200, 'num_cont_col': len(dts.cont_cols),
+                return {'max_epochs': 250, 'patience': 200, 'num_cont_col': len(dts.cont_cols),
                         'cat_idx': dts.cat_idx, 'cat_sizes': dts.cat_sizes,
                         'cat_emb_sizes': dts.cat_sizes}
 

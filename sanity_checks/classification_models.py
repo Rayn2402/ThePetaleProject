@@ -21,7 +21,7 @@ if __name__ == '__main__':
     from src.models.random_forest import PetaleBinaryRFC
     from src.models.tabnet import PetaleBinaryTNC
     from src.models.xgboost_ import PetaleBinaryXGBC
-    from src.utils.score_metrics import BinaryAccuracy, BinaryBalancedAccuracy, BinaryCrossEntropy,\
+    from src.utils.score_metrics import AUC, BinaryAccuracy, BinaryBalancedAccuracy, BinaryCrossEntropy,\
         BalancedAccuracyEntropyRatio, Sensitivity, Specificity, Reduction
 
     # Initialization of DataManager and sampler
@@ -43,7 +43,7 @@ if __name__ == '__main__':
     cat_idx, cat_sizes = l1_numpy_dataset.cat_idx, l1_numpy_dataset.cat_sizes
 
     # Metrics
-    metrics = [BinaryAccuracy(), BinaryBalancedAccuracy(), BinaryBalancedAccuracy(Reduction.GEO_MEAN),
+    metrics = [AUC(), BinaryAccuracy(), BinaryBalancedAccuracy(), BinaryBalancedAccuracy(Reduction.GEO_MEAN),
                BinaryCrossEntropy(), BalancedAccuracyEntropyRatio(), Sensitivity(), Specificity()]
 
     # Extraction of data
@@ -82,8 +82,8 @@ if __name__ == '__main__':
         Training and evaluation of PetaleBinaryTNC
         """
         petale_tnc = PetaleBinaryTNC(cat_idx=cat_idx, cat_sizes=cat_sizes, cat_emb_sizes=cat_sizes, device='cpu',
-                               lr=0.08, max_epochs=300, patience=100, batch_size=35, n_steps=6,
-                               n_d=4, n_a=4, gamma=1.5, weight=w)
+                                     lr=0.08, max_epochs=300, patience=100, batch_size=35, n_steps=6,
+                                     n_d=4, n_a=4, gamma=1.5, weight=w)
 
         petale_tnc.fit(l1_numpy_dataset)
         petale_tnc.find_optimal_threshold(l1_numpy_dataset, metrics[2])

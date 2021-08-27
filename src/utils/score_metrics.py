@@ -5,6 +5,7 @@ This file contains metric used to measure models' performances
 """
 from abc import ABC, abstractmethod
 from numpy import array
+from sklearn.metrics import roc_auc_score
 from torch import sqrt, abs, tensor, zeros, mean, prod, sum, pow, from_numpy, is_tensor
 from torch.nn.functional import binary_cross_entropy_with_logits
 from typing import Tuple, Union
@@ -367,6 +368,33 @@ class RootMeanSquaredError(RegressionMetric):
         Returns: float
         """
         return (mean((pred - targets) ** 2).item()) ** (1 / 2)
+
+class AUC(BinaryClassificationMetric):
+    """
+    Callable class that computes the AUC for ROC curve
+    """
+    def __init__(self, n_digits: int = 5):
+        """
+        Sets protected attributes using parent's constructor
+
+        Args:
+            n_digits: number of digits kept for the score
+        """
+        super().__init__(direction=Direction.MAXIMIZE, name="AUC", n_digits=n_digits)
+
+    def compute_metric(self, pred: tensor, targets: tensor, thresh: float = 0.5) -> float:
+        """
+        Returns the AUC for ROC curve
+
+        Args:
+            pred: (N,) tensor with predicted probabilities of being in class 1
+            targets: (N,) tensor with ground truth
+            thresh: probability threshold that must be reach by a sample to be classified into class 1
+                    (Not used here)
+
+        Returns: float
+        """
+        return roc_auc_score(targets, pred)
 
 
 class BinaryAccuracy(BinaryClassificationMetric):

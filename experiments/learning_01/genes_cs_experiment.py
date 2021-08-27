@@ -8,7 +8,6 @@ from tqdm import tqdm
 from torch import load, tensor, cat
 import sys
 import argparse
-import time
 
 
 def argument_parser():

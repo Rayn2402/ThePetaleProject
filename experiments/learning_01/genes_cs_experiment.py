@@ -11,7 +11,6 @@ import argparse
 import time
 
 
-
 def argument_parser():
     """
     This function defines a parser that enables user to easily run different experiments
@@ -128,8 +127,8 @@ if __name__ == '__main__':
         model.fit(base_dataset)
 
         # We save it and rename the file
-        model.save_model(Paths.MODELS)
-        rename(join(Paths.MODELS, "torch_model.pt"), path)
+        # model.save_model(Paths.MODELS)
+        # rename(join(Paths.MODELS, "torch_model.pt"), path)
 
         # We save the training curve and rename the file
         model.plot_evaluations(Paths.FIGURES_RECORDS)
@@ -175,6 +174,7 @@ if __name__ == '__main__':
             proba = cs.smooth(g, proba, y, mask_idx)
 
             # We check the metrics
+            print("\n")
             for m in evaluation_metrics:
                 print(f"{m.name} : {m(proba[len(train_idx):, 1], y_test)}")
 

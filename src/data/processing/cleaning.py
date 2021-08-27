@@ -109,12 +109,17 @@ class DataCleaner:
         # We set missing values to NaN
         df = df.fillna(nan)
 
-        # We identify and remove categories of categorical column with a too low number of appearance
+        # We identify and remove categories of categorical column with a too low number of appearance.
+        # We remove columns with categories that number of appearances is too high
         categorical_columns = [c for c in df.columns.values if c not in [PARTICIPANT] + numerical_columns]
         cleaned_df = self.__identify_critical_categories(df, categorical_columns)
 
         # We identify and remove columns and rows with too many missing values
         cleaned_df = self.__identify_critical_rows_and_columns(cleaned_df)
+
+        # With some rows now remove, we got to check again the validity of columns
+        categorical_columns = [c for c in categorical_columns if c in cleaned_df.columns.values]
+        cleaned_df = self.__identify_critical_categories(cleaned_df, categorical_columns)
 
         # We make sure that numerical columns values are float and fill NaN with columns' means
         updated_df = self.__refactor_dataframe(cleaned_df, numerical_columns)
@@ -165,7 +170,7 @@ class DataCleaner:
 
             # If one category does not satisfy the max_cat_percentage threshold
             # we remove the column (NaNs are included in categories count)
-            nb_nan = df.loc[df[c] == nan].shape[0]
+            nb_nan = df.loc[df[c].isnull()].shape[0]
             for cat in categories:
 
                 p = (cat_counts[cat] + nb_nan)/df.shape[0]

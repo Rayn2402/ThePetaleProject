@@ -9,7 +9,7 @@ from pandas import read_csv
 from src.data.extraction.constants import *
 from src.data.extraction.data_management import PetaleDataManager
 from src.data.extraction.helpers import fill_id, retrieve_numerical
-from src.data.processing.datasets import PetaleRFDataset
+from src.data.processing.datasets import PetaleDataset
 from src.data.processing.sampling import RandomStratifiedSampler
 
 import argparse
@@ -86,7 +86,7 @@ if __name__ == '__main__':
     # We extract an holdout set from the whole dataframe using a sampler
     cont_cols = list(retrieve_numerical(df, []).columns.values)
     cat_cols = [c for c in df.columns.values if c not in [PARTICIPANT, args.target_column] + cont_cols]
-    dataset = PetaleRFDataset(df, args.target_column, cont_cols=cont_cols, cat_cols=cat_cols)
+    dataset = PetaleDataset(df, args.target_column, cont_cols=cont_cols, cat_cols=cat_cols)
     rss = RandomStratifiedSampler(dataset, n_out_split=1, n_in_split=0,
                                   valid_size=0, test_size=args.holdout_size,
                                   random_state=args.seed, alpha=args.alpha)

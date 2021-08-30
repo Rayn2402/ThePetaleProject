@@ -26,7 +26,7 @@ class Paths:
     FIGURES_RECORDS: str = join(RECORDS, "figures")
     TUNING_RECORDS: str = join(RECORDS, "tuning")
     EXPERIMENTS_SCRIPTS: str = join(PROJECT_DIR, "experiments")
-    WARMUP_EXPERIMENTS_SCRIPTS: str = join(EXPERIMENTS_SCRIPTS, "warm_up")
+    WARMUP_EXPERIMENTS_SCRIPTS: str = join(EXPERIMENTS_SCRIPTS, "warmup")
     L1_EXPERIMENT_SCRIPTS: str = join(EXPERIMENTS_SCRIPTS, "learning_01")
     SANITY_CHECKS: str = join(PROJECT_DIR, "sanity_checks")
 

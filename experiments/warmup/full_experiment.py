@@ -137,7 +137,7 @@ if __name__ == '__main__':
 
             # Creation of the evaluator
             evaluator = Evaluator(model_constructor=PetaleTNR, dataset=dataset,
-                                  evaluation_name=f"L1_TabNet_warmup_{gene}",
+                                  evaluation_name=f"TabNet_warmup_{gene}",
                                   masks=masks, hps=TAB_HPS, n_trials=200, fixed_params=fixed_params,
                                   fixed_params_update_function=update_fixed_params,
                                   feature_selector=feature_selector,
@@ -163,7 +163,7 @@ if __name__ == '__main__':
 
             # Creation of the evaluator
             evaluator = Evaluator(model_constructor=PetaleRFR, dataset=dataset, masks=masks_without_val,
-                                  evaluation_name=f"L1_RandomForest_warmup_{gene}",
+                                  evaluation_name=f"RandomForest_warmup_{gene}",
                                   hps=RF_HPS, n_trials=200, evaluation_metrics=evaluation_metrics,
                                   feature_selector=feature_selector, save_hps_importance=True,
                                   save_optimization_history=True)
@@ -187,7 +187,7 @@ if __name__ == '__main__':
 
             # Creation of the evaluator
             evaluator = Evaluator(model_constructor=PetaleXGBR, dataset=dataset, masks=masks_without_val,
-                                  evaluation_name=f"L1_XGBoost_warmup_{gene}",
+                                  evaluation_name=f"XGBoost_warmup_{gene}",
                                   hps=XGBOOST_HPS, n_trials=200, evaluation_metrics=evaluation_metrics,
                                   feature_selector=feature_selector, save_hps_importance=True,
                                   save_optimization_history=True)
@@ -220,7 +220,7 @@ if __name__ == '__main__':
 
             # Creation of evaluator
             evaluator = Evaluator(model_constructor=PetaleMLPR, dataset=dataset, masks=masks,
-                                  evaluation_name=f"L1_MLP_warmup_{gene}",
+                                  evaluation_name=f"MLP_warmup_{gene}",
                                   hps=MLP_HPS, n_trials=200, evaluation_metrics=evaluation_metrics,
                                   feature_selector=feature_selector, fixed_params=fixed_params,
                                   fixed_params_update_function=update_fixed_params,
@@ -255,7 +255,7 @@ if __name__ == '__main__':
 
             # Creation of evaluator
             evaluator = Evaluator(model_constructor=PetaleMLPR, dataset=dataset, masks=masks_without_val,
-                                  evaluation_name=f"L1_linear_reg_warmup_{gene}",
+                                  evaluation_name=f"linear_reg_warmup_{gene}",
                                   hps=ENET_HPS, n_trials=200, evaluation_metrics=evaluation_metrics,
                                   feature_selector=feature_selector, fixed_params=fixed_params,
                                   fixed_params_update_function=update_fixed_params,
@@ -289,7 +289,7 @@ if __name__ == '__main__':
 
             # Creation of the evaluator
             evaluator = Evaluator(model_constructor=PetaleHANR, dataset=dataset, masks=gnn_masks,
-                                  evaluation_name=f"L1_HAN_warmup_{gene}",
+                                  evaluation_name=f"HAN_warmup_{gene}",
                                   hps=HAN_HPS, n_trials=100, evaluation_metrics=evaluation_metrics,
                                   fixed_params=fixed_params, fixed_params_update_function=update_fixed_params,
                                   feature_selector=feature_selector, save_hps_importance=True,

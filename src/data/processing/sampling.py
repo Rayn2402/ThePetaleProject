@@ -418,15 +418,17 @@ def get_warmup_data(data_manager: PetaleDataManager, genes: Optional[str] = None
     cont_cols = [WEIGHT, TDM6_HR_END, TDM6_DIST, DT, AGE, MVLPA]
 
     # We check for genes
+    all_columns = [PARTICIPANT, VO2R_MAX] + cont_cols
     if genes is not None:
         assert genes in GENES_CHOICES, f"genes value must be in {GENES_CHOICES}"
         if genes == SIGNIFICANT:
             genes = SIGNIFICANT_CHROM_POS
         else:
             genes = ALL_CHROM_POS_WARMUP
+        all_columns += genes
 
     # We extract the dataframe
-    df = data_manager.get_table(LEARNING_0_GENES, columns=[PARTICIPANT, VO2R_MAX] + cont_cols + genes)
+    df = data_manager.get_table(LEARNING_0_GENES, columns=all_columns)
 
     return df, VO2R_MAX, cont_cols, genes
 

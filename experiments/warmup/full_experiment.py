@@ -123,7 +123,7 @@ if __name__ == '__main__':
 
             # Creation of function to update fixed params
             def update_fixed_params(dts):
-                if len(dts.cat_idx) == 0:
+                if len(dts.cat_idx) != 0:
                     return {'cat_idx': dts.cat_idx, 'cat_sizes': dts.cat_sizes,
                             'cat_emb_sizes': dts.cat_sizes, 'max_epochs': 250,
                             'patience': 50}

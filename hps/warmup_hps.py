@@ -2,130 +2,177 @@
  File used to store hyperparameters used for evaluations
 """
 
-from src.training.enums import *
+from src.models.mlp import MLPHP
+from src.models.han import HanHP
+from src.models.tabnet import TabNetHP
+from src.models.random_forest import RandomForestHP
+from src.models.xgboost_ import XGBoostHP
+from src.training.enums import Range
 
-NN_ENET_HPS = {
-    NeuralNetsHP.ALPHA: {
-        Range.MIN: 1e-8,
-        Range.MAX: 5,
-    },
-    NeuralNetsHP.BETA: {
-        Range.MIN: 1e-8,
-        Range.MAX: 5,
-    },
-    NeuralNetsHP.LR: {
-        Range.MIN: 1e-3,
-        Range.MAX: 1e-1
-    },
-    NeuralNetsHP.BATCH_SIZE: {
-        Range.MIN: 5,
-        Range.MAX: 50
-    },
-    NeuralNetsHP.N_LAYERS: {
-        Range.VALUE: 0
-    },
-    NeuralNetsHP.N_UNITS: {
-        Range.VALUE: 0
-    },
-    NeuralNetsHP.DROPOUT: {
-        Range.VALUE: 0
-    },
-    NeuralNetsHP.ACTIVATION: {
-        Range.VALUE: "ReLU"
-    },
-}
 
-NN_LOW_HPS = {
-    NeuralNetsHP.ALPHA: {
-        Range.MIN: 1e-8,
-        Range.MAX: 5,
+TAB_HPS = {
+    TabNetHP.BATCH_SIZE.name: {
+        Range.MIN: 15,
+        Range.MAX: 55,
+        Range.STEP: 10
     },
-    NeuralNetsHP.BETA: {
-        Range.MIN: 1e-8,
-        Range.MAX: 5,
+    TabNetHP.BETA.name: {
+        Range.MIN: 0,
+        Range.MAX: 2
     },
-    NeuralNetsHP.LR: {
-        Range.MIN: 1e-3,
-        Range.MAX: 1e-1
-    },
-    NeuralNetsHP.BATCH_SIZE: {
-        Range.MIN: 5,
-        Range.MAX: 50
-    },
-    NeuralNetsHP.N_LAYERS: {
+    TabNetHP.GAMMA.name: {
         Range.MIN: 1,
-        Range.MAX: 5,
+        Range.MAX: 2
     },
-    NeuralNetsHP.N_UNITS: {
+    TabNetHP.N_A.name: {
+        Range.MIN: 2,
+        Range.MAX: 10
+    },
+    TabNetHP.N_D.name: {
+        Range.MIN: 2,
+        Range.MAX: 10
+    },
+    TabNetHP.N_STEPS.name: {
         Range.MIN: 1,
-        Range.MAX: 20,
+        Range.MAX: 5
     },
-    NeuralNetsHP.DROPOUT: {
-        Range.VALUE: 0
-    },
-    NeuralNetsHP.ACTIVATION: {
-        Range.VALUES: ["ReLU", "PReLU"]
-    },
-}
-
-NN_HIGH_HPS = {
-    NeuralNetsHP.ALPHA: {
-        Range.MIN: 1e-8,
-        Range.MAX: 5,
-    },
-    NeuralNetsHP.BETA: {
-        Range.MIN: 1e-8,
-        Range.MAX: 5,
-    },
-    NeuralNetsHP.LR: {
-        Range.MIN: 1e-3,
-        Range.MAX: 1e-1
-    },
-    NeuralNetsHP.BATCH_SIZE: {
-        Range.MIN: 5,
-        Range.MAX: 50
-    },
-    NeuralNetsHP.N_LAYERS: {
-        Range.MIN: 1,
-        Range.MAX: 2,
-    },
-    NeuralNetsHP.N_UNITS: {
-        Range.MIN: 1,
-        Range.MAX: 10,
-    },
-    NeuralNetsHP.DROPOUT: {
-        Range.VALUE: 0
-    },
-    NeuralNetsHP.ACTIVATION: {
-        Range.VALUE: "ReLU"
+    TabNetHP.LR.name: {
+        Range.MIN: 0.001,
+        Range.MAX: 0.5
     },
 }
 
 RF_HPS = {
-    RandomForestsHP.N_ESTIMATORS: {
-        Range.MIN: 80,
-        Range.MAX: 120,
+    RandomForestHP.MAX_LEAF_NODES.name: {
+        Range.MIN: 5,
+        Range.MAX: 25,
+        Range.STEP: 5,
     },
-    RandomForestsHP.MAX_FEATURES: {
-        Range.MIN: .8,
-        Range.MAX: 1,
+    RandomForestHP.MAX_FEATURES.name: {
+        Range.VALUES: ["sqrt", "log2"],
     },
-    RandomForestsHP.MAX_SAMPLES: {
-        Range.MIN: .6,
-        Range.MAX: .8,
+    RandomForestHP.MAX_SAMPLES.name: {
+        Range.MIN: 0.65,
+        Range.MAX: 1
     },
-    RandomForestsHP.MAX_DEPTH: {
-        Range.VALUE: 50
-    }
+    RandomForestHP.MIN_SAMPLES_SPLIT.name: {
+        Range.MIN: 2,
+        Range.MAX: 5,
+    },
+    RandomForestHP.N_ESTIMATORS.name: {
+        Range.MIN: 1000,
+        Range.MAX: 3000,
+        Range.STEP: 250,
+    },
 }
 
-ELASTIC_HPS = {
-    ElasticNetHP.BETA: {
-        Range.MIN: 1e-8,
+XGBOOST_HPS = {
+    XGBoostHP.ALPHA.name: {
+        Range.MIN: 0,
+        Range.MAX: 2
+    },
+    XGBoostHP.BETA.name: {
+        Range.MIN: 0,
+        Range.MAX: 2
+    },
+    XGBoostHP.LR.name: {
+        Range.MIN: 0.001,
+        Range.MAX: 0.5
+    },
+    XGBoostHP.MAX_DEPTH.name: {
+        Range.MIN: 1,
+        Range.MAX: 10,
+    },
+    XGBoostHP.SUBSAMPLE.name: {
+        Range.VALUE: 1,
+    },
+}
+
+HAN_HPS = {
+    HanHP.ALPHA.name: {
+        Range.MIN: 0,
+        Range.MAX: 2
+    },
+    HanHP.BATCH_SIZE.name: {
+        Range.MIN: 15,
+        Range.MAX: 55,
+        Range.STEP: 10
+    },
+    HanHP.BETA.name: {
+        Range.MIN: 0,
+        Range.MAX: 2
+    },
+    HanHP.HIDDEN_SIZE.name: {
+        Range.MIN: 5,
+        Range.MAX: 25,
+        Range.STEP: 5
+    },
+    HanHP.LR.name: {
+        Range.MIN: 0.001,
+        Range.MAX: 0.5
+    },
+    HanHP.NUM_HEADS.name: {
+        Range.MIN: 2,
+        Range.MAX: 10
+    },
+}
+
+MLP_HPS = {
+    MLPHP.ACTIVATION.name: {
+        Range.VALUE: "PReLU"
+    },
+    MLPHP.ALPHA.name: {
+        Range.MIN: 0,
+        Range.MAX: 2
+    },
+    MLPHP.BATCH_SIZE.name: {
+        Range.MIN: 15,
+        Range.MAX: 55,
+        Range.STEP: 10
+    },
+    MLPHP.BETA.name: {
+        Range.MIN: 0,
+        Range.MAX: 2
+    },
+    MLPHP.LR.name: {
+        Range.MIN: 0.001,
+        Range.MAX: 0.5
+    },
+    MLPHP.N_LAYER.name: {
+        Range.MIN: 1,
         Range.MAX: 5
     },
-    ElasticNetHP.ALPHA: {
-        Range.MIN: 1e-8,
-        Range.MAX: 5
-    }
+    MLPHP.N_UNIT.name: {
+        Range.MIN: 2,
+        Range.MAX: 10
+    },
+}
+
+ENET_HPS = {
+    MLPHP.ACTIVATION.name: {
+        Range.VALUE: "PReLU"
+    },
+    MLPHP.ALPHA.name: {
+        Range.MIN: 0,
+        Range.MAX: 3
+    },
+    MLPHP.BATCH_SIZE.name: {
+        Range.MIN: 15,
+        Range.MAX: 55,
+        Range.STEP: 10
+    },
+    MLPHP.BETA.name: {
+        Range.MIN: 0,
+        Range.MAX: 3
+    },
+    MLPHP.LR.name: {
+        Range.MIN: 0.001,
+        Range.MAX: 0.5
+    },
+    MLPHP.N_LAYER.name: {
+        Range.VALUE: 0
+    },
+    MLPHP.N_UNIT.name: {
+        Range.VALUE: 5
+    },
 }

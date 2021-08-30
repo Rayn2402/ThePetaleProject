@@ -119,7 +119,7 @@ if __name__ == '__main__':
 
             # Creation of dataset
             df, cont_cols, cat_cols = data_dict[gene]
-            dataset = PetaleDataset(df, target, cont_cols, cat_cols)
+            dataset = PetaleDataset(df, target, cont_cols, cat_cols, classification=False)
 
             # Creation of function to update fixed params
             def update_fixed_params(dts):

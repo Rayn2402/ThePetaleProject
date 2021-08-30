@@ -100,7 +100,7 @@ if __name__ == '__main__':
     evaluation_metrics = [AbsoluteError(), Pearson(), SquaredError(), RootMeanSquaredError()]
 
     # Initialization of feature selector
-    feature_selector = None
+    feature_selector = FeatureSelector(0.95)
 
     # We start a timer for the whole experiment
     first_start = time.time()
@@ -245,7 +245,7 @@ if __name__ == '__main__':
 
             # Creation of function to update fixed params
             def update_fixed_params(dts):
-                return {'max_epochs': 50, 'patience': 200, 'num_cont_col': len(dts.cont_cols),
+                return {'max_epochs': 50, 'patience': 25, 'num_cont_col': len(dts.cont_cols),
                         'cat_idx': dts.cat_idx, 'cat_sizes': dts.cat_sizes,
                         'cat_emb_sizes': dts.cat_sizes}
 
@@ -254,7 +254,8 @@ if __name__ == '__main__':
             fixed_params = update_fixed_params(dataset)
 
             # Creation of evaluator
-            evaluator = Evaluator(model_constructor=PetaleMLPR, dataset=dataset, masks=masks_without_val,
+            m = masks_without_val if gene is None else masks
+            evaluator = Evaluator(model_constructor=PetaleMLPR, dataset=dataset, masks=m,
                                   evaluation_name=f"linear_reg_warmup_{gene}",
                                   hps=ENET_HPS, n_trials=200, evaluation_metrics=evaluation_metrics,
                                   feature_selector=feature_selector, fixed_params=fixed_params,

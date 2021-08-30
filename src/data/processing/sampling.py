@@ -218,7 +218,7 @@ class RandomStratifiedSampler:
         Returns: bool
         """
         target_list_copy = list(targets)
-        return len(set(target_list_copy)) < 0.25*len(target_list_copy)
+        return len(set(target_list_copy)) < 0.15*len(target_list_copy)
 
     @staticmethod
     def mimic_classes(targets: Union[tensor, array, List[Any]]) -> array:
@@ -229,7 +229,7 @@ class RandomStratifiedSampler:
 
         Returns: array with fake classes
         """
-        return qcut(array(targets), 4, labels=False)
+        return qcut(array(targets), 2, labels=False)
 
     @staticmethod
     def serialize_masks(masks: Dict[int, Dict[str, Union[array, Dict[str, array]]]]) -> None:
@@ -403,21 +403,30 @@ def generate_multitask_labels(df: DataFrame, target_columns: List[str]) -> Tuple
     return multitask_labels, labels_dict
 
 
-def get_warmup_data(data_manager: PetaleDataManager
+def get_warmup_data(data_manager: PetaleDataManager, genes: Optional[str] = None
                     ) -> Tuple[DataFrame, str, Optional[List[str]], Optional[List[str]]]:
     """
     Extract dataframe needed to proceed to warmup experiments and turn it into a dataset
 
     Args:
         data_manager: data manager to communicate with the database
+        genes: one choice among (None, "significant", "all")
 
     Returns: dataframe, target, continuous columns, categorical columns
     """
     # We save the name of continuous columns in a list
     cont_cols = [WEIGHT, TDM6_HR_END, TDM6_DIST, DT, AGE, MVLPA]
 
-    # We extract the dataframe
-    df = data_manager.get_table(LEARNING_0, columns=[PARTICIPANT, VO2R_MAX] + cont_cols)
+    # We check for genes
+    if genes is not None:
+        assert genes in GENES_CHOICES, f"genes value must be in {GENES_CHOICES}"
+        if genes == SIGNIFICANT:
+            genes = SIGNIFICANT_CHROM_POS
+        else:
+            genes = ALL_CHROM_POS
 
-    return df, VO2R_MAX, cont_cols, None
+    # We extract the dataframe
+    df = data_manager.get_table(LEARNING_0_GENES, columns=[PARTICIPANT, VO2R_MAX] + cont_cols)
+
+    return df, VO2R_MAX, cont_cols, genes
 

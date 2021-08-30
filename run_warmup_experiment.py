@@ -13,7 +13,7 @@ if __name__ == '__main__':
     FILE = str(join(Paths.WARMUP_EXPERIMENTS_SCRIPTS, "full_experiment.py"))
 
     # Creation of commands
-    cmd = ['python', FILE, '-lin']
+    cmd = ['python', FILE, '-lin', '-han', '-mlp', '-rf', '-xg', '-tab']
 
     # Run of experiments
     check_call(cmd)

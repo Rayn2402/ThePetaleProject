@@ -69,7 +69,7 @@ if __name__ == '__main__':
     get_missing_update(complete_df)
 
     # We create the dictionary needed to create the table
-    types = {c: TYPES[c] for c in all_vars}
+    types = {c: TYPES.get(c, CATEGORICAL_TYPE) for c in list(complete_df.columns)}
 
     # We make sure that the target is at the end
     types.pop(VO2R_MAX)

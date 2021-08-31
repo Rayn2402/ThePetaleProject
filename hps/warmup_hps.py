@@ -112,8 +112,8 @@ HAN_HPS = {
         Range.MAX: 0.5
     },
     HanHP.NUM_HEADS.name: {
-        Range.MIN: 2,
-        Range.MAX: 10
+        Range.MIN: 5,
+        Range.MAX: 20
     },
 }
 

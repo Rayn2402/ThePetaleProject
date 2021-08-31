@@ -49,6 +49,18 @@ class LabelPropagation(nn.Module):
     @torch.no_grad()
     def forward(self, g: DGLGraph, labels: torch.tensor, mask: Optional[torch.tensor] = None,
                 post_step: Callable = lambda y: y.clamp_(0., 1.)) -> torch.tensor:
+        """
+        Executes label propagation
+
+        Args:
+            g: homogeneous undirected graph
+            labels: ground truth associated to nodes in the graph
+            mask: training idx
+            post_step: function to apply after each step of propagation
+
+        Returns:
+
+        """
 
         with g.local_scope():
 
@@ -58,7 +70,7 @@ class LabelPropagation(nn.Module):
                 labels = F.one_hot(labels.view(-1)).to(torch.float32)
             y = labels
 
-            # If there are test or valid data to be masked, we turn them into zeros
+            # If only keep train data in mask as non zero values
             if mask is not None:
                 y = torch.zeros_like(labels)
                 y[mask] = labels[mask]
@@ -68,7 +80,7 @@ class LabelPropagation(nn.Module):
 
             # We get the power of degree matrix needed for the propagation
             degs = g.in_degrees().float().clamp(min=1)
-            norm = torch.pow(degs, -0.5 if self.adj == 'DAD' else -1).to(labels.device).unsqueeze(1)
+            norm = torch.pow(degs, -0.5 if self.adj == 'DAD' else -1).to(labels.device)
 
             # We proceed to propagation
             for _ in range(self.num_layers):
@@ -121,10 +133,10 @@ class CorrectAndSmooth(nn.Module):
     def __init__(self,
                  num_correction_layers: int,
                  correction_alpha: float,
-                 correction_adj: str,
                  num_smoothing_layers: int,
                  smoothing_alpha: float,
-                 smoothing_adj: str,
+                 correction_adj: str = 'DA',
+                 smoothing_adj: str = 'DA',
                  autoscale=True,
                  scale=1.):
         super(CorrectAndSmooth, self).__init__()

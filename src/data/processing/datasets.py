@@ -312,9 +312,9 @@ class PetaleDataset(Dataset):
         """
         imputed_df = self.original_data.drop([PARTICIPANT, self.target], axis=1).copy()
         if self.cont_cols is not None:
-            imputed_df[self.cont_cols] = self._x_cont
+            imputed_df[self.cont_cols] = array(self._x_cont)
         if self.cat_cols is not None:
-            imputed_df[self.cat_cols] = self._x_cat
+            imputed_df[self.cat_cols] = array(self._x_cat)
 
         return imputed_df
 

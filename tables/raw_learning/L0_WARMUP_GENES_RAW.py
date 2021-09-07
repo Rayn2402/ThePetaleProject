@@ -20,6 +20,7 @@ if __name__ == '__main__':
     from src.data.extraction.data_management import initialize_petale_data_manager
     from src.data.extraction.helpers import get_missing_update
     from src.data.processing.cleaning import DataCleaner
+    from src.utils.visualization import visualize_class_distribution
 
     # We build a PetaleDataManager that will help interacting with PETALE database
     data_manager = initialize_petale_data_manager()
@@ -30,7 +31,7 @@ if __name__ == '__main__':
                                min_n_per_cat=MIN_N_PER_CAT, max_cat_percentage=MAX_CAT_PERCENTAGE)
 
     # We save the variables needed from GENERALS
-    GEN_vars = [PARTICIPANT, AGE, WEIGHT, DT, MVLPA, VO2R_MAX]
+    GEN_vars = [PARTICIPANT, SEX, AGE, WEIGHT, DT, MVLPA, VO2R_MAX]
 
     # We save the variables needed from 6MWT
     SIXMWT_vars = [PARTICIPANT, TDM6_HR_END, TDM6_DIST]
@@ -44,10 +45,13 @@ if __name__ == '__main__':
     chrom_pos_df = data_manager.get_table(ALLGENES)
 
     # We remove survivors with missing VO2R_MAX values
-    gen_df = gen_df[~(gen_df[VO2R_MAX].isnull())]
+    intermediate_df = gen_df[~(gen_df[VO2R_MAX].isnull())]
+    removed = [p for p in list(gen_df[PARTICIPANT].values) if p not in list(intermediate_df[PARTICIPANT].values)]
+    print(f"Participant with missing VO2: {removed}")
+    print(f"Total : {len(removed)}")
 
     # We proceed to table concatenation
-    intermediate_df = pd.merge(gen_df, six_df, on=[PARTICIPANT], how=INNER)
+    intermediate_df = pd.merge(intermediate_df, six_df, on=[PARTICIPANT], how=INNER)
     removed = [p for p in list(gen_df[PARTICIPANT].values) if p not in list(intermediate_df[PARTICIPANT].values)]
     print(f"Missing participant from 6MWT: {removed}")
     print(f"Total : {len(removed)}")
@@ -63,6 +67,15 @@ if __name__ == '__main__':
 
     # We remove rows and columns with too many missing values and stores other cleaning suggestions
     complete_df = data_cleaner(complete_df)
+
+    # We create a dummy column that combines sex and VO2 quartiles
+    complete_df[WARMUP_DUMMY] = pd.qcut(complete_df[VO2R_MAX].astype(float).values, 2, labels=False)
+    complete_df[WARMUP_DUMMY] = complete_df[SEX] + complete_df[WARMUP_DUMMY].astype(str)
+    # label_names = {}
+    # for sex in ["Men", "Women"]:
+    #     for q in ["0", "1"]:
+    #         label_names[f"{sex}{q}"] = f"{sex}-q{q}"
+    # visualize_class_distribution(complete_df[WARMUP_DUMMY].values, label_names)
 
     # We look at the missing data
     print(f"n_cols : {len(complete_df.columns)}")

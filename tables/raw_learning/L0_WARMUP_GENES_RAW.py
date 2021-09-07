@@ -72,11 +72,7 @@ if __name__ == '__main__':
     complete_df[WARMUP_DUMMY] = pd.qcut(complete_df[VO2R_MAX].astype(float).values, 2, labels=False)
     complete_df[WARMUP_DUMMY] = complete_df[SEX] + complete_df[WARMUP_DUMMY].astype(str)
     complete_df[WARMUP_DUMMY] = complete_df[WARMUP_DUMMY].apply(func=lambda x: WARMUP_DUMMY_DICT_INT[x])
-    # label_names = {}
-    # for sex in ["Men", "Women"]:
-    #     for q in ["0", "1"]:
-    #         label_names[f"{sex}{q}"] = f"{sex}-q{q}"
-    # visualize_class_distribution(complete_df[WARMUP_DUMMY].values, label_names)
+    # visualize_class_distribution(complete_df[WARMUP_DUMMY].values, WARMUP_DUMMY_DICT_NAME)
 
     # We look at the missing data
     print(f"n_cols : {len(complete_df.columns)}")

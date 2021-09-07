@@ -5,7 +5,7 @@ This file contains all function related to data visualization
 
 """
 from typing import Union, Optional, List
-from torch import tensor, sum, is_tensor
+from torch import tensor
 from matplotlib import pyplot as plt
 from numpy import array
 from numpy import sum as npsum
@@ -41,7 +41,7 @@ def format_to_percentage(pct, values):
     return "{:.1f}%".format(pct, absolute)
 
 
-def visualize_class_distribution(targets: Union[tensor, array], label_names: dict, title: Optional[str] = None) -> None:
+def visualize_class_distribution(targets: array, label_names: dict, title: Optional[str] = None) -> None:
     """
     Shows a pie chart with classes distribution
 
@@ -50,8 +50,7 @@ def visualize_class_distribution(targets: Union[tensor, array], label_names: dic
     :param title: Title for the plot
     """
     # We first count the number of instances of each value in the targets vector
-    targets = targets if is_tensor(targets) else tensor(targets)
-    label_counts = {v: sum(targets == k) for k, v in label_names.items()}
+    label_counts = {v: npsum(targets == k) for k, v in label_names.items()}
 
     # We prepare a list of string to use as plot labels
     labels = [f"{k} ({v})" for k, v in label_counts.items()]

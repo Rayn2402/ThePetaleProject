@@ -31,7 +31,7 @@ if __name__ == '__main__':
     df, _, cont_cols, cat_cols = get_warmup_data(manager, dummy=True)
 
     # Extraction of masks
-    masks = extract_masks(join(Paths.MASKS, "warmup_mask.json"), k=1, l=0)
+    masks = extract_masks(join(Paths.MASKS, "warmup_mask.json"), k=1, l=1)
 
     # Creation of a dataset
     dataset = PetaleDataset(df, WARMUP_DUMMY, cont_cols, cat_cols, classification=True)

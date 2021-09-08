@@ -403,14 +403,16 @@ def generate_multitask_labels(df: DataFrame, target_columns: List[str]) -> Tuple
     return multitask_labels, labels_dict
 
 
-def get_warmup_data(data_manager: PetaleDataManager, genes: Optional[str] = None
-                    ) -> Tuple[DataFrame, str, Optional[List[str]], Optional[List[str]]]:
+def get_warmup_data(data_manager: PetaleDataManager, genes: bool = False, sex: bool = False,
+                    dummy: bool = False) -> Tuple[DataFrame, str, Optional[List[str]], Optional[List[str]]]:
     """
-    Extract dataframe needed to proceed to warmup experiments and turn it into a dataset
+    Extract dataframe needed to proceed to warmup experiments
 
     Args:
         data_manager: data manager to communicate with the database
-        genes: one choice among (None, "significant", "all")
+        genes: True if we want to include chrom_pos variables
+        sex: True if we want to include sex variable
+        dummy: True if we want to include dummy variable combining sex and VO2 quantile
 
     Returns: dataframe, target, continuous columns, categorical columns
     """
@@ -419,16 +421,20 @@ def get_warmup_data(data_manager: PetaleDataManager, genes: Optional[str] = None
 
     # We check for genes
     all_columns = [PARTICIPANT, VO2R_MAX] + cont_cols
-    if genes is not None:
-        assert genes in GENES_CHOICES, f"genes value must be in {GENES_CHOICES}"
-        if genes == SIGNIFICANT:
-            genes = SIGNIFICANT_CHROM_POS
-        else:
-            genes = ALL_CHROM_POS_WARMUP
-        all_columns += genes
+    cat_cols = []
+    if genes:
+        cat_cols += ALL_CHROM_POS_WARMUP
+        all_columns += cat_cols
+    if sex:
+        cat_cols.append(SEX)
+    if dummy:
+        cat_cols.append(WARMUP_DUMMY)
+
+    all_columns += cat_cols
+    cat_cols = cat_cols if len(cat_cols) != 0 else None
 
     # We extract the dataframe
     df = data_manager.get_table(LEARNING_0_GENES, columns=all_columns)
 
-    return df, VO2R_MAX, cont_cols, genes
+    return df, VO2R_MAX, cont_cols, cat_cols
 

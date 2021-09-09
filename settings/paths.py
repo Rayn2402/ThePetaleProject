@@ -16,6 +16,7 @@ class Paths:
     CSV_FILES: str = join(PROJECT_DIR, "csv")
     HYPERPARAMETERS: str = join(PROJECT_DIR, "hps")
     MASKS: str = join(PROJECT_DIR, "masks")
+    WARMUP_MASK: str = join(MASKS, "warmup_mask.json")
     MODELS: str = join(PROJECT_DIR, "models")
     RECORDS: str = join(PROJECT_DIR, "records")
     CLEANING_RECORDS: str = join(RECORDS, "cleaning")

@@ -12,13 +12,12 @@ sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
 from src.data.extraction.data_management import PetaleDataManager
 from src.data.processing.sampling import TRAIN, TEST, get_warmup_data, extract_masks
 from src.data.processing.datasets import PetaleDataset
-from src.data.processing.transforms import ContinuousTransform, CategoricalTransform
+from src.data.processing.transforms import ContinuousTransform
 from src.utils.score_metrics import AbsoluteError, Pearson, RootMeanSquaredError, SquaredError
 from src.data.extraction.constants import *
 from torch import tensor
 from src.recording.recording import Recorder, get_evaluation_recap, compare_prediction_recordings
 from settings.paths import Paths
-from os.path import join
 from typing import Dict, List
 
 
@@ -124,14 +123,14 @@ if __name__ == '__main__':
 
     # Generation of dataset
     data_manager = PetaleDataManager(args.user)
-    df, target, cont_cols, _ = get_warmup_data(data_manager)
+    df, target, cont_cols, cat_cols = get_warmup_data(data_manager)
 
     # Creation of the dataset
-    dataset = PetaleDataset(df, target, cont_cols, cat_cols=None,
+    dataset = PetaleDataset(df, target, cont_cols, cat_cols=cat_cols,
                             classification=False, to_tensor=True)
 
     # Extraction of masks
-    masks = extract_masks(join(Paths.MASKS, "l0_warmup_genes.json"), k=k, l=0)
+    masks = extract_masks(Paths.WARMUP_MASK, k=k, l=0)
 
     # Execution of the experiment
     evaluation_name = f"original_equation"

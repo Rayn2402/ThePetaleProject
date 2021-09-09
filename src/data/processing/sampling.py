@@ -424,7 +424,6 @@ def get_warmup_data(data_manager: PetaleDataManager, genes: bool = False, sex: b
     cat_cols = []
     if genes:
         cat_cols += ALL_CHROM_POS_WARMUP
-        all_columns += cat_cols
     if sex:
         cat_cols.append(SEX)
     if dummy:

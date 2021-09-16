@@ -66,7 +66,7 @@ if __name__ == '__main__':
     from settings.paths import Paths
     from src.data.processing.datasets import PetaleDataset, PetaleStaticGNNDataset
     from src.data.processing.feature_selection import FeatureSelector
-    from src.data.processing.sampling import get_warmup_data, extract_masks, push_valid_to_train
+    from src.data.processing.sampling import get_warmup_data, extract_masks, push_valid_to_train, SIGNIFICANT
     from src.models.han import PetaleHANR
     from src.models.mlp import PetaleMLPR
     from src.models.tabnet import PetaleTNR
@@ -84,7 +84,8 @@ if __name__ == '__main__':
     manager = PetaleDataManager("rayn2402")
 
     # We extract needed data
-    df, target, cont_cols, cat_cols = get_warmup_data(manager, genes=args.genes, sex=args.sex)
+    genes_selection = SIGNIFICANT if args.genes else None
+    df, target, cont_cols, cat_cols = get_warmup_data(manager, genes=genes_selection, sex=args.sex)
 
     # Extraction of masks
     masks = extract_masks(Paths.WARMUP_MASK, k=args.nb_outer_splits, l=args.nb_inner_splits)

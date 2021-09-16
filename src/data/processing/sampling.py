@@ -403,14 +403,14 @@ def generate_multitask_labels(df: DataFrame, target_columns: List[str]) -> Tuple
     return multitask_labels, labels_dict
 
 
-def get_warmup_data(data_manager: PetaleDataManager, genes: bool = False, sex: bool = False,
+def get_warmup_data(data_manager: PetaleDataManager, genes: Optional[str] = None, sex: bool = False,
                     dummy: bool = False) -> Tuple[DataFrame, str, Optional[List[str]], Optional[List[str]]]:
     """
     Extract dataframe needed to proceed to warmup experiments
 
     Args:
         data_manager: data manager to communicate with the database
-        genes: True if we want to include chrom_pos variables
+        genes: One choice among ("None", "significant", "all")
         sex: True if we want to include sex variable
         dummy: True if we want to include dummy variable combining sex and VO2 quantile
 
@@ -422,8 +422,12 @@ def get_warmup_data(data_manager: PetaleDataManager, genes: bool = False, sex: b
     # We check for genes
     all_columns = [PARTICIPANT, VO2R_MAX] + cont_cols
     cat_cols = []
-    if genes:
-        cat_cols += ALL_CHROM_POS_WARMUP
+    if genes is not None:
+        assert genes in GENES_CHOICES, f"Genes value must be in {GENES_CHOICES}"
+        if genes == ALL:
+            cat_cols += ALL_CHROM_POS_WARMUP
+        elif genes == SIGNIFICANT:
+            cat_cols += SIGNIFICANT_CHROM_POS_WARMUP
     if sex:
         cat_cols.append(SEX)
     if dummy:

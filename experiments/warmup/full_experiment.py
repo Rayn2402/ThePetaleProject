@@ -24,7 +24,10 @@ def argument_parser():
 
     # Features selection
     parser.add_argument('-b', '--baselines', default=False, action='store_true',
-                        help='True if we want to include variables from original equation')
+                        help='True if we want to include variables from the original equation')
+    parser.add_argument('-r_w', '--remove_walk_variables', default=False, action='store_true',
+                        help='True if we want to remove six minutes walk test variables from baselines'
+                             '(only applies if baselines are included')
     parser.add_argument('-gen', '--genes', default=False, action='store_true',
                         help='True if we want to include genes if features')
     parser.add_argument('-f', '--feature_selection', default=False, action='store_true',
@@ -89,6 +92,10 @@ if __name__ == '__main__':
     genes_selection = SIGNIFICANT if args.genes else None
     df, target, cont_cols, cat_cols = get_warmup_data(manager, baselines=args.baselines, genes=genes_selection,
                                                       sex=args.sex)
+    # We filter variables if needed
+    if args.baselines and args.remove_walk_variables:
+        df.drop([TDM6_HR_END, TDM6_DIST], axis=1, inplace=True)
+        cont_cols = [c for c in cont_cols if c not in [TDM6_HR_END, TDM6_DIST]]
 
     # Extraction of masks
     masks = extract_masks(Paths.WARMUP_MASK, k=args.nb_outer_splits, l=args.nb_inner_splits)
@@ -109,6 +116,8 @@ if __name__ == '__main__':
     eval_id = ""
     if args.baselines:
         eval_id = f"{eval_id}_baselines"
+        if args.remove_walk_variables:
+            eval_id = f"{eval_id}_nw"
     if args.genes:
         eval_id = f"{eval_id}_genes"
     if args.sex:
@@ -152,7 +161,7 @@ if __name__ == '__main__':
                               save_hps_importance=True, save_optimization_history=True)
 
         # Evaluation
-        evaluator.nested_cross_valid()
+        # evaluator.nested_cross_valid()
 
         print("Time Taken for TabNet (minutes): ", round((time.time() - start) / 60, 2))
 
@@ -175,7 +184,7 @@ if __name__ == '__main__':
                               save_optimization_history=True)
 
         # Evaluation
-        evaluator.nested_cross_valid()
+        # evaluator.nested_cross_valid()
 
         print("Time Taken for Random Forest (minutes): ", round((time.time() - start) / 60, 2))
 
@@ -198,7 +207,7 @@ if __name__ == '__main__':
                               save_optimization_history=True)
 
         # Evaluation
-        evaluator.nested_cross_valid()
+        # evaluator.nested_cross_valid()
 
         print("Time Taken for XGBoost (minutes): ", round((time.time() - start) / 60, 2))
 
@@ -232,7 +241,7 @@ if __name__ == '__main__':
                               save_hps_importance=True, save_optimization_history=True)
 
         # Evaluation
-        evaluator.nested_cross_valid()
+        # evaluator.nested_cross_valid()
 
         print("Time Taken for MLP (minutes): ", round((time.time() - start) / 60, 2))
 
@@ -268,7 +277,7 @@ if __name__ == '__main__':
                               save_hps_importance=True, save_optimization_history=True)
 
         # Evaluation
-        evaluator.nested_cross_valid()
+        # evaluator.nested_cross_valid()
 
         print("Time Taken for Logistic Regression (minutes): ", round((time.time() - start) / 60, 2))
 
@@ -301,7 +310,7 @@ if __name__ == '__main__':
                               save_optimization_history=True)
 
         # Evaluation
-        evaluator.nested_cross_valid()
+        # evaluator.nested_cross_valid()
 
         print("Time Taken for HAN (minutes): ", round((time.time() - start) / 60, 2))
 

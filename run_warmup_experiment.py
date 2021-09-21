@@ -25,6 +25,9 @@ def argument_parser():
                         help='True if we want to apply automatic feature selection')
     parser.add_argument('-s', '--sex', default=False, action='store_true',
                         help='True if we want to include sex in features')
+    parser.add_argument('-r_w', '--remove_walk_variables', default=False, action='store_true',
+                        help='True if we want to remove six minutes walk test variables from baselines'
+                             '(only applies if baselines are included')
 
     arguments = parser.parse_args()
 
@@ -49,6 +52,8 @@ if __name__ == '__main__':
     cmd = ['python', FILE, '-lin', '-han', '-mlp', '-rf', '-xg', '-tab']
     if args.baselines:
         cmd.append('-b')
+        if args.remove_walk_variables:
+            cmd.append('-r_w')
     if args.genes:
         cmd.append('-gen')
     if args.feature_selection:

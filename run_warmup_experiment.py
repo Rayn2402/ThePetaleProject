@@ -17,6 +17,8 @@ def argument_parser():
                                      description="Runs all the experiments associated to the warmup dataset")
 
     # Features selection
+    parser.add_argument('-b', '--baselines', default=False, action='store_true',
+                        help='True if we want to include variables from original equation')
     parser.add_argument('-gen', '--genes', default=False, action='store_true',
                         help='True if we want to include genes if features')
     parser.add_argument('-f', '--feature_selection', default=False, action='store_true',
@@ -45,6 +47,8 @@ if __name__ == '__main__':
 
     # Creation of commands
     cmd = ['python', FILE, '-lin', '-han', '-mlp', '-rf', '-xg', '-tab']
+    if args.baselines:
+        cmd.append('-b')
     if args.genes:
         cmd.append('-gen')
     if args.feature_selection:

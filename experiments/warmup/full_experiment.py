@@ -23,6 +23,8 @@ def argument_parser():
                         help='Number of inner splits during the models evaluations')
 
     # Features selection
+    parser.add_argument('-b', '--baselines', default=False, action='store_true',
+                        help='True if we want to include variables from original equation')
     parser.add_argument('-gen', '--genes', default=False, action='store_true',
                         help='True if we want to include genes if features')
     parser.add_argument('-f', '--feature_selection', default=False, action='store_true',
@@ -85,7 +87,8 @@ if __name__ == '__main__':
 
     # We extract needed data
     genes_selection = SIGNIFICANT if args.genes else None
-    df, target, cont_cols, cat_cols = get_warmup_data(manager, genes=genes_selection, sex=args.sex)
+    df, target, cont_cols, cat_cols = get_warmup_data(manager, baselines=args.baselines, genes=genes_selection,
+                                                      sex=args.sex)
 
     # Extraction of masks
     masks = extract_masks(Paths.WARMUP_MASK, k=args.nb_outer_splits, l=args.nb_inner_splits)
@@ -210,7 +213,8 @@ if __name__ == '__main__':
 
         # Creation of function to update fixed params
         def update_fixed_params(dts):
-            return {'max_epochs': 250, 'patience': 50, 'num_cont_col': len(dts.cont_cols),
+            nb_cont_col = len(dts.cont_cols) if dts.cont_cols is not None else 0
+            return {'max_epochs': 250, 'patience': 50, 'num_cont_col': nb_cont_col,
                     'cat_idx': dts.cat_idx, 'cat_sizes': dts.cat_sizes,
                     'cat_emb_sizes': dts.cat_sizes}
 
@@ -243,7 +247,8 @@ if __name__ == '__main__':
 
         # Creation of function to update fixed params
         def update_fixed_params(dts):
-            return {'max_epochs': 50, 'patience': 25, 'num_cont_col': len(dts.cont_cols),
+            nb_cont_col = len(dts.cont_cols) if dts.cont_cols is not None else 0
+            return {'max_epochs': 50, 'patience': 25, 'num_cont_col': nb_cont_col,
                     'cat_idx': dts.cat_idx, 'cat_sizes': dts.cat_sizes,
                     'cat_emb_sizes': dts.cat_sizes}
 
@@ -268,7 +273,7 @@ if __name__ == '__main__':
     """
     HAN experiment
     """
-    if args.han and (args.genes or args.sex):
+    if args.han and (args.genes or args.sex) and args.baselines:
 
         # Start timer
         start = time.time()

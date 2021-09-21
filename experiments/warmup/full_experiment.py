@@ -107,6 +107,8 @@ if __name__ == '__main__':
 
     # We save the string that will help identify evaluations
     eval_id = ""
+    if args.baselines:
+        eval_id = f"{eval_id}_baselines"
     if args.genes:
         eval_id = f"{eval_id}_genes"
     if args.sex:

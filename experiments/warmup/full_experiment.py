@@ -161,7 +161,7 @@ if __name__ == '__main__':
                               save_hps_importance=True, save_optimization_history=True)
 
         # Evaluation
-        # evaluator.nested_cross_valid()
+        evaluator.nested_cross_valid()
 
         print("Time Taken for TabNet (minutes): ", round((time.time() - start) / 60, 2))
 
@@ -184,7 +184,7 @@ if __name__ == '__main__':
                               save_optimization_history=True)
 
         # Evaluation
-        # evaluator.nested_cross_valid()
+        evaluator.nested_cross_valid()
 
         print("Time Taken for Random Forest (minutes): ", round((time.time() - start) / 60, 2))
 
@@ -207,7 +207,7 @@ if __name__ == '__main__':
                               save_optimization_history=True)
 
         # Evaluation
-        # evaluator.nested_cross_valid()
+        evaluator.nested_cross_valid()
 
         print("Time Taken for XGBoost (minutes): ", round((time.time() - start) / 60, 2))
 
@@ -241,7 +241,7 @@ if __name__ == '__main__':
                               save_hps_importance=True, save_optimization_history=True)
 
         # Evaluation
-        # evaluator.nested_cross_valid()
+        evaluator.nested_cross_valid()
 
         print("Time Taken for MLP (minutes): ", round((time.time() - start) / 60, 2))
 
@@ -277,7 +277,7 @@ if __name__ == '__main__':
                               save_hps_importance=True, save_optimization_history=True)
 
         # Evaluation
-        # evaluator.nested_cross_valid()
+        evaluator.nested_cross_valid()
 
         print("Time Taken for Logistic Regression (minutes): ", round((time.time() - start) / 60, 2))
 
@@ -310,7 +310,7 @@ if __name__ == '__main__':
                               save_optimization_history=True)
 
         # Evaluation
-        # evaluator.nested_cross_valid()
+        evaluator.nested_cross_valid()
 
         print("Time Taken for HAN (minutes): ", round((time.time() - start) / 60, 2))
 

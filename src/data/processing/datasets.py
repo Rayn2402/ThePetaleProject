@@ -44,6 +44,7 @@ class PetaleDataset(Dataset):
         # Set default protected attributes
         self._classification = classification
         self._ids = list(df[PARTICIPANT].values)
+        self._ids_to_row_idx = {id_: i for i, id_ in enumerate(self._ids)}
         self._n = df.shape[0]
         self._original_data = df
         self._target = target
@@ -96,6 +97,10 @@ class PetaleDataset(Dataset):
     @property
     def ids(self) -> List[str]:
         return self._ids
+
+    @property
+    def ids_to_row_idx(self) -> Dict[str, int]:
+        return self._ids_to_row_idx
 
     @property
     def original_data(self) -> DataFrame:

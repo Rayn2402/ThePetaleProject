@@ -218,7 +218,7 @@ class RandomStratifiedSampler:
         Returns: bool
         """
         target_list_copy = list(targets)
-        return len(set(target_list_copy)) < 0.25*len(target_list_copy)
+        return len(set(target_list_copy)) < 0.15*len(target_list_copy)
 
     @staticmethod
     def mimic_classes(targets: Union[tensor, array, List[Any]]) -> array:
@@ -229,7 +229,7 @@ class RandomStratifiedSampler:
 
         Returns: array with fake classes
         """
-        return qcut(array(targets), 4, labels=False)
+        return qcut(array(targets), 2, labels=False)
 
     @staticmethod
     def serialize_masks(masks: Dict[int, Dict[str, Union[array, Dict[str, array]]]]) -> None:
@@ -403,21 +403,53 @@ def generate_multitask_labels(df: DataFrame, target_columns: List[str]) -> Tuple
     return multitask_labels, labels_dict
 
 
-def get_warmup_data(data_manager: PetaleDataManager
-                    ) -> Tuple[DataFrame, str, Optional[List[str]], Optional[List[str]]]:
+def get_warmup_data(data_manager: PetaleDataManager, baselines: bool = True,
+                    genes: Optional[str] = None, sex: bool = False,
+                    dummy: bool = False) -> Tuple[DataFrame, str, Optional[List[str]], Optional[List[str]]]:
     """
-    Extract dataframe needed to proceed to warmup experiments and turn it into a dataset
+    Extract dataframe needed to proceed to warmup experiments
 
     Args:
         data_manager: data manager to communicate with the database
+        baselines: True if we want to include variables from original equation
+        genes: One choice among ("None", "significant", "all")
+        sex: True if we want to include sex variable
+        dummy: True if we want to include dummy variable combining sex and VO2 quantile
 
     Returns: dataframe, target, continuous columns, categorical columns
     """
+
+    # We make sure few variables were selected
+    assert baselines or genes or sex, "At least baselines, genes or sex must be selected"
+
+    # We save participant and VO2 max column names
+    all_columns = [PARTICIPANT, VO2R_MAX]
+
     # We save the name of continuous columns in a list
-    cont_cols = [WEIGHT, TDM6_HR_END, TDM6_DIST, DT, AGE, MVLPA]
+    if baselines:
+        cont_cols = [WEIGHT, TDM6_HR_END, TDM6_DIST, DT, AGE, MVLPA]
+        all_columns += cont_cols
+    else:
+        cont_cols = None
+
+    # We check for genes
+    cat_cols = []
+    if genes is not None:
+        assert genes in GENES_CHOICES, f"Genes value must be in {GENES_CHOICES}"
+        if genes == ALL:
+            cat_cols += ALL_CHROM_POS_WARMUP
+        elif genes == SIGNIFICANT:
+            cat_cols += SIGNIFICANT_CHROM_POS_WARMUP
+    if sex:
+        cat_cols.append(SEX)
+    if dummy:
+        cat_cols.append(WARMUP_DUMMY)
+
+    all_columns += cat_cols
+    cat_cols = cat_cols if len(cat_cols) != 0 else None
 
     # We extract the dataframe
-    df = data_manager.get_table(LEARNING_0, columns=[PARTICIPANT, VO2R_MAX] + cont_cols)
+    df = data_manager.get_table(LEARNING_0_GENES, columns=all_columns)
 
-    return df, VO2R_MAX, cont_cols, None
+    return df, VO2R_MAX, cont_cols, cat_cols
 

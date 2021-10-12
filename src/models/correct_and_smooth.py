@@ -3,6 +3,7 @@ This file is used to store the implementation of Correct And Smooth from dgl exa
 """
 
 from dgl import DGLGraph
+from typing import Optional, Callable
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -13,7 +14,8 @@ class LabelPropagation(nn.Module):
     r"""
     Description
     -----------
-    Introduced in `Learning from Labeled and Unlabeled Data with Label Propagation <https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.14.3864&rep=rep1&type=pdf>`_
+    Introduced in `Learning from Labeled and Unlabeled Data with Label Propagation
+     <https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.14.3864&rep=rep1&type=pdf>`_
     .. math::
         \mathbf{Y}^{\prime} = \alpha \cdot \mathbf{D}^{-1/2} \mathbf{A}
         \mathbf{D}^{-1/2} \mathbf{Y} + (1 - \alpha) \mathbf{Y},
@@ -30,7 +32,14 @@ class LabelPropagation(nn.Module):
             'AD': A * D^-1
     """
 
-    def __init__(self, num_layers, alpha, adj='DAD'):
+    def __init__(self, num_layers: int, alpha: float, adj: str = 'DA'):
+        """
+        Sets attributes of label propagation object
+        Args:
+            num_layers: number of propagation iterations
+            alpha: weight of the original labels
+            adj: matrix with normalized weights between nodes
+        """
         super(LabelPropagation, self).__init__()
 
         self.num_layers = num_layers
@@ -38,21 +47,44 @@ class LabelPropagation(nn.Module):
         self.adj = adj
 
     @torch.no_grad()
-    def forward(self, g, labels, mask=None, post_step=lambda y: y.clamp_(0., 1.)):
+    def forward(self, g: DGLGraph, labels: torch.tensor, mask: Optional[torch.tensor] = None,
+                post_step: Callable = lambda y: y.clamp_(0., 1.)) -> torch.tensor:
+        """
+        Executes label propagation
+
+        Args:
+            g: homogeneous undirected graph
+            labels: ground truth associated to nodes in the graph
+            mask: training idx
+            post_step: function to apply after each step of propagation
+
+        Returns:
+
+        """
+
         with g.local_scope():
+
+            # If labels are integers (meaning they are classes), we change them in
+            # one-hot encoding
             if labels.dtype == torch.long:
                 labels = F.one_hot(labels.view(-1)).to(torch.float32)
-
             y = labels
+
+            # If only keep train data in mask as non zero values
             if mask is not None:
                 y = torch.zeros_like(labels)
                 y[mask] = labels[mask]
 
+            # We save the part of original labels kept
             last = (1 - self.alpha) * y
-            degs = g.in_degrees().float().clamp(min=1)
-            norm = torch.pow(degs, -0.5 if self.adj == 'DAD' else -1).to(labels.device).unsqueeze(1)
 
+            # We get the power of degree matrix needed for the propagation
+            degs = g.in_degrees().float().clamp(min=1)
+            norm = torch.pow(degs, -0.5 if self.adj == 'DAD' else -1).to(labels.device)
+
+            # We proceed to propagation
             for _ in range(self.num_layers):
+
                 # Assume the graphs to be undirected
                 if self.adj in ['DAD', 'AD']:
                     y = norm * y
@@ -101,10 +133,10 @@ class CorrectAndSmooth(nn.Module):
     def __init__(self,
                  num_correction_layers: int,
                  correction_alpha: float,
-                 correction_adj: str,
                  num_smoothing_layers: int,
                  smoothing_alpha: float,
-                 smoothing_adj: str,
+                 correction_adj: str = 'DA',
+                 smoothing_adj: str = 'DA',
                  autoscale=True,
                  scale=1.):
         super(CorrectAndSmooth, self).__init__()

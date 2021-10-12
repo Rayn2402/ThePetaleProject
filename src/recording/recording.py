@@ -387,8 +387,8 @@ def compare_prediction_recordings(evaluations, split_index, recording_path=""):
         for id, item in data[TEST_RESULTS].items():
             if i == 0:
                 ids.append(id)
-                target.append(item[TARGET])
-            all_predictions[i].append(item[PREDICTION])
+                target.append(float(item[TARGET]))
+            all_predictions[i].append(float(item[PREDICTION]))
 
     # We sort all the predictions and the ids based on the target
     indexes = list(range(len(target)))

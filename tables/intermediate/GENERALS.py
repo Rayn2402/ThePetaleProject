@@ -43,7 +43,7 @@ if __name__ == '__main__':
     # We build a PetaleDataManager that will help interacting with PETALE database
     data_manager = initialize_petale_data_manager()
 
-    # We save the variables needed from FIXED_FEATURES_AND_COMPLICATIONS_(FILTERED)
+    # We save the variables needed from BASELINE_FEATURES_AND_COMPLICATIONS_PLUS_FITNESS
     BASE_vars = [FITNESS_COMPLICATIONS, PARTICIPANT, SEX,
                  AGE_AT_DIAGNOSIS, DT, RADIOTHERAPY_DOSE,
                  DOX, DEX, BIRTH_AGE, BIRTH_WEIGHT]

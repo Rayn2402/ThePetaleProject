@@ -18,8 +18,8 @@ if __name__ == '__main__':
     # Imports specific to project
     sys.path.append(dirname(dirname(realpath(__file__))))
     from settings.paths import Paths
-    from src.data.processing.datasets import PetaleRFDataset
-    from src.data.processing.sampling import get_learning_one_data, extract_masks, generate_multitask_labels
+    from src.data.processing.datasets import PetaleDataset
+    from src.data.processing.sampling import get_warmup_data, extract_masks
     from src.data.extraction.constants import *
     from src.data.extraction.data_management import PetaleDataManager
     from src.utils.visualization import visualize_class_distribution
@@ -28,39 +28,23 @@ if __name__ == '__main__':
     manager = PetaleDataManager("rayn2402")
 
     # Extraction of the table
-    df, cont_cols, cat_cols = get_learning_one_data(manager, baselines=True,
-                                                    complications=[CARDIOMETABOLIC_COMPLICATIONS,
-                                                                   BONE_COMPLICATIONS,
-                                                                   NEUROCOGNITIVE_COMPLICATIONS,
-                                                                   COMPLICATIONS])
+    df, _, cont_cols, cat_cols = get_warmup_data(manager, dummy=True)
+
     # Extraction of masks
-    masks = extract_masks(join(Paths.MASKS, "l1_masks.json"), k=1, l=0)
+    masks = extract_masks(join(Paths.MASKS, "warmup_mask.json"), k=1, l=1)
 
     # Creation of a dataset
-    dataset = PetaleRFDataset(df, COMPLICATIONS, cont_cols, cat_cols)
+    dataset = PetaleDataset(df, WARMUP_DUMMY, cont_cols, cat_cols, classification=True)
 
     # Visualization of distribution
-    labels_dict = {0: "No", 1: "Yes"}
     for k, v in masks.items():
         dataset.update_masks(train_mask=v["train"], valid_mask=v["valid"], test_mask=v["test"])
         if v != 'inner':
             for i in DATASET_TYPES:
-                visualize_class_distribution(dataset.y[v[i]], labels_dict, title=f"{i}-{k}")
+                _, y, _ = dataset[v[i]]
+                visualize_class_distribution(y, WARMUP_DUMMY_DICT_NAME, title=f"{i}-{k}")
             for inner_k, inner_v in v['inner'].items():
                 for j in DATASET_TYPES:
-                    visualize_class_distribution(dataset.y[inner_v[j]], labels_dict, title=f"Inner {j}-{inner_k}")
-
-    # Creation of multitask labels
-    labels, labels_dict = generate_multitask_labels(df, [CARDIOMETABOLIC_COMPLICATIONS,
-                                                         BONE_COMPLICATIONS,
-                                                         NEUROCOGNITIVE_COMPLICATIONS])
-
-    # Visualization of distribution for multitask labels
-    for k, v in masks.items():
-        if v != 'inner':
-            for i in DATASET_TYPES:
-                visualize_class_distribution(labels[v[i]], labels_dict, title=f"{i}-{k}")
-            for inner_k, inner_v in v['inner'].items():
-                for j in DATASET_TYPES:
-                    visualize_class_distribution(labels[inner_v[j]], labels_dict, title=f"Inner {j}-{inner_k}")
+                    _, y, _ = dataset[inner_v[j]]
+                    visualize_class_distribution(y, WARMUP_DUMMY_DICT_NAME, title=f"Inner {j}-{inner_k}")
 

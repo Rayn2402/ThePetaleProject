@@ -41,8 +41,15 @@ class FeatureSelector:
         selected_features = fi_table.loc[fi_table['status'] == 'selected', 'features'].values
 
         # Save selected cont_cols and cat_cols
-        cont_cols = [c for c in dataset.cont_cols if c in selected_features]
-        cat_cols = [c for c in dataset.cat_cols if c in selected_features]
+        if dataset.cont_cols is not None:
+            cont_cols = [c for c in dataset.cont_cols if c in selected_features]
+        else:
+            cont_cols = None
+
+        if dataset.cat_cols is not None:
+            cat_cols = [c for c in dataset.cat_cols if c in selected_features]
+        else:
+            cat_cols = None
 
         # Save records in a csv
         if records_path is not None:

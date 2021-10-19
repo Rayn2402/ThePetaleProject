@@ -1,14 +1,18 @@
 """
+Filename: base_models.py
 Author: Nicolas Raymond
+Description: Defines the abstract PetaleRegressor and PetaleBinaryClassifier
+             classes that must be used to build every other model in the project.
+             It ensures consistency will all hyperparameter tuning functions.
 
-This file defines the abstract Regressor and Classifier classes that must be used
-to build every other model in the project
+Date of last modification : 2021/10/19
 """
 from abc import ABC, abstractmethod
 from numpy import array, argmin, argmax, linspace
 from numpy import where as npwhere
 from numpy import zeros as npzeros
 from src.data.processing.datasets import PetaleDataset
+from src.utils.hyperparameters import HP
 from src.utils.score_metrics import BinaryClassificationMetric, Direction
 from torch import tensor, is_tensor
 from torch import where as thwhere
@@ -18,21 +22,23 @@ from typing import Any, Dict, List, Optional, Union
 
 class PetaleBinaryClassifier(ABC):
     """
-    Skeleton of all Petale classification models
+    Skeleton of all Petale binary classification models
     """
     def __init__(self, classification_threshold: float = 0.5,
                  weight:  Optional[float] = None,
                  train_params: Optional[Dict[str, Any]] = None):
         """
-        Sets the threshold for binary classification
+        Sets the protected attributes of the object
 
         Args:
             classification_threshold: threshold used to classify a sample in class 1
-            weight: weight attributed to class 1
-            train_params: training parameters proper to model for fit function
+            weight: weight attributed to class 1 (in [0, 1])
+            train_params: keyword arguments that are proper to the child model inheriting
+                          from this class and that will be using when calling fit method
         """
         if weight is not None:
-            assert 0 <= weight <= 1, "weight must be included in range [0, 1]"
+            if not (0 <= weight <= 1):
+                raise ValueError("weight must be included in range [0, 1]")
 
         self._thresh = classification_threshold
         self._train_params = train_params if train_params is not None else {}
@@ -52,24 +58,25 @@ class PetaleBinaryClassifier(ABC):
 
     def find_optimal_threshold(self, dataset: PetaleDataset, metric: BinaryClassificationMetric) -> None:
         """
-        Finds the optimal classification threshold for binary classification
+        Finds the optimal classification threshold for a binary classification task
+        according to a given metric.
 
         Args:
-            dataset: PetaleDatasets which items are tuples (x, y, idx) where
+            dataset: PetaleDataset which its items are tuples (x, y, idx) where
                      - x : (N,D) tensor or array with D-dimensional samples
                      - y : (N,) tensor or array with classification labels
                      - idx : (N,) tensor or array with idx of samples according to the whole dataset
 
             metric: Binary classification metric used to find optimal threshold
         """
-        # We predict proba
+        # We predict proba on the training set
         proba = self.predict_proba(dataset, dataset.train_mask)
 
-        # For multiple threshold value with calculate the metric
+        # For multiple threshold values we calculate the metric
         thresholds = linspace(start=0.01, stop=0.95, num=95)
         scores = array([metric(proba, dataset.y[dataset.train_mask], t) for t in thresholds])
 
-        # We return the optimal threshold
+        # We save the optimal threshold
         if metric.direction == Direction.MINIMIZE:
             self._thresh = thresholds[argmin(scores)]
         else:
@@ -77,7 +84,7 @@ class PetaleBinaryClassifier(ABC):
 
     def get_sample_weights(self, y_train: Union[tensor, array]) -> Union[tensor, array]:
         """
-        Computes the weights to give to each sample
+        Computes the weight associated to each sample
 
         We need to solve the following equation:
             - n1 * w1 = self.weight
@@ -100,21 +107,28 @@ class PetaleBinaryClassifier(ABC):
         n0 = y_train.shape[0] - n1      # number of samples with label 0
         w0, w1 = (1 - self.weight) / n0, self.weight / n1  # sample weight for C0, sample weight for C1
 
+        # We save the weights in the appropriate format and multiply them with
+        # a constant to have an impact with low learning rate
         if not is_tensor(y_train):
             sample_weights = npzeros(y_train.shape)
-            sample_weights[npwhere(y_train == 0)] = w0 * 10  # Multiply by constant factor to impact learning rate
+            sample_weights[npwhere(y_train == 0)] = w0 * 10
             sample_weights[npwhere(y_train == 1)] = w1 * 10
 
         else:
             sample_weights = thzeros(y_train.shape)
-            sample_weights[thwhere(y_train == 0)] = w0 * 10  # Multiply by constant factor to impact learning rate
+            sample_weights[thwhere(y_train == 0)] = w0 * 10
             sample_weights[thwhere(y_train == 1)] = w1 * 10
 
         return sample_weights
 
     @staticmethod
     @abstractmethod
-    def get_hps():
+    def get_hps() -> List[HP]:
+        """
+        Returns a list with the hyperparameters associated to the model
+
+        Returns: list of hyperparameters
+        """
         raise NotImplementedError
 
     @abstractmethod
@@ -123,7 +137,7 @@ class PetaleBinaryClassifier(ABC):
         Fits the model to the training data
 
         Args:
-            dataset: PetaleDatasets which items are tuples (x, y, idx) where
+            dataset: PetaleDataset which its items are tuples (x, y, idx) where
                      - x : (N,D) tensor or array with D-dimensional samples
                      - y : (N,) tensor or array with classification labels
                      - idx : (N,) tensor or array with idx of samples according to the whole dataset
@@ -139,7 +153,7 @@ class PetaleBinaryClassifier(ABC):
         in a particular set (default = test)
 
         Args:
-            dataset: PetaleDatasets which items are tuples (x, y, idx) where
+            dataset: PetaleDataset which its items are tuples (x, y, idx) where
                      - x : (N,D) tensor or array with D-dimensional samples
                      - y : (N,) tensor or array with classification labels
                      - idx : (N,) tensor or array with idx of samples according to the whole dataset
@@ -152,7 +166,7 @@ class PetaleBinaryClassifier(ABC):
     @abstractmethod
     def save_model(self, path: str) -> None:
         """
-        Saves the model
+        Saves the model to the given path
 
         Args:
             path: save path
@@ -168,10 +182,11 @@ class PetaleRegressor(ABC):
     """
     def __init__(self, train_params: Optional[Dict[str, Any]] = None):
         """
-        Sets training parameters
+        Sets the only protected attribute
 
         Args:
-            train_params: training parameters proper to model for fit function
+            train_params: keyword arguments that are proper to the child model inheriting
+                          from this class and that will be using when calling fit method
         """
         self._train_params = train_params if train_params is not None else {}
 
@@ -181,7 +196,12 @@ class PetaleRegressor(ABC):
 
     @staticmethod
     @abstractmethod
-    def get_hps():
+    def get_hps() -> List[HP]:
+        """
+        Returns a list with the hyperparameters associated to the model
+
+        Returns: list of hyperparameters
+        """
         raise NotImplementedError
 
     @abstractmethod
@@ -190,9 +210,10 @@ class PetaleRegressor(ABC):
         Fits the model to the training data
 
         Args:
-            dataset: PetaleDatasets which items are tuples (x, y) where
+            dataset: PetaleDataset which its items are tuples (x, y, idx) where
                      - x : (N,D) tensor or array with D-dimensional samples
                      - y : (N,) tensor or array with classification labels
+                     - idx : (N,) tensor or array with idx of samples according to the whole dataset
 
         Returns: None
         """
@@ -201,10 +222,11 @@ class PetaleRegressor(ABC):
     @abstractmethod
     def predict(self, dataset: PetaleDataset, mask: Optional[List[int]] = None) -> Union[tensor, array]:
         """
-        Returns the predicted real-valued targets for all samples in the test set
+        Returns the predicted real-valued targets for all samples in a
+        particular set (default = test)
 
         Args:
-            dataset: PetaleDatasets which items are tuples (x, y, idx) where
+            dataset: PetaleDataset which its items are tuples (x, y, idx) where
                      - x : (N,D) tensor or array with D-dimensional samples
                      - y : (N,) tensor or array with classification labels
                      - idx : (N,) tensor or array with idx of samples according to the whole dataset
@@ -217,7 +239,7 @@ class PetaleRegressor(ABC):
     @abstractmethod
     def save_model(self, path: str) -> None:
         """
-        Saves the model
+        Saves the model to the given path
 
         Args:
             path: save path

@@ -64,7 +64,7 @@ class TorchCustomModel(Module, ABC):
                                                              Tuple[DataLoader,
                                                                    PetaleStaticGNNDataset]]]]:
         """
-        Creates the object needed for validation during the training process
+        Creates the objects needed for validation during the training process
 
         Args:
             dataset: PetaleDataset used to feed the dataloader
@@ -173,7 +173,7 @@ class TorchCustomModel(Module, ABC):
              pred: tensor,
              y: tensor) -> tensor:
         """
-        Calls the criterion and add elastic penalty
+        Calls the criterion and add the elastic penalty
 
         Args:
             sample_weights: (N,) tensor with weights of samples on which we calculate the loss
@@ -215,12 +215,14 @@ class TorchCustomModel(Module, ABC):
                                     path=save_path)
 
     @staticmethod
-    def _create_train_objects(dataset: PetaleDataset, batch_size: int
+    def _create_train_objects(dataset: PetaleDataset,
+                              batch_size: int
                               ) -> Union[DataLoader, Tuple[DataLoader, PetaleStaticGNNDataset]]:
         """
-        Creates objects proper to training
+        Creates the objects needed for the training
+
         Args:
-            dataset: PetaleDataset used to feed data loaders
+            dataset: PetaleDataset used to feed the dataloaders
             batch_size: size of the batches in the train loader
 
         Returns: train loader, PetaleDataset
@@ -240,9 +242,11 @@ class TorchCustomModel(Module, ABC):
     def _validate_sample_weights(dataset: PetaleDataset, sample_weights: Optional[tensor]) -> tensor:
         """
         Validates the provided sample weights and return them.
-        If None are provided, each sample as the same weights of 1/n in the training loss
+        If None are provided, each sample as the same weights of 1/n in the training loss,
+        where n is the number of elements in the training set
+
         Args:
-            dataset: PetaleDataset used to feed data loaders
+            dataset: PetaleDataset used to feed the dataloaders
             sample_weights: (N,) tensor with weights of the samples in the training set
 
         Returns:
@@ -251,21 +255,23 @@ class TorchCustomModel(Module, ABC):
         # We check the validity of the samples' weights
         dataset_size = len(dataset)
         if sample_weights is not None:
-            assert (sample_weights.shape[0] == dataset_size),\
-                f"Sample weights as length {sample_weights.shape[0]} while dataset as length {dataset_size}"
+            if sample_weights.shape[0] != dataset_size:
+                raise ValueError(f"sample_weights as length {sample_weights.shape[0]}"
+                                 f" while dataset as length {dataset_size}")
         else:
             sample_weights = ones(dataset_size) / dataset_size
 
         return sample_weights
 
     @abstractmethod
-    def _execute_train_step(self, train_data: Union[DataLoader, Tuple[DataLoader, PetaleStaticGNNDataset]],
+    def _execute_train_step(self,
+                            train_data: Union[DataLoader, Tuple[DataLoader, PetaleStaticGNNDataset]],
                             sample_weights: tensor) -> float:
         """
         Executes one training epoch
 
         Args:
-            train_data: training data loader or tuple (train loader, dataset)
+            train_data: training dataloader or tuple (train loader, dataset)
             sample_weights: weights of the samples in the loss
 
         Returns: mean epoch loss
@@ -273,13 +279,14 @@ class TorchCustomModel(Module, ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def _execute_valid_step(self, valid_data: Optional[Union[DataLoader, Tuple[DataLoader, PetaleStaticGNNDataset]]],
+    def _execute_valid_step(self,
+                            valid_data: Optional[Union[DataLoader, Tuple[DataLoader, PetaleStaticGNNDataset]]],
                             early_stopper: Optional[EarlyStopper]) -> bool:
         """
         Executes an inference step on the validation data
 
         Args:
-            valid_data: valid data loader or tuple (valid loader, dataset)
+            valid_data: valid dataloader or tuple (valid loader, dataset)
             early_stopper: early stopper keeping track of validation loss
 
         Returns: True if we need to early stop

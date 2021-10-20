@@ -130,7 +130,7 @@ class TorchCustomModel(Module, ABC):
             valid_batch_size: size of the batches in the valid loader (None = one single batch)
             max_epochs: Maximum number of epochs for training
             patience: Number of consecutive epochs without improvement allowed
-            sample_weights: (N,) tensor with weights of the samples in the training set
+            sample_weights: (N,) tensor with weights of the samples in the dataset
 
         Returns: None
         """
@@ -243,7 +243,7 @@ class TorchCustomModel(Module, ABC):
         """
         Validates the provided sample weights and return them.
         If None are provided, each sample as the same weights of 1/n in the training loss,
-        where n is the number of elements in the training set
+        where n is the number of elements in the dataset.
 
         Args:
             dataset: PetaleDataset used to feed the dataloaders

@@ -1,18 +1,24 @@
 """
+Filename: base_models.py
+
 Authors: Nicolas Raymond
          Mehdi Mitiche
 
-This file is used to store the MLP with entity embeddings base model and its children PetaleMLPClassifier
-and PetaleMLPRegressor
+Description: This file is used to define the MLP model with entity embeddings
+             and its children MLPBinaryClassifier and PetaleMLPRegressor.
+             These models are not shaped to inherit from the PetaleRegressor
+             and PetaleBinaryClassifier classes. However, two wrapper classes for torch models
+             are provided to enable the use of these mlp models with hyperparameter tuning functions.
+
+Date of last modification : 2021/10/20
 """
 
 from src.models.abstract_models.custom_torch_base import TorchCustomModel
 from src.data.processing.datasets import PetaleDataset
 from src.training.early_stopping import EarlyStopper
-from src.utils.score_metrics import Metric, BinaryCrossEntropy, RootMeanSquaredError
+from src.utils.score_metrics import BinaryCrossEntropy, Metric, RootMeanSquaredError
 from torch import cat, nn, no_grad, tensor, ones, sigmoid
-from torch.nn import ModuleList, Embedding,\
-    Linear, BatchNorm1d, Dropout, Sequential, BCEWithLogitsLoss, MSELoss
+from torch.nn import BatchNorm1d, BCEWithLogitsLoss, Dropout, Embedding, Linear, ModuleList, MSELoss, Sequential
 from torch.utils.data import DataLoader
 from typing import Callable, List, Optional
 
@@ -21,11 +27,21 @@ class MLP(TorchCustomModel):
     """
     Multilayer perceptron model with entity embedding
     """
-    def __init__(self, output_size: int, layers: List[int], activation: str,
-                 criterion: Callable, criterion_name: str, eval_metric: Metric, dropout: float = 0,
-                 alpha: float = 0, beta: float = 0, num_cont_col: Optional[int] = None,
-                 cat_idx: Optional[List[int]] = None, cat_sizes: Optional[List[int]] = None,
-                 cat_emb_sizes: Optional[List[int]] = None, verbose: bool = False):
+    def __init__(self,
+                 output_size: int,
+                 layers: List[int],
+                 activation: str,
+                 criterion: Callable,
+                 criterion_name: str,
+                 eval_metric: Metric,
+                 dropout: float = 0,
+                 alpha: float = 0,
+                 beta: float = 0,
+                 num_cont_col: Optional[int] = None,
+                 cat_idx: Optional[List[int]] = None,
+                 cat_sizes: Optional[List[int]] = None,
+                 cat_emb_sizes: Optional[List[int]] = None,
+                 verbose: bool = False):
 
         """
         Builds the layers of the model and sets other protected attributes
@@ -34,26 +50,30 @@ class MLP(TorchCustomModel):
             output_size: the number of nodes in the last layer of the neural network
             layers: list with number of units in each hidden layer
             criterion: loss function of our model
-            criterion_name: name of the loss function of our model
+            criterion_name: name of the loss function
             eval_metric: evaluation metric
             activation: activation function
             dropout: probability of dropout
             alpha: L1 penalty coefficient
             beta: L2 penalty coefficient
-            num_cont_col: number of numerical continuous columns
-                          (equal to number of class in the case of classification)
+            num_cont_col: number of numerical continuous columns in the dataset
             cat_idx: idx of categorical columns in the dataset
             cat_sizes: list of integer representing the size of each categorical column
             cat_emb_sizes: list of integer representing the size of each categorical embedding
             verbose: True if we want trace of the training progress
         """
-        assert num_cont_col is not None or cat_sizes is not None, "There must be continuous columns" \
-                                                                  " or categorical columns"
-        # We call parent's constructor
-        super().__init__(criterion=criterion, criterion_name=criterion_name, eval_metric=eval_metric,
-                         alpha=alpha, beta=beta, verbose=verbose)
+        if num_cont_col is None and cat_sizes is None:
+            raise ValueError("There must be continuous columns or categorical columns")
 
-        # We set protected attributes proper to the model
+        # We call parent's constructor
+        super().__init__(criterion=criterion,
+                         criterion_name=criterion_name,
+                         eval_metric=eval_metric,
+                         alpha=alpha,
+                         beta=beta,
+                         verbose=verbose)
+
+        # We set the protected attributes that are proper to the model
         self._cat_idx = cat_idx if cat_idx is not None else []
         self._cont_idx = [i for i in range(len(self._cat_idx) + num_cont_col) if i not in self._cat_idx]
         self._embedding_layers = None
@@ -67,12 +87,9 @@ class MLP(TorchCustomModel):
             # We check embedding sizes (if nothing provided -> emb_sizes = cat_sizes)
             cat_emb_sizes = cat_emb_sizes if cat_emb_sizes is not None else cat_sizes
 
-            # We generate the embedding sizes
-            embedding_sizes = [(cat_size, emb_size) for cat_size, emb_size in zip(cat_sizes, cat_emb_sizes)]
-
             # We create the embedding layers
-            self._embedding_layers = ModuleList([Embedding(num_embedding, embedding_dim) for
-                                                 num_embedding, embedding_dim in embedding_sizes])
+            self._embedding_layers = ModuleList([Embedding(cat_size, emb_size) for
+                                                 cat_size, emb_size in zip(cat_sizes, cat_emb_sizes)])
             # We sum the length of all embeddings
             input_size += sum(cat_sizes)
 
@@ -95,12 +112,14 @@ class MLP(TorchCustomModel):
         # We save all our layers in self.layers
         self._layers = Sequential(*all_layers)
 
-    def _execute_train_step(self, train_data: DataLoader, sample_weights: tensor) -> float:
+    def _execute_train_step(self,
+                            train_data: DataLoader,
+                            sample_weights: tensor) -> float:
         """
         Executes one training epoch
 
         Args:
-            train_data: training data loader
+            train_data: training dataloader
             sample_weights: weights of the samples in the loss
 
         Returns: mean epoch loss
@@ -141,13 +160,15 @@ class MLP(TorchCustomModel):
 
         return mean_epoch_loss
 
-    def _execute_valid_step(self, valid_loader: Optional[DataLoader], early_stopper: EarlyStopper) -> bool:
+    def _execute_valid_step(self,
+                            valid_loader: Optional[DataLoader],
+                            early_stopper: EarlyStopper) -> bool:
         """
         Executes an inference step on the validation data
 
         Args:
-            valid_loader: validation data loader
-            early_stopper: early stopper keeping track of validation loss
+            valid_loader: validation dataloader
+            early_stopper: early stopper keeping track of the validation loss
 
         Returns: True if we need to early stop
         """
@@ -227,13 +248,20 @@ class MLP(TorchCustomModel):
 
 class MLPBinaryClassifier(MLP):
     """
-    Multilayer perceptron model with entity embedding
+    Multilayer perceptron binary classification model with entity embedding
     """
-    def __init__(self, layers: List[int], activation: str,
-                 eval_metric: Optional[Metric] = None, dropout: float = 0,
-                 alpha: float = 0, beta: float = 0, num_cont_col: Optional[int] = None,
-                 cat_idx: Optional[List[int]] = None, cat_sizes: Optional[List[int]] = None,
-                 cat_emb_sizes: Optional[List[int]] = None, verbose: bool = False):
+    def __init__(self,
+                 layers: List[int],
+                 activation: str,
+                 eval_metric: Optional[Metric] = None,
+                 dropout: float = 0,
+                 alpha: float = 0,
+                 beta: float = 0,
+                 num_cont_col: Optional[int] = None,
+                 cat_idx: Optional[List[int]] = None,
+                 cat_sizes: Optional[List[int]] = None,
+                 cat_emb_sizes: Optional[List[int]] = None,
+                 verbose: bool = False):
         """
         Sets protected attributes using parent's constructor
 
@@ -245,31 +273,41 @@ class MLPBinaryClassifier(MLP):
             alpha: L1 penalty coefficient
             beta: L2 penalty coefficient
             num_cont_col: number of numerical continuous columns
-                          (equal to number of class in the case of classification)
             cat_idx: idx of categorical columns in the dataset
             cat_sizes: list of integer representing the size of each categorical column
             cat_emb_sizes: list of integer representing the size of each categorical embedding
         """
         eval_metric = eval_metric if eval_metric is not None else BinaryCrossEntropy()
-        super().__init__(output_size=1, layers=layers, activation=activation,
-                         criterion=BCEWithLogitsLoss(reduction='none'), criterion_name='WBCE',
-                         eval_metric=eval_metric, dropout=dropout, alpha=alpha, beta=beta,
-                         num_cont_col=num_cont_col, cat_idx=cat_idx, cat_sizes=cat_sizes,
-                         cat_emb_sizes=cat_emb_sizes, verbose=verbose)
+        super().__init__(output_size=1,
+                         layers=layers,
+                         activation=activation,
+                         criterion=BCEWithLogitsLoss(reduction='none'),
+                         criterion_name='WBCE',
+                         eval_metric=eval_metric,
+                         dropout=dropout,
+                         alpha=alpha,
+                         beta=beta,
+                         num_cont_col=num_cont_col,
+                         cat_idx=cat_idx,
+                         cat_sizes=cat_sizes,
+                         cat_emb_sizes=cat_emb_sizes,
+                         verbose=verbose)
 
-    def predict_proba(self, dataset: PetaleDataset, mask: Optional[List[int]] = None) -> tensor:
+    def predict_proba(self,
+                      dataset: PetaleDataset,
+                      mask: Optional[List[int]] = None) -> tensor:
         """
         Returns the probabilities of being in class 1 for all samples
         in a particular set (default = test)
 
         Args:
-            dataset: PetaleDatasets which items are tuples (x, y, idx) where
+            dataset: PetaleDatasets which its items are tuples (x, y, idx) where
                      - x : (N,D) tensor or array with D-dimensional samples
                      - y : (N,) tensor or array with classification labels
                      - idx : (N,) tensor or array with idx of samples according to the whole dataset
             mask: List of dataset idx for which we want to predict proba
 
-        Returns: (N,) tensor or array
+        Returns: (N,) tensor
         """
         # We set the mask
         mask = mask if mask is not None else dataset.test_mask
@@ -280,7 +318,7 @@ class MLPBinaryClassifier(MLP):
         # Set model for evaluation
         self.eval()
 
-        # Execute a forward pass and apply a softmax
+        # Execute a forward pass and apply a sigmoid
         with no_grad():
             return sigmoid(self(x))
 
@@ -289,11 +327,18 @@ class MLPRegressor(MLP):
     """
     Multilayer perceptron model with entity embedding
     """
-    def __init__(self, layers: List[int], activation: str,
-                 eval_metric: Optional[Metric] = None, dropout: float = 0,
-                 alpha: float = 0, beta: float = 0, num_cont_col: Optional[int] = None,
-                 cat_idx: Optional[List[int]] = None, cat_sizes: Optional[List[int]] = None,
-                 cat_emb_sizes: Optional[List[int]] = None, verbose: bool = False):
+    def __init__(self,
+                 layers: List[int],
+                 activation: str,
+                 eval_metric: Optional[Metric] = None,
+                 dropout: float = 0,
+                 alpha: float = 0,
+                 beta: float = 0,
+                 num_cont_col: Optional[int] = None,
+                 cat_idx: Optional[List[int]] = None,
+                 cat_sizes: Optional[List[int]] = None,
+                 cat_emb_sizes: Optional[List[int]] = None,
+                 verbose: bool = False):
         """
         Sets protected attributes using parent's constructor
 
@@ -305,30 +350,41 @@ class MLPRegressor(MLP):
             alpha: L1 penalty coefficient
             beta: L2 penalty coefficient
             num_cont_col: number of numerical continuous columns
-                          (equal to number of class in the case of classification)
             cat_idx: idx of categorical columns in the dataset
             cat_sizes: list of integer representing the size of each categorical column
             cat_emb_sizes: list of integer representing the size of each categorical embedding
         """
         eval_metric = eval_metric if eval_metric is not None else RootMeanSquaredError()
-        super().__init__(output_size=1, layers=layers, activation=activation,
-                         criterion=MSELoss(reduction='none'), criterion_name='MSE',
-                         eval_metric=eval_metric, dropout=dropout, alpha=alpha, beta=beta,
-                         num_cont_col=num_cont_col, cat_idx=cat_idx, cat_sizes=cat_sizes,
-                         cat_emb_sizes=cat_emb_sizes, verbose=verbose)
+        super().__init__(output_size=1,
+                         layers=layers,
+                         activation=activation,
+                         criterion=MSELoss(reduction='none'),
+                         criterion_name='MSE',
+                         eval_metric=eval_metric,
+                         dropout=dropout,
+                         alpha=alpha,
+                         beta=beta,
+                         num_cont_col=num_cont_col,
+                         cat_idx=cat_idx,
+                         cat_sizes=cat_sizes,
+                         cat_emb_sizes=cat_emb_sizes,
+                         verbose=verbose)
 
-    def predict(self, dataset: PetaleDataset, mask: Optional[List[int]] = None) -> tensor:
+    def predict(self,
+                dataset: PetaleDataset,
+                mask: Optional[List[int]] = None) -> tensor:
         """
-        Returns the predicted real-valued targets for all samples in the test set
+        Returns the predicted real-valued targets for all samples
+        in a particular set (default = test)
 
         Args:
-            dataset: PetaleDatasets which items are tuples (x, y, idx) where
+            dataset: PetaleDatasets which its items are tuples (x, y, idx) where
                      - x : (N,D) tensor or array with D-dimensional samples
                      - y : (N,) tensor or array with classification labels
                      - idx : (N,) tensor or array with idx of samples according to the whole dataset
             mask: List of dataset idx for which we want to make predictions
 
-        Returns: (N,) array
+        Returns: (N,) tensor
         """
         # We set the mask
         mask = mask if mask is not None else dataset.test_mask
@@ -339,6 +395,6 @@ class MLPRegressor(MLP):
         # Set model for evaluation
         self.eval()
 
-        # Execute a forward pass and apply a softmax
+        # Execute a forward pass
         with no_grad():
             return self(x)

@@ -1,7 +1,12 @@
 """
+Filename: custom_torch_base.py
 Author: Nicolas Raymond
+Description: Defines the abstract class TorchCustomModel from which all custom pytorch models
+             implemented for the project must inherit. This class allows to store common
+             function of all pytorch models.
 
-This file is used to store the base skeleton of custom pytorch models
+Date of last modification: 2021/10/19
+
 """
 
 from abc import ABC, abstractmethod
@@ -19,21 +24,26 @@ from typing import Callable, Optional, Tuple, Union
 
 class TorchCustomModel(Module, ABC):
     """
-    Use to store common protected attribute of torch custom models
-    and loss function with elastic net penalty
+    Abstract class used to store common attributes
+    and methods of torch models implemented in the project
     """
-    def __init__(self, criterion: Callable, criterion_name: str, eval_metric: Metric,
-                 alpha: float = 0, beta: float = 0, verbose: bool = False):
+    def __init__(self,
+                 criterion: Callable,
+                 criterion_name: str,
+                 eval_metric: Metric,
+                 alpha: float = 0,
+                 beta: float = 0,
+                 verbose: bool = False):
         """
-        Sets protected attributes
+        Sets the protected attributes
 
         Args:
             criterion: loss function of our model
-            criterion_name: name of the loss function of our model
-            eval_metric: name of the loss function of our model
+            criterion_name: name of the loss function
+            eval_metric: evaluation metric of our model (Ex. accuracy, mean absolute error)
             alpha: L1 penalty coefficient
             beta: L2 penalty coefficient
-            verbose: True if we want trace of the training progress
+            verbose: True if we want to print the training progress
         """
         Module.__init__(self)
         self._alpha = alpha
@@ -45,24 +55,28 @@ class TorchCustomModel(Module, ABC):
         self._optimizer = None
         self._verbose = verbose
 
-    def _create_validation_objects(self, dataset: PetaleDataset, valid_batch_size: Optional[int], patience: int
+    def _create_validation_objects(self,
+                                   dataset: PetaleDataset,
+                                   valid_batch_size: Optional[int],
+                                   patience: int
                                    ) -> Tuple[Optional[EarlyStopper],
-                                              Optional[Union[DataLoader, Tuple[DataLoader, PetaleStaticGNNDataset]]]]:
+                                              Optional[Union[DataLoader,
+                                                             Tuple[DataLoader,
+                                                                   PetaleStaticGNNDataset]]]]:
         """
-        Creates the object used for validation during the training
+        Creates the object needed for validation during the training process
 
         Args:
-            dataset: PetaleDataset used to feed data loaders
+            dataset: PetaleDataset used to feed the dataloader
             valid_batch_size: size of the batches in the valid loader (None = one single batch)
-            patience: Number of consecutive epochs without improvement
+            patience: number of consecutive epochs without improvement allowed
 
-        Returns: early stopper, (Dataloader, PetaleDataset)
+        Returns: EarlyStopper, (Dataloader, PetaleDataset)
 
         """
-        # We create the valid data loader
+        # We create the valid dataloader (if valid size != 0)
         valid_size, valid_data, early_stopper = len(dataset.valid_mask), None, None
 
-        # If we need a validation set, we set the variables with real values
         if valid_size != 0:
 
             # We check if a valid batch size was provided
@@ -81,7 +95,7 @@ class TorchCustomModel(Module, ABC):
 
     def _generate_progress_func(self, max_epochs: int) -> Callable:
         """
-        Defines a function that updates the training progress
+        Builds a function that updates the training progress in the terminal
 
         Args:
             max_epochs: maximum number of training epochs
@@ -98,19 +112,24 @@ class TorchCustomModel(Module, ABC):
 
         return update_progress
 
-    def fit(self, dataset: PetaleDataset, lr: float, batch_size: int = 55,
-            valid_batch_size: Optional[int] = None, max_epochs: int = 200, patience: int = 15,
+    def fit(self,
+            dataset: PetaleDataset,
+            lr: float,
+            batch_size: int = 55,
+            valid_batch_size: Optional[int] = None,
+            max_epochs: int = 200,
+            patience: int = 15,
             sample_weights: Optional[tensor] = None) -> None:
         """
         Fits the model to the training data
 
         Args:
-            dataset: PetaleDataset used to feed data loaders
+            dataset: PetaleDataset used to feed the dataloaders
             lr: learning rate
             batch_size: size of the batches in the training loader
             valid_batch_size: size of the batches in the valid loader (None = one single batch)
             max_epochs: Maximum number of epochs for training
-            patience: Number of consecutive epochs without improvement
+            patience: Number of consecutive epochs without improvement allowed
             sample_weights: (N,) tensor with weights of the samples in the training set
 
         Returns: None
@@ -121,7 +140,7 @@ class TorchCustomModel(Module, ABC):
         # We create the training objects
         train_data = self._create_train_objects(dataset, batch_size)
 
-        # We create validation objects
+        # We create the objects needed for validation
         early_stopper, valid_data = self._create_validation_objects(dataset, valid_batch_size, patience)
 
         # We init the update function
@@ -137,7 +156,7 @@ class TorchCustomModel(Module, ABC):
             mean_epoch_loss = self._execute_train_step(train_data, sample_weights)
             update_progress(epoch, mean_epoch_loss)
 
-            # We proceed to calculate valid mean epoch loss and apply early stopping if needed
+            # We calculate valid mean epoch loss and apply early stopping if needed
             if self._execute_valid_step(valid_data, early_stopper):
                 print(f"\nEarly stopping occurred at epoch {epoch} with best_epoch = {epoch - patience}"
                       f" and best_val_{self._eval_metric.name} = {round(early_stopper.val_score_min, 4)}")
@@ -149,12 +168,15 @@ class TorchCustomModel(Module, ABC):
             self.load_state_dict(early_stopper.get_best_params())
             early_stopper.remove_checkpoint()
 
-    def loss(self, sample_weights: tensor, pred: tensor, y: tensor) -> tensor:
+    def loss(self,
+             sample_weights: tensor,
+             pred: tensor,
+             y: tensor) -> tensor:
         """
         Calls the criterion and add elastic penalty
 
         Args:
-            sample_weights: (N,) tensor with weights of samples on which we calculate loss
+            sample_weights: (N,) tensor with weights of samples on which we calculate the loss
             pred: (N, C) tensor if classification with C classes, (N,) tensor for regression
             y: (N,) tensor with targets
 

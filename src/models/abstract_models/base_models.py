@@ -24,7 +24,8 @@ class PetaleBinaryClassifier(ABC):
     """
     Skeleton of all Petale binary classification models
     """
-    def __init__(self, classification_threshold: float = 0.5,
+    def __init__(self,
+                 classification_threshold: float = 0.5,
                  weight:  Optional[float] = None,
                  train_params: Optional[Dict[str, Any]] = None):
         """
@@ -56,7 +57,9 @@ class PetaleBinaryClassifier(ABC):
     def weight(self) -> Optional[float]:
         return self._weight
 
-    def find_optimal_threshold(self, dataset: PetaleDataset, metric: BinaryClassificationMetric) -> None:
+    def find_optimal_threshold(self,
+                               dataset: PetaleDataset,
+                               metric: BinaryClassificationMetric) -> None:
         """
         Finds the optimal classification threshold for a binary classification task
         according to a given metric.
@@ -147,7 +150,9 @@ class PetaleBinaryClassifier(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def predict_proba(self, dataset: PetaleDataset, mask: Optional[List[int]] = None) -> Union[tensor, array]:
+    def predict_proba(self,
+                      dataset: PetaleDataset,
+                      mask: Optional[List[int]] = None) -> Union[tensor, array]:
         """
         Returns the probabilities of being in class 1 for all samples
         in a particular set (default = test)
@@ -220,7 +225,9 @@ class PetaleRegressor(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def predict(self, dataset: PetaleDataset, mask: Optional[List[int]] = None) -> Union[tensor, array]:
+    def predict(self,
+                dataset: PetaleDataset,
+                mask: Optional[List[int]] = None) -> Union[tensor, array]:
         """
         Returns the predicted real-valued targets for all samples in a
         particular set (default = test)

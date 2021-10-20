@@ -110,17 +110,16 @@ class PetaleBinaryClassifier(ABC):
         n0 = y_train.shape[0] - n1      # number of samples with label 0
         w0, w1 = (1 - self.weight) / n0, self.weight / n1  # sample weight for C0, sample weight for C1
 
-        # We save the weights in the appropriate format and multiply them with
-        # a constant to have an impact with low learning rate
+        # We save the weights in the appropriate format
         if not is_tensor(y_train):
             sample_weights = npzeros(y_train.shape)
-            sample_weights[npwhere(y_train == 0)] = w0 * 10
-            sample_weights[npwhere(y_train == 1)] = w1 * 10
+            sample_weights[npwhere(y_train == 0)] = w0
+            sample_weights[npwhere(y_train == 1)] = w1
 
         else:
             sample_weights = thzeros(y_train.shape)
-            sample_weights[thwhere(y_train == 0)] = w0 * 10
-            sample_weights[thwhere(y_train == 1)] = w1 * 10
+            sample_weights[thwhere(y_train == 0)] = w0
+            sample_weights[thwhere(y_train == 1)] = w1
 
         return sample_weights
 

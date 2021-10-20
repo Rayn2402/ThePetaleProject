@@ -14,7 +14,7 @@ from src.data.processing.datasets import PetaleDataset, PetaleStaticGNNDataset
 from src.training.early_stopping import EarlyStopper
 from src.utils.score_metrics import Metric
 from src.utils.visualization import visualize_epoch_progression
-from torch import tensor, mean, zeros_like, ones
+from torch import ones, sum, tensor, zeros_like
 from torch.nn import Module
 from torch.nn.functional import l1_loss, mse_loss
 from torch.optim import Adam
@@ -184,8 +184,8 @@ class TorchCustomModel(Module, ABC):
         """
         # Computations of penalties
         flatten_params = [w.view(-1, 1) for w in self.parameters()]
-        l1_penalty = mean(tensor([l1_loss(w, zeros_like(w)) for w in flatten_params]))
-        l2_penalty = mean(tensor([mse_loss(w, zeros_like(w)) for w in flatten_params]))
+        l1_penalty = sum(tensor([l1_loss(w, zeros_like(w)) for w in flatten_params]))
+        l2_penalty = sum(tensor([mse_loss(w, zeros_like(w)) for w in flatten_params]))
 
         # Computation of loss without reduction
         loss = self._criterion(pred, y.float())  # (N,) tensor

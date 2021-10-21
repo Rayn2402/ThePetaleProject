@@ -323,9 +323,9 @@ class HANBinaryClassifier(HAN):
 
         Args:
             dataset: PetaleDatasets which items are tuples (x, y, idx) where
-                     - x : (N,D) tensor or array with D-dimensional samples
-                     - y : (N,) tensor or array with classification labels
-                     - idx : (N,) tensor or array with idx of samples according to the whole dataset
+                     - x : (N,D) tensor with D-dimensional samples
+                     - y : (N,) tensor with classification labels
+                     - idx : (N,) tensor with idx of samples according to the whole dataset
             mask: List of dataset idx for which we want to predict proba
 
         Returns: (N,) tensor or array
@@ -379,9 +379,9 @@ class HANRegressor(HAN):
 
         Args:
             dataset: PetaleDatasets which items are tuples (x, y, idx) where
-                     - x : (N,D) tensor or array with D-dimensional samples
-                     - y : (N,) tensor or array with classification labels
-                     - idx : (N,) tensor or array with idx of samples according to the whole dataset
+                     - x : (N,D) tensor with D-dimensional samples
+                     - y : (N,) tensor with classification labels
+                     - idx : (N,) tensor with idx of samples according to the whole dataset
             mask: List of dataset idx for which we want to predict proba
 
         Returns: (N,) tensor or array

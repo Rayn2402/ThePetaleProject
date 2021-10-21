@@ -1,5 +1,5 @@
 """
-Filename: base_models.py
+Filename: mlp_base_models.py
 
 Authors: Nicolas Raymond
          Mehdi Mitiche

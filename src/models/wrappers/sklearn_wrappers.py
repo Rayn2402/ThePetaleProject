@@ -1,6 +1,6 @@
 """
 
-Filename: mlp_base_models.py
+Filename: sklearn_wrappers.py
 
 Author: Nicolas Raymond
 

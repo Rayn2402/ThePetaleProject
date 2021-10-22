@@ -1,7 +1,13 @@
 """
+
+Filename: mlp_base_models.py
+
 Author: Nicolas Raymond
 
-This file is used to store abstract class to use as wrappers for models with the sklearn API
+Description: This file is used to define the abstract classes
+             used as wrappers for models with the sklearn API
+
+Date of last modification : 2021/10/22
 """
 import os
 import pickle
@@ -16,11 +22,14 @@ class SklearnBinaryClassifierWrapper(PetaleBinaryClassifier):
     """
     Class used as a wrapper for binary classifier with sklearn API
     """
-    def __init__(self, model: Callable, classification_threshold: float = 0.5,
-                 weight: Optional[float] = None, train_params: Optional[Dict[str, Any]] = None):
+    def __init__(self,
+                 model: Callable,
+                 classification_threshold: float = 0.5,
+                 weight: Optional[float] = None,
+                 train_params: Optional[Dict[str, Any]] = None):
 
         """
-        Sets model protected attribute and other protected attributes via parent's constructor
+        Sets the model protected attribute and other protected attributes via parent's constructor
 
         Args:
             model: classification model with sklearn API
@@ -29,7 +38,8 @@ class SklearnBinaryClassifierWrapper(PetaleBinaryClassifier):
             train_params: training parameters proper to model for fit function
         """
         self._model = model
-        super().__init__(classification_threshold=classification_threshold, weight=weight,
+        super().__init__(classification_threshold=classification_threshold,
+                         weight=weight,
                          train_params=train_params)
 
     def fit(self, dataset: PetaleDataset) -> None:
@@ -37,35 +47,37 @@ class SklearnBinaryClassifierWrapper(PetaleBinaryClassifier):
         Fits the model to the training data
 
         Args:
-            dataset: PetaleDatasets which items are tuples (x, y, idx) where
-                     - x : (N,D) tensor or array with D-dimensional samples
-                     - y : (N,) tensor or array with classification labels
-                     - idx : (N,) tensor or array with idx of samples according to the whole dataset
+            dataset: PetaleDatasets which its items are tuples (x, y, idx) where
+                     - x : (N,D) array with D-dimensional samples
+                     - y : (N,) array with classification labels
+                     - idx : (N,) array with idx of samples according to the whole dataset
 
         Returns: None
         """
         # We extract train set
         x_train, y_train, _ = dataset[dataset.train_mask]
 
-        # We get sample weights
+        # We get the sample weights
         sample_weights = self.get_sample_weights(y_train)
 
         # Call the fit method
         self._model.fit(x_train, y_train, sample_weight=sample_weights, **self.train_params)
 
-    def predict_proba(self, dataset: PetaleDataset, mask: Optional[List[int]] = None) -> array:
+    def predict_proba(self,
+                      dataset: PetaleDataset,
+                      mask: Optional[List[int]] = None) -> array:
         """
         Returns the probabilities of being in class 1 for all samples
         in a particular set (default = test)
 
         Args:
-            dataset: PetaleDatasets which items are tuples (x, y, idx) where
+            dataset: PetaleDatasets which its items are tuples (x, y, idx) where
                      - x : (N,D) array with D-dimensional samples
                      - y : (N,) array with classification labels
                      - idx : (N,) array with idx of samples according to the whole dataset
             mask: List of dataset idx for which we want to predict proba
 
-        Returns: (N,) tensor or array
+        Returns: (N,) array
         """
         # We set the mask
         mask = mask if mask is not None else dataset.test_mask
@@ -73,14 +85,14 @@ class SklearnBinaryClassifierWrapper(PetaleBinaryClassifier):
         # We extract the appropriate set
         x, _, _ = dataset[mask]
 
-        # Call predict_proba method, takes the prediction for class 1 and squeeze the array
+        # Call predict_proba method and takes the prediction for class 1
         proba = self._model.predict_proba(x)[:, 1]
 
         return proba.squeeze()
 
     def save_model(self, path: str) -> None:
         """
-        Saves the model
+        Saves the model to the given path
 
         Args:
             path: save path
@@ -96,9 +108,11 @@ class SklearnRegressorWrapper(PetaleRegressor):
     """
     Class used as a wrapper for regression model with sklearn API
     """
-    def __init__(self, model: Callable, train_params: Optional[Dict[str, Any]] = None):
+    def __init__(self,
+                 model: Callable,
+                 train_params: Optional[Dict[str, Any]] = None):
         """
-        Sets the model protected attribute
+        Sets the model protected attribute and the training params using parent's constructor
 
         Args:
             model: regression model with sklearn API
@@ -112,9 +126,10 @@ class SklearnRegressorWrapper(PetaleRegressor):
         Fits the model to the training data
 
         Args:
-            dataset: PetaleDatasets which items are tuples (x, y) where
-                     - x : (N,D) tensor or array with D-dimensional samples
-                     - y : (N,) tensor or array with classification labels
+            dataset: PetaleDatasets which its items are tuples (x, y) where
+                     - x : (N,D) array with D-dimensional samples
+                     - y : (N,) array with classification labels
+                     - idx : (N,) array with idx of samples according to the whole dataset
 
         Returns: None
         """
@@ -124,15 +139,18 @@ class SklearnRegressorWrapper(PetaleRegressor):
         # Call the fit method
         self._model.fit(x_train, y_train, **self.train_params)
 
-    def predict(self, dataset: PetaleDataset, mask: Optional[List[int]] = None) -> array:
+    def predict(self,
+                dataset: PetaleDataset,
+                mask: Optional[List[int]] = None) -> array:
         """
-        Returns the predicted real-valued targets for all samples in the test set
+        Returns the predicted real-valued targets for all samples in
+        a particular set (default = test)
 
         Args:
-            dataset: PetaleDatasets which items are tuples (x, y, idx) where
-                     - x : (N,D) tensor or array with D-dimensional samples
-                     - y : (N,) tensor or array with classification labels
-                     - idx : (N,) tensor or array with idx of samples according to the whole dataset
+            dataset: PetaleDatasets which its items are tuples (x, y, idx) where
+                     - x : (N,D) array with D-dimensional samples
+                     - y : (N,) array with classification labels
+                     - idx : (N,) array with idx of samples according to the whole dataset
             mask: List of dataset idx for which we want to make predictions
 
         Returns: (N,) array
@@ -148,7 +166,7 @@ class SklearnRegressorWrapper(PetaleRegressor):
 
     def save_model(self, path: str) -> None:
         """
-        Saves the model
+        Saves the model to the given path
 
         Args:
             path: save path

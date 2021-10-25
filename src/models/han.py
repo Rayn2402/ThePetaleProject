@@ -17,7 +17,7 @@ from typing import List, Optional
 
 class PetaleBinaryHANC(TorchBinaryClassifierWrapper):
     """
-    Heterogeneous graph attention binary classification network adapted to Petale framework
+    Heterogeneous graph attention binary classification network wrapper for Petale framework
     """
     def __init__(self,
                  meta_paths: List[List[str]],
@@ -88,7 +88,7 @@ class PetaleBinaryHANC(TorchBinaryClassifierWrapper):
 
 class PetaleHANR(TorchRegressorWrapper):
     """
-    Heterogeneous graph attention regression network adapted to Petale framework
+    Heterogeneous graph attention regression network wrapper for Petale framework
     """
     def __init__(self,
                  meta_paths: List[List[str]],

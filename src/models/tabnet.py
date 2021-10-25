@@ -1,66 +1,100 @@
 """
-Author: Nicolas Raymond
+Filename: tabnet.py
 
-This file is used to implement wrappers for TabNet regression and classification models
+Authors: Nicolas Raymond
+
+Description: This file is used to define the regression and classification
+             wrappers TabNet models
+
+Date of last modification : 2021/10/25
 """
 
+
 import os
+
 from numpy import array, ones
+from pytorch_tabnet.tab_model import TabNetClassifier, TabNetRegressor
 from src.data.processing.datasets import PetaleDataset
 from src.models.abstract_models.base_models import PetaleBinaryClassifier, PetaleRegressor
-from src.utils.hyperparameters import NumericalIntHP, NumericalContinuousHP
+from src.utils.hyperparameters import HP, NumericalContinuousHP, NumericalIntHP
 from src.utils.visualization import visualize_epoch_progression
-from pytorch_tabnet.tab_model import TabNetClassifier, TabNetRegressor
-from typing import Optional, List
+from typing import List, Optional
 
 
 class PetaleBinaryTNC(PetaleBinaryClassifier):
     """
-    Class used as a wrapper for TabNet classifier model
+    TabNet classifier model wrapper for the Petale framework
     """
-    def __init__(self, n_d: int = 8, n_a: int = 8, n_steps: int = 3, gamma: float = 1.3, lr: float = 0.1,
-                 beta: float = 0, cat_idx: Optional[List[int]] = None, cat_sizes: Optional[List[int]] = None,
-                 cat_emb_sizes: Optional[List[int]] = None, batch_size: int = 15, max_epochs: int = 200,
-                 patience: int = 15, device='cpu', verbose: bool = False,
-                 classification_threshold: float = 0.5, weight: Optional[float] = None):
+    def __init__(self,
+                 n_d: int = 8,
+                 n_a: int = 8,
+                 n_steps: int = 3,
+                 gamma: float = 1.3,
+                 lr: float = 0.1,
+                 beta: float = 0,
+                 cat_idx: Optional[List[int]] = None,
+                 cat_sizes: Optional[List[int]] = None,
+                 cat_emb_sizes: Optional[List[int]] = None,
+                 batch_size: int = 15,
+                 max_epochs: int = 200,
+                 patience: int = 15,
+                 device='cpu',
+                 verbose: bool = False,
+                 classification_threshold: float = 0.5,
+                 weight: Optional[float] = None):
         """
         Creates a TabNet classifier and sets protected attributes using parent's constructor
 
         Args:
-            n_d: Width of the decision prediction layer. Bigger values gives more capacity to the model
+            n_d: width of the decision prediction layer. Bigger values gives more capacity to the model
                  with the risk of overfitting. Values typically range from 8 to 64.
-            n_a: Width of the attention embedding for each mask. According to the paper
+            n_a: width of the attention embedding for each mask. According to the paper
                  n_d=n_a is usually a good choice.
-            n_steps: Number of steps in the architecture (usually between 3 and 10)
-            gamma: This is the coefficient for feature reusage in the masks. A value close to 1 will make
+            n_steps: number of steps in the architecture (usually between 3 and 10)
+            gamma: coefficient for feature reusage in the masks. A value close to 1 will make
                    mask selection least correlated between layers. Values range from 1.0 to 2.0.
             lr: learning rate
             beta: L2 penalty coefficient
-            cat_idx: List of categorical features indices.
-            cat_sizes: List of categorical features number of modalities
-            cat_emb_sizes: List of embeddings size for each categorical features.
-            batch_size: Number of examples per batch. Large batch sizes are recommended.
-            max_epochs: Maximum number of epochs for training.
-            patience: Number of consecutive epochs without improvement
+            cat_idx: list of categorical features indices.
+            cat_sizes: list of categorical features number of modalities
+            cat_emb_sizes: list of embeddings size for each categorical features.
+            batch_size: number of samples per batch.
+            max_epochs: maximum number of epochs for training.
+            patience: number of consecutive epochs without improvement
             device: 'cpu' or 'gpu'
-            verbose: True to show training loss progression
+            verbose: true to show training loss progression
             classification_threshold: threshold used to classify a sample in class 1
             weight: weight attributed to class 1
         """
         if cat_idx is None:
             cat_idx, cat_sizes, cat_emb_sizes = [], [], 1
 
-        self.__model = TabNetClassifier(n_d=n_d, n_a=n_a, n_steps=n_steps, gamma=gamma,
-                                        cat_idxs=cat_idx, cat_dims=cat_sizes, cat_emb_dim=cat_emb_sizes,
-                                        device_name=device, optimizer_params=dict(lr=lr, weight_decay=beta),
+        # Model creation
+        self.__model = TabNetClassifier(n_d=n_d,
+                                        n_a=n_a,
+                                        n_steps=n_steps,
+                                        gamma=gamma,
+                                        cat_idxs=cat_idx,
+                                        cat_dims=cat_sizes,
+                                        cat_emb_dim=cat_emb_sizes,
+                                        device_name=device,
+                                        optimizer_params=dict(lr=lr, weight_decay=beta),
                                         verbose=int(verbose))
 
         # Call of parent's constructor
-        super().__init__(classification_threshold=classification_threshold, weight=weight,
-                         train_params={'batch_size': batch_size, 'max_epochs': max_epochs, 'patience': patience})
+        super().__init__(classification_threshold=classification_threshold,
+                         weight=weight,
+                         train_params={'batch_size': batch_size,
+                                       'max_epochs': max_epochs,
+                                       'patience': patience})
 
     @staticmethod
-    def get_hps():
+    def get_hps() -> List[HP]:
+        """
+        Returns a list with the hyperparameters associated to the model
+
+        Returns: list of hyperparameters
+        """
         return list(TabNetHP()) + [TabNetHP.WEIGHT]
 
     def fit(self, dataset: PetaleDataset) -> None:
@@ -68,10 +102,10 @@ class PetaleBinaryTNC(PetaleBinaryClassifier):
         Fits the model to the training data
 
         Args:
-            dataset: PetaleDatasets which items are tuples (x, y, idx) where
-                     - x : (N,D) tensor or array with D-dimensional samples
-                     - y : (N,) tensor or array with classification labels
-                     - idx : (N,) tensor or array with idx of samples according to the whole dataset
+            dataset: PetaleDatasets which its items are tuples (x, y, idx) where
+                     - x : (N,D) array with D-dimensional samples
+                     - y : (N,) array with classification labels
+                     - idx : (N,) array with idx of samples according to the whole dataset
 
         Returns: None
         """
@@ -87,7 +121,8 @@ class PetaleBinaryTNC(PetaleBinaryClassifier):
         if sample_weights is None:
             sample_weights = ones(len(y_train))/len(y_train)
 
-        self.__model.fit(x_train, y_train, weights=sample_weights, eval_set=eval_set, eval_metric=["logloss"],
+        self.__model.fit(x_train, y_train, weights=sample_weights,
+                         eval_set=eval_set, eval_metric=["logloss"],
                          **self.train_params)
 
     def plot_evaluations(self, save_path: Optional[str] = None) -> None:
@@ -95,7 +130,7 @@ class PetaleBinaryTNC(PetaleBinaryClassifier):
         Plots the training and valid curves saved
 
         Args:
-            save_path: path were the figures will be saved
+            save_path: path where the figures will be saved
 
         Returns: None
         """
@@ -109,7 +144,9 @@ class PetaleBinaryTNC(PetaleBinaryClassifier):
                                     progression_type=['WBCE'],
                                     path=save_path)
 
-    def predict_proba(self, dataset: PetaleDataset, mask: Optional[List[int]] = None) -> array:
+    def predict_proba(self,
+                      dataset: PetaleDataset,
+                      mask: Optional[List[int]] = None) -> array:
         """
         Returns the probabilities of being in class 1 for all samples
         in a particular set (default = test)
@@ -121,7 +158,7 @@ class PetaleBinaryTNC(PetaleBinaryClassifier):
                      - idx : (N,) array with idx of samples according to the whole dataset
             mask: List of dataset idx for which we want to predict proba
 
-        Returns: (N,) tensor or array
+        Returns: (N,) array
         """
         # We set the mask
         mask = mask if mask is not None else dataset.test_mask
@@ -133,7 +170,7 @@ class PetaleBinaryTNC(PetaleBinaryClassifier):
 
     def save_model(self, path: str) -> None:
         """
-        Saves the model
+        Saves the model to the given path
 
         Args:
             path: save path
@@ -145,47 +182,70 @@ class PetaleBinaryTNC(PetaleBinaryClassifier):
 
 class PetaleTNR(PetaleRegressor):
     """
-    Class used as a wrapper for TabNet regression model
+    TabNet regression model wrapper for the Petale framework
     """
-
-    def __init__(self, n_d: int = 8, n_a: int = 8, n_steps: int = 3, gamma: float = 1.3, lr: float = 0.1,
-                 beta: float = 0, cat_idx: Optional[List[int]] = None, cat_sizes: Optional[List[int]] = None,
-                 cat_emb_sizes: Optional[List[int]] = None, batch_size: int = 15, max_epochs: int = 200,
-                 patience: int = 15, device='cpu', verbose: bool = False):
+    def __init__(self,
+                 n_d: int = 8,
+                 n_a: int = 8,
+                 n_steps: int = 3,
+                 gamma: float = 1.3,
+                 lr: float = 0.1,
+                 beta: float = 0,
+                 cat_idx: Optional[List[int]] = None,
+                 cat_sizes: Optional[List[int]] = None,
+                 cat_emb_sizes: Optional[List[int]] = None,
+                 batch_size: int = 15,
+                 max_epochs: int = 200,
+                 patience: int = 15,
+                 device='cpu',
+                 verbose: bool = False):
         """
-        Creates a TabNet classifier and sets protected attributes using parent's constructor
+        Creates a TabNet regressor and sets protected attributes using parent's constructor
 
         Args:
-            n_d: Width of the decision prediction layer. Bigger values gives more capacity to the model
+            n_d: width of the decision prediction layer. Bigger values gives more capacity to the model
                  with the risk of overfitting. Values typically range from 8 to 64.
-            n_a: Width of the attention embedding for each mask. According to the paper
+            n_a: width of the attention embedding for each mask. According to the paper
                  n_d=n_a is usually a good choice.
-            n_steps: Number of steps in the architecture (usually between 3 and 10)
-            gamma: This is the coefficient for feature reusage in the masks. A value close to 1 will make
+            n_steps: number of steps in the architecture (usually between 3 and 10)
+            gamma: coefficient for feature reusage in the masks. A value close to 1 will make
                    mask selection least correlated between layers. Values range from 1.0 to 2.0.
             lr: learning rate
             beta: L2 penalty coefficient
-            cat_idx: List of categorical features indices.
-            cat_sizes: List of categorical features number of modalities
-            cat_emb_sizes: List of embeddings size for each categorical features.
-            batch_size: Number of examples per batch. Large batch sizes are recommended.
-            max_epochs: Maximum number of epochs for training.
-            patience: Number of consecutive epochs without improvement
+            cat_idx: list of categorical features indices.
+            cat_sizes: list of categorical features number of modalities
+            cat_emb_sizes: list of embeddings size for each categorical features.
+            batch_size: number of examples per batch. Large batch sizes are recommended.
+            max_epochs: maximum number of epochs for training.
+            patience: number of consecutive epochs without improvement
             device: 'cpu' or 'gpu'
-            verbose: True to show training loss progression
+            verbose: true to show training loss progression
         """
         if cat_idx is None:
             cat_idx, cat_sizes, cat_emb_sizes = [], [], 1
 
-        self.__model = TabNetRegressor(n_d=n_d, n_a=n_a, n_steps=n_steps, gamma=gamma,
-                                       cat_idxs=cat_idx, cat_dims=cat_sizes, cat_emb_dim=cat_emb_sizes,
-                                       device_name=device, optimizer_params=dict(lr=lr, weight_decay=beta),
+        self.__model = TabNetRegressor(n_d=n_d,
+                                       n_a=n_a,
+                                       n_steps=n_steps,
+                                       gamma=gamma,
+                                       cat_idxs=cat_idx,
+                                       cat_dims=cat_sizes,
+                                       cat_emb_dim=cat_emb_sizes,
+                                       device_name=device,
+                                       optimizer_params=dict(lr=lr, weight_decay=beta),
                                        verbose=int(verbose))
 
-        super().__init__(train_params={'batch_size': batch_size, 'max_epochs': max_epochs, 'patience': patience})
+        super().__init__(train_params={'batch_size': batch_size,
+                                       'max_epochs': max_epochs,
+                                       'patience': patience})
 
     @staticmethod
-    def get_hps():
+    def get_hps() -> List[HP]:
+        """
+        Returns a list with the hyperparameters associated to the model
+
+        Returns: list of hyperparameters
+        """
         return list(TabNetHP())
 
     def fit(self, dataset: PetaleDataset) -> None:
@@ -193,10 +253,10 @@ class PetaleTNR(PetaleRegressor):
         Fits the model to the training data
 
         Args:
-            dataset: PetaleDatasets which items are tuples (x, y, idx) where
-                     - x : (N,D) tensor or array with D-dimensional samples
-                     - y : (N,) tensor or array with classification labels
-                     - idx : (N,) tensor or array with idx of samples according to the whole dataset
+            dataset: PetaleDatasets which its items are tuples (x, y, idx) where
+                     - x : (N,D) array with D-dimensional samples
+                     - y : (N,) array with classification labels
+                     - idx : (N,) array with idx of samples according to the whole dataset
 
         Returns: None
         """
@@ -230,13 +290,14 @@ class PetaleTNR(PetaleRegressor):
 
     def predict(self, dataset: PetaleDataset, mask: Optional[List[int]] = None) -> array:
         """
-        Returns the predicted real-valued targets for all samples in the test set
+        Returns the predicted real-valued targets for all samples in
+        a particular set (default = test)
 
         Args:
-            dataset: PetaleDatasets which items are tuples (x, y, idx) where
-                     - x : (N,D) tensor or array with D-dimensional samples
-                     - y : (N,) tensor or array with classification labels
-                     - idx : (N,) tensor or array with idx of samples according to the whole dataset
+            dataset: PetaleDatasets which its items are tuples (x, y, idx) where
+                     - x : (N,D) array with D-dimensional samples
+                     - y : (N,) array with classification labels
+                     - idx : (N,) array with idx of samples according to the whole dataset
             mask: List of dataset idx for which we want to make predictions
 
         Returns: (N,) array
@@ -251,7 +312,7 @@ class PetaleTNR(PetaleRegressor):
 
     def save_model(self, path: str) -> None:
         """
-        Saves the model
+        Saves the model to the given path
 
         Args:
             path: save path

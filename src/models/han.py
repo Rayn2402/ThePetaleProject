@@ -5,7 +5,7 @@ Authors: Nicolas Raymond
 
 Description: This file is used to define the regression and classification wrappers for HAN models
 
-Date of last modification : 2021/10/21
+Date of last modification : 2021/10/25
 """
 
 from src.models.abstract_models.han_base_models import HANBinaryClassifier, HANRegressor
@@ -70,8 +70,11 @@ class PetaleBinaryHANC(TorchBinaryClassifierWrapper):
         super().__init__(model=model,
                          classification_threshold=classification_threshold,
                          weight=weight,
-                         train_params={'lr': lr, 'batch_size': batch_size, 'valid_batch_size': valid_batch_size,
-                                       'patience': patience, 'max_epochs': max_epochs})
+                         train_params={'lr': lr,
+                                       'batch_size': batch_size,
+                                       'valid_batch_size': valid_batch_size,
+                                       'patience': patience,
+                                       'max_epochs': max_epochs})
 
     @staticmethod
     def get_hps() -> List[HP]:
@@ -132,8 +135,11 @@ class PetaleHANR(TorchRegressorWrapper):
                              verbose=verbose)
 
         super().__init__(model=model,
-                         train_params={'lr': lr, 'batch_size': batch_size, 'valid_batch_size': valid_batch_size,
-                                       'patience': patience, 'max_epochs': max_epochs})
+                         train_params={'lr': lr,
+                                       'batch_size': batch_size,
+                                       'valid_batch_size': valid_batch_size,
+                                       'patience': patience,
+                                       'max_epochs': max_epochs})
 
     @staticmethod
     def get_hps() -> List[HP]:

@@ -1,6 +1,8 @@
 """
 Filename: base_models.py
+
 Author: Nicolas Raymond
+
 Description: Defines the abstract PetaleRegressor and PetaleBinaryClassifier
              classes that must be used to build every other model in the project.
              It ensures consistency will all hyperparameter tuning functions.

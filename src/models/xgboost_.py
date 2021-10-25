@@ -24,7 +24,9 @@ class PetaleBinaryXGBC(SklearnBinaryClassifierWrapper):
                  max_depth: int = 6,
                  subsample: float = 1,
                  alpha: float = 0,
-                 beta: float = 0, classification_threshold: int = 0.5, weight: Optional[float] = None):
+                 beta: float = 0,
+                 classification_threshold: int = 0.5,
+                 weight: Optional[float] = None):
         """
         Sets protected attributes using parent's constructor
         Args:

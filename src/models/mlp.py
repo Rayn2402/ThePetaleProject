@@ -1,28 +1,47 @@
 """
-Author: Nicolas Raymond
+Filename: mlp.py
 
-This file is use to store the regression and classification wrappers for MLP models
+Authors: Nicolas Raymond
+
+Description: This file is used to define the regression and classification
+             wrappers for MLP models
+
+Date of last modification : 2021/10/25
 """
-from src.models.abstract_models.mlp_base_models import MLPBinaryClassifier, MLPRegressor
+
 from src.models.wrappers.torch_wrappers import TorchBinaryClassifierWrapper, TorchRegressorWrapper
-from src.utils.hyperparameters import CategoricalHP, NumericalIntHP, NumericalContinuousHP
+from src.models.abstract_models.mlp_base_models import MLPBinaryClassifier, MLPRegressor
+from src.utils.hyperparameters import CategoricalHP, HP, NumericalContinuousHP, NumericalIntHP
 from src.utils.score_metrics import Metric, BinaryClassificationMetric
 from typing import List, Optional
 
 
 class PetaleBinaryMLPC(TorchBinaryClassifierWrapper):
     """
-    Multilayer perceptron classification model with entity embedding
+    Multilayer perceptron classification model with entity embedding adapted to Petale framework
     """
-    def __init__(self, n_layer: int, n_unit: int, activation: str,
-                 eval_metric: Optional[BinaryClassificationMetric] = None, dropout: float = 0,
-                 alpha: float = 0, beta: float = 0, lr: float = 0.05, batch_size: int = 55,
-                 valid_batch_size: Optional[int] = None, max_epochs: int = 200, patience: int = 15,
-                 num_cont_col: Optional[int] = None, cat_idx: Optional[List[int]] = None,
-                 cat_sizes: Optional[List[int]] = None, cat_emb_sizes: Optional[List[int]] = None,
-                 verbose: bool = False, classification_threshold: float = 0.5, weight:  Optional[float] = None):
+    def __init__(self,
+                 n_layer: int,
+                 n_unit: int,
+                 activation: str,
+                 eval_metric: Optional[BinaryClassificationMetric] = None,
+                 dropout: float = 0,
+                 alpha: float = 0,
+                 beta: float = 0,
+                 lr: float = 0.05,
+                 batch_size: int = 55,
+                 valid_batch_size: Optional[int] = None,
+                 max_epochs: int = 200,
+                 patience: int = 15,
+                 num_cont_col: Optional[int] = None,
+                 cat_idx: Optional[List[int]] = None,
+                 cat_sizes: Optional[List[int]] = None,
+                 cat_emb_sizes: Optional[List[int]] = None,
+                 verbose: bool = False,
+                 classification_threshold: float = 0.5,
+                 weight:  Optional[float] = None):
         """
-        Build a binary classification MLP and sets protected attributes using parent's constructor
+        Builds a binary classification MLP and sets the protected attributes using parent's constructor
 
         Args:
             n_layer: number of hidden layer
@@ -35,10 +54,9 @@ class PetaleBinaryMLPC(TorchBinaryClassifierWrapper):
             lr: learning rate
             batch_size: size of the batches in the training loader
             valid_batch_size: size of the batches in the valid loader (None = one single batch)
-            max_epochs: Maximum number of epochs for training
-            patience: Number of consecutive epochs without improvement
+            max_epochs: maximum number of epochs for training
+            patience: number of consecutive epochs without improvement
             num_cont_col: number of numerical continuous columns
-                          (equal to number of class in the case of classification)
             cat_idx: idx of categorical columns in the dataset
             cat_sizes: list of integer representing the size of each categorical column
             cat_emb_sizes: list of integer representing the size of each categorical embedding
@@ -46,32 +64,61 @@ class PetaleBinaryMLPC(TorchBinaryClassifierWrapper):
             weight: weight attributed to class 1
         """
         # Model creation
-        model = MLPBinaryClassifier(layers=[n_unit]*n_layer, activation=activation, eval_metric=eval_metric,
-                                    dropout=dropout, alpha=alpha, beta=beta, num_cont_col=num_cont_col,
-                                    cat_idx=cat_idx, cat_sizes=cat_sizes, cat_emb_sizes=cat_emb_sizes,
+        model = MLPBinaryClassifier(layers=[n_unit]*n_layer,
+                                    activation=activation,
+                                    eval_metric=eval_metric,
+                                    dropout=dropout,
+                                    alpha=alpha,
+                                    beta=beta,
+                                    num_cont_col=num_cont_col,
+                                    cat_idx=cat_idx,
+                                    cat_sizes=cat_sizes,
+                                    cat_emb_sizes=cat_emb_sizes,
                                     verbose=verbose)
 
-        super().__init__(model=model, classification_threshold=classification_threshold, weight=weight,
-                         train_params={'lr': lr, 'batch_size': batch_size, 'valid_batch_size': valid_batch_size,
-                                       'patience': patience, 'max_epochs': max_epochs})
+        super().__init__(model=model,
+                         classification_threshold=classification_threshold,
+                         weight=weight,
+                         train_params={'lr': lr,
+                                       'batch_size': batch_size,
+                                       'valid_batch_size': valid_batch_size,
+                                       'patience': patience,
+                                       'max_epochs': max_epochs})
 
     @staticmethod
-    def get_hps():
+    def get_hps() -> List[HP]:
+        """
+        Returns a list with the hyperparameters associated to the model
+
+        Returns: list of hyperparameters
+        """
         return list(MLPHP()) + [MLPHP.WEIGHT]
 
 
 class PetaleMLPR(TorchRegressorWrapper):
     """
-    Class used as a wrapper for MLP regression model
+    Multilayer perceptron regression model with entity embedding adapted to Petale framework
     """
-    def __init__(self, n_layer: int, n_unit: int, activation: str, eval_metric: Optional[Metric] = None,
-                 dropout: float = 0, alpha: float = 0, beta: float = 0, lr: float = 0.05,
-                 batch_size: int = 55, valid_batch_size: Optional[int] = None, max_epochs: int = 200,
-                 patience: int = 15, num_cont_col: Optional[int] = None, cat_idx: Optional[List[int]] = None,
-                 cat_sizes: Optional[List[int]] = None, cat_emb_sizes: Optional[List[int]] = None,
+    def __init__(self,
+                 n_layer: int,
+                 n_unit: int,
+                 activation: str,
+                 eval_metric: Optional[Metric] = None,
+                 dropout: float = 0,
+                 alpha: float = 0,
+                 beta: float = 0,
+                 lr: float = 0.05,
+                 batch_size: int = 55,
+                 valid_batch_size: Optional[int] = None,
+                 max_epochs: int = 200,
+                 patience: int = 15,
+                 num_cont_col: Optional[int] = None,
+                 cat_idx: Optional[List[int]] = None,
+                 cat_sizes: Optional[List[int]] = None,
+                 cat_emb_sizes: Optional[List[int]] = None,
                  verbose: bool = False):
         """
-        Builds and MLP regressor
+        Builds and MLP regression model and sets the protected attributes using parent's constructor
 
         Args:
             n_layer: number of hidden layer
@@ -84,27 +131,41 @@ class PetaleMLPR(TorchRegressorWrapper):
             lr: learning rate
             batch_size: size of the batches in the training loader
             valid_batch_size: size of the batches in the valid loader (None = one single batch)
-            max_epochs: Maximum number of epochs for training
-            patience: Number of consecutive epochs without improvement
+            max_epochs: maximum number of epochs for training
+            patience: number of consecutive epochs without improvement
             num_cont_col: number of numerical continuous columns
-                          (equal to number of class in the case of classification)
             cat_idx: idx of categorical columns in the dataset
             cat_sizes: list of integer representing the size of each categorical column
             cat_emb_sizes: list of integer representing the size of each categorical embedding
         """
         # Creation of the model
-        model = MLPRegressor(layers=[n_unit]*n_layer, activation=activation,
-                             eval_metric=eval_metric, dropout=dropout, alpha=alpha, beta=beta,
-                             num_cont_col=num_cont_col, cat_idx=cat_idx, cat_sizes=cat_sizes,
-                             cat_emb_sizes=cat_emb_sizes, verbose=verbose)
+        model = MLPRegressor(layers=[n_unit]*n_layer,
+                             activation=activation,
+                             eval_metric=eval_metric,
+                             dropout=dropout,
+                             alpha=alpha,
+                             beta=beta,
+                             num_cont_col=num_cont_col,
+                             cat_idx=cat_idx,
+                             cat_sizes=cat_sizes,
+                             cat_emb_sizes=cat_emb_sizes,
+                             verbose=verbose)
 
         # Call of parent's constructor
         super().__init__(model=model,
-                         train_params={'lr': lr, 'batch_size': batch_size, 'valid_batch_size': valid_batch_size,
-                                       'patience': patience, 'max_epochs': max_epochs})
+                         train_params={'lr': lr,
+                                       'batch_size': batch_size,
+                                       'valid_batch_size': valid_batch_size,
+                                       'patience': patience,
+                                       'max_epochs': max_epochs})
 
     @staticmethod
-    def get_hps():
+    def get_hps() -> List[HP]:
+        """
+        Returns a list with the hyperparameters associated to the model
+
+        Returns: list of hyperparameters
+        """
         return list(MLPHP())
 
 

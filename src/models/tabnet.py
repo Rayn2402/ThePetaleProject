@@ -288,7 +288,9 @@ class PetaleTNR(PetaleRegressor):
                                     progression_type=['MSE'],
                                     path=save_path)
 
-    def predict(self, dataset: PetaleDataset, mask: Optional[List[int]] = None) -> array:
+    def predict(self,
+                dataset: PetaleDataset,
+                mask: Optional[List[int]] = None) -> array:
         """
         Returns the predicted real-valued targets for all samples in
         a particular set (default = test)

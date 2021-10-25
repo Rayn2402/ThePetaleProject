@@ -17,7 +17,7 @@ from xgboost import XGBClassifier, XGBRegressor
 
 class PetaleBinaryXGBC(SklearnBinaryClassifierWrapper):
     """
-    XGBoost classifier wrapper for Petale framework
+    XGBoost classifier wrapper for the Petale framework
     """
     def __init__(self,
                  lr: float = 0.3,
@@ -65,7 +65,7 @@ class PetaleBinaryXGBC(SklearnBinaryClassifierWrapper):
 
 class PetaleXGBR(SklearnRegressorWrapper):
     """
-    XGBoost regressor wrapper for Petale framework
+    XGBoost regressor wrapper for the Petale framework
     """
     def __init__(self,
                  lr: float = 0.3,

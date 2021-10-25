@@ -18,7 +18,7 @@ from typing import List, Optional
 
 class PetaleBinaryMLPC(TorchBinaryClassifierWrapper):
     """
-    Multilayer perceptron classification model wrapper for Petale framework
+    Multilayer perceptron classification model wrapper for the Petale framework
     """
     def __init__(self,
                  n_layer: int,
@@ -97,7 +97,7 @@ class PetaleBinaryMLPC(TorchBinaryClassifierWrapper):
 
 class PetaleMLPR(TorchRegressorWrapper):
     """
-    Multilayer perceptron regression model wrapper for Petale framework
+    Multilayer perceptron regression model wrapper for the Petale framework
     """
     def __init__(self,
                  n_layer: int,

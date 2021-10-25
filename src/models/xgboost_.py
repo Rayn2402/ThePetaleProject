@@ -1,31 +1,39 @@
 """
-Author: Nicolas Raymond
+Filename: xgboost_.py
 
-This file is used wrap the xgboost models within PetaleClassifier and PetaleRegressor
-abstract classes.
+Authors: Nicolas Raymond
+
+Description: This file is used to define the regression and classification
+             wrappers for the xgboost models
+
+Date of last modification : 2021/10/25
 """
 
 from src.models.wrappers.sklearn_wrappers import SklearnBinaryClassifierWrapper, SklearnRegressorWrapper
-from src.utils.hyperparameters import CategoricalHP, NumericalContinuousHP, NumericalIntHP
-from typing import Optional
+from src.utils.hyperparameters import HP, NumericalContinuousHP, NumericalIntHP
+from typing import List, Optional
 from xgboost import XGBClassifier, XGBRegressor
 
 
 class PetaleBinaryXGBC(SklearnBinaryClassifierWrapper):
     """
-    XGBoost classifier wrapper
+    XGBoost classifier wrapper for Petale framework
     """
-    def __init__(self, lr: float = 0.3, max_depth: int = 6, subsample: float = 1, alpha: float = 0,
+    def __init__(self,
+                 lr: float = 0.3,
+                 max_depth: int = 6,
+                 subsample: float = 1,
+                 alpha: float = 0,
                  beta: float = 0, classification_threshold: int = 0.5, weight: Optional[float] = None):
         """
-        Sets protected attributes using parent
+        Sets protected attributes using parent's constructor
         Args:
-            lr: Step size shrinkage used in update to prevents overfitting. After each boosting step, we can
+            lr: step size shrinkage used in updates to prevent overfitting. After each boosting step, we can
                 directly get the weights of new features, and eta shrinks the feature weights to make the
                 boosting process more conservative.
-            max_depth: Maximum depth of a tree. Increasing this value will make the model more complex
+            max_depth: maximum depth of a tree. Increasing this value will make the model more complex
                        and more likely to overfit.
-            subsample: Subsample ratio of the training instances. Setting it to 0.5 means that XGBoost would randomly
+            subsample: subsample ratio of the training instances. Setting it to 0.5 means that XGBoost would randomly
                        sample half of the training data prior to growing trees.
             alpha: L1 regularization term on weights.
             beta: L2 regularization term on weights
@@ -44,25 +52,35 @@ class PetaleBinaryXGBC(SklearnBinaryClassifierWrapper):
                          weight=weight)
 
     @staticmethod
-    def get_hps():
+    def get_hps() -> List[HP]:
+        """
+        Returns a list with the hyperparameters associated to the model
+
+        Returns: list of hyperparameters
+        """
         return list(XGBoostHP()) + [XGBoostHP.WEIGHT]
 
 
 class PetaleXGBR(SklearnRegressorWrapper):
     """
-    XGBoost regressor wrapper
+    XGBoost regressor wrapper for Petale framework
     """
-    def __init__(self, lr: float = 0.3, max_depth: int = 6, subsample: float = 1, alpha: float = 0,
+    def __init__(self,
+                 lr: float = 0.3,
+                 max_depth: int = 6,
+                 subsample: float = 1,
+                 alpha: float = 0,
                  beta: float = 0):
         """
-        Sets protected attributes using parent
+        Sets protected attributes using parent's constructor
+
         Args:
-            lr: Step size shrinkage used in update to prevents overfitting. After each boosting step, we can
+            lr: step size shrinkage used in update to prevents overfitting. After each boosting step, we can
                 directly get the weights of new features, and eta shrinks the feature weights to make the
                 boosting process more conservative.
-            max_depth: Maximum depth of a tree. Increasing this value will make the model more complex
+            max_depth: maximum depth of a tree. Increasing this value will make the model more complex
                        and more likely to overfit.
-            subsample: Subsample ratio of the training instances. Setting it to 0.5 means that XGBoost would randomly
+            subsample: subsample ratio of the training instances. Setting it to 0.5 means that XGBoost would randomly
                        sample half of the training data prior to growing trees.
             alpha: L1 regularization term on weights.
             beta: L2 regularization term on weights
@@ -74,7 +92,12 @@ class PetaleXGBR(SklearnRegressorWrapper):
                                             reg_lambda=beta))
 
     @staticmethod
-    def get_hps():
+    def get_hps() -> List[HP]:
+        """
+        Returns a list with the hyperparameters associated to the model
+
+        Returns: list of hyperparameters
+        """
         return list(XGBoostHP())
 
 

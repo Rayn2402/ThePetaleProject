@@ -1,19 +1,24 @@
 """
+Filename: han_base_models.py
+
 Author: Nicolas Raymond
 
-This file stores all components related to Heterogeneous Graph Attention Network (HAN).
-The code was mainly taken from this DGL code example : https://github.com/dmlc/dgl/tree/master/examples/pytorch/han
-"""
+Description: Defines all components related to Heterogeneous Graph Attention Network (HAN).
+             The code was mainly taken from this DGL code example :
+             https://github.com/dmlc/dgl/tree/master/examples/pytorch/han
 
+Date of last modification: 2021/10/26
+
+"""
 
 from dgl import DGLHeteroGraph, metapath_reachable_graph
 from dgl.nn.pytorch import GATConv
 from src.data.processing.datasets import PetaleStaticGNNDataset
 from src.models.abstract_models.custom_torch_base import TorchCustomModel
 from src.training.early_stopping import EarlyStopper
-from src.utils.score_metrics import Metric, BinaryClassificationMetric, BinaryCrossEntropy,\
+from src.utils.score_metrics import BinaryClassificationMetric, BinaryCrossEntropy, Metric, \
     RegressionMetric, SquaredError
-from torch import tensor, softmax, stack, no_grad, ones, sigmoid
+from torch import no_grad, ones, sigmoid, softmax, stack, tensor
 from torch.nn import BCEWithLogitsLoss, Linear, Module, ModuleList, MSELoss, Sequential, Tanh
 from torch.nn.functional import elu
 from torch.utils.data import DataLoader
@@ -24,14 +29,16 @@ class SemanticAttention(Module):
     """
     Attention layer that identifies meta paths' importance
     """
-    def __init__(self, in_size: int, hidden_size: int = 128):
+    def __init__(self,
+                 in_size: int,
+                 hidden_size: int = 128):
         """
         Initializes the layers needed to execute the projection from which
         the semantic attention coefficients are calculated
 
         Args:
-            in_size: Input size of embeddings learned with node level attention
-            hidden_size: Size of the linear projection used to compute semantic attention
+            in_size: input size of embeddings learned with node level attention
+            hidden_size: size of the linear projection used to compute semantic attention
         """
         super(SemanticAttention, self).__init__()
 
@@ -42,7 +49,7 @@ class SemanticAttention(Module):
             Linear(hidden_size, 1, bias=False)
         )
 
-    def forward(self, z: tensor):
+    def forward(self, z: tensor) -> tensor:
         """
         Calculates the final nodes' embeddings combining all embeddings learnt
         within bipartite graphs related to metapaths
@@ -61,19 +68,24 @@ class SemanticAttention(Module):
 
 
 class HANLayer(Module):
-
-    def __init__(self, meta_paths: List[Union[str, List[str]]], in_size: int, out_size: int,
-                 layer_num_heads: int, dropout: float):
-        """
-        Builds a single layer of the Heterogeneous Graph Attention Network model.
-        A layers is composed of :
+    """
+    Represents a single layer of the Heterogeneous Graph Attention Network model.
+    A layers is composed of :
         - One Graph Attention Network for each meta path based graph
         - An additional attention layer to capture meta paths' importance
           and concatenate embedding learnt from every meta paths.
+    """
+    def __init__(self,
+                 meta_paths: List[Union[str, List[str]]],
+                 in_size: int,
+                 out_size: int,
+                 layer_num_heads: int,
+                 dropout: float):
+        """
+        Builds a single layer of the Heterogeneous Graph Attention Network model.
 
         Args:
-            meta_paths: List of metapaths, each meta path is
-                        a list of edge types or a string of a single edge type
+            meta_paths: list of metapaths, each meta path is a list of edge types or a string of a single edge type
             in_size: input size (number of features per node)
             out_size: output size (size of the output embedding)
             layer_num_heads: number of attention heads
@@ -86,8 +98,12 @@ class HANLayer(Module):
         # One GAT layer for each meta path based adjacency matrix
         self.gat_layers = ModuleList()
         for i in range(len(meta_paths)):
-            self.gat_layers.append(GATConv(in_size, out_size, layer_num_heads,
-                                           dropout, dropout, activation=elu,
+            self.gat_layers.append(GATConv(in_feats=in_size,
+                                           out_feats=out_size,
+                                           num_heads=layer_num_heads,
+                                           feat_drop=dropout,
+                                           attn_drop=dropout,
+                                           activation=elu,
                                            allow_zero_in_degree=True))
 
         # Semantic attention layer
@@ -100,9 +116,11 @@ class HANLayer(Module):
         self._cached_graph = None
         self._cached_coalesced_graph = {}
 
-    def forward(self, g: DGLHeteroGraph, h: tensor) -> tensor:
+    def forward(self,
+                g: DGLHeteroGraph,
+                h: tensor) -> tensor:
 
-        # We initialize storage for semantic embeddings
+        # We initialize the storage for semantic embeddings
         semantic_embeddings = []
 
         # We create a list of sub graphs associated to each meta path (if it is not done already)
@@ -125,20 +143,32 @@ class HANLayer(Module):
 
 
 class HAN(TorchCustomModel):
-    def __init__(self, meta_paths: List[List[str]], in_size: int, hidden_size: int,
-                 out_size: int, num_heads: List[int], dropout: float,
-                 criterion: Callable, criterion_name: str, eval_metric: Metric,
-                 alpha: float = 0, beta: float = 0, verbose: bool = False
+    """
+    Heterogeneous Graph Attention Network model.
+    """
+    def __init__(self,
+                 meta_paths: List[List[str]],
+                 in_size: int,
+                 hidden_size: int,
+                 out_size: int,
+                 num_heads: List[int],
+                 dropout: float,
+                 criterion: Callable,
+                 criterion_name: str,
+                 eval_metric: Metric,
+                 alpha: float = 0,
+                 beta: float = 0,
+                 verbose: bool = False
                  ):
         """
         Creates n HAN layers, where n is the number of attention heads
 
         Args:
-            meta_paths: List of metapaths, each meta path is a list of edge types
+            meta_paths: list of metapaths, each meta path is a list of edge types
             in_size: input size (number of features per node)
             hidden_size: size of embedding learnt within each attention head
             out_size: output size (number of node in last layer)
-            num_heads: List with int representing the number of attention heads per layer
+            num_heads: list with int representing the number of attention heads per layer
             dropout: dropout probability
             criterion: loss function of our model
             criterion_name: name of the loss function of our model
@@ -147,15 +177,26 @@ class HAN(TorchCustomModel):
             beta: L2 penalty coefficient
         """
         # Call of parent's constructor
-        super().__init__(criterion=criterion, criterion_name=criterion_name, eval_metric=eval_metric,
-                         alpha=alpha, beta=beta, verbose=verbose)
+        super().__init__(criterion=criterion,
+                         criterion_name=criterion_name,
+                         eval_metric=eval_metric,
+                         alpha=alpha,
+                         beta=beta,
+                         verbose=verbose)
 
         # Initialization of layers (nb of layers = length of num heads list)
         self.gnn_layers = ModuleList()
-        self.gnn_layers.append(HANLayer(meta_paths, in_size, hidden_size, num_heads[0], dropout))
+        self.gnn_layers.append(HANLayer(meta_paths=meta_paths,
+                                        in_size=in_size,
+                                        out_size=hidden_size,
+                                        layer_num_heads=num_heads[0],
+                                        dropout=dropout))
         for l in range(1, len(num_heads)):
-            self.gnn_layers.append(HANLayer(meta_paths, hidden_size * num_heads[l-1],
-                                            hidden_size, num_heads[l], dropout))
+            self.gnn_layers.append(HANLayer(meta_paths=meta_paths,
+                                            in_size=hidden_size * num_heads[l-1],
+                                            out_size=hidden_size,
+                                            layer_num_heads=num_heads[l],
+                                            dropout=dropout))
 
         # Addition of linear layer before calculation of the loss
         self.linear_layer = Linear(hidden_size * num_heads[-1], out_size)
@@ -163,7 +204,9 @@ class HAN(TorchCustomModel):
         # Attribute dedicated to training
         self._optimizer = None
 
-    def _execute_train_step(self, train_data: Tuple[DataLoader, PetaleStaticGNNDataset], sample_weights: tensor) -> float:
+    def _execute_train_step(self,
+                            train_data: Tuple[DataLoader, PetaleStaticGNNDataset],
+                            sample_weights: tensor) -> float:
         """
         Executes one training epoch
 
@@ -219,7 +262,8 @@ class HAN(TorchCustomModel):
 
         return mean_epoch_loss
 
-    def _execute_valid_step(self, valid_data: Optional[Tuple[DataLoader, PetaleStaticGNNDataset]],
+    def _execute_valid_step(self,
+                            valid_data: Optional[Tuple[DataLoader, PetaleStaticGNNDataset]],
                             early_stopper: EarlyStopper) -> bool:
         """
         Executes an inference step on the validation data and apply early stopping if needed
@@ -281,7 +325,9 @@ class HAN(TorchCustomModel):
 
         return False
 
-    def forward(self, g: DGLHeteroGraph, h: tensor):
+    def forward(self,
+                g: DGLHeteroGraph,
+                h: tensor) -> tensor:
 
         # We make a forward pass through han layers
         for gnn in self.gnn_layers:

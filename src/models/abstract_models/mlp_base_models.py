@@ -10,7 +10,7 @@ Description: This file is used to define the MLP model with entity embeddings
              and PetaleBinaryClassifier classes. However, two wrapper classes for torch models
              are provided to enable the use of these mlp models with hyperparameter tuning functions.
 
-Date of last modification : 2021/10/20
+Date of last modification : 2021/10/28
 """
 
 from src.models.abstract_models.custom_torch_base import TorchCustomModel
@@ -223,7 +223,7 @@ class MLP(TorchCustomModel):
         Returns: tensor with values of the node from the last layer
 
         """
-        # We initialize list of tensors to concatenate
+        # We initialize a list of tensors to concatenate
         new_x = []
 
         # We extract continuous data
@@ -276,6 +276,7 @@ class MLPBinaryClassifier(MLP):
             cat_idx: idx of categorical columns in the dataset
             cat_sizes: list of integer representing the size of each categorical column
             cat_emb_sizes: list of integer representing the size of each categorical embedding
+            verbose: true to print training progress when fit is called
         """
         eval_metric = eval_metric if eval_metric is not None else BinaryCrossEntropy()
         super().__init__(output_size=1,
@@ -302,10 +303,10 @@ class MLPBinaryClassifier(MLP):
 
         Args:
             dataset: PetaleDatasets which its items are tuples (x, y, idx) where
-                     - x : (N,D) tensor or array with D-dimensional samples
-                     - y : (N,) tensor or array with classification labels
-                     - idx : (N,) tensor or array with idx of samples according to the whole dataset
-            mask: List of dataset idx for which we want to predict proba
+                     - x : (N,D) tensor with D-dimensional samples
+                     - y : (N,) tensor with classification labels
+                     - idx : (N,) tensor with idx of samples according to the whole dataset
+            mask: list of dataset idx for which we want to predict proba
 
         Returns: (N,) tensor
         """
@@ -353,6 +354,7 @@ class MLPRegressor(MLP):
             cat_idx: idx of categorical columns in the dataset
             cat_sizes: list of integer representing the size of each categorical column
             cat_emb_sizes: list of integer representing the size of each categorical embedding
+            verbose: true to print training progress when fit is called
         """
         eval_metric = eval_metric if eval_metric is not None else RootMeanSquaredError()
         super().__init__(output_size=1,
@@ -382,7 +384,7 @@ class MLPRegressor(MLP):
                      - x : (N,D) tensor or array with D-dimensional samples
                      - y : (N,) tensor or array with classification labels
                      - idx : (N,) tensor or array with idx of samples according to the whole dataset
-            mask: List of dataset idx for which we want to make predictions
+            mask: list of dataset idx for which we want to make predictions
 
         Returns: (N,) tensor
         """

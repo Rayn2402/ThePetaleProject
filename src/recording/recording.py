@@ -289,20 +289,21 @@ def set_info(data: Dict[str, Dict[str, Union[List[Union[str, float]], str]]]) ->
                 data[section][key][INFO] = str(dict(counts))
 
 
-def plot_hyperparameter_importance_chart(evaluation_name, recordings_path):
+def plot_hps_importance_chart(evaluation_name: str, recordings_path: str) -> None:
     """
-    Function that will create a bar plot containing information about the mean and the standard deviation of each
-    hyperparameter importance
+    Creates a bar plot containing information about the mean and standard deviation
+    of each hyperparameter's importance.
 
-    :param evaluation_name: String that represents the name of the evaluation
-    :param recordings_path: the path to the recordings folder where we want to save the data
+    Args:
+        evaluation_name: name of the evaluation
+        recordings_path: directory where containing the folders with the results of each split
+
+    Returns: None
 
     """
-    path = os.path.join(recordings_path, evaluation_name)
-    json_file = "general.json"
-
     # We get the content of the json file
-    with open(os.path.join(path, json_file), "r") as read_file:
+    path = os.path.join(recordings_path, evaluation_name)
+    with open(os.path.join(path, SUMMARY_FILE), "r") as read_file:
         data = json.load(read_file)[HYPERPARAMETER_IMPORTANCE]
 
     # We initialize three lists for the values, the errors, and the labels
@@ -314,24 +315,21 @@ def plot_hyperparameter_importance_chart(evaluation_name, recordings_path):
         errors.append(data[key][STD])
         labels.append(key)
 
-    x_pos = arange(len(labels))
-
-    # We sort the values
+    # We sort the list according values
     sorted_values = sorted(values)
     sorted_labels = sorted(labels, key=lambda x: values[labels.index(x)])
     sorted_errors = sorted(errors, key=lambda x: values[errors.index(x)])
 
     # We build the plot
+    x_pos = arange(len(labels))
     fig, ax = plt.subplots(figsize=(10, 7))
-    ax.bar(x_pos, sorted_values,
-           yerr=sorted_errors,
-           capsize=5)
+    ax.bar(x_pos, sorted_values, yerr=sorted_errors, capsize=5)
     ax.set_xticks(x_pos)
     ax.set_xticklabels(sorted_labels)
-    ax.set_title('Hyperparameters importance ')
+    ax.set_title('Hyperparameters importance')
 
     # We save the plot
-    plt.savefig(os.path.join(path, 'hyperparameters_importance_recap.png'))
+    plt.savefig(os.path.join(path, HPS_IMPORTANCE_CHART))
     plt.close()
 
 

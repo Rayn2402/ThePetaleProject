@@ -257,20 +257,33 @@ def get_evaluation_recap(evaluation_name: str, recordings_path: str) -> None:
         json.dump(data, file, indent=True)
 
 
-def set_info(data):
+def set_info(data: Dict[str, Dict[str, Union[List[Union[str, float]], str]]]) -> None:
     """
-    Helper function that transforms the data to a specific format containing the mean, the standard deviation,
-     the median , the min, and the max
+    Adds the mean, the standard deviation, the median, the min and the max
+    to the numerical parameters of each section of the dictionary with the summary.
+
+    Otherwise, counts the number of appearances of the categorical parameters.
+
+    Args:
+        data: dictionary with the summary of results from the splits' records
+
+    Returns: None
+
     """
+    # For each section
     for section in data.keys():
+
+        # For each key of this section
         for key in data[section].keys():
-            if not isinstance(data[section][key][VALUES][0], str):
-                data[section][key][
-                    INFO] = f"{round(mean(data[section][key][VALUES]), 4)} +- {round(std(data[section][key][VALUES]), 4)} " \
-                            f"[{median(data[section][key][VALUES])}; {min(data[section][key][VALUES])}" \
-                            f"-{max(data[section][key][VALUES])}]"
-                data[section][key][MEAN] = mean(data[section][key][VALUES])
-                data[section][key][STD] = std(data[section][key][VALUES])
+
+            # We extract the list of values
+            values = data[section][key][VALUES]
+
+            if not isinstance(values[0], str):
+                mean_, std_ = round(mean(values), 4), round(std(values), 4)
+                data[section][key][INFO] = f"{mean_} +- {std_} [{median(values)}; {min(values)}-{max(values)}]"
+                data[section][key][MEAN] = mean_
+                data[section][key][STD] = std_
             else:
                 counts = Counter(data[section][key][VALUES])
                 data[section][key][INFO] = str(dict(counts))

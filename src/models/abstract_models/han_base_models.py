@@ -17,7 +17,7 @@ from src.data.processing.datasets import PetaleStaticGNNDataset
 from src.models.abstract_models.custom_torch_base import TorchCustomModel
 from src.training.early_stopping import EarlyStopper
 from src.utils.score_metrics import BinaryClassificationMetric, BinaryCrossEntropy, Metric, \
-    RegressionMetric, SquaredError
+    RegressionMetric, RootMeanSquaredError
 from torch import no_grad, ones, sigmoid, softmax, stack, tensor
 from torch.nn import BCEWithLogitsLoss, Linear, Module, ModuleList, MSELoss, Sequential, Tanh
 from torch.nn.functional import elu
@@ -339,42 +339,63 @@ class HAN(TorchCustomModel):
 
 class HANBinaryClassifier(HAN):
     """
-    Heterogeneous graph attention network binary classifier
+    Single layered heterogeneous graph attention network binary classifier
     """
-    def __init__(self, meta_paths: List[List[str]], in_size: int, hidden_size: int,
-                 num_heads: int, dropout: float, eval_metric: Optional[BinaryClassificationMetric] = None,
-                 alpha: float = 0, beta: float = 0, verbose: bool = False
+    def __init__(self,
+                 meta_paths: List[List[str]],
+                 in_size: int,
+                 hidden_size: int,
+                 num_heads: int,
+                 dropout: float,
+                 eval_metric: Optional[BinaryClassificationMetric] = None,
+                 alpha: float = 0,
+                 beta: float = 0,
+                 verbose: bool = False
                  ):
         """
         Sets protected attributes of the HAN model
 
         Args:
-            meta_paths: List of metapaths, each meta path is a list of edge types
+            meta_paths: list of metapaths, each meta path is a list of edge types
             in_size: input size (number of features per node)
             hidden_size: size of embedding learnt within each attention head
             num_heads: int representing the number of attention heads
             dropout: dropout probability
+            eval_metric: evaluation metric
+            alpha: L1 penalty coefficient
+            beta: L2 penalty coefficient
+            verbose: true to print training progress when fit is called
         """
         # Call parent's constructor
         eval_metric = eval_metric if eval_metric is not None else BinaryCrossEntropy()
-        super().__init__(meta_paths=meta_paths, in_size=in_size, hidden_size=hidden_size,
-                         out_size=1, num_heads=[num_heads], dropout=dropout,
-                         criterion=BCEWithLogitsLoss(reduction='none'), criterion_name='WBCE',
-                         eval_metric=eval_metric, alpha=alpha, beta=beta, verbose=verbose)
+        super().__init__(meta_paths=meta_paths,
+                         in_size=in_size,
+                         hidden_size=hidden_size,
+                         out_size=1,
+                         num_heads=[num_heads],
+                         dropout=dropout,
+                         criterion=BCEWithLogitsLoss(reduction='none'),
+                         criterion_name='WBCE',
+                         eval_metric=eval_metric,
+                         alpha=alpha,
+                         beta=beta,
+                         verbose=verbose)
 
-    def predict_proba(self, dataset: PetaleStaticGNNDataset, mask: Optional[List[int]] = None) -> tensor:
+    def predict_proba(self,
+                      dataset: PetaleStaticGNNDataset,
+                      mask: Optional[List[int]] = None) -> tensor:
         """
         Returns the probabilities of being in class 1 for all samples
         in a particular set (default = test)
 
         Args:
-            dataset: PetaleDatasets which items are tuples (x, y, idx) where
+            dataset: PetaleDatasets which its items are tuples (x, y, idx) where
                      - x : (N,D) tensor with D-dimensional samples
                      - y : (N,) tensor with classification labels
                      - idx : (N,) tensor with idx of samples according to the whole dataset
-            mask: List of dataset idx for which we want to predict proba
+            mask: list of dataset idx for which we want to predict proba
 
-        Returns: (N,) tensor or array
+        Returns: (N,) tensor
         """
         # We extract subgraph data (we add training data for graph convolution)
         if mask is not None:
@@ -395,42 +416,63 @@ class HANBinaryClassifier(HAN):
 
 class HANRegressor(HAN):
     """
-    Heterogeneous graph attention network binary classifier
+    Single layered heterogeneous graph attention network regression model
     """
-    def __init__(self, meta_paths: List[List[str]], in_size: int, hidden_size: int,
-                 num_heads: int, dropout: float, eval_metric: Optional[RegressionMetric] = None,
-                 alpha: float = 0, beta: float = 0, verbose: bool = False
+    def __init__(self,
+                 meta_paths: List[List[str]],
+                 in_size: int,
+                 hidden_size: int,
+                 num_heads: int,
+                 dropout: float,
+                 eval_metric: Optional[RegressionMetric] = None,
+                 alpha: float = 0,
+                 beta: float = 0,
+                 verbose: bool = False
                  ):
         """
         Sets protected attributes of the HAN model
 
         Args:
-            meta_paths: List of metapaths, each meta path is a list of edge types
+            meta_paths: list of metapaths, each meta path is a list of edge types
             in_size: input size (number of features per node)
             hidden_size: size of embedding learnt within each attention head
             num_heads: int representing the number of attention heads
             dropout: dropout probability
+            eval_metric: evaluation metric
+            alpha: L1 penalty coefficient
+            beta: L2 penalty coefficient
+            verbose: true to print training progress when fit is called
         """
         # Call parent's constructor
-        eval_metric = eval_metric if eval_metric is not None else SquaredError()
-        super().__init__(meta_paths=meta_paths, in_size=in_size, hidden_size=hidden_size,
-                         out_size=1, num_heads=[num_heads], dropout=dropout,
-                         criterion=MSELoss(reduction='none'), criterion_name='MSE',
-                         eval_metric=eval_metric, alpha=alpha, beta=beta, verbose=verbose)
+        eval_metric = eval_metric if eval_metric is not None else RootMeanSquaredError()
+        super().__init__(meta_paths=meta_paths,
+                         in_size=in_size,
+                         hidden_size=hidden_size,
+                         out_size=1,
+                         num_heads=[num_heads],
+                         dropout=dropout,
+                         criterion=MSELoss(reduction='none'),
+                         criterion_name='MSE',
+                         eval_metric=eval_metric,
+                         alpha=alpha,
+                         beta=beta,
+                         verbose=verbose)
 
-    def predict(self, dataset: PetaleStaticGNNDataset, mask: Optional[List[int]] = None) -> tensor:
+    def predict(self,
+                dataset: PetaleStaticGNNDataset,
+                mask: Optional[List[int]] = None) -> tensor:
         """
         Returns the real-valued predictions for all samples
         in a particular set (default = test)
 
         Args:
-            dataset: PetaleDatasets which items are tuples (x, y, idx) where
+            dataset: PetaleDatasets which its items are tuples (x, y, idx) where
                      - x : (N,D) tensor with D-dimensional samples
                      - y : (N,) tensor with classification labels
                      - idx : (N,) tensor with idx of samples according to the whole dataset
-            mask: List of dataset idx for which we want to predict proba
+            mask: list of dataset idx for which we want to predict target
 
-        Returns: (N,) tensor or array
+        Returns: (N,) tensor
         """
         # We extract subgraph data (we add training data for graph convolution)
         if mask is not None:

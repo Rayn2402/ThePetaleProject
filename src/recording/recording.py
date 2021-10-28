@@ -192,7 +192,8 @@ class Recorder:
                     TARGET: str(target[j].item())}
 
 
-def get_evaluation_recap(evaluation_name: str, recordings_path: str) -> None:
+def get_evaluation_recap(evaluation_name: str,
+                         recordings_path: str) -> None:
     """
     Creates a file with a summary of results from records.json file of each data split
 
@@ -289,7 +290,8 @@ def set_info(data: Dict[str, Dict[str, Union[List[Union[str, float]], str]]]) ->
                 data[section][key][INFO] = str(dict(counts))
 
 
-def plot_hps_importance_chart(evaluation_name: str, recordings_path: str) -> None:
+def plot_hps_importance_chart(evaluation_name: str,
+                              recordings_path: str) -> None:
     """
     Creates a bar plot containing information about the mean and standard deviation
     of each hyperparameter's importance.
@@ -333,86 +335,95 @@ def plot_hps_importance_chart(evaluation_name: str, recordings_path: str) -> Non
     plt.close()
 
 
-def compare_prediction_recordings(evaluations, split_index, recording_path=""):
-    """Function that will plot a scatter plot showing the prediction of multiple experiments and the target value
+def compare_prediction_recordings(evaluations: List[str],
+                                  split_index: int,
+                                  recording_path: str) -> None:
+    """
+    Creates a scatter plot showing the predictions of one or two
+    experiments against the real labels.
 
-    :param evaluations: List of strings representing the names of the evaluations to compare
-    :param split_index: The index of the split we want to compare
-    :param recording_path: the path to the recordings folder where we want to save the data
+    Args:
+        evaluations: list of str representing the names of the evaluations to compare
+        split_index: index of the split we want to compare
+        recording_path: directory that stores the evaluations folder
+
+    Returns: None
     """
 
-    colors = ["blue", "red", "orange"]
-
-    assert len(evaluations) >= 1, "at lest one evaluation must be specified"
-    assert len(evaluations) <= 3, "maximum number of evaluations exceeded"
+    # We check that the number of evaluations provided is 2
+    if not (1 <= len(evaluations) <= 2):
+        raise ValueError("One or two evaluations must be specified")
 
     # We create the paths to recoding files
-    paths = [os.path.join(recording_path, evaluation, f"Split_{split_index}", RECORDS_FILE) for
-             evaluation in evaluations]
-
-    all_data = []
+    paths = [os.path.join(recording_path, e, f"Split_{split_index}", RECORDS_FILE) for e in evaluations]
 
     # We get the data from the recordings
+    all_data = []  # List of dictionaries
     for path in paths:
+
         # We read the record file of the first evaluation
         with open(path, "r") as read_file:
             all_data.append(json.load(read_file))
 
-    comparison_possible = True
-    ids = list(all_data[0][TEST_RESULTS].keys())
-
     # We check if the two evaluations are made on the same patients
-    for i, data in enumerate(all_data):
-        if i == 0:
-            continue
+    comparison_possible = True
+    first_experiment_ids = list(all_data[0][TEST_RESULTS].keys())
+
+    for i, data in enumerate(all_data[1:]):
+
+        # We check the length of both predictions list
         if len(data[TEST_RESULTS]) != len(all_data[0][TEST_RESULTS]):
             comparison_possible = False
             break
-        id_to_compare = list(data[TEST_RESULTS].keys())
 
-        for j, id in enumerate(id_to_compare):
-            if id != ids[j]:
+        # We check ids in both list
+        for j, id_ in enumerate(data[TEST_RESULTS].keys()):
+            if id_ != first_experiment_ids[j]:
                 comparison_possible = False
                 break
 
-    assert comparison_possible is True, "Different patients present in the given evaluations"
+    if not comparison_possible:
+        raise ValueError("Different patients are present in the given evaluations")
 
-    target, ids, all_predictions = [], [], []
+    targets, ids, all_predictions = [], [], []
 
     # We gather the needed data from the recordings
     for i, data in enumerate(all_data):
+
+        # We add an empty list to store predictions
         all_predictions.append([])
-        for id, item in data[TEST_RESULTS].items():
+
+        for id_, item in data[TEST_RESULTS].items():
+
+            # If we have not registered ids and targets yet
             if i == 0:
-                ids.append(id)
-                target.append(float(item[TARGET]))
+                ids.append(id_)
+                targets.append(float(item[TARGET]))
+
             all_predictions[i].append(float(item[PREDICTION]))
 
-    # We sort all the predictions and the ids based on the target
-    indexes = list(range(len(target)))
-    indexes.sort(key=target.__getitem__)
-
-    sorted_all_predictions = []
-    for predictions in all_predictions:
-        sorted_all_predictions.append([predictions[i] for i in indexes])
-    sorted_target = [target[i] for i in indexes]
-    sorted_ids = [ids[i] for i in indexes]
+    # We sort predictions and the ids based on their targets
+    indexes = list(range(len(targets)))
+    indexes.sort(key=lambda x: targets[x])
+    all_predictions = [[predictions[i] for i in indexes] for predictions in all_predictions]
+    targets = [targets[i] for i in indexes]
+    ids = [ids[i] for i in indexes]
 
     # We set some parameters of the plot
     plt.rcParams["figure.figsize"] = (15, 6)
-    plt.rcParams['xtick.labelsize'] = 6
+    plt.rcParams["xtick.labelsize"] = 6
 
     # We create the scatter plot
-    plt.scatter(sorted_ids, sorted_target, color='green', label="target")
-    for i, predictions in enumerate(sorted_all_predictions):
-        plt.scatter(sorted_ids, predictions, color=colors[i], label=evaluations[i])
+    colors = ["blue", "orange"]
+    plt.scatter(ids, targets, color="green", label="ground truth")
+    for i, predictions in enumerate(all_predictions):
+        plt.scatter(ids, predictions, color=colors[i], label=evaluations[i])
 
-    # We add the legend of the plot
+    # We add the legend and the title to the plot
     plt.legend()
-
-    plt.title("Test set predictions and ground truth")
+    plt.title("Predictions and ground truth")
 
     # We save the plot
     plt.savefig(os.path.join(recording_path, evaluations[0], f"Split_{split_index}",
-                             f"""comparison_{"_".join(evaluations)}.png"""))
+                             f"comparison_{'_'.join(evaluations)}.png"))
     plt.close()

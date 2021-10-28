@@ -1,17 +1,21 @@
 """
-Authors : Mehdi Mitiche
-          Nicolas Raymond
+Filename: recording.py
 
-Files that contains the logic to save the results of the experiments
+Authors: Nicolas Raymond
+         Mehdi Mitiche
 
+Description: This file is used to define the Recorder class
+
+Date of last modification : 2021/10/28
 """
+
 import json
 import matplotlib.pyplot as plt
 import os
 import pickle
 
 from collections import Counter
-from numpy import std, min, max, mean, median, arange
+from numpy import arange, max, mean, median, min, std
 from src.models.abstract_models.base_models import PetaleBinaryClassifier, PetaleRegressor
 from src.recording.constants import *
 from torch import tensor, save
@@ -23,8 +27,10 @@ class Recorder:
     """
     Recorder objects used save results of the experiments
     """
-
-    def __init__(self, evaluation_name: str, index: int, recordings_path: str):
+    def __init__(self,
+                 evaluation_name: str,
+                 index: int,
+                 recordings_path: str):
         """
         Sets protected attributes
 
@@ -35,10 +41,16 @@ class Recorder:
         """
 
         # We store the protected attributes
-        self._data = {NAME: evaluation_name, INDEX: index,
-                      DATA_INFO: {}, HYPERPARAMETERS: {},
-                      HYPERPARAMETER_IMPORTANCE: {}, TRAIN_METRICS: {}, TEST_METRICS: {},
-                      COEFFICIENT: {}, TRAIN_RESULTS: {}, TEST_RESULTS: {}}
+        self._data = {NAME: evaluation_name,
+                      INDEX: index,
+                      DATA_INFO: {},
+                      HYPERPARAMETERS: {},
+                      HYPERPARAMETER_IMPORTANCE: {},
+                      TRAIN_METRICS: {},
+                      TEST_METRICS: {},
+                      COEFFICIENT: {},
+                      TRAIN_RESULTS: {},
+                      TEST_RESULTS: {}}
 
         self._path = os.path.join(recordings_path, evaluation_name, f"Split_{index}")
 
@@ -50,14 +62,15 @@ class Recorder:
         Save the protected dictionary into a json file
 
         Returns: None
-
         """
         # We save all the data collected in a json file
-        filepath = os.path.join(self._path, "records.json")
+        filepath = os.path.join(self._path, RECORDS_FILE)
         with open(filepath, "w") as file:
             json.dump(self._data, file, indent=True)
 
-    def record_coefficient(self, name: str, value: float) -> None:
+    def record_coefficient(self,
+                           name: str,
+                           value: float) -> None:
         """
         Saves the value associated to a coefficient (used for linear regression)
 
@@ -69,7 +82,9 @@ class Recorder:
         """
         self._data[COEFFICIENT][name] = value
 
-    def record_data_info(self, data_name: str, data: Any) -> None:
+    def record_data_info(self,
+                         data_name: str,
+                         data: Any) -> None:
         """
         Records the specific value "data" associated to the variable "data_name" in
         the protected dictionary
@@ -91,7 +106,6 @@ class Recorder:
             hyperparameters: dictionary of hyperparameters and their value
 
         Returns: None
-
         """
         # We save all the hyperparameters
         for key in hyperparameters.keys():
@@ -106,7 +120,6 @@ class Recorder:
             hyperparameter_importance: dictionary of hyperparameters and their importance
 
         Returns: None
-
         """
         # We save all the hyperparameters importance
         for key in hyperparameter_importance.keys():
@@ -114,7 +127,7 @@ class Recorder:
 
     def record_model(self, model: Union[PetaleBinaryClassifier, PetaleRegressor]) -> None:
         """
-        Saves a model using pickle or torch save function
+        Saves a model using pickle or torch's save function
 
         Args:
             model: model to save
@@ -130,14 +143,17 @@ class Recorder:
             filepath = os.path.join(self._path, "model.sav")
             pickle.dump(model, open(filepath, "wb"))
 
-    def record_scores(self, score: float, metric: str, test: bool = True) -> None:
+    def record_scores(self,
+                      score: float,
+                      metric: str,
+                      test: bool = True) -> None:
         """
         Saves the score associated to a metric
 
         Args:
             score: float
             metric: name of the metric
-            test: True if the scores are recorded for the test set
+            test: true if the scores are recorded for the test set
 
         Returns: None
 
@@ -146,8 +162,11 @@ class Recorder:
         section = TEST_METRICS if test else TRAIN_METRICS
         self._data[section][metric] = round(score, 6)
 
-    def record_predictions(self, ids: List[str], predictions: tensor,
-                           target: tensor, test: bool = True) -> None:
+    def record_predictions(self,
+                           ids: List[str],
+                           predictions: tensor,
+                           target: tensor,
+                           test: bool = True) -> None:
         """
         Save the predictions of a given model for each patient ids
 
@@ -155,10 +174,9 @@ class Recorder:
             ids: patient/participant ids
             predictions: predicted class or regression value
             target: target value
-            test: True if the predictions are recorded for the test set
+            test: true if the predictions are recorded for the test set
 
         Returns: None
-
         """
         # We save the predictions
         section = TEST_RESULTS if test else TRAIN_RESULTS
@@ -174,99 +192,68 @@ class Recorder:
                     TARGET: str(target[j].item())}
 
 
-def get_evaluation_recap(evaluation_name, recordings_path):
+def get_evaluation_recap(evaluation_name: str, recordings_path: str) -> None:
     """
-    Function that will create a JSON file containing the evaluation recap
+    Creates a file with a summary of results from records.json file of each data split
 
-    :param evaluation_name: The name of the evaluation
-    :param recordings_path: the path to the recordings folder where we want to save the data
+    Args:
+        evaluation_name: name of the evaluation
+        recordings_path: directory where containing the folders with the results of each split
+
+    Returns: None
     """
-    assert os.path.exists(os.path.join(recordings_path, evaluation_name)), "Evaluation not found"
+
+    # We check if the directory with results exists
     path = os.path.join(recordings_path, evaluation_name)
-    json_file = "records.json"
+    if not os.path.exists(path):
+        raise ValueError('Impossible to find the given directory')
+
+    # We sort the folders in the directory according to the split number
     folders = next(os.walk(path))[1]
     folders.sort(key=lambda x: int(x.split("_")[1]))
 
+    # Initialization of an empty dictionary to store the summary
     data = {
         TRAIN_METRICS: {},
-        TEST_METRICS: {}
+        TEST_METRICS: {},
+        HYPERPARAMETER_IMPORTANCE: {},
+        HYPERPARAMETERS: {},
+        COEFFICIENT: {}
     }
-    hyperparameter_importance_keys = None
-    hyperparameters_keys = None
-    metrics_keys = None
-    coefficient_keys = None
+
+    # Initialization of a list of key list that we can found within section of records dictionary
+    key_lists = [None]*4
 
     for folder in folders:
 
         # We open the json file containing the info of each split
-        with open(os.path.join(path, folder, json_file), "r") as read_file:
+        with open(os.path.join(path, folder, RECORDS_FILE), "r") as read_file:
             split_data = json.load(read_file)
 
-        # We collect the info of the different metrics for train and test set
-        if metrics_keys is None:
-            metrics_keys = split_data[TEST_METRICS].keys()
-            for key in metrics_keys:
-                data[TRAIN_METRICS][key] = {VALUES: [], INFO: ""}
-                data[TEST_METRICS][key] = {VALUES: [], INFO: ""}
+        # For each section and their respective key list
+        for section, key_list in zip(data.keys(), key_lists):
 
-        for key in metrics_keys:
-            data[TRAIN_METRICS][key][VALUES].append(split_data[TRAIN_METRICS][key])
-            data[TEST_METRICS][key][VALUES].append(split_data[TEST_METRICS][key])
+            if section in split_data.keys():
 
-        # We collect the info of the different hyperparameter importance
-        if HYPERPARAMETER_IMPORTANCE in split_data.keys():
-            if HYPERPARAMETER_IMPORTANCE not in data.keys():
-                data[HYPERPARAMETER_IMPORTANCE] = {}
-            if hyperparameter_importance_keys is None:
-                hyperparameter_importance_keys = split_data[HYPERPARAMETER_IMPORTANCE].keys()
+                # If the key list is not initialized yet..
+                if key_list is None:
 
-                # We exclude the number of nodes from the hyperparameters importance (to be reviewed)
-                hyperparameter_importance_keys = [key for key in hyperparameter_importance_keys if "n_units" not in key]
-                for key in hyperparameter_importance_keys:
-                    data[HYPERPARAMETER_IMPORTANCE][key] = {
-                        VALUES: [],
-                        INFO: ""
-                    }
-            for key in hyperparameter_importance_keys:
-                data[HYPERPARAMETER_IMPORTANCE][key][VALUES].append(split_data[HYPERPARAMETER_IMPORTANCE][key])
+                    # Initialization of the key list
+                    key_list = split_data[section].keys()
 
-        # We collect the info of the different hyperparameters
-        if HYPERPARAMETERS in split_data.keys():
-            if HYPERPARAMETERS not in data.keys():
-                data[HYPERPARAMETERS] = {}
-            if hyperparameters_keys is None:
-                hyperparameters_keys = split_data[HYPERPARAMETERS].keys()
+                    # Initialization of each individual key section in the dictionary
+                    for key in key_list:
+                        data[section][key] = {VALUES: [], INFO: ""}
 
-                # We exclude the layers from the hyperparameters importance (to be reviewed)
-                hyperparameters_keys = [key for key in hyperparameters_keys if key not in ["layers", "activation"]]
-                for key in hyperparameters_keys:
-                    data[HYPERPARAMETERS][key] = {
-                        VALUES: [],
-                        INFO: ""
-                    }
-            for key in hyperparameters_keys:
-                data[HYPERPARAMETERS][key][VALUES].append(split_data[HYPERPARAMETERS][key])
-
-        # We collect the info of the different coefficient
-        if COEFFICIENT in split_data.keys():
-            if COEFFICIENT not in data.keys():
-                data[COEFFICIENT] = {}
-            if coefficient_keys is None:
-                coefficient_keys = split_data[COEFFICIENT].keys()
-
-                for key in coefficient_keys:
-                    data[COEFFICIENT][key] = {
-                        VALUES: [],
-                        INFO: ""
-                    }
-            for key in coefficient_keys:
-                data[COEFFICIENT][key][VALUES].append(split_data[COEFFICIENT][key])
+                # We add values to each key associated to the current section
+                for key in key_list:
+                    data[section][key][VALUES].append(split_data[section][key])
 
     # We add the info about the mean, the standard deviation, the median , the min, and the max
     set_info(data)
 
-    # We save the json containing the information about the evaluation in general
-    with open(os.path.join(path, "general.json"), "w") as file:
+    # We save the json containing the summary of the records
+    with open(os.path.join(path, SUMMARY_FILE), "w") as file:
         json.dump(data, file, indent=True)
 
 
@@ -349,7 +336,7 @@ def compare_prediction_recordings(evaluations, split_index, recording_path=""):
     assert len(evaluations) <= 3, "maximum number of evaluations exceeded"
 
     # We create the paths to recoding files
-    paths = [os.path.join(recording_path, evaluation, f"Split_{split_index}", "records.json") for
+    paths = [os.path.join(recording_path, evaluation, f"Split_{split_index}", RECORDS_FILE) for
              evaluation in evaluations]
 
     all_data = []

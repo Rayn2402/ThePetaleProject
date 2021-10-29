@@ -1,8 +1,12 @@
 """
-Authors : Mitiche
+Filename: recording.py
 
-File that contains class related to the Early Stopping
+Authors: Nicolas Raymond
+         Mehdi Mitiche
 
+Description: This file is used to define the EarlyStopper class
+
+Date of last modification : 2021/10/29
 """
 
 import numpy as np
@@ -11,7 +15,7 @@ import numpy as np
 from os import path, remove
 from settings.paths import Paths
 from src.utils.score_metrics import Direction
-from torch import save, load, tensor
+from torch import load, save, tensor
 from torch.nn import Module
 from typing import OrderedDict
 from uuid import uuid4
@@ -19,10 +23,12 @@ from uuid import uuid4
 
 class EarlyStopper:
 
-    def __init__(self, patience: int, direction: str):
+    def __init__(self,
+                 patience: int,
+                 direction: str):
         """
         Sets protected attributes of early stopper and define comparison
-         method according to given direction
+        method according to the given direction
 
         Args:
             patience: number of epochs without improvement
@@ -39,15 +45,26 @@ class EarlyStopper:
         if direction == Direction.MINIMIZE:
             self.val_score_min = np.inf
             self.is_better = lambda x, y: x < y
-        else:
+
+        elif direction == Direction.MAXIMIZE:
             self.val_score_min = -np.inf
             self.is_better = lambda x, y: x > y
+        else:
+            raise ValueError(f'direction must be in {list(Direction())}')
 
-    def __call__(self, val_score: float, model: Module) -> None:
+    def __call__(self,
+                 val_score: float,
+                 model: Module) -> None:
         """
-        Method called to perform the early stopping logic
-        """
+        Compares current best validation score against the given one and updates
+        the EarlyStopper's attributes
 
+        Args:
+            val_score: new validation score
+            model: current model for which we've seen the score
+
+        Returns: None
+        """
         # if the score is worst than the best score we increment the counter
         if not self.is_better(val_score, self.val_score_min):
             self.counter += 1
@@ -62,7 +79,7 @@ class EarlyStopper:
             save(model.state_dict(), self.file_path)
             self.counter = 0
 
-    def remove_checkpoint(self):
+    def remove_checkpoint(self) -> None:
         """
         Removes the checkpoint file
         """

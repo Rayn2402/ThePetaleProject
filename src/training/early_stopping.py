@@ -1,5 +1,5 @@
 """
-Filename: recording.py
+Filename: early_stopping.py
 
 Authors: Nicolas Raymond
          Mehdi Mitiche

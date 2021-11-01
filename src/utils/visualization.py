@@ -122,6 +122,8 @@ def visualize_epoch_progression(train_history: List[tensor],
     Returns: None
     """
     plt.figure(figsize=(12, 8))
+
+    # If there is only one plot to show (related to the loss)
     if len(train_history) == 1:
 
         x = range(len(train_history[0]))
@@ -129,22 +131,20 @@ def visualize_epoch_progression(train_history: List[tensor],
         plt.plot(x, valid_history[0], label=f'valid')
 
         plt.legend()
-
         plt.xlabel('Epochs')
         plt.ylabel(progression_type[0])
 
+    # If there are two plots to show (one for the loss and one for the evaluation metric)
     else:
         for i in range(len(train_history)):
 
             nb_epochs = len(train_history[i])
-
             plt.subplot(1, 2, i+1)
             plt.plot(range(nb_epochs), train_history[i], label=f'train')
             if len(valid_history[i]) != 0:
                 plt.plot(range(nb_epochs), valid_history[i], label=f'valid')
 
             plt.legend()
-
             plt.xlabel('Epochs')
             plt.ylabel(progression_type[i])
 

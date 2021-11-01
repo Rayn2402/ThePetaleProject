@@ -1,10 +1,15 @@
 """
-Author: Nicolas Raymond
+Filename: graph.py
 
-This file is used to store the PetaleGraph class
+Authors: Nicolas Raymond
+
+Description: This file is used to define a class called PetaleGraph
+             that was used to test CorrectAndSmooth algorithm.
+
+Date of last modification : 2021/11/01
 """
 
-from numpy import array, cov
+from numpy import cov
 from numpy.linalg import inv
 from src.data.processing.datasets import PetaleDataset
 from src.data.processing.sampling import TRAIN, VALID, TEST
@@ -14,22 +19,27 @@ from typing import Dict, List, Optional
 
 class PetaleGraph:
     """
-    Represents an homogeneous undirected graph
+    Represents an homogeneous undirected graph using edges, degree and weights matrices
     """
-    def __init__(self, dataset: PetaleDataset, cat_cols: Optional[List[str]] = None,
-                 include_distances: bool = False, max_degree: Optional[int] = None):
+    def __init__(self,
+                 dataset: PetaleDataset,
+                 cat_cols: Optional[List[str]] = None,
+                 include_distances: bool = False,
+                 max_degree: Optional[int] = None):
         """
-        Sets the edges, adjacency, weight and degrees matrix
+        Sets the edges, adjacency, weight and degrees matrices
+
         Args:
             dataset: custom dataset with training and test data
             cat_cols: list of categorical columns from which to build the graph, if None
                       all nodes are connected together.
-            include_distances: True if we want to use distance between patient to define edges weights
-            max_degree: Maximum number of degree that a node can have, if None there is no limit.
+            include_distances: true if we want to use distance between patient to define edges weights
+            max_degree: maximum number of degree that a node can have, if None there is no limit.
         """
         
         self.edges = self.build_edges_matrix(dataset, cat_cols)
         self.degrees = self.edges.sum(dim=1).squeeze()
+
         if include_distances:
 
             # We first set the weights as 1/distance
@@ -39,7 +49,7 @@ class PetaleGraph:
             self.weight *= self.edges
 
             # We normalize the weights on each row
-            self.weight /= self.weight.sum(axis=1).reshape(-1, 1)
+            self.weight /= self.weight.sum(dim=1).reshape(-1, 1)
 
         else:
             self.weight = mm(diag(pow(self.degrees, -1)), self.edges)  # Inverse of degrees multiplied by edges
@@ -59,35 +69,41 @@ class PetaleGraph:
             self.weight *= top_k_mask
 
             # We normalize the weights on each row
-            self.weight /= self.weight.sum(axis=1).reshape(-1, 1)
+            self.weight /= self.weight.sum(dim=1).reshape(-1, 1)
 
-    def propagate_labels(self, labels: tensor, r: float, nb_iter: int):
+    def propagate_labels(self,
+                         labels: tensor,
+                         r: float,
+                         nb_iter: int):
         """
         Applies iterative label propagation algorithm
 
         Args:
             labels: (N, ) tensor with ground truth
             r: proportion attributed to original labels throughout iteration
-               (restart probability)
             nb_iter: nb of propagation iteration
 
         Returns: (N, ) tensor with new labels after propagation
         """
-        assert 0 <= r <= 1, "r must be in range [0, 1]"
+        if not (0 <= r <= 1):
+            raise ValueError("r must be in range [0, 1]")
+
         final_labels = labels
         for i in range(nb_iter):
             final_labels = r*labels + (1-r)*mm(self.weight, final_labels)
 
         return final_labels
 
-    def random_walk_with_restart(self, walk_length: int, restart_proba: float) -> tensor:
+    def random_walk_with_restart(self,
+                                 walk_length: int,
+                                 r: float) -> tensor:
         """
-        Approximate stationary distribution of each node using a random walk
+        Approximates stationary distribution of each node using a random walk
         with restart of a given length.
 
         Args:
             walk_length: number of iteration during the random walk
-            restart_proba: probability of restarting at the same node
+            r: probability of restarting at the same node
 
         Returns: (N,N) tensor with approximate stationary distribution
         """
@@ -97,12 +113,13 @@ class PetaleGraph:
 
         # We proceed to random walk iteration
         for i in range(walk_length):
-            p = restart_proba*p_init + (1 - restart_proba)*mm(p, self.weight)
+            p = r*p_init + (1 - r)*mm(p, self.weight)
 
         return p
 
     @staticmethod
-    def build_edges_matrix(dataset: PetaleDataset, cat_cols: Optional[List[str]] = None) -> tensor:
+    def build_edges_matrix(dataset: PetaleDataset,
+                           cat_cols: Optional[List[str]] = None) -> tensor:
         """
         Creates a matrix that stores the number of edges between nodes
         Args:
@@ -117,7 +134,10 @@ class PetaleGraph:
         # We make sure that the given categorical columns are in the dataframe
         if cat_cols is not None:
             for c in cat_cols:
-                assert c in dataset.cat_cols, f"Unrecognized categorical column name : {c}"
+                if c not in dataset.cat_cols:
+                    raise ValueError(f"Unrecognized categorical column name : {c}")
+
+        # Otherwise, each node is connect to all the others
         else:
             return ones(size=(len(dataset), len(dataset))) - eye(len(dataset))
 
@@ -145,6 +165,7 @@ class PetaleGraph:
     def compute_distances(dataset: PetaleDataset) -> tensor:
         """
         Calculates mahalanobis distances between individuals
+
         Args:
             dataset: custom dataset with training and test data
 
@@ -173,24 +194,26 @@ class PetaleGraph:
         return mahalanobis_dist
 
 
-def correct_and_smooth(g: PetaleGraph, pred: tensor, labels: tensor, masks: Dict[str, Optional[List[int]]],
+def correct_and_smooth(g: PetaleGraph,
+                       pred: tensor,
+                       labels: tensor, masks: Dict[str, Optional[List[int]]],
                        r: float, nb_iter: int) -> tensor:
     """
-    Applies correction and smoothing to the original
+    Applies correction and smoothing to the original predictions
+
     Args:
         g: PetaleGraph
-        pred: (N, ) tensor with predictions
-        labels: (N, ) tensor with real labels (ground truth)
+        pred: (N,) tensor with predictions
+        labels: (N,) tensor with real labels (ground truth)
         masks: Dictionary with train, valid and test mask (at least train and test)
         r: proportion attributed to original labels throughout iteration
-               (restart probability)
         nb_iter: nb of propagation iteration
 
-    Returns: (N, ) tensor with corrected and smoothed labels
+    Returns: (N,) tensor with corrected and smoothed labels
 
     """
-    assert (TRAIN in masks.keys()) and (TEST in masks.keys()),\
-        f"{TRAIN} and {TEST} must be in dictionary's keys"
+    if not (TRAIN in masks.keys()) or not (TEST in masks.keys()):
+        raise ValueError(f"{TRAIN} and {TEST} must be in dictionary's keys")
 
     # We extract train and valid masks
     labeled_mask = masks[TRAIN]

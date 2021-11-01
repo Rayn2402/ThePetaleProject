@@ -1,54 +1,49 @@
 """
-Author : Nicolas Raymond
+Filename: visualization.py
 
-This file contains all function related to data visualization
+Authors: Nicolas Raymond
 
+Description: This file contains all function related to data visualization
+
+Date of last modification : 2021/11/01
 """
-from typing import Union, Optional, List
-from torch import tensor
+
 from matplotlib import pyplot as plt
 from numpy import array
 from numpy import sum as npsum
-from sklearn.manifold import TSNE
 from os.path import join
+from sklearn.manifold import TSNE
+from torch import tensor
+from typing import List, Optional, Tuple, Union
 
 
-def compare_predictions(preds: tensor, targets: tensor, title: Union[str, None] = None) -> None:
+def format_to_percentage(pct: float, values: List[float]) -> str:
     """
-    Compares predictions to targets in a 2D scatter plot
+    Change a float to a str representing a percentage
+    Args:
+        pct: count related to a class
+        values: count of items in each class
 
-    :param preds: tuple of (N,) tensors
-    :param title: string to add as title of the plot
-    :param targets: (N,) tensor
+    Returns: str
     """
-    if isinstance(preds, tuple):
-        for pred in preds:
-            plt.scatter(targets, pred)
-    else:
-        plt.scatter(targets, preds)
-
-    if title is not None:
-        plt.title(title)
-
-    plt.xlabel('Ground truth')
-    plt.ylabel('Predictions')
-    plt.show()
-    plt.close()
-
-
-def format_to_percentage(pct, values):
     absolute = int(round(pct/100.*npsum(values)))
     return "{:.1f}%".format(pct, absolute)
 
 
-def visualize_class_distribution(targets: array, label_names: dict, title: Optional[str] = None) -> None:
+def visualize_class_distribution(targets: array,
+                                 label_names: dict,
+                                 title: Optional[str] = None) -> None:
     """
     Shows a pie chart with classes distribution
 
-    :param targets: Sequence of class targets
-    :param label_names: Dictionary with names associated to target values
-    :param title: Title for the plot
+    Args:
+        targets: array of class targets
+        label_names: dictionary with names associated to target values
+        title: title for the plot
+
+    Returns: None
     """
+
     # We first count the number of instances of each value in the targets vector
     label_counts = {v: npsum(targets == k) for k, v in label_names.items()}
 
@@ -57,7 +52,9 @@ def visualize_class_distribution(targets: array, label_names: dict, title: Optio
 
     # Pie chart, where the slices will be ordered and plotted counter-clockwise:
     fig, ax = plt.subplots()
-    wedges, texts, autotexts = ax.pie(label_counts.values(), textprops=dict(color="w"), startangle=90,
+    wedges, texts, autotexts = ax.pie(label_counts.values(),
+                                      textprops=dict(color="w"),
+                                      startangle=90,
                                       autopct=lambda pct: format_to_percentage(pct, list(label_counts.values())))
     ax.legend(wedges, labels,
               title="Labels",
@@ -74,22 +71,30 @@ def visualize_class_distribution(targets: array, label_names: dict, title: Optio
     plt.show()
 
 
-def visualize_embeddings(embeddings: tensor, category_levels: tensor,
-                         perplexity: int = 10, title: Optional[str] = None) -> None:
+def visualize_embeddings(embeddings: tensor,
+                         category_levels: tensor,
+                         perplexity: int = 10,
+                         title: Optional[str] = None) -> None:
     """
     Visualizes embeddings in a 2D space
 
-    :param embeddings: (NxD) tensor
-    :param category_levels: (N,) tensor (with category indices)
-    :param perplexity: (int) perplexity parameter of TSNE
-    :param title: string to add as title of the plot
+    Args:
+        embeddings: (N,D) tensor
+        category_levels: (N,) tensor (with category indices)
+        perplexity: perplexity parameter of TSNE
+        title: title of the plot
+
+    Returns: None
     """
+    # Convert tensor to numpy array
     X = embeddings.numpy()
     y = category_levels.numpy()
 
+    # If the embeddings have more than 2 dimensions, project them with TSNE
     if X.shape[1] > 2:
         X = TSNE(n_components=2, perplexity=perplexity).fit_transform(X)
 
+    # Create the plot
     plt.scatter(X[:, 0], X[:, 1], c=y)
 
     if title is not None:
@@ -101,15 +106,20 @@ def visualize_embeddings(embeddings: tensor, category_levels: tensor,
     plt.close()
 
 
-def visualize_epoch_progression(train_history: List[tensor], valid_history: List[tensor], progression_type: List[str],
+def visualize_epoch_progression(train_history: List[tensor],
+                                valid_history: List[tensor],
+                                progression_type: List[str],
                                 path: str) -> None:
     """
-    Visualizes train and test loss history over training epoch
+    Visualizes train and test loss histories over training epoch
 
-    :param train_history: list of (E,) tensors where E is the number of epochs
-    :param valid_history: list of (E,) tensor
-    :param progression_type: list of string specifying thee type of the progressions to visualize
-    :param path: (string) determines where to save the plots
+    Args:
+        train_history: list of (E,) tensors where E is the number of epochs
+        valid_history: list of (E,) tensor
+        progression_type: list of string specifying the type of the progressions to visualize
+        path: path where to save the plots
+
+    Returns: None
     """
     plt.figure(figsize=(12, 8))
     if len(train_history) == 1:
@@ -122,6 +132,7 @@ def visualize_epoch_progression(train_history: List[tensor], valid_history: List
 
         plt.xlabel('Epochs')
         plt.ylabel(progression_type[0])
+
     else:
         for i in range(len(train_history)):
 

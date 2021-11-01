@@ -1,21 +1,27 @@
 """
-Author : Nicolas Raymond
+Filename: base_models.py
 
-This file contains all transformations related to preprocessing treatment
+Author: Nicolas Raymond
+
+Description: Defines all transformations related to preprocessing treatment
+
+Date of last modification : 2021/11/01
 """
 
-from torch import tensor, from_numpy
-from typing import Optional, Tuple
 import pandas as pd
+
+from torch import from_numpy, tensor
+from typing import Optional, Tuple
 
 
 class ContinuousTransform:
     """
-    Class of transformation that can be applied to continuous data
+    Class of transformations that can be applied to continuous data
     """
 
     @staticmethod
-    def normalize(df: pd.DataFrame, mean: Optional[pd.Series] = None,
+    def normalize(df: pd.DataFrame,
+                  mean: Optional[pd.Series] = None,
                   std: Optional[pd.Series] = None) -> pd.DataFrame:
         """
         Applies normalization to columns of a pandas dataframe
@@ -26,7 +32,8 @@ class ContinuousTransform:
             return (df-df.mean())/df.std()
 
     @staticmethod
-    def fill_missing(df: pd.DataFrame, mean: Optional[pd.Series] = None) -> pd.DataFrame:
+    def fill_missing(df: pd.DataFrame,
+                     mean: Optional[pd.Series] = None) -> pd.DataFrame:
         """
         Fills missing values of continuous data columns with mean
         """
@@ -61,7 +68,8 @@ class CategoricalTransform:
         return pd.get_dummies(df)
 
     @staticmethod
-    def ordinal_encode(df: pd.DataFrame, encodings: Optional[dict] = None) -> Tuple[pd.DataFrame, dict]:
+    def ordinal_encode(df: pd.DataFrame,
+                       encodings: Optional[dict] = None) -> Tuple[pd.DataFrame, dict]:
         """
         Applies ordinal encoding to all columns of the dataframe
         """
@@ -79,7 +87,8 @@ class CategoricalTransform:
         return df, encodings
 
     @staticmethod
-    def fill_missing(df: pd.DataFrame, mode: Optional[pd.Series] = None) -> pd.DataFrame:
+    def fill_missing(df: pd.DataFrame,
+                     mode: Optional[pd.Series] = None) -> pd.DataFrame:
         """
         Fills missing values of continuous data columns with mode
         """

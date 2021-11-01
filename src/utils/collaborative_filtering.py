@@ -2,7 +2,6 @@
 Filename: collaborative_filtering.py
 
 Authors: Nicolas Raymond
-         Mehdi Mitiche
 
 Description: This file is used to store functions related to collaborative filtering
 

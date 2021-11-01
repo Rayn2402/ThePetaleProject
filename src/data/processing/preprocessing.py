@@ -1,11 +1,14 @@
 """
-Authors : Nicolas Raymond
+Filename: preprocessing.py
 
-This files contains all class function related to preprocessing
+Author: Nicolas Raymond
 
+Description: Defines all functions related to preprocessing
+
+Date of last modification : 2021/11/01
 """
 
-from numpy import linspace, quantile, nan
+from numpy import linspace, nan, quantile
 from pandas import DataFrame, Series
 from src.data.processing.transforms import ContinuousTransform as ConT
 from src.data.processing.transforms import CategoricalTransform as CaT
@@ -14,32 +17,40 @@ from typing import Dict, List, Optional, Tuple
 ENCODING = ["ordinal", "one-hot"]
 
 
-def preprocess_continuous(df: DataFrame, mean: Optional[Series] = None,
+def preprocess_continuous(df: DataFrame,
+                          mean: Optional[Series] = None,
                           std: Optional[Series] = None) -> DataFrame:
     """
     Applies all continuous transforms to a dataframe containing only continuous data
 
-    :param df: pandas dataframe
-    :param mean: pandas series with mean
-    :param std: pandas series with standard deviations
-    :return: pandas dataframe
+    Args:
+        df: pandas dataframe
+        mean: pandas series with mean
+        std: pandas series with standard deviations
+
+    Returns: preprocessed dataframe
     """
     return ConT.normalize(ConT.fill_missing(df, mean), mean, std)
 
 
-def preprocess_categoricals(df: DataFrame, encoding: str = "ordinal",
+def preprocess_categoricals(df: DataFrame,
+                            encoding: str = "ordinal",
                             mode: Optional[Series] = None,
                             encodings: Optional[dict] = None) -> Tuple[DataFrame, Optional[dict]]:
     """
     Applies all categorical transforms to a dataframe containing only continuous data
 
-    :param df: pandas dataframe
-    :param encoding: one option in ("ordinal", "one-hot")
-    :param mode: panda series with modes of columns
-    :param encodings: dict of dict with integers to use as encoding for each category's values
-    :return: pandas dataframe, list of encoding sizes
+    Args:
+        df: pandas dataframe
+        encoding: one option in ("ordinal", "one-hot")
+        mode: panda series with modes of columns
+        encodings: dict of dict with integers to use as encoding for each category's values
+
+    Returns:pandas dataframe, dict of encodings
     """
-    assert encoding in ENCODING, 'Encoding option not available'
+
+    if encoding not in ENCODING:
+        raise ValueError("Encoding option not available")
 
     # We ensure that all columns are considered as categories
     df = CaT.fill_missing(df, mode)
@@ -52,17 +63,19 @@ def preprocess_categoricals(df: DataFrame, encoding: str = "ordinal",
         return CaT.one_hot_encode(df), None
 
 
-def preprocess_for_apriori(df: DataFrame, cont_cols: Optional[Dict[str, int]] = None,
+def preprocess_for_apriori(df: DataFrame,
+                           cont_cols: Optional[Dict[str, int]] = None,
                            cat_cols: Optional[List[str]] = None) -> List[List[str]]:
-
     """
     Preprocess a dataframe to work with apriori algorithm
 
-    :param df: pandas dataframe
-    :param cont_cols: dictionary with name of continuous columns as key and number of groups
-                      we want to create as value.
-    :param cat_cols: list of categorical columns
-    :return: list of list
+    Args:
+        df: pandas dataframe
+        cont_cols: dictionary with name of continuous columns as key and number of groups
+                   we want to create as value.
+        cat_cols: list of categorical columns
+
+    Returns: list of list
     """
 
     # Take the subset needed from the dataframe
@@ -87,10 +100,13 @@ def preprocess_for_apriori(df: DataFrame, cont_cols: Optional[Dict[str, int]] = 
     return records
 
 
-def create_groups(df: DataFrame, cont_col: str, nb_group: int) -> DataFrame:
+def create_groups(df: DataFrame,
+                  cont_col: str,
+                  nb_group: int) -> DataFrame:
     """
     Change each value of the column cont_col for its belonging group
     computed using nb_group quantiles
+
     Args:
         df: pandas dataframe
         cont_col: name of the continuous column
@@ -100,7 +116,7 @@ def create_groups(df: DataFrame, cont_col: str, nb_group: int) -> DataFrame:
     """
 
     if nb_group < 2:
-        raise Exception('Must have at least 2 groups')
+        raise ValueError('Must have at least 2 groups')
 
     # We compute number needed to calculate quantiles
     percentage = linspace(0, 1, nb_group+1)[1:-1]
@@ -113,7 +129,7 @@ def create_groups(df: DataFrame, cont_col: str, nb_group: int) -> DataFrame:
 
     # We set few local variables
     group = cont_col.upper()
-    max = df[cont_col].max()
+    max_ = df[cont_col].max()
     quantiles = []
 
     # We compute quantiles
@@ -125,13 +141,16 @@ def create_groups(df: DataFrame, cont_col: str, nb_group: int) -> DataFrame:
     for i in range(1, len(quantiles)):
         j = turn_to_range(df, cont_col, j, quantiles[i], group=f"{group} >{quantiles[i-1]},<={quantiles[i]}")
 
-    _ = turn_to_range(df, cont_col, j, max+1, group=f"{group} >{quantiles[-1]}")
+    _ = turn_to_range(df, cont_col, j, max_+1, group=f"{group} >{quantiles[-1]}")
 
     return df
 
 
-def turn_to_range(df: DataFrame, cont_col: str, start_index: int,
-                  quantile: float, group: str) -> int:
+def turn_to_range(df: DataFrame,
+                  cont_col: str,
+                  start_index: int,
+                  quantile: float,
+                  group: str) -> int:
     """
     Changes categorical values of selected index into a string representing a range
 
@@ -158,6 +177,7 @@ def turn_to_range(df: DataFrame, cont_col: str, start_index: int,
 def remove_nan(record: List[str]) -> List:
     """
     Removes nans from a record
+
     Args:
         record: list of str
 

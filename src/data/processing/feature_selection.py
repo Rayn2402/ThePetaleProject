@@ -1,20 +1,25 @@
 """
-Authors : Nicolas Raymond
+Filename: feature_selection.py
 
-File that stores feature selector object, that removes unimportant features
+Author: Nicolas Raymond
+
+Description: Defines feature selector object, that removes unimportant features
+
+Date of last modification : 2021/11/01
 """
+
 from os.path import join
 from pandas import DataFrame
-from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from src.data.processing.datasets import PetaleDataset
 from typing import Optional
 
 
 class FeatureSelector:
     """
-    Object in charge of selecting the most important features of the dataset
+    Object in charge of selecting the most important features of the dataset.
+    Inspired from OpenAI feature selection code.
     """
-
     def __init__(self, importance_threshold: float):
         """
         Sets protected attributes
@@ -24,7 +29,9 @@ class FeatureSelector:
         """
         self.__importance_thresh = importance_threshold
 
-    def __call__(self, dataset: PetaleDataset, records_path: Optional[str] = None):
+    def __call__(self,
+                 dataset: PetaleDataset,
+                 records_path: Optional[str] = None):
         """
         Extracts most important features using a random forest
 
@@ -32,7 +39,7 @@ class FeatureSelector:
             dataset: custom dataset
             records_path: paths used to store figures and importance table
 
-        Returns: List of cont_cols preserved, List of cat_cols preserved
+        Returns: list of cont_cols preserved, list of cat_cols preserved
         """
         # Extract feature importance
         fi_table = self.get_features_importance(dataset)
@@ -78,7 +85,8 @@ class FeatureSelector:
 
         # Creation of feature importance table
         features = dataset.get_imputed_dataframe().columns
-        fi_table = DataFrame({'features': features, 'imp': model.feature_importances_}
+        fi_table = DataFrame({'features': features,
+                              'imp': model.feature_importances_}
                              ).sort_values('imp', ascending=False)
 
         # Addition of a column that indicates if the feature is selected

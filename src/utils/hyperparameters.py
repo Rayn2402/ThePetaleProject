@@ -1,7 +1,11 @@
 """
-Author: Nicolas Raymond
+Filename: tuning.py
 
-This file is used to store hyperparameter class
+Authors: Nicolas Raymond
+
+Description: This file is used to define classes related to hyperparameters
+
+Date of last modification : 2021/11/01
 """
 
 
@@ -9,9 +13,13 @@ class HP:
     """
     Defines an hyperparameter
     """
-    def __init__(self, name: str, distribution: str):
+    def __init__(self,
+                 name: str,
+                 distribution: str):
         """
-        Sets the name of the hp and the distribution the suggestion must be sampled from
+        Sets the name of the hp and the distribution from which
+        the suggestion must be sampled
+
         Args:
             name: name of the hyperparameter
             distribution: optuna distribution from which it must be sampled

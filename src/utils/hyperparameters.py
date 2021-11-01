@@ -1,5 +1,5 @@
 """
-Filename: tuning.py
+Filename: hyperparameters.py
 
 Authors: Nicolas Raymond
 

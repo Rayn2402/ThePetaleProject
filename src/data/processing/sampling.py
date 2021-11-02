@@ -1,7 +1,13 @@
 """
-Author : Nicolas Raymond
+Filename: sampling.py
 
-This file contains the Sampler class used to separate test sets from train sets
+Author: Nicolas Raymond
+
+Description: Defines the RandomStratifiedSampler class used to separate test sets and
+             valid sets from train sets. Also contains few function to extract some
+             specific datasets
+
+Date of last modification : 2021/11/02
 """
 
 from itertools import product

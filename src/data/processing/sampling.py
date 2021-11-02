@@ -286,10 +286,10 @@ class RandomStratifiedSampler:
 
         """
         for k, v in masks.items():
-            for t1 in MASK_TYPES:
+            for t1 in MaskType():
                 masks[k][t1] = v[t1].tolist() if v[t1] is not None else None
             for in_k, in_v in masks[k][INNER].items():
-                for t2 in MASK_TYPES:
+                for t2 in MaskType():
                     masks[k][INNER][in_k][t2] = in_v[t2].tolist() if in_v[t2] is not None else None
 
     @staticmethod
@@ -341,13 +341,13 @@ def extract_masks(file_path: str,
     for i in map(str, range(k)):
         int_i = int(i)
         masks[int_i] = {}
-        for t in MASK_TYPES:
+        for t in MaskType():
             masks[int_i][t] = all_masks[i][t]
         masks[int_i][INNER] = {}
         for j in map(str, range(l)):
             int_j = int(j)
             masks[int_i][INNER][int_j] = {}
-            for t in MASK_TYPES:
+            for t in MaskType():
                 masks[int_i][INNER][int_j][t] = all_masks[i][INNER][j][t]
 
     # Closing file

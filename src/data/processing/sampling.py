@@ -4,7 +4,6 @@ Author : Nicolas Raymond
 This file contains the Sampler class used to separate test sets from train sets
 """
 
-from src.data.processing.datasets import PetaleDataset
 from itertools import product
 from json import load
 from numpy import array
@@ -13,9 +12,10 @@ from pandas import qcut, DataFrame
 from sklearn.model_selection import train_test_split
 from src.data.extraction.constants import *
 from src.data.extraction.data_management import PetaleDataManager
+from src.data.processing.datasets import PetaleDataset
 from torch import tensor
 from tqdm import tqdm
-from typing import List, Union, Optional, Dict, Any, Tuple, Callable
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 TRAIN, VALID, TEST, INNER = "train", "valid", "test", "inner"
 MASK_TYPES = [TRAIN, VALID, TEST]
@@ -29,11 +29,17 @@ class RandomStratifiedSampler:
     Object uses in order to generate lists of indexes to use as train, valid
     and test masks for outer and inner validation loops.
     """
-    def __init__(self, dataset: PetaleDataset,
-                 n_out_split: int, n_in_split: int, valid_size: float = 0.20, test_size: float = 0.20,
-                 random_state: Optional[int] = None, alpha: int = 4, patience: int = 100):
+    def __init__(self,
+                 dataset: PetaleDataset,
+                 n_out_split: int,
+                 n_in_split: int,
+                 valid_size: float = 0.20,
+                 test_size: float = 0.20,
+                 random_state: Optional[int] = None,
+                 alpha: int = 4,
+                 patience: int = 100):
         """
-        Set private and public attributes of the sampler
+        Sets private and public attributes of the sampler
 
         Args:
             n_out_split: number of outer splits to produce
@@ -66,7 +72,8 @@ class RandomStratifiedSampler:
         # Public method
         self.split = self.__define_split_function(test_size, valid_size)
 
-    def __call__(self, stratify: Optional[Union[array, tensor]] = None,
+    def __call__(self,
+                 stratify: Optional[Union[array, tensor]] = None,
                  ) -> Dict[int, Dict[str, Union[List[int], Dict[str, List[int]]]]]:
         """
         Returns lists of indexes to use as train, valid and test masks for outer and inner validation loops.
@@ -76,7 +83,7 @@ class RandomStratifiedSampler:
             stratify: array or tensor used for stratified split (if None, dataset.y will be used)
 
 
-        Returns: Dictionary of dictionaries with list of indexes.
+        Returns: dictionary of dictionaries with list of indexes.
 
         Example:
 
@@ -115,9 +122,12 @@ class RandomStratifiedSampler:
 
         return masks
 
-    def __define_split_function(self, test_size, valid_size) -> Callable:
+    def __define_split_function(self,
+                                test_size: float,
+                                valid_size: float) -> Callable:
         """
         Defines the split function according to the valid size
+
         Args:
             valid_size: percentage of data taken to create the validation indexes set
             test_size: percentage of data taken to create the train indexes set
@@ -141,7 +151,9 @@ class RandomStratifiedSampler:
                     mask_ok = self.check_masks_validity(train_mask, test_mask, valid_mask)
                     nb_tries_remaining -= 1
 
-                assert mask_ok, "The sampler could not find a proper train, valid and test split"
+                if not mask_ok:
+                    raise Exception("The sampler could not find a proper train, valid and test split")
+
                 return {TRAIN: train_mask, VALID: valid_mask, TEST: test_mask}
         else:
             # Split must extract train and test masks only
@@ -157,12 +169,16 @@ class RandomStratifiedSampler:
                     mask_ok = self.check_masks_validity(train_mask, test_mask)
                     nb_tries_remaining -= 1
 
-                assert mask_ok, "The sampler could not find a proper train, valid split"
+                if not mask_ok:
+                    raise Exception("The sampler could not find a proper train and test split")
+
                 return {TRAIN: train_mask, VALID: None, TEST: test_mask}
 
         return split
 
-    def check_masks_validity(self, train_mask: List[int], test_mask: List[int],
+    def check_masks_validity(self,
+                             train_mask: List[int],
+                             test_mask: List[int],
                              valid_mask: Optional[List[int]] = None) -> bool:
         """
         Valid if categorical and numerical variables of other masks are out of the range of train mask
@@ -172,7 +188,7 @@ class RandomStratifiedSampler:
             test_mask: list of idx to use for test
             valid_mask: list of idx to use for validation
 
-        Returns: True if the masks are valid
+        Returns: true if the masks are valid
         """
         # We update the masks of the dataset
         self.__dataset.update_masks(train_mask, test_mask, valid_mask)
@@ -210,7 +226,7 @@ class RandomStratifiedSampler:
     @staticmethod
     def is_categorical(targets: Union[tensor, array]) -> bool:
         """
-        Check if the number of unique values is lower than the quarter of the length of the targets sequence
+        Checks if the number of unique values is lower than 15% of the length of the targets sequence
 
         Args:
             targets: sequence of float/int used for stratification
@@ -224,6 +240,7 @@ class RandomStratifiedSampler:
     def mimic_classes(targets: Union[tensor, array, List[Any]]) -> array:
         """
         Creates fake classes array out of real-valued targets sequence using quartiles
+
         Args:
             targets: sequence of float/int used for stratification
 
@@ -254,7 +271,10 @@ class RandomStratifiedSampler:
         """
         Details the data splits for the experiment
 
-        :param datasets: dict with all datasets obtain from the Sampler
+        Args:
+            datasets: dict with all the masks obtained from the sampler
+
+        Returns: None
         """
         print("#----------------------------------#")
         for k, v in datasets.items():
@@ -270,7 +290,9 @@ class RandomStratifiedSampler:
             print("#----------------------------------#")
 
 
-def extract_masks(file_path: str, k: int = 20, l: int = 20
+def extract_masks(file_path: str,
+                  k: int = 20,
+                  l: int = 20
                   ) -> Dict[int, Dict[str, Union[List[int], Dict[str, List[int]]]]]:
     """
     Extract masks saved in json file
@@ -326,11 +348,13 @@ def push_valid_to_train(masks: Dict[int, Dict[str, Union[List[int], Dict[str, Li
             masks[k][INNER][in_k][VALID] = None
 
 
-def get_learning_one_data(data_manager: PetaleDataManager, baselines: bool,
-                          complications: List[str], genes: Optional[str] = None
+def get_learning_one_data(data_manager: PetaleDataManager,
+                          baselines: bool,
+                          complications: List[str],
+                          genes: Optional[str] = None
                           ) -> Tuple[DataFrame, Optional[List[str]], Optional[List[str]]]:
     """
-    Extract dataframe needed to proceed to learning one experiments and turn it into a dataset
+    Extracts dataframe needed to proceed to learning one experiments and turn it into a dataset
 
     Args:
         data_manager: data manager to communicate with the database
@@ -373,7 +397,8 @@ def get_learning_one_data(data_manager: PetaleDataManager, baselines: bool,
     return df, cont_cols, cat_cols
 
 
-def generate_multitask_labels(df: DataFrame, target_columns: List[str]) -> Tuple[array, Dict[int, tuple]]:
+def generate_multitask_labels(df: DataFrame,
+                              target_columns: List[str]) -> Tuple[array, Dict[int, tuple]]:
     """
     Generates single array of class labels using all possible combinations of unique values
     contained within target_columns.
@@ -403,24 +428,27 @@ def generate_multitask_labels(df: DataFrame, target_columns: List[str]) -> Tuple
     return multitask_labels, labels_dict
 
 
-def get_warmup_data(data_manager: PetaleDataManager, baselines: bool = True,
-                    genes: Optional[str] = None, sex: bool = False,
+def get_warmup_data(data_manager: PetaleDataManager,
+                    baselines: bool = True,
+                    genes: Optional[str] = None,
+                    sex: bool = False,
                     dummy: bool = False) -> Tuple[DataFrame, str, Optional[List[str]], Optional[List[str]]]:
     """
-    Extract dataframe needed to proceed to warmup experiments
+    Extracts dataframe needed to proceed to warmup experiments
 
     Args:
         data_manager: data manager to communicate with the database
-        baselines: True if we want to include variables from original equation
+        baselines: true if we want to include variables from original equation
         genes: One choice among ("None", "significant", "all")
-        sex: True if we want to include sex variable
-        dummy: True if we want to include dummy variable combining sex and VO2 quantile
+        sex: true if we want to include sex variable
+        dummy: true if we want to include dummy variable combining sex and VO2 quantile
 
     Returns: dataframe, target, continuous columns, categorical columns
     """
 
     # We make sure few variables were selected
-    assert baselines or genes or sex, "At least baselines, genes or sex must be selected"
+    if not (baselines or genes or sex):
+        raise ValueError("At least baselines, genes or sex must be selected")
 
     # We save participant and VO2 max column names
     all_columns = [PARTICIPANT, VO2R_MAX]
@@ -435,7 +463,10 @@ def get_warmup_data(data_manager: PetaleDataManager, baselines: bool = True,
     # We check for genes
     cat_cols = []
     if genes is not None:
-        assert genes in GENES_CHOICES, f"Genes value must be in {GENES_CHOICES}"
+
+        if genes not in GENES_CHOICES:
+            raise ValueError(f"Genes value must be in {GENES_CHOICES}")
+
         if genes == ALL:
             cat_cols += ALL_CHROM_POS_WARMUP
         elif genes == SIGNIFICANT:

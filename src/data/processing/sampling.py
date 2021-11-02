@@ -23,11 +23,31 @@ from torch import tensor
 from tqdm import tqdm
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
-TRAIN, VALID, TEST, INNER = "train", "valid", "test", "inner"
-MASK_TYPES = [TRAIN, VALID, TEST]
-SIGNIFICANT, ALL = "significant", "all"
-GENES_CHOICES = [SIGNIFICANT, ALL]
 COMPLICATIONS_CHOICES = [CARDIOMETABOLIC_COMPLICATIONS, BONE_COMPLICATIONS, NEUROCOGNITIVE_COMPLICATIONS, COMPLICATIONS]
+
+
+class MaskType:
+    """
+    Stores the constant related to mask types
+    """
+    TRAIN: str = "train"
+    VALID: str = "valid"
+    TEST: str = "test"
+    INNER: str = "inner"
+
+    def __iter__(self):
+        return iter([self.TRAIN, self.VALID, self.TEST])
+
+
+class GeneChoice:
+    """
+    Stores the constant related to gene choices
+    """
+    ALL: str = "all"
+    SIGNIFICANT: str = "significant"
+
+    def __iter__(self):
+        return iter([self.ALL, self.SIGNIFICANT])
 
 
 class RandomStratifiedSampler:
@@ -120,7 +140,7 @@ class RandomStratifiedSampler:
                 for j in range(self.n_in_split):
 
                     # We create the inner split masks
-                    masks[i][INNER][j] = self.split(masks[i][TRAIN], targets_c)
+                    masks[i][INNER][j] = self.split(masks[i][MaskType.TRAIN], targets_c)
                     bar.update()
 
         # We turn arrays of idx into lists of idx
@@ -160,7 +180,7 @@ class RandomStratifiedSampler:
                 if not mask_ok:
                     raise Exception("The sampler could not find a proper train, valid and test split")
 
-                return {TRAIN: train_mask, VALID: valid_mask, TEST: test_mask}
+                return {MaskType.TRAIN: train_mask, MaskType.VALID: valid_mask, MaskType.TEST: test_mask}
         else:
             # Split must extract train and test masks only
             def split(idx: array, targets: array) -> Dict[str, array]:
@@ -178,7 +198,7 @@ class RandomStratifiedSampler:
                 if not mask_ok:
                     raise Exception("The sampler could not find a proper train and test split")
 
-                return {TRAIN: train_mask, VALID: None, TEST: test_mask}
+                return {MaskType.TRAIN: train_mask, MaskType.VALID: None, MaskType.TEST: test_mask}
 
         return split
 
@@ -347,11 +367,11 @@ def push_valid_to_train(masks: Dict[int, Dict[str, Union[List[int], Dict[str, Li
     Returns: same masks with valid idx added to test idx
     """
     for k, v in masks.items():
-        masks[k][TRAIN] += v[VALID]
-        masks[k][VALID] = None
+        masks[k][MaskType.TRAIN] += v[MaskType.VALID]
+        masks[k][MaskType.VALID] = None
         for in_k, in_v in masks[k][INNER].items():
-            masks[k][INNER][in_k][TRAIN] += in_v[VALID]
-            masks[k][INNER][in_k][VALID] = None
+            masks[k][INNER][in_k][MaskType.TRAIN] += in_v[MaskType.VALID]
+            masks[k][INNER][in_k][MaskType.VALID] = None
 
 
 def get_learning_one_data(data_manager: PetaleDataManager,
@@ -387,9 +407,13 @@ def get_learning_one_data(data_manager: PetaleDataManager,
 
     # We check for genes
     if genes is not None:
-        assert genes in GENES_CHOICES, f"genes value must be in {GENES_CHOICES}"
-        if genes == SIGNIFICANT:
+
+        if genes not in GeneChoice():
+            raise ValueError(f"genes value must be in {GeneChoice()}")
+
+        if genes == GeneChoice.SIGNIFICANT:
             cat_cols += SIGNIFICANT_CHROM_POS
+
         else:
             cat_cols += ALL_CHROM_POS
 
@@ -470,13 +494,15 @@ def get_warmup_data(data_manager: PetaleDataManager,
     cat_cols = []
     if genes is not None:
 
-        if genes not in GENES_CHOICES:
-            raise ValueError(f"Genes value must be in {GENES_CHOICES}")
+        if genes not in GeneChoice():
+            raise ValueError(f"Genes value must be in {list(GeneChoice())}")
 
-        if genes == ALL:
+        if genes == GeneChoice.ALL:
             cat_cols += ALL_CHROM_POS_WARMUP
-        elif genes == SIGNIFICANT:
+
+        elif genes == GeneChoice.SIGNIFICANT:
             cat_cols += SIGNIFICANT_CHROM_POS_WARMUP
+
     if sex:
         cat_cols.append(SEX)
     if dummy:

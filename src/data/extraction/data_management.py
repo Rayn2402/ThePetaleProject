@@ -1,48 +1,68 @@
 """
+Filename: data_management.py
 
-Authors : Nicolas Raymond
-          Mehdi Mitiche
+Author: Nicolas Raymond
+        Mehdi Mitiche
 
-This file contains all functions linked to SQL data management
+Description: Defines the DataManager class that helps interation with SQL data
 
+Date of last modification : 2021/11/02
 """
-from src.data.extraction import helpers, chart_services
-from src.data.extraction.constants import *
-from tqdm import tqdm
+
+import csv
 import psycopg2
 import pandas as pd
 import os
-import csv
+
+from src.data.extraction import chart_services, helpers
+from src.data.extraction.constants import *
+from tqdm import tqdm
+from typing import Any, Dict, List, Optional, Tuple
 
 
 class DataManager:
-
-    def __init__(self, user, password, database, host='localhost', port='5432', schema='public'):
+    """
+    Object that can interact with a PostgresSQL database
+    """
+    def __init__(self,
+                 user: str,
+                 password: str,
+                 database: str,
+                 host: str = 'localhost',
+                 port: str = '5432',
+                 schema: str = 'public'):
         """
-        Object that can interact with a PostgreSQL database
+        Sets the private attributes
 
-        :param user: username to access 'database'
-        :param password: password linked to the user
-        :param database: name of the database
-        :param host: database host address
-        :param port: connection port number
+        Args:
+            user: username to access the database
+            password: password linked to the user
+            database: name of the database
+            host: database host address
+            port: connection port number
+            schema: schema we want to access in the database
         """
-        self.conn, self.cur = DataManager.connect(
-            user, password, database, host, port)
-        self.schema = schema
-        self.database = database
+        self.__conn, self.__cur = DataManager.connect(user, password, database, host, port)
+        self.__schema = schema
+        self.__database = database
 
     @staticmethod
-    def connect(user, password, database, host, port):
+    def connect(user: str,
+                password: str,
+                database: str,
+                host: str,
+                port: str) -> Tuple[Any, Any]:
         """
-        Creates a connection to the database
+        Creates a connection with a database
 
-        :param user: username to access 'database'
-        :param password: password linked to the user
-        :param database: name of the database
-        :param host: database host address
-        :param port: connection port number
-        :return: connection and cursor
+        Args:
+            user: username to access the database
+            password: password linked to the user
+            database: name of the database
+            host: database host address
+            port: connection port number
+
+        Returns: connection, cursor
         """
         try:
             conn = psycopg2.connect(database=database,
@@ -58,46 +78,61 @@ class DataManager:
 
         return conn, cur
 
-    def __create_table(self, table_name, types, primary_key=None):
+    def __create_table(self,
+                       table_name: str,
+                       types: Dict[str, str],
+                       primary_key: Optional[List[str]] = None) -> None:
         """
-        Creates a table named "table_name" that as columns and types indicates in the dict "types".
+        Creates a table named "table_name" that has the columns with the types indicated
+        in the dictionary types.
 
-        :param table_name: name of the table
-        :param types: names of the columns (key) and their respective types (value) in a dict
-        :param primary_key: list of column names to use as primary key (or composite key when more than 1)
+        Args:
+            table_name: name of the table
+            types: dictionary with names of the columns (key) and their respective types (value)
+            primary_key: list of column names to use as primary key (or composite key when more than 1)
+
+        Returns:
         """
+        # We save the start of the query
+        query = f"CREATE TABLE {self.__schema}.\"{table_name}\" (" + helpers.colsAndTypes(types)
 
-        query = f"CREATE TABLE {self.schema}.\"{table_name}\" (" + helpers.colsAndTypes(
-            types)
-
+        # If a primary key is given we add it to the query
         if primary_key is not None:
 
             # We define the primary key
             keys = helpers.colsForSql(primary_key)
             query += f", PRIMARY KEY ({keys}) );"
+
         else:
             query += ");"
 
         # We execute the query
         try:
-            self.cur.execute(query)
-            self.conn.commit()
+            self.__cur.execute(query)
+            self.__conn.commit()
 
         except psycopg2.Error as e:
             print(e.pgerror)
             raise
 
         # We reset the cursor
-        self.reset_cursor()
+        self._reset_cursor()
 
-    def create_and_fill_table(self, df, table_name, types, primary_key=None):
+    def create_and_fill_table(self,
+                              df: pd.DataFrame,
+                              table_name: str,
+                              types: Dict[str, str],
+                              primary_key: Optional[List[str]] = None) -> None:
         """
-        Creates a new table and fill it using data from the dataframe "df"
+        Creates a new table and fills it using data from the dataframe "df"
 
-        :param df: pandas dataframe
-        :param table_name: name of the new table
-        :param types: names of the columns (key) and their respective types (value) in a dict
-        :param primary_key: list of column names to use as primary key (or composite key when more than 1)
+        Args:
+            df: pandas dataframe
+            table_name: name of the new table
+            types: dict with the names of the columns (key) and their respective types (value)
+            primary_key: list of column names to use as primary key (or composite key when more than 1)
+
+        Returns: None
         """
         # We first create the table
         self.__create_table(table_name, types, primary_key)
@@ -114,9 +149,8 @@ class DataManager:
 
         # We copy the data to the table
         try:
-            self.cur.copy_from(
-                file, f"{self.schema}.\"{table_name}\"", sep="!", null=" ")
-            self.conn.commit()
+            self.__cur.copy_from(file, f"{self.__schema}.\"{table_name}\"", sep="!", null=" ")
+            self.__conn.commit()
             os.remove("temp")
 
         except psycopg2.Error as e:
@@ -125,149 +159,143 @@ class DataManager:
             raise
 
         # We reset the cursor
-        self.reset_cursor()
+        self._reset_cursor()
 
-    def get_table(self, table_name, columns=None):
+    def get_table(self,
+                  table_name: str,
+                  columns: Optional[List[str]] = None) -> pd.DataFrame:
         """
         Retrieves a table from the database
 
-        :param table_name: name of the table
-        :param columns: list of the columns we want to select (default : None (all columns))
-        :return: Pandas dataframe
+        Args:
+            table_name: name of the table
+            columns: list of the columns we want to select (default = None (all columns))
 
+        Returns: pandas dataframe
         """
-        query = "SELECT"
 
         # If no column name is specified, we select all columns
-        if columns is None:
-            query = f"{query} *"
+        query = "SELECT *" if columns is None else f"SELECT {helpers.colsForSql(columns)} "
 
-        # Else, we add the corresponding column names to the query
-        else:
-            query = query
-            columnsToFetch = helpers.colsForSql(columns)
-            query = f"{query} {columnsToFetch}"
-
-        # We add table name to the query
-        query = f"{query} FROM {self.schema}.\"{table_name}\""
+        # We add the table name to the query
+        query = f"{query} FROM {self.__schema}.\"{table_name}\""
 
         # We execute the query
         try:
-            self.cur.execute(query)
+            self.__cur.execute(query)
 
         except psycopg2.Error as e:
             print(e.pgerror)
 
-        # We retrieve column names and data
-        columns = [desc[0] for desc in self.cur.description]
-        data = self.cur.fetchall()
+        # We retrieve the column names and the data
+        columns = [desc[0] for desc in self.__cur.description]
+        data = self.__cur.fetchall()
 
         # We create a pandas dataframe
         df = pd.DataFrame(data=data, columns=columns)
 
         # We reset the cursor
-        self.reset_cursor()
+        self._reset_cursor()
 
         return df
 
-    def reset_cursor(self):
+    def _reset_cursor(self) -> None:
         """
         Resets the cursor
         """
-        self.cur.close()
-        self.cur = self.conn.cursor()
+        self.__cur.close()
+        self.__cur = self.__conn.cursor()
 
-    def get_all_tables(self):
+    def get_all_tables(self) -> List[str]:
         """
-        Retrieves the names of all the tables of the database
+        Retrieves the names of all the tables in the specific schema of the database
 
-        :return: list of strings
-
+        Returns: list of table names
         """
         # We execute the query
         try:
-            self.cur.execute(
+            self.__cur.execute(
                 f"SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE"
-                f" TABLE_TYPE = 'BASE TABLE' AND TABLE_CATALOG='{self.database}' AND table_schema = '{self.schema}' ")
+                f" TABLE_TYPE = 'BASE TABLE' AND TABLE_CATALOG='{self.__database}'"
+                f" AND table_schema = '{self.__schema}' ")
+
         except psycopg2.Error as e:
             print(e.pgerror)
             raise
 
-        tables = self.cur.fetchall()
+        # We extract the tables' names
+        tables_names = list(map(lambda t: t[0], self.__cur.fetchall()))
 
         # We reset the cursor
-        self.reset_cursor()
+        self._reset_cursor()
 
         # We return the names of the tables in the database
-        return list(map(lambda t: t[0], tables))
+        return tables_names
 
-    def get_column_names(self, table_name: str):
+    def get_column_names(self, table_name: str) -> List[str]:
         """
-        Function that retrieves the names of all the columns in a given table
+        Retrieves the names of all the columns in a given table
 
-        :param table_name : the name of the table
-        :return: list of strings
+        Args:
+            table_name: name of the table
 
+        Returns: list of column names
         """
         table_name = table_name.replace("'", "''")
 
         try:
-            self.cur.execute(
+            self.__cur.execute(
                 f"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME= \'{table_name}\'")
+
         except psycopg2.Error as e:
             print(e.pgerror)
             raise
 
-        cols = self.cur.fetchall()
-        cols = list(map(lambda c: c[0], cols))
+        # We extract the columns' names
+        columns_names = list(map(lambda c: c[0], self.__cur.fetchall()))
 
         # We reset the cursor
-        self.reset_cursor()
-        return cols
+        self._reset_cursor()
 
-    def get_missing_data_count(self, tableName, drawChart=False, save_csv=False, excludedCols=["Remarks"]):
+        return columns_names
+
+    def get_missing_data_count(self,
+                               table_name: str,
+                               save_csv: bool = False,
+                               excluded_cols: List[str] = ["Remarks"]) -> Tuple[pd.DataFrame, Dict[str, Any]]:
         """
-        get the count of all the missing data of one given table
+        Gets the count of all the missing data in the given table
 
-        :param tableName: name of the table
-        :param drawChart: boolean to indicate if a chart should be created to visualize the missing data
-        :param save_csv: boolean to indicate if a csv file should be create to store missing values per column
-        :param: excludedCols: list of strings containing the list of columns to exclude
-        :return: a python dictionary containing the missing data count and the number of complete rows
+        Args:
+            table_name: name of the table
+            save_csv: true if we want to save a csv with the results
+            excluded_cols: list with names of columns to exclude during the count
 
+        Returns: dataframe with nb of missing data per column, dictionary with details on the missing data
         """
-
-        # Extracting the name of the columns of the given  table
-        cols = self.get_column_names(tableName)
-
-        # Excluding the non needed columns
-        cols = [col for col in cols if col not in excludedCols]
 
         # We retrieve the table
-        df_table = self.get_table(tableName, cols)
+        df_table = self.get_table(table_name=table_name,
+                                  columns=[c for c in self.get_column_names(table_name) if c not in excluded_cols])
 
         # We count the number of missing values per column
         missing_df = df_table.isnull().sum()
 
-        # we get the counts we need from the dataframe
-        missingCount = df_table.isnull().sum().sum()
-        completedRowCount = len([complete for complete in df_table.isnull().sum(axis=1) if complete == 0])
-        totalRows = df_table.shape[0]
+        # We get the counts we need from the dataframe
+        missing_count = missing_df.sum()
+        complete_row_count = len([complete for complete in missing_df.sum(axis=1) if complete == 0])
+        total_rows = df_table.shape[0]
 
-        # Plotting the bar chart
-        if drawChart:
-            fileName = helpers.reformat_string(tableName)
-            folderName = "missing_data_charts"
-            figureTitle = f'Count of missing data by columns names for the table {tableName}'
-            chart_services.drawBarhChart(cols, missing_df.values, "Columns",
-                                        "Data missing", figureTitle, fileName, folderName)
+        # We save the csv with the results if required
         if save_csv:
-            tableName = helpers.reformat_string(tableName)
-            helpers.save_stats_file(tableName, "missing", missing_df, index=True, header=False)
+            table_name = helpers.reformat_string(table_name)
+            helpers.save_stats_file(table_name, "missing", missing_df, index=True, header=False)
 
         # returning a dictionary containing the data needed
-        return missing_df, {"tableName": tableName, "missingCount": missingCount,
-                            "completedRowCount": completedRowCount, "totalRows": totalRows}
+        return missing_df, {"table_name": table_name,
+                            "missing_count": missing_count,
+                            "complete_row_count": complete_row_count,
+                            "total_rows": total_rows}
 
     def get_all_missing_data_count(self, filename="petale_missing_data.csv", drawCharts=True):
         """

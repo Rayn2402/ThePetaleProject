@@ -6,13 +6,13 @@ Authors: Nicolas Raymond
 Description: This file is used to define a class called PetaleGraph
              that was used to test CorrectAndSmooth algorithm.
 
-Date of last modification : 2021/11/01
+Date of last modification : 2021/11/02
 """
 
 from numpy import cov
 from numpy.linalg import inv
 from src.data.processing.datasets import PetaleDataset
-from src.data.processing.sampling import TRAIN, VALID, TEST
+from src.data.processing.sampling import MaskType
 from torch import tensor, zeros, transpose, diag, pow, mm, eye, is_tensor, ones, topk
 from typing import Dict, List, Optional
 
@@ -212,13 +212,13 @@ def correct_and_smooth(g: PetaleGraph,
     Returns: (N,) tensor with corrected and smoothed labels
 
     """
-    if not (TRAIN in masks.keys()) or not (TEST in masks.keys()):
-        raise ValueError(f"{TRAIN} and {TEST} must be in dictionary's keys")
+    if not (MaskType.TRAIN in masks.keys()) or not (MaskType.TEST in masks.keys()):
+        raise ValueError(f"{MaskType.TRAIN} and {MaskType.TEST} must be in dictionary's keys")
 
     # We extract train and valid masks
-    labeled_mask = masks[TRAIN]
-    if masks.get(VALID) is not None:
-        labeled_mask += masks[VALID]
+    labeled_mask = masks[MaskType.TRAIN]
+    if masks.get(MaskType.VALID) is not None:
+        labeled_mask += masks[MaskType.VALID]
 
     # We propagate the errors
     labels = labels.reshape(-1, 1)
@@ -227,7 +227,7 @@ def correct_and_smooth(g: PetaleGraph,
     errors = g.propagate_labels(errors, r, nb_iter)
 
     # We smooth labels
-    test_mask = masks[TEST]
+    test_mask = masks[MaskType.TEST]
     labels[test_mask] = pred[test_mask] - errors[test_mask]
     labels = g.propagate_labels(labels, r, nb_iter)
 

@@ -24,6 +24,12 @@ class DataManager:
     """
     Object that can interact with a PostgresSQL database
     """
+    # CSTS PROPER TO DATAMANAGER
+
+    # Common count csv headers
+    TABLES: str = "tables"
+    COMMON_ELEMENTS: str = "common elements"
+
     def __init__(self,
                  user: str,
                  password: str,
@@ -262,7 +268,7 @@ class DataManager:
     def get_missing_data_count(self,
                                table_name: str,
                                save_csv: bool = False,
-                               excluded_cols: List[str] = ["Remarks"]) -> Tuple[pd.DataFrame, Dict[str, Any]]:
+                               excluded_cols: Optional[List[str]] = None) -> Tuple[pd.DataFrame, Dict[str, Any]]:
         """
         Gets the count of all the missing data in the given table
 
@@ -275,6 +281,7 @@ class DataManager:
         """
 
         # We retrieve the table
+        excluded_cols = excluded_cols if excluded_cols is not None else []
         df_table = self.get_table(table_name=table_name,
                                   columns=[c for c in self.get_column_names(table_name) if c not in excluded_cols])
 
@@ -291,95 +298,107 @@ class DataManager:
             table_name = helpers.reformat_string(table_name)
             helpers.save_stats_file(table_name, "missing", missing_df, index=True, header=False)
 
-        # returning a dictionary containing the data needed
+        # Returning a dictionary containing the data needed
         return missing_df, {"table_name": table_name,
                             "missing_count": missing_count,
                             "complete_row_count": complete_row_count,
                             "total_rows": total_rows}
 
-    def get_all_missing_data_count(self, filename="petale_missing_data.csv", drawCharts=True):
+    def get_all_missing_data_count(self,
+                                   directory: str = 'missing_data',
+                                   filename: str = "missing_data.csv") -> None:
         """
-        Function that generates a csv file containing the count of the missing data of all the tables of the database
+        Generates a csv file containing the count of the missing data of all the tables in the database
 
-        :param filename: the name of file to be generated
+        Args:
+            directory: path of the directory where the results will be saved
+            filename: name of the file containing the results
 
-        :generates a csv file
+        Returns: None
         """
-        # we initialize the results
-        results = []
-
-        # we get all the table names
+        # We get all the table names
         tables = self.get_all_tables()
 
         # For each table we get the missing data count
         with tqdm(total=len(tables)) as pbar:
+            results = []
             for table in tables:
+
+                # We extract the count of missing data
+                _, missing_data_count = self.get_missing_data_count(table)
+
+                # We save the missing data count in results
+                results.append(missing_data_count)
+
+                # We update the progress bar
                 pbar.update(1)
-                _, missingDataCount = self.get_missing_data_count(table, drawCharts)
 
-                # we save the missing data count in results
-                results.append(missingDataCount)
+        # We generate a csv file with all the results
+        helpers.writeCsvFile(results, filename, directory)
+        print(f"File is ready in the folder {directory}")
 
-        # we generate a csv file from the data in results
-        helpers.writeCsvFile(results, filename, "missing_data")
-        print("File is ready in the folder missing_data! ")
-
-    def get_common_count(self, tables, columns=[PARTICIPANT, TAG], saveInFile=False):
+    def get_common_count(self,
+                         tables: List[str],
+                         columns: List[str],
+                         filename: Optional[str] = None) -> int:
         """
-        Gets the number of common survivors from a list of tables
+        Retrieves the number of common elements in multiple tables, using the values
+        of the given columns to identify the unique elements in each table
 
-        :param tables: the list of tables
-        :param columns: list of the columns according to we want to get the the common survivors
-        :return: number of common survivors
+        Args:
+            tables: list of table names
+            columns: list of columns identifying unique elements (composite key)
+            filename: if provided, will be the name of the csv file containing the results
 
+        Returns: number of common elements
         """
-        # we prepare the columns to be in the SQL query
-        colsInQuery = helpers.colsForSql(columns)
+        # We prepare the columns to be in the SQL query
+        cols_in_query = helpers.colsForSql(columns)
 
-        # we build the request
+        # We build the query
         query = 'SELECT COUNT(*) FROM ('
         for index, table in enumerate(tables):
             if index == 0:
-                query += f'(SELECT {colsInQuery} FROM \"{table}\")'
+                query += f'(SELECT {cols_in_query} FROM \"{table}\")'
             else:
-                query += f' INTERSECT (SELECT {colsInQuery} FROM \"{table}\")'
+                query += f' INTERSECT (SELECT {cols_in_query} FROM \"{table}\")'
         query += ') l'
 
         # We execute the query
         try:
-            self.cur.execute(query)
+            self.__cur.execute(query)
         except psycopg2.Error as e:
             print(e.pgerror)
 
-        row = self.cur.fetchall()[0]
+        # We extract the common count
+        count = self.__cur.fetchall()[0][0]
 
-        if saveInFile:
-            # Saving in file
-            if not os.path.isfile("commonPatients.csv"):
-                try:
-                    with open("commonPatients.csv", 'w', newline='') as csvfile:
-                        writer = csv.DictWriter(
-                            csvfile, ["tables", "commonSurvivors"])
-                        writer.writeheader()
-                        separator = " & "
-                        writer.writerow({"tables": separator.join(
-                            tables), "commonSurvivors": row[0]})
-                except IOError:
-                    print("I/O error")
+        # We add the csv extension to the filename
+        filename += ".csv"
+
+        if filename is not None:
+
+            # If the file does not exist
+            if not os.path.isfile(filename):
+
+                # We will need to write a header and use the opening mode "write"
+                write_header, mode = True, "w"
+
             else:
-                try:
-                    # Open file in append mode
-                    with open("commonPatients.csv", 'a+', newline='') as csvfile:
-                        # Create a writer object from csv module
-                        writer = csv.DictWriter(
-                            csvfile, ["tables", "commonSurvivors"])
-                        # Add a new row to the csv file
-                        separator = " & "
-                        writer.writerow({"tables": separator.join(
-                            tables), "commonSurvivors": row[0]})
-                except IOError:
-                    print("I/O error")
-        return row[0]
+                # We will use the opening mode "append"
+                write_header, mode = False, "a+"
+
+            # We try to write the results
+            try:
+                with open(filename, mode, newline='') as csv_file:
+                    writer = csv.DictWriter(csv_file, [DataManager.TABLES, DataManager.COMMON_ELEMENTS])
+                    if write_header:
+                        writer.writeheader()
+                    writer.writerow({DataManager.TABLES: " & ".join(tables), DataManager.COMMON_ELEMENTS: count})
+            except IOError:
+                print("I/O error")
+
+        return count
 
     @staticmethod
     def get_numerical_var_analysis(table_name, df, group=None):
@@ -576,6 +595,42 @@ class PetaleDataManager(DataManager):
     def __init__(self, user, host='localhost', port='5437'):
         super().__init__(user, 'petale101', 'petale', host, port, 'public')
 
+    def get_common_survivor(self,
+                            tables: List[str],
+                            filename: Optional[str] = None) -> int:
+        """
+        Retrieves the number of common survivors among multiple tables
+
+        Args:
+            tables: list of table names
+            filename: if provided, will be the name of the csv file containing the results
+
+        Returns: number of common surivors
+        """
+        return self.get_common_count(tables=tables, columns=[PARTICIPANT, TAG], filename=filename)
+
+    def get_missing_data_count(self,
+                               table_name: str,
+                               save_csv: bool = False,
+                               excluded_cols: Optional[List[str]] = None) -> Tuple[pd.DataFrame, Dict[str, Any]]:
+        """
+        Gets the count of all the missing data in the given table.
+        Remarks column will be automatically excluded from the count.
+
+        Args:
+            table_name: name of the table
+            save_csv: true if we want to save a csv with the results
+            excluded_cols: list with names of columns to exclude during the count
+
+        Returns: dataframe with nb of missing data per column, dictionary with details on the missing data
+        """
+        # We add Remarks to excluded columns
+        if excluded_cols is None:
+            excluded_cols = []
+        excluded_cols.append("Remarks")
+
+        return DataManager.get_missing_data_count(self, table_name, save_csv, excluded_cols)
+
     def get_table_stats(self, table_name, include="ALL",
                         exclude=["Date", "Form", "Status", "Remarks"], save_in_file=True):
         """
@@ -679,7 +734,7 @@ class PetaleDataManager(DataManager):
             var_info[var_info_labels[index]] = data
 
         # We reset the cursor
-        self.reset_cursor()
+        self._reset_cursor()
 
         # we return the result
         return var_info

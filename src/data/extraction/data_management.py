@@ -6,7 +6,7 @@ Author: Nicolas Raymond
 
 Description: Defines the DataManager class that helps interation with SQL data
 
-Date of last modification : 2021/11/02
+Date of last modification : 2021/11/04
 """
 
 import csv
@@ -14,7 +14,7 @@ import psycopg2
 import pandas as pd
 import os
 
-from src.data.extraction import chart_services, helpers
+from src.data.extraction import helpers
 from src.data.extraction.constants import *
 from tqdm import tqdm
 from typing import Any, Dict, List, Optional, Tuple
@@ -24,11 +24,17 @@ class DataManager:
     """
     Object that can interact with a PostgresSQL database
     """
-    # CSTS PROPER TO DATAMANAGER
 
-    # Common count csv headers
+    # Common count csv headers constants
     TABLES: str = "tables"
     COMMON_ELEMENTS: str = "common elements"
+
+    # Results dictionary keys constants
+    VAR_NAME = "Variable Name"
+    ALL = "All"
+
+    # Temporary table name constant
+    TEMP = "temp"
 
     def __init__(self,
                  user: str,
@@ -84,10 +90,10 @@ class DataManager:
 
         return conn, cur
 
-    def __create_table(self,
-                       table_name: str,
-                       types: Dict[str, str],
-                       primary_key: Optional[List[str]] = None) -> None:
+    def _create_table(self,
+                      table_name: str,
+                      types: Dict[str, str],
+                      primary_key: Optional[List[str]] = None) -> None:
         """
         Creates a table named "table_name" that has the columns with the types indicated
         in the dictionary types.
@@ -124,6 +130,13 @@ class DataManager:
         # We reset the cursor
         self._reset_cursor()
 
+    def _reset_cursor(self) -> None:
+        """
+        Resets the cursor
+        """
+        self.__cur.close()
+        self.__cur = self.__conn.cursor()
+
     def create_and_fill_table(self,
                               df: pd.DataFrame,
                               table_name: str,
@@ -141,78 +154,66 @@ class DataManager:
         Returns: None
         """
         # We first create the table
-        self.__create_table(table_name, types, primary_key)
+        self._create_table(table_name, types, primary_key)
 
         # We order columns of dataframe according to "types" dictionary
         df = df[types.keys()]
 
         # We save the df in a temporary csv
-        df.to_csv("temp", index=False, na_rep=" ", sep="!")
+        df.to_csv(DataManager.TEMP, index=False, na_rep=" ", sep="!")
 
         # We copy the data from the csv into the table
-        file = open("temp", mode="r", newline="\n")
+        file = open(DataManager.TEMP, mode="r", newline="\n")
         file.readline()
 
         # We copy the data to the table
         try:
             self.__cur.copy_from(file, f"{self.__schema}.\"{table_name}\"", sep="!", null=" ")
             self.__conn.commit()
-            os.remove("temp")
+            os.remove(DataManager.TEMP)
 
         except psycopg2.Error as e:
             print(e.pgerror)
-            os.remove("temp")
+            os.remove(DataManager.TEMP)
             raise
 
         # We reset the cursor
         self._reset_cursor()
 
-    def get_table(self,
-                  table_name: str,
-                  columns: Optional[List[str]] = None) -> pd.DataFrame:
+    def get_all_missing_data_count(self,
+                                   directory: str = 'missing_data',
+                                   filename: str = "missing_data.csv") -> None:
         """
-        Retrieves a table from the database
+        Generates a csv file containing the count of the missing data of all the tables in the database
 
         Args:
-            table_name: name of the table
-            columns: list of the columns we want to select (default = None (all columns))
+            directory: path of the directory where the results will be saved
+            filename: name of the file containing the results
 
-        Returns: pandas dataframe
+        Returns: None
         """
+        # We get all the table names
+        tables = self.get_all_table_names()
 
-        # If no column name is specified, we select all columns
-        query = "SELECT *" if columns is None else f"SELECT {helpers.colsForSql(columns)} "
+        # For each table we get the missing data count
+        with tqdm(total=len(tables)) as pbar:
+            results = []
+            for table in tables:
 
-        # We add the table name to the query
-        query = f"{query} FROM {self.__schema}.\"{table_name}\""
+                # We extract the count of missing data
+                _, missing_data_count = self.get_missing_data_count(table)
 
-        # We execute the query
-        try:
-            self.__cur.execute(query)
+                # We save the missing data count in results
+                results.append(missing_data_count)
 
-        except psycopg2.Error as e:
-            print(e.pgerror)
+                # We update the progress bar
+                pbar.update(1)
 
-        # We retrieve the column names and the data
-        columns = [desc[0] for desc in self.__cur.description]
-        data = self.__cur.fetchall()
+        # We generate a csv file with all the results
+        helpers.writeCsvFile(results, filename, directory)
+        print(f"File is ready in the folder {directory}")
 
-        # We create a pandas dataframe
-        df = pd.DataFrame(data=data, columns=columns)
-
-        # We reset the cursor
-        self._reset_cursor()
-
-        return df
-
-    def _reset_cursor(self) -> None:
-        """
-        Resets the cursor
-        """
-        self.__cur.close()
-        self.__cur = self.__conn.cursor()
-
-    def get_all_tables(self) -> List[str]:
+    def get_all_table_names(self) -> List[str]:
         """
         Retrieves the names of all the tables in the specific schema of the database
 
@@ -237,6 +238,67 @@ class DataManager:
 
         # We return the names of the tables in the database
         return tables_names
+
+    def get_categorical_var_analysis(self,
+                                     df: pd.DataFrame,
+                                     group: Optional[str] = None) -> pd.DataFrame:
+        """
+        Calculates the counts and percentage of all the categorical variables given in dataframe
+        over all rows, and also over groups contained in a specified column "group"
+
+        Args:
+            df: pandas dataframe with the categorical variables
+            group: name of a column, Ex : group = "Sex" will give us the stats for all the data, for men, and for women
+
+        Returns: pandas dataframe with the statistics
+        """
+
+        # We initialize a python dictionary in which we will save the results
+        results, group_values = self._initialize_results_dict(df, group)
+
+        # We get the columns on which we will calculate the stats
+        cols = [col for col in df.columns if col != group]
+
+        # We initialize a dictionary that will store to totals of each group within the column "group"
+        group_totals = {}
+
+        # For each column we calculate the count and the percentage
+        for col in cols:
+
+            # We get all the categories of this variable
+            categories = df[col].dropna().unique()
+
+            # We get the total count
+            total = df.shape[0] - df[col].isna().sum()
+
+            # For each category of this variable we get the counts and the percentage
+            for category in categories:
+
+                # We get the total count of this category
+                category_total = df[df[col] == category].shape[0]
+
+                # We get the total percentage of this category
+                all_percent = round(category_total/total * 100, 2)
+
+                # We save the results
+                results[DataManager.VAR_NAME].append(f"{col} : {category}")
+                results[DataManager.ALL].append(f"{category_total} ({all_percent}%)")
+
+                if group is not None:
+                    for group_val in group_values:
+
+                        # We get the number of elements within the group
+                        group_totals[group_val] = df.loc[df[group] == group_val, col].dropna().shape[0]
+
+                        # We create a filter to get the number of items in a group that has the correspond category
+                        filter_ = (df[group] == group_val) & (df[col] == category)
+
+                        # We compute the statistics needed
+                        sub_category_total = df[filter_].shape[0]
+                        sub_category_percent = round(sub_category_total/(group_totals[group_val]) * 100, 2)
+                        results[f"{group} {group_val}"].append(f"{sub_category_total} ({sub_category_percent}%)")
+
+        return pd.DataFrame(results)
 
     def get_column_names(self, table_name: str) -> List[str]:
         """
@@ -264,78 +326,6 @@ class DataManager:
         self._reset_cursor()
 
         return columns_names
-
-    def get_missing_data_count(self,
-                               table_name: str,
-                               save_csv: bool = False,
-                               excluded_cols: Optional[List[str]] = None) -> Tuple[pd.DataFrame, Dict[str, Any]]:
-        """
-        Gets the count of all the missing data in the given table
-
-        Args:
-            table_name: name of the table
-            save_csv: true if we want to save a csv with the results
-            excluded_cols: list with names of columns to exclude during the count
-
-        Returns: dataframe with nb of missing data per column, dictionary with details on the missing data
-        """
-
-        # We retrieve the table
-        excluded_cols = excluded_cols if excluded_cols is not None else []
-        df_table = self.get_table(table_name=table_name,
-                                  columns=[c for c in self.get_column_names(table_name) if c not in excluded_cols])
-
-        # We count the number of missing values per column
-        missing_df = df_table.isnull().sum()
-
-        # We get the counts we need from the dataframe
-        missing_count = missing_df.sum()
-        complete_row_count = len([complete for complete in missing_df.sum(axis=1) if complete == 0])
-        total_rows = df_table.shape[0]
-
-        # We save the csv with the results if required
-        if save_csv:
-            table_name = helpers.reformat_string(table_name)
-            helpers.save_stats_file(table_name, "missing", missing_df, index=True, header=False)
-
-        # Returning a dictionary containing the data needed
-        return missing_df, {"table_name": table_name,
-                            "missing_count": missing_count,
-                            "complete_row_count": complete_row_count,
-                            "total_rows": total_rows}
-
-    def get_all_missing_data_count(self,
-                                   directory: str = 'missing_data',
-                                   filename: str = "missing_data.csv") -> None:
-        """
-        Generates a csv file containing the count of the missing data of all the tables in the database
-
-        Args:
-            directory: path of the directory where the results will be saved
-            filename: name of the file containing the results
-
-        Returns: None
-        """
-        # We get all the table names
-        tables = self.get_all_tables()
-
-        # For each table we get the missing data count
-        with tqdm(total=len(tables)) as pbar:
-            results = []
-            for table in tables:
-
-                # We extract the count of missing data
-                _, missing_data_count = self.get_missing_data_count(table)
-
-                # We save the missing data count in results
-                results.append(missing_data_count)
-
-                # We update the progress bar
-                pbar.update(1)
-
-        # We generate a csv file with all the results
-        helpers.writeCsvFile(results, filename, directory)
-        print(f"File is ready in the folder {directory}")
 
     def get_common_count(self,
                          tables: List[str],
@@ -400,194 +390,173 @@ class DataManager:
 
         return count
 
-    @staticmethod
-    def get_numerical_var_analysis(table_name, df, group=None):
+    def get_group_count(self,
+                        df: pd.DataFrame,
+                        group: str) -> pd.DataFrame:
+        """
+        Count the number of items within each group of the categorical variable "group"
+
+        Args:
+            df: pandas dataframe
+            group: name of a categorical column
+
+        Returns: pandas dataframe with the counts
         """
 
-        Function that calculates the mean and variance of variable of a given data frame over all rows,
-        and also over groups contained in a specified column "group".
-
-        Male, and Female survivors fot each variable in the given data frame
-
-        :param table_name: name of the table
-        :param df: pandas data frame containing the data of numerical variables
-        :param group: name of a column, we calculate the stats for the overall data and the stats of the data grouped
-        by this column, Ex : group = 34500 Sex will give us the stats for all the data, for Male, and for Female
-
-        return: a pandas data frame
-        """
-        # we initialize a python dictionary where we will save the results
-        results, var_name, all_, group_values = DataManager.__initialize_results_dict(df, group)
-
-        # we get the columns on which we will calculate the stats
-        cols = [col for col in df.columns if col != group]
-
-        # for each column we calculate the mean and the variance
-        for col in cols:
-
-            # we append the mean and the var for all participants to the results dictionary
-            results[var_name].append(col)
-            all_mean, all_var, all_min, all_max = helpers.get_column_stats(df, col)
-            results[all_].append(f"{all_mean} ({all_var}) [{all_min}, {all_max}]")
-
-            # if the group is given, we calculate the stats for each possible value of that group
-            if group is not None:
-                for group_val in group_values:
-                    # we append the mean and the var for sub group participants to the results dictionary
-                    df_group = df[df[group] == group_val]
-                    group_mean, group_var, group_min, group_max = helpers.get_column_stats(df_group, col)
-                    results[f"{group} {group_val}"].append(f"{group_mean} ({group_var}) [{group_min}, {group_max}]")
-
-        # for each variable of the given dataframe we plot a chart
-        folder_name = helpers.reformat_string(table_name)
-        for var_name in cols:
-
-            # we plot and save a chart for a single variable
-            file_name = helpers.reformat_string(var_name)
-            chart_services.drawHistogram(df, var_name, f"Estimated density of {var_name}", file_name, folder_name)
-
-        # we return the results
-        return pd.DataFrame(results)
-
-    @staticmethod
-    def get_categorical_var_analysis(table_name, df, group=None):
-        """Function that calculates the counts and percentage of all the categorical variables given in dataframe
-         over all rows, and also over groups contained in a specified column "group".
-
-        :param table_name: name of the table
-        :param df: pandas data frame containing the data of numerical variables
-        :param group: name of a column, we calculate the stats for the overall data and the stats of the data grouped
-        by this column, Ex : group = 34500 Sex will give us the stats for all the data, for Male, and for Female
-        return: a pandas dataframe
-        """
-
-        # we initialize a python dictionary where we will save the results
-        results, var_name, all_, group_values = DataManager.__initialize_results_dict(df, group)
-
-        # we get the columns on which we will calculate the stats
-        cols = [col for col in df.columns if col != group]
-
-        # we initialize a python list where we will save data that will be useful when plotting the charts
-        data_for_chart = []
-
-        # for each column we calculate the count and the percentage
-        for col in cols:
-
-            # we initialize an object that will contain data that will be useful to plot this particular variable
-            single_data_for_chart = {"col_name": col, "values": [], "all": []}
-
-            if group is not None:
-
-                group_totals = {}
-
-                for group_val in group_values:
-                    single_data_for_chart[group_val] = []
-                    group_totals[group_val] = df.loc[df[group] == group_val, col].dropna().shape[0]
-
-            # we get all the categories of this variable
-            categories = df[col].dropna().unique()
-
-            # we get the total count
-            total = df.shape[0] - df[col].isna().sum()
-
-            # for each category of this variable we get the counts and the percentage
-            for category in categories:
-
-                # we get the total count of this category
-                category_total = df[df[col] == category].shape[0]
-
-                # we get the total percentage of this category
-                all_percent = round(category_total/total * 100, 2)
-
-                # we save the results
-                results[var_name].append(f"{col} : {category}")
-                results[all_].append(f"{category_total} ({all_percent}%)")
-
-                # we save the data that will be useful when plotting
-                single_data_for_chart["values"].append(category)
-                single_data_for_chart["all"].append(float(category_total))
-
-                if group is not None:
-
-                    for group_val in group_values:
-
-                        # We create a filter to get the number of items in a group that has the correspond category
-                        filter = (df[group] == group_val) & (df[col] == category)
-
-                        # We compute the statistics needed
-                        sub_category_total = df[filter].shape[0]
-                        sub_category_percent = round(sub_category_total/(group_totals[group_val]) * 100, 2)
-                        results[f"{group} {group_val}"].append(f"{sub_category_total} ({sub_category_percent}%)")
-
-                        # We save data for the charts
-                        single_data_for_chart[group_val].append(float(sub_category_total))
-
-            data_for_chart.append(single_data_for_chart)
-
-        # we make a chart from this analysis
-        for item in data_for_chart:
-            if group is not None:
-
-                # plotting the chart
-                filename = helpers.reformat_string(item["col_name"])
-                folder_name = helpers.reformat_string(table_name)
-                chart_services.drawBinaryGroupedBarChart(
-                    item["values"], {"label": "Men", "values": item["Men"]},
-                    {"label": "Women", "values": item["Women"]}, "Categories", "Count", item["col_name"],
-                    f"chart_{filename}", f"charts_{folder_name}")
-
-        # we return the data frame containing the informations
-        return pd.DataFrame(results)
-
-    @staticmethod
-    def get_group_count(df, group):
-        """
-        Count the number of items from each group
-
-        :param df: pandas dataframe
-        :param group: name of a column, we calculate the stats for the overall data and the stats of the data grouped
-        by this column, Ex : group = 34500 Sex will give us the stats for all the data, for Male, and for Female
-        :return: pandas dataframe
-        """
-
-        # we initialize a python dictionary where we will save the results
-        results, var_name, all_, group_values = DataManager.__initialize_results_dict(df, group)
+        # We initialize a python dictionary where we will save the results
+        results, group_values = self._initialize_results_dict(df, group)
 
         # We set the variable name as "n"
-        results[var_name].append("n")
+        results[DataManager.VAR_NAME].append("n")
 
         # We count the total number of rows
-        results[all_].append(df.shape[0])
+        results[DataManager.ALL].append(df.shape[0])
 
         # We count the number of rows from each group
         for group_val in group_values:
             results[f"{group} {group_val}"].append(df[df[group] == group_val].shape[0])
 
-        # We return the resulting dataframe
         return pd.DataFrame(results)
 
+    def get_missing_data_count(self,
+                               table_name: str,
+                               save_csv: bool = False,
+                               excluded_cols: Optional[List[str]] = None) -> Tuple[pd.DataFrame, Dict[str, Any]]:
+        """
+        Gets the count of all the missing data in the given table
+
+        Args:
+            table_name: name of the table
+            save_csv: true if we want to save a csv with the results
+            excluded_cols: list with names of columns to exclude during the count
+
+        Returns: dataframe with nb of missing data per column, dictionary with details on the missing data
+        """
+
+        # We retrieve the table
+        excluded_cols = excluded_cols if excluded_cols is not None else []
+        df_table = self.get_table(table_name=table_name,
+                                  columns=[c for c in self.get_column_names(table_name) if c not in excluded_cols])
+
+        # We count the number of missing values per column
+        missing_df = df_table.isnull().sum()
+
+        # We get the counts we need from the dataframe
+        missing_count = missing_df.sum()
+        complete_row_count = len([complete for complete in missing_df.sum(axis=1) if complete == 0])
+        total_rows = df_table.shape[0]
+
+        # We save the csv with the results if required
+        if save_csv:
+            table_name = helpers.reformat_string(table_name)
+            helpers.save_stats_file(table_name, "missing", missing_df, index=True, header=False)
+
+        # Returning a dictionary containing the data needed
+        return missing_df, {"table_name": table_name,
+                            "missing_count": missing_count,
+                            "complete_row_count": complete_row_count,
+                            "total_rows": total_rows}
+
+    def get_numerical_var_analysis(self,
+                                   df: pd.DataFrame,
+                                   group: Optional[str] = None) -> pd.DataFrame:
+        """
+        Calculates the mean, the variance, the min and the max of variables
+        within a given data frame over all rows, and also over groups contained in a specified column "group".
+
+        Args:
+            df: pandas data frame containing the data of numerical variables
+            group: name of a column, Ex : group = "Sex" will give us the stats for all the data, for men, and for women
+
+        Returns: pandas dataframe with the statistics
+        """
+        # We initialize a python dictionary in which we will save the results
+        results, group_values = self._initialize_results_dict(df, group)
+
+        # We get the columns on which we will calculate the stats
+        cols = [col for col in df.columns if col != group]
+
+        # For each column we calculate the mean and the variance
+        for col in cols:
+
+            # We append the statistics for all participants to the results dictionary
+            results[DataManager.VAR_NAME].append(col)
+            all_mean, all_var, all_min, all_max = helpers.get_column_stats(df, col)
+            results[DataManager.ALL].append(f"{all_mean} ({all_var}) [{all_min}, {all_max}]")
+
+            # If a group column is given, we calculate the stats for each possible value of that group
+            if group is not None:
+                for group_val in group_values:
+
+                    # We append the statistics for sub group participants to the results dictionary
+                    df_group = df[df[group] == group_val]
+                    group_mean, group_var, group_min, group_max = helpers.get_column_stats(df_group, col)
+                    results[f"{group} {group_val}"].append(f"{group_mean} ({group_var}) [{group_min}, {group_max}]")
+
+        return pd.DataFrame(results)
+
+    def get_table(self,
+                  table_name: str,
+                  columns: Optional[List[str]] = None) -> pd.DataFrame:
+        """
+        Retrieves a table from the database
+
+        Args:
+            table_name: name of the table
+            columns: list of the columns we want to select (default = None (all columns))
+
+        Returns: pandas dataframe
+        """
+
+        # If no column name is specified, we select all columns
+        query = "SELECT *" if columns is None else f"SELECT {helpers.colsForSql(columns)} "
+
+        # We add the table name to the query
+        query = f"{query} FROM {self.__schema}.\"{table_name}\""
+
+        # We execute the query
+        try:
+            self.__cur.execute(query)
+
+        except psycopg2.Error as e:
+            print(e.pgerror)
+
+        # We retrieve the column names and the data
+        columns = [desc[0] for desc in self.__cur.description]
+        data = self.__cur.fetchall()
+
+        # We create a pandas dataframe
+        df = pd.DataFrame(data=data, columns=columns)
+
+        # We reset the cursor
+        self._reset_cursor()
+
+        return df
+
     @staticmethod
-    def __initialize_results_dict(df, group):
+    def _initialize_results_dict(df: pd.DataFrame,
+                                 group: str) -> Tuple[Dict[str, List[Any]], List[Any]]:
+        """
+        Initializes a dictionary that will contains results of a descriptive analyses
 
-        var_name = "Variable Name"
-        all_ = "All"
+        Args:
+            df: pandas dataframe
+            group: name of a column
+
+        Returns: initialized dictionary, list with the different group values
+        """
+
         group_values = None
-
-        if group is None:
-            results = {
-                var_name: [],
-                all_: []
-            }
-        else:
+        results = {
+            DataManager.VAR_NAME: [],
+            DataManager.ALL: []
+        }
+        if group is not None:
             group_values = df[group].unique()
-            results = {
-                var_name: [],
-                all_: []
-            }
             for group_val in group_values:
                 results[f"{group} {group_val}"] = []
 
-        return results, var_name, all_, group_values
+        return results, group_values
 
 
 class PetaleDataManager(DataManager):

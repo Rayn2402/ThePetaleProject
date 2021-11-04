@@ -30,11 +30,11 @@ class DataManager:
     COMMON_ELEMENTS: str = "common elements"
 
     # Results dictionary keys constants
-    VAR_NAME = "Variable Name"
-    ALL = "All"
+    VAR_NAME: str = "Variable Name"
+    ALL: str = "All"
 
     # Temporary table name constant
-    TEMP = "temp"
+    TEMP: str = "temp"
 
     def __init__(self,
                  user: str,
@@ -560,8 +560,17 @@ class DataManager:
 
 
 class PetaleDataManager(DataManager):
+    """
+    DataManager that has specific methods for Petale database
+    """
+    # Constants related to variable meta data file
+    VARIABLE_INFOS = ["test_id", "editorial_board", "form", "number",
+                      "section", "test", "description", "type", "option", "unit", "remarks"]
 
-    def __init__(self, user, host='localhost', port='5437'):
+    def __init__(self,
+                 user: str,
+                 host: str = 'localhost',
+                 port: str = '5437'):
         super().__init__(user, 'petale101', 'petale', host, port, 'public')
 
     def get_common_survivor(self,
@@ -574,7 +583,7 @@ class PetaleDataManager(DataManager):
             tables: list of table names
             filename: if provided, will be the name of the csv file containing the results
 
-        Returns: number of common surivors
+        Returns: number of common survivors
         """
         return self.get_common_count(tables=tables, columns=[PARTICIPANT, TAG], filename=filename)
 
@@ -596,40 +605,48 @@ class PetaleDataManager(DataManager):
         # We add Remarks to excluded columns
         if excluded_cols is None:
             excluded_cols = []
-        excluded_cols.append("Remarks")
+        excluded_cols.append(REMARKS)
 
         return DataManager.get_missing_data_count(self, table_name, save_csv, excluded_cols)
 
-    def get_table_stats(self, table_name, include="ALL",
-                        exclude=["Date", "Form", "Status", "Remarks"], save_in_file=True):
+    def get_table_stats(self,
+                        table_name: str,
+                        included_cols: Optional[List[str]] = None,
+                        excluded_cols: Optional[List[str]] = None,
+                        save_in_file: bool = True) -> pd.DataFrame:
         """
-        Function that return a dataframe containing statistics from any given table of the PETALE database
+        Retrieves numerical and categorical statistics of a Petale table
 
-        :param table_name: The name of the table
-        :param include: a list of all the columns to include, "ALL" if all columns included
-        :param exclude: a list of all the columns to exclude
-        :param save_in_file: Boolean, if true the dataframe will be saved in a csv file
-        :return: pandas DataFrame
+        Args:
+            table_name: name of the table
+            included_cols: list of all the columns to include (default = None (all columns))
+            excluded_cols: list of all the columns to exclude (default = None)
+            save_in_file: true if we want to save the statistics in a csv file associated to the table name
+
+        Returns: dataframe with all the statistics
         """
-        # we get a dataframe for the given tablename
-        if include == "ALL":
+
+        # We get a the dataframe containing the table
+        if included_cols is None:
             table_df = self.get_table(table_name)
         else:
-            table_df = self.get_table(table_name, include)
+            table_df = self.get_table(table_name, included_cols)
 
-        # we retrieve the columns of the table
-        cols = table_df.columns
+        # We update the list of all columns that must be excluded
+        if excluded_cols is None:
+            excluded_cols = []
+        excluded_cols += [DATE, FORM, STATUS, REMARKS]
 
-        # we exclude the parameters specified with the exclude parameter
-        cols = [col for col in cols if col not in exclude]
+        # We exclude the variables specified
+        cols = [col for col in table_df.columns if col not in excluded_cols]
         table_df = table_df[cols]
 
-        # we get only the rows that satisfy the given conditions
+        # We get only the rows associated to a specific phase
         if TAG in cols:
             table_df = table_df[table_df[TAG] == PHASE]
             table_df = table_df.drop([TAG], axis=1)
 
-        # We get the dataframe from the table the table containing the sex information
+        # We get the dataframe from the table containing the sex information
         if SEX in cols:
             sex_df = table_df[[PARTICIPANT, SEX]]
             table_df = table_df.drop([SEX], axis=1)
@@ -638,46 +655,46 @@ class PetaleDataManager(DataManager):
             sex_df = sex_df[sex_df[TAG] == PHASE]
             sex_df = sex_df.drop([TAG], axis=1)
 
-        # we retrieve categorical and numerical data
+        # We retrieve categorical and numerical data
         categorical_df = helpers.retrieve_categorical(table_df, ids=[PARTICIPANT])
         numerical_df = helpers.retrieve_numerical(table_df, ids=[PARTICIPANT])
 
-        # we merge the the categorical dataframe with the general dataframe by the column PARTICIPANT
+        # We merge the the categorical dataframe with the sex dataframe by the column PARTICIPANT
         categorical_df = pd.merge(sex_df, categorical_df, on=PARTICIPANT, how=INNER)
         categorical_df = categorical_df.drop([PARTICIPANT], axis=1)
 
-        # we merge the the numerical dataframe with the general dataframe by the column PARTICIPANT
+        # We merge the the numerical dataframe with the sex dataframe by the column PARTICIPANT
         numerical_df = pd.merge(sex_df, numerical_df, on=PARTICIPANT, how=INNER)
         numerical_df = numerical_df.drop([PARTICIPANT], axis=1)
 
-        # we retrieve number of individuals from each sex
+        # We retrieve number of individuals from each sex
         sex_stats = self.get_group_count(numerical_df, group=SEX)
 
-        # we make a categorical var analysis for this table
-        categorical_stats = self.get_categorical_var_analysis(table_name, categorical_df, group=SEX)
+        # We make a categorical variable analysis for this table
+        categorical_stats = self.get_categorical_var_analysis(categorical_df, group=SEX)
 
-        # we make a numerical var analysis for this table
-        numerical_stats = self.get_numerical_var_analysis(table_name, numerical_df, group=SEX)
+        # we make a numerical variable analysis for this table
+        numerical_stats = self.get_numerical_var_analysis(numerical_df, group=SEX)
 
-        # we concatenate all the results to get the final stats dataframe
+        # We concatenate all the results to get the final stats dataframe
         stats_df = pd.concat([sex_stats, categorical_stats, numerical_stats], ignore_index=True)
         table_name = helpers.reformat_string(table_name)
 
-        # if saveInFile True we save the dataframe in a csv file
         if save_in_file:
             helpers.save_stats_file(table_name, "statistics", stats_df)
 
-        # we return the dataframe
         return stats_df
 
-    def get_variable_info(self, var_name):
+    def get_variable_info(self, var_name: str) -> Dict[str, Any]:
         """
-        Function that returns all the information about a specific variable
+        Retrieves all the information about a specific variable from the original tables
 
-        :param var_name: The name of the variable
-        :return: a python dictionary containing all the infos
+        Args:
+            var_name: name of the variable
+
+        Returns: dictionary with all the infos
         """
-        # we extract the variable id from the variable name
+        # We extract the variable id from the variable name
         var_id = helpers.extract_var_id(var_name)
 
         # we prepare the query
@@ -685,44 +702,25 @@ class PetaleDataManager(DataManager):
 
         # We execute the query
         try:
-            self.cur.execute(query)
+            self.__cur.execute(query)
         except psycopg2.Error as e:
             print(e.pgerror)
 
-        row = self.cur.fetchall()
-
-        # we initialize the dictionary that will contain the result
-        var_info = {}
-
-        # we create an array containing all the keys
-        var_info_labels = ["test_id", "editorial_board", "form", "number",
-                           "section", "test", "description", "type", "option", "unit", "remarks"]
-
-        # we fill the dictionary with informations
-        for index, data in enumerate(row[0]):
-            var_info[var_info_labels[index]] = data
+        # We create the dictionary with the results
+        var_info = {PetaleDataManager.VARIABLE_INFOS[i]: data for i, data in enumerate(self.__cur.fetchall()[0])}
 
         # We reset the cursor
         self._reset_cursor()
 
-        # we return the result
         return var_info
 
-    def get_id_conversion_map(self):
+    def get_id_conversion_map(self) -> Dict[str, str]:
         """
-        Returns a map that links genomic patients' reference names to their IDs
-        :return: dict
+        Returns a map that links patients' genomic reference names to their IDs
+
+        Returns: dictionary
         """
         conversion_df = self.get_table(PETALE_PANDORA)
         conversion_map = {k: v[0] for k, v in conversion_df.set_index('Reference name').T.to_dict('series').items()}
 
         return conversion_map
-
-
-def initialize_petale_data_manager():
-    """
-    Asks petale database user name to initialise a PetaleDataManager object
-    :return: PetaleDataManager
-    """
-    user_name = input("Enter your username to access PETALE database : ")
-    return PetaleDataManager(user_name)

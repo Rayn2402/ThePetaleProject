@@ -14,6 +14,7 @@ import psycopg2
 import pandas as pd
 import os
 
+from settings.database import *
 from settings.paths import Paths
 from src.data.extraction import helpers
 from src.data.extraction.constants import *
@@ -642,11 +643,16 @@ class PetaleDataManager(DataManager):
     # Constant related to snp dataframe column
     KEY = "CHROM_POS"
 
-    def __init__(self,
-                 user: str,
-                 host: str = 'localhost',
-                 port: str = '5437'):
-        super().__init__(user, 'petale101', 'petale', host, port, 'public')
+    def __init__(self):
+        """
+        Sets the private attributes using database configurations in settings/database.py
+        """
+        super().__init__(user=USER,
+                         password=PASSWORD,
+                         database=DATABASE,
+                         host=HOST,
+                         port=PORT,
+                         schema=SCHEMA)
 
     def get_common_survivor(self,
                             tables: List[str],

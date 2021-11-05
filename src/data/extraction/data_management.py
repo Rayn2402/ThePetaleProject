@@ -4,7 +4,7 @@ Filename: data_management.py
 Author: Nicolas Raymond
         Mehdi Mitiche
 
-Description: Defines the DataManager class that helps interation with SQL data
+Description: Defines the DataManager class that helps interaction with SQL data
 
 Date of last modification : 2021/11/04
 """
@@ -417,7 +417,7 @@ class DataManager:
 
         # We save the csv with the results if required
         if directory is not None:
-            table_name = helpers.reformat_string(table_name)
+            table_name = self._reformat_table_name(table_name)
             file_path = os.path.join(directory, f"{table_name}_missing_count.csv")
             missing_df.to_csv(file_path, index=True, header=False)
 
@@ -536,6 +536,30 @@ class DataManager:
         return conn, cur
 
     @staticmethod
+    def _initialize_results_dict(df: pd.DataFrame,
+                                 group: str) -> Tuple[Dict[str, List[Any]], List[Any]]:
+        """
+        Initializes a dictionary that will contains results of a descriptive analyses
+
+        Args:
+            df: pandas dataframe
+            group: name of a column
+
+        Returns: initialized dictionary, list with the different group values
+        """
+        group_values = None
+        results = {
+            DataManager.VAR_NAME: [],
+            DataManager.ALL: []
+        }
+        if group is not None:
+            group_values = df[group].unique()
+            for group_val in group_values:
+                results[f"{group} {group_val}"] = []
+
+        return results, group_values
+
+    @staticmethod
     def _reformat_columns(cols: List[str]) -> str:
         """
         Converts a list of strings containing the name of some columns to a string
@@ -567,28 +591,16 @@ class DataManager:
         return ",".join(query_parts)
 
     @staticmethod
-    def _initialize_results_dict(df: pd.DataFrame,
-                                 group: str) -> Tuple[Dict[str, List[Any]], List[Any]]:
+    def _reformat_table_name(table_name: str) -> str:
         """
-        Initializes a dictionary that will contains results of a descriptive analyses
+        Removes special characters in a table name so it can be used as a directory name
 
         Args:
-            df: pandas dataframe
-            group: name of a column
+            table_name: str
 
-        Returns: initialized dictionary, list with the different group values
+        Returns:
         """
-        group_values = None
-        results = {
-            DataManager.VAR_NAME: [],
-            DataManager.ALL: []
-        }
-        if group is not None:
-            group_values = df[group].unique()
-            for group_val in group_values:
-                results[f"{group} {group_val}"] = []
-
-        return results, group_values
+        return table_name.replace(".", "").replace(": ", "").replace("?", "").replace("/", "")
 
     @staticmethod
     def write_csv_from_dict(data: List[Dict[str, Any]],
@@ -623,9 +635,12 @@ class PetaleDataManager(DataManager):
     """
     DataManager that has specific methods for Petale database
     """
-    # Constants related to variable meta data file
+    # Constant related to variable meta data file
     VARIABLE_INFOS = ["test_id", "editorial_board", "form", "number",
                       "section", "test", "description", "type", "option", "unit", "remarks"]
+
+    # Constant related to snp dataframe column
+    KEY = "CHROM_POS"
 
     def __init__(self,
                  user: str,
@@ -738,7 +753,7 @@ class PetaleDataManager(DataManager):
 
         # We concatenate all the results to get the final stats dataframe
         stats_df = pd.concat([sex_stats, categorical_stats, numerical_stats], ignore_index=True)
-        table_name = helpers.reformat_string(table_name)
+        table_name = self._reformat_table_name(table_name)
 
         if save_in_file:
             self._save_stats_file(table_name, "statistics", stats_df)
@@ -813,3 +828,61 @@ class PetaleDataManager(DataManager):
             os.remove(file_path)
 
         df.to_csv(file_path, index=index, header=header)
+
+    @staticmethod
+    def extract_var_id(var_name: str) -> str:
+        """
+        Extracts the id of the given variable
+
+        Args:
+            var_name: variable name from a Petale original table
+
+        Returns: id of the variable
+        """
+        return var_name.split()[0]
+
+    @staticmethod
+    def fill_participant_id(participant_id: str) -> str:
+        """
+        Adds characters missing to a participant ID
+
+        Args:
+            participant_id: current ID
+
+        Returns: corrected participant ID
+        """
+
+        return f"P" + "".join(["0"]*(3-len(participant_id))) + participant_id
+
+    @staticmethod
+    def pivot_snp_dataframe(df: pd.DataFrame,
+                            snps_id_filter: Optional[pd.DataFrame] = None) -> pd.DataFrame:
+        """
+        Filters the patients snps table and execute a transposition
+
+        Args:
+            df: pandas dataframe
+            snps_id_filter: list with snps id to keep
+
+        Returns: pandas dataframe
+        """
+
+        # We add a new column to the dataframe
+        df[PetaleDataManager.KEY] = df[CHROM].astype(str) + "_" + df[SNPS_POSITION].astype(str)
+
+        # We filter the table to only keep rows where CHROM and POS match with an SNP in the filter
+        if snps_id_filter is not None:
+            df = df[df[PetaleDataManager.KEY].isin(list(snps_id_filter[PetaleDataManager.KEY].values))]
+
+        # We dump CHROM and POS columns
+        df = df.drop([CHROM, SNPS_POSITION, REF, ALT, GENE_REF_GEN], axis=1, errors='ignore')
+
+        # We change index for CHROM_POS column
+        df = df.set_index(PetaleDataManager.KEY)
+
+        # We transpose the dataframe
+        df = df.T
+        df.index.rename(PARTICIPANT, inplace=True)
+        df.reset_index(inplace=True)
+
+        return df

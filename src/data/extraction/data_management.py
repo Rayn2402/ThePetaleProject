@@ -54,41 +54,9 @@ class DataManager:
             port: connection port number
             schema: schema we want to access in the database
         """
-        self.__conn, self.__cur = DataManager.connect(user, password, database, host, port)
+        self.__conn, self.__cur = DataManager._connect(user, password, database, host, port)
         self.__schema = schema
         self.__database = database
-
-    @staticmethod
-    def connect(user: str,
-                password: str,
-                database: str,
-                host: str,
-                port: str) -> Tuple[Any, Any]:
-        """
-        Creates a connection with a database
-
-        Args:
-            user: username to access the database
-            password: password linked to the user
-            database: name of the database
-            host: database host address
-            port: connection port number
-
-        Returns: connection, cursor
-        """
-        try:
-            conn = psycopg2.connect(database=database,
-                                    user=user,
-                                    host=host,
-                                    password=password,
-                                    port=port)
-            cur = conn.cursor()
-
-        except psycopg2.Error as e:
-            print(e.pgerror)
-            raise
-
-        return conn, cur
 
     def _create_table(self,
                       table_name: str,
@@ -536,6 +504,38 @@ class DataManager:
         return df
 
     @staticmethod
+    def _connect(user: str,
+                 password: str,
+                 database: str,
+                 host: str,
+                 port: str) -> Tuple[Any, Any]:
+        """
+        Creates a connection with a database
+
+        Args:
+            user: username to access the database
+            password: password linked to the user
+            database: name of the database
+            host: database host address
+            port: connection port number
+
+        Returns: connection, cursor
+        """
+        try:
+            conn = psycopg2.connect(database=database,
+                                    user=user,
+                                    host=host,
+                                    password=password,
+                                    port=port)
+            cur = conn.cursor()
+
+        except psycopg2.Error as e:
+            print(e.pgerror)
+            raise
+
+        return conn, cur
+
+    @staticmethod
     def _reformat_columns(cols: List[str]) -> str:
         """
         Converts a list of strings containing the name of some columns to a string
@@ -649,7 +649,7 @@ class PetaleDataManager(DataManager):
 
     def get_missing_data_count(self,
                                table_name: str,
-                               save_csv: bool = False,
+                               directory: Optional[str] = Paths.DESC_STATS,
                                excluded_cols: Optional[List[str]] = None) -> Tuple[pd.DataFrame, Dict[str, Any]]:
         """
         Gets the count of all the missing data in the given table.
@@ -657,7 +657,7 @@ class PetaleDataManager(DataManager):
 
         Args:
             table_name: name of the table
-            save_csv: true if we want to save a csv with the results
+            directory: if provided, a csv with the results will be saved at the given directory
             excluded_cols: list with names of columns to exclude during the count
 
         Returns: dataframe with nb of missing data per column, dictionary with details on the missing data
@@ -667,7 +667,7 @@ class PetaleDataManager(DataManager):
             excluded_cols = []
         excluded_cols.append(REMARKS)
 
-        return DataManager.get_missing_data_count(self, table_name, save_csv, excluded_cols)
+        return DataManager.get_missing_data_count(self, table_name, directory, excluded_cols)
 
     def get_table_stats(self,
                         table_name: str,

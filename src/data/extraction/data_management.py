@@ -14,6 +14,7 @@ import psycopg2
 import pandas as pd
 import os
 
+from settings.paths import Paths
 from src.data.extraction import helpers
 from src.data.extraction.constants import *
 from tqdm import tqdm
@@ -24,7 +25,6 @@ class DataManager:
     """
     Object that can interact with a PostgresSQL database
     """
-
     # Common count csv headers constants
     TABLES: str = "tables"
     COMMON_ELEMENTS: str = "common elements"
@@ -106,13 +106,13 @@ class DataManager:
         Returns:
         """
         # We save the start of the query
-        query = f"CREATE TABLE {self.__schema}.\"{table_name}\" (" + helpers.colsAndTypes(types)
+        query = f"CREATE TABLE {self.__schema}.\"{table_name}\" (" + self._reformat_columns_and_types(types)
 
         # If a primary key is given we add it to the query
         if primary_key is not None:
 
             # We define the primary key
-            keys = helpers.colsForSql(primary_key)
+            keys = self._reformat_columns(primary_key)
             query += f", PRIMARY KEY ({keys}) );"
 
         else:
@@ -181,7 +181,7 @@ class DataManager:
         self._reset_cursor()
 
     def get_all_missing_data_count(self,
-                                   directory: str = 'missing_data',
+                                   directory: Optional[str] = None,
                                    filename: str = "missing_data.csv") -> None:
         """
         Generates a csv file containing the count of the missing data of all the tables in the database
@@ -210,7 +210,8 @@ class DataManager:
                 pbar.update(1)
 
         # We generate a csv file with all the results
-        helpers.writeCsvFile(results, filename, directory)
+        directory = directory if directory is not None else os.getcwd()
+        self.write_csv_from_dict(data=results, filename=filename, directory=directory)
         print(f"File is ready in the folder {directory}")
 
     def get_all_table_names(self) -> List[str]:
@@ -343,7 +344,7 @@ class DataManager:
         Returns: number of common elements
         """
         # We prepare the columns to be in the SQL query
-        cols_in_query = helpers.colsForSql(columns)
+        cols_in_query = self._reformat_columns(columns)
 
         # We build the query
         query = 'SELECT COUNT(*) FROM ('
@@ -420,14 +421,14 @@ class DataManager:
 
     def get_missing_data_count(self,
                                table_name: str,
-                               save_csv: bool = False,
+                               directory: Optional[str] = None,
                                excluded_cols: Optional[List[str]] = None) -> Tuple[pd.DataFrame, Dict[str, Any]]:
         """
         Gets the count of all the missing data in the given table
 
         Args:
             table_name: name of the table
-            save_csv: true if we want to save a csv with the results
+            directory: if provided, a csv with the results will be saved at the given directory
             excluded_cols: list with names of columns to exclude during the count
 
         Returns: dataframe with nb of missing data per column, dictionary with details on the missing data
@@ -447,9 +448,10 @@ class DataManager:
         total_rows = df_table.shape[0]
 
         # We save the csv with the results if required
-        if save_csv:
+        if directory is not None:
             table_name = helpers.reformat_string(table_name)
-            helpers.save_stats_file(table_name, "missing", missing_df, index=True, header=False)
+            file_path = os.path.join(directory, f"{table_name}_missing_count.csv")
+            missing_df.to_csv(file_path, index=True, header=False)
 
         # Returning a dictionary containing the data needed
         return missing_df, {"table_name": table_name,
@@ -509,7 +511,7 @@ class DataManager:
         """
 
         # If no column name is specified, we select all columns
-        query = "SELECT *" if columns is None else f"SELECT {helpers.colsForSql(columns)} "
+        query = "SELECT *" if columns is None else f"SELECT {self._reformat_columns(columns)} "
 
         # We add the table name to the query
         query = f"{query} FROM {self.__schema}.\"{table_name}\""
@@ -534,6 +536,37 @@ class DataManager:
         return df
 
     @staticmethod
+    def _reformat_columns(cols: List[str]) -> str:
+        """
+        Converts a list of strings containing the name of some columns to a string
+        ready to use in an SQL query. Ex: ["name","age","gender"]  ==> "name","age","gender"
+
+        Args:
+            cols: list of column names
+
+        Returns: str to include in a query
+        """
+        cols = list(map(lambda c: '"'+c+'"', cols))
+
+        return ",".join(cols)
+
+    @staticmethod
+    def _reformat_columns_and_types(types: Dict[str, str]) -> str:
+        """
+        Converts a dictionary with column names as keys and types as values to a string to
+        use in an SQL query. Ex: {"name":"text", "Age":"numeric"} ==> '"name" text, "Age" numeric'
+
+        Args:
+            types: dictionary with column names (keys) and types (values)
+
+        Returns: str to include in a query
+        """
+        cols = types.keys()
+        query_parts = list(map(lambda c: f"\"{c}\" {types[c]}", cols))
+
+        return ",".join(query_parts)
+
+    @staticmethod
     def _initialize_results_dict(df: pd.DataFrame,
                                  group: str) -> Tuple[Dict[str, List[Any]], List[Any]]:
         """
@@ -545,7 +578,6 @@ class DataManager:
 
         Returns: initialized dictionary, list with the different group values
         """
-
         group_values = None
         results = {
             DataManager.VAR_NAME: [],
@@ -557,6 +589,34 @@ class DataManager:
                 results[f"{group} {group_val}"] = []
 
         return results, group_values
+
+    @staticmethod
+    def write_csv_from_dict(data: List[Dict[str, Any]],
+                            filename: str,
+                            directory: str) -> None:
+        """
+        Takes a list of dictionaries sharing the same keys and generates a CSV file from them
+
+        Args:
+            data: list of dictionaries
+            filename: name of the csv file that will be generated
+            directory: directory where the file will be saved
+
+        Returns: None
+        """
+        try:
+            # We create the directory if it does not exist
+            os.makedirs(directory, exist_ok=True)
+
+            # We write in the new csv file
+            with open(os.path.join(directory, filename), 'w', newline='') as csv_file:
+                writer = csv.DictWriter(csv_file, fieldnames=data[0].keys())
+                writer.writeheader()
+                for item in data:
+                    writer.writerow(item)
+
+        except IOError:
+            print("I/O error")
 
 
 class PetaleDataManager(DataManager):
@@ -681,7 +741,7 @@ class PetaleDataManager(DataManager):
         table_name = helpers.reformat_string(table_name)
 
         if save_in_file:
-            helpers.save_stats_file(table_name, "statistics", stats_df)
+            self._save_stats_file(table_name, "statistics", stats_df)
 
         return stats_df
 
@@ -724,3 +784,32 @@ class PetaleDataManager(DataManager):
         conversion_map = {k: v[0] for k, v in conversion_df.set_index('Reference name').T.to_dict('series').items()}
 
         return conversion_map
+
+    @staticmethod
+    def _save_stats_file(table_name: str,
+                         file_name: str,
+                         df: pd.DataFrame,
+                         index: bool = False,
+                         header: bool = True) -> None:
+        """
+        Saves a csv file in the stats directory associated to a table
+
+        Args:
+            table_name: name of the table for which we save the statistics
+            file_name: name of the csv file
+            df: pandas dataframe to turn into csv
+            index: true if we need to add indexes in the csv
+            header: true if we need to store the header of the df in the csv
+
+        Returns: None
+        """
+        # We save the file path
+        directory = os.path.join(Paths.DESC_STATS, table_name)
+        os.makedirs(directory, exist_ok=True)
+        file_path = os.path.join(directory, f"{file_name}.csv")
+
+        # We remove the current csv if it is already existing
+        if os.path.isfile(file_path):
+            os.remove(file_path)
+
+        df.to_csv(file_path, index=index, header=header)

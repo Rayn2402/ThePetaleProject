@@ -49,7 +49,8 @@ def get_abs_years_timelapse(df: DataFrame,
     df[new_col] = df[new_col].apply(convert_timedelta_to_years)
 
 
-def get_column_stats(df: DataFrame, col: str) -> Tuple[float, float, float, float]:
+def get_column_stats(df: DataFrame,
+                     col: str) -> Tuple[float, float, float, float]:
     """
     Retrieves statistic from a numerical column in a pandas dataframe
 
@@ -88,7 +89,8 @@ def is_categorical(data: Series) -> bool:
     return True
 
 
-def retrieve_categorical_var(df: DataFrame, to_keep: Optional[List[str]] = None) -> DataFrame:
+def retrieve_categorical_var(df: DataFrame,
+                             to_keep: Optional[List[str]] = None) -> DataFrame:
     """
     Returns a dataframe containing only categorical variables of a given dataframe
 
@@ -111,7 +113,8 @@ def retrieve_categorical_var(df: DataFrame, to_keep: Optional[List[str]] = None)
     return df[categorical_cols + to_keep]
 
 
-def retrieve_numerical_var(df: DataFrame, to_keep: Optional[List[str]] = None) -> DataFrame:
+def retrieve_numerical_var(df: DataFrame,
+                           to_keep: Optional[List[str]] = None) -> DataFrame:
     """
     Returns a dataframe containing only numerical variables of a given dataframe
 

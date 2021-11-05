@@ -1,7 +1,10 @@
 """
 Filename: paths.py
+
 Authors : Nicolas Raymond
+
 Description : Stores a custom enumeration of the important paths within the project
+
 Date of last modification: 2021/10/19
 """
 

@@ -1,0 +1,5 @@
+settings/database.py
+.idea
+*.pt
+*.json
+*.csv

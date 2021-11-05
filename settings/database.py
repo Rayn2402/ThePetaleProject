@@ -1,5 +1,5 @@
 """
-Filename: database_setup.py
+Filename: database.py
 
 Authors : Nicolas Raymond
 

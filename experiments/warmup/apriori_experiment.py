@@ -1,11 +1,12 @@
 """
-Author : Nicolas Raymond
+Filename: apriori_experiment.py
 
-This file is used to identify meaningful association rules between categorical values and
-VO2 max quantiles.
+Authors: Nicolas Raymond
 
-The apyori algorithm execution is inspired from :
-https://stackabuse.com/association-rule-mining-via-apriori-algorithm-in-python/
+Description: This file is used to identify meaningful association
+             rules between categorical values and VO2 max quantiles.
+
+Date of last modification : 2021/11/05
 """
 
 from apyori import apriori
@@ -49,10 +50,14 @@ def argument_parser():
     return arguments
 
 
-def print_and_save_rules(rules: List, settings: Dict[str, Union[float, int]],
-                         json_filename: str, start_time: Any, save_genes: bool = False) -> None:
+def print_and_save_rules(rules: List[Any],
+                         settings: Dict[str, Union[float, int]],
+                         json_filename: str,
+                         start_time: Any,
+                         save_genes: bool = False) -> None:
     """
     Prints and saves the rules found in a json file
+
     Args:
         rules: list of rules found with apriori
         settings: dictionary of apriori settings
@@ -82,7 +87,7 @@ def print_and_save_rules(rules: List, settings: Dict[str, Union[float, int]],
 
         # We save statistics in the dictionary
         rules_dictionary[rule] = {'Support': support, 'Lift': lift, 'Confidence': confidence}
-        print("=====================================")
+        print("="*40)
 
     if save_genes:
 
@@ -121,7 +126,7 @@ if __name__ == '__main__':
     sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
     from settings.paths import Paths
     from src.data.extraction.data_management import PetaleDataManager
-    from src.data.processing.sampling import get_warmup_data
+    from src.data.processing.sampling import GeneChoice, get_warmup_data
     from src.data.processing.preprocessing import preprocess_for_apriori
 
     # Arguments parsing
@@ -131,8 +136,8 @@ if __name__ == '__main__':
     start = time()
 
     # We first extract data
-    manager = PetaleDataManager("rayn2402")
-    df, target, cont_cols, cat_cols = get_warmup_data(manager, genes=True, sex=True)
+    manager = PetaleDataManager()
+    df, target, cont_cols, cat_cols = get_warmup_data(manager, genes=GeneChoice.ALL, sex=True)
 
     # We only keep categorical columns and targets
     df = df[cat_cols + [target]]

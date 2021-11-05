@@ -1,11 +1,19 @@
 """
-This file consists of all the experiments made on the warmup dataset
+Filename: full_experiment.py
+
+Authors: Nicolas Raymond
+
+Description: This file is used to execute all the model comparisons
+             made on the warmup dataset
+
+Date of last modification : 2021/11/05
 """
-from os.path import dirname, realpath
-from copy import deepcopy
 import sys
 import argparse
 import time
+
+from os.path import dirname, realpath
+from copy import deepcopy
 
 
 def argument_parser():
@@ -71,7 +79,7 @@ if __name__ == '__main__':
     from settings.paths import Paths
     from src.data.processing.datasets import PetaleDataset, PetaleStaticGNNDataset
     from src.data.processing.feature_selection import FeatureSelector
-    from src.data.processing.sampling import get_warmup_data, extract_masks, push_valid_to_train, SIGNIFICANT
+    from src.data.processing.sampling import extract_masks, GeneChoice, get_warmup_data, push_valid_to_train
     from src.models.han import PetaleHANR
     from src.models.mlp import PetaleMLPR
     from src.models.tabnet import PetaleTNR
@@ -86,10 +94,10 @@ if __name__ == '__main__':
     args = argument_parser()
 
     # Initialization of DataManager and sampler
-    manager = PetaleDataManager("rayn2402")
+    manager = PetaleDataManager()
 
     # We extract needed data
-    genes_selection = SIGNIFICANT if args.genes else None
+    genes_selection = GeneChoice.SIGNIFICANT if args.genes else None
     df, target, cont_cols, cat_cols = get_warmup_data(manager, baselines=args.baselines, genes=genes_selection,
                                                       sex=args.sex)
     # We filter variables if needed
@@ -161,7 +169,7 @@ if __name__ == '__main__':
                               save_hps_importance=True, save_optimization_history=True)
 
         # Evaluation
-        evaluator.nested_cross_valid()
+        evaluator.evaluate()
 
         print("Time Taken for TabNet (minutes): ", round((time.time() - start) / 60, 2))
 
@@ -184,7 +192,7 @@ if __name__ == '__main__':
                               save_optimization_history=True)
 
         # Evaluation
-        evaluator.nested_cross_valid()
+        evaluator.evaluate()
 
         print("Time Taken for Random Forest (minutes): ", round((time.time() - start) / 60, 2))
 
@@ -207,7 +215,7 @@ if __name__ == '__main__':
                               save_optimization_history=True)
 
         # Evaluation
-        evaluator.nested_cross_valid()
+        evaluator.evaluate()
 
         print("Time Taken for XGBoost (minutes): ", round((time.time() - start) / 60, 2))
 
@@ -241,7 +249,7 @@ if __name__ == '__main__':
                               save_hps_importance=True, save_optimization_history=True)
 
         # Evaluation
-        evaluator.nested_cross_valid()
+        evaluator.evaluate()
 
         print("Time Taken for MLP (minutes): ", round((time.time() - start) / 60, 2))
 
@@ -277,7 +285,7 @@ if __name__ == '__main__':
                               save_hps_importance=True, save_optimization_history=True)
 
         # Evaluation
-        evaluator.nested_cross_valid()
+        evaluator.evaluate()
 
         print("Time Taken for Logistic Regression (minutes): ", round((time.time() - start) / 60, 2))
 
@@ -310,7 +318,7 @@ if __name__ == '__main__':
                               save_optimization_history=True)
 
         # Evaluation
-        evaluator.nested_cross_valid()
+        evaluator.evaluate()
 
         print("Time Taken for HAN (minutes): ", round((time.time() - start) / 60, 2))
 

@@ -731,8 +731,8 @@ class PetaleDataManager(DataManager):
             sex_df = sex_df.drop([TAG], axis=1)
 
         # We retrieve categorical and numerical data
-        categorical_df = helpers.retrieve_categorical(table_df, ids=[PARTICIPANT])
-        numerical_df = helpers.retrieve_numerical(table_df, ids=[PARTICIPANT])
+        categorical_df = helpers.retrieve_categorical_var(table_df, ids=[PARTICIPANT])
+        numerical_df = helpers.retrieve_numerical_var(table_df, ids=[PARTICIPANT])
 
         # We merge the the categorical dataframe with the sex dataframe by the column PARTICIPANT
         categorical_df = pd.merge(sex_df, categorical_df, on=PARTICIPANT, how=INNER)
@@ -770,7 +770,7 @@ class PetaleDataManager(DataManager):
         Returns: dictionary with all the infos
         """
         # We extract the variable id from the variable name
-        var_id = helpers.extract_var_id(var_name)
+        var_id = self.extract_var_id(var_name)
 
         # we prepare the query
         query = f'SELECT * FROM "PETALE_meta_data" WHERE "Test ID" = {var_id}'

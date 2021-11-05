@@ -1,47 +1,52 @@
 """
-Author : Nicolas Raymond
+Filename: GENERALS.py
 
-This file stores the procedure to execute in order to obtain "GENERALS" table in the database.
+Authors: Nicolas Raymond
 
-GENERALS contains :
+Description: This file stores the procedure to execute in
+             order to obtain "GENERALS" table in the database.
 
-    Features:
-     - SEX
-     - AGE AT DIAGNOSIS
-     - DURATION OF TREATMENT (DT)
-     - RADIOTHERAPY DOSE
-     - DOX DOSE
-     - DEX (0; >0, <=Med; >Med) where Med is the median without 0's
-     - GESTATIONAL AGE AT BIRTH (<37w, >=37w, NaN)
-     - WEIGHT AT BIRTH (<2500g, >=2500g, NaN)
-     - HEIGHT
-     - WEIGHT
-     - SMOKING (0: No, 1: Yes)
-     - AGE
-     - TSEOT
-     - MVPLA
-     - TAS_REST
-     - TAD_REST
+             GENERALS contains :
 
-     Outcomes:
-     - V02R_MAX
-     - FITNESS COMPLICATIONS (0: No, 1: Yes)
+            Features:
+             - SEX
+             - AGE AT DIAGNOSIS
+             - DURATION OF TREATMENT (DT)
+             - RADIOTHERAPY DOSE
+             - DOX DOSE
+             - DEX (0; >0, <=Med; >Med) where Med is the median without 0's
+             - GESTATIONAL AGE AT BIRTH (<37w, >=37w)
+             - WEIGHT AT BIRTH (<2500g, >=2500g)
+             - HEIGHT
+             - WEIGHT
+             - SMOKING (0: No, 1: Yes)
+             - AGE
+             - TSEOT
+             - MVPLA
+             - TAS_REST
+             - TAD_REST
 
+             Outcomes:
+             - V02R_MAX
+             - FITNESS COMPLICATIONS (0: No, 1: Yes)
+
+Date of last modification : 2021/11/05
 """
-from os.path import realpath, dirname
 import pandas as pd
 import sys
+
+from os.path import realpath, dirname
 
 if __name__ == '__main__':
 
     # Imports specific to project
     sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
     from src.data.extraction.constants import *
-    from src.data.extraction.data_management import initialize_petale_data_manager
-    from src.data.extraction.helpers import AbsTimeLapse, get_missing_update
+    from src.data.extraction.data_management import PetaleDataManager
+    from src.data.extraction.helpers import get_abs_years_timelapse, get_missing_update
 
     # We build a PetaleDataManager that will help interacting with PETALE database
-    data_manager = initialize_petale_data_manager()
+    data_manager = PetaleDataManager()
 
     # We save the variables needed from BASELINE_FEATURES_AND_COMPLICATIONS_PLUS_FITNESS
     BASE_vars = [FITNESS_COMPLICATIONS, PARTICIPANT, SEX,
@@ -75,14 +80,14 @@ if __name__ == '__main__':
 
     """ GENERAL 1 DATA HANDLING """
     # We add the "Age" column
-    AbsTimeLapse(df_general_1, AGE, DATE_OF_BIRTH, DATE)
+    get_abs_years_timelapse(df_general_1, AGE, DATE_OF_BIRTH, DATE)
 
     # We remove unnecessary variable
     df_general_1 = df_general_1.drop([DATE_OF_BIRTH, DATE], axis=1)
 
     """ GENERAL 2 DATA HANDLING """
     # We add a new column "Time since end of treatment" (TSEOT) (years)
-    AbsTimeLapse(df_general_2, TSEOT, DATE_OF_TREATMENT_END, DATE)
+    get_abs_years_timelapse(df_general_2, TSEOT, DATE_OF_TREATMENT_END, DATE)
 
     # We delete unnecessary variables from the dataframe
     df_general_2 = df_general_2.drop([DATE_OF_TREATMENT_END, DATE], axis=1)

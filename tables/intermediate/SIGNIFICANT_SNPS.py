@@ -1,14 +1,17 @@
 """
-Author : Nicolas Raymond
+Filename: SIGNIFICANT_SNPS.py
 
-This file contains the procedure to create the tables containing details on SNPs significantly associated to
-cardiorespiratory fitness.
+Authors: Nicolas Raymond
 
+Description: This file stores the procedure to create the tables
+             containing details on SNPs significantly associated to cardiorespiratory fitness.
+
+Date of last modification : 2021/11/05
 """
+import sys
+
 from os.path import realpath, dirname, join
 from pandas import read_csv
-
-import sys
 
 if __name__ == '__main__':
 
@@ -16,10 +19,10 @@ if __name__ == '__main__':
     sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
     from settings.paths import Paths
     from src.data.extraction.constants import *
-    from src.data.extraction.data_management import initialize_petale_data_manager
+    from src.data.extraction.data_management import PetaleDataManager
 
     # We create a data manager
-    dm = initialize_petale_data_manager()
+    dm = PetaleDataManager()
 
     for t in [SIGNIFICANT_COMMON_SNPS_ID, SIGNIFICANT_RARE_SNPS_ID]:
 

@@ -1,25 +1,28 @@
 """
-Author : Nicolas Raymond
+Filename: TOP12_SNPS.py
 
-This file contains the procedure to create the tables containing the TOP12 SNPs that are
-the most significantly associated to cardiorespiratory fitness.
+Authors: Nicolas Raymond
 
+Description: This file stores the procedure to create the tables
+             containing the TOP12 SNPs that are the most significantly
+             associated to cardiorespiratory fitness.
+
+Date of last modification : 2021/11/05
 """
+import sys
 
 from os.path import dirname, realpath
 from pandas import concat
-
-import sys
 
 if __name__ == '__main__':
 
     # Imports specific to project
     sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
-    from src.data.extraction.data_management import initialize_petale_data_manager
+    from src.data.extraction.data_management import PetaleDataManager
     from src.data.extraction.constants import *
 
     # We create a data manager
-    dm = initialize_petale_data_manager()
+    dm = PetaleDataManager()
 
     # We load SNPs tables from the database
     common_df = dm.get_table(SIGNIFICANT_COMMON_SNPS_ID)

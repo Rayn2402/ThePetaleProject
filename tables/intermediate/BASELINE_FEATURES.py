@@ -1,46 +1,48 @@
 """
-Author : Nicolas Raymond
+Filename: BASELINE_FEATURES.py
 
-This file stores the procedure to execute in order to obtain "BASE_FEATURES_AND_COMPLICATIONS"
-table in the database.
+Authors: Nicolas Raymond
 
- FIXED_FEATURES_AND_COMPLICATIONS contains :
+Description: This file stores the procedure to execute in order to obtain
+             "BASE_FEATURES_AND_COMPLICATIONS" table in the database.
 
-    Features:
-     - SEX
-     - AGE AT DIAGNOSIS
-     - DURATION OF TREATMENT (DT)
-     - RADIOTHERAPY DOSE (0; >0)
-     - DOX DOSE
-     - DEX (0; >0, <=Med; >Med) where Med is the median without 0's
-     - GESTATIONAL AGE AT BIRTH (<37w, >=37w, NaN)
-     - WEIGHT AT BIRTH (<2500g, >=2500g, NaN)
+         FIXED_FEATURES_AND_COMPLICATIONS contains :
 
-    Complications:
-    - Neurocognitive (0: No, 1: Yes)
-    - Skeletal/Bone (0: No, 1: Yes)
-    - Cardiometabolic (0: No, 1: Yes)
+            Features:
+             - SEX
+             - AGE AT DIAGNOSIS
+             - DURATION OF TREATMENT (DT)
+             - RADIOTHERAPY DOSE (0; >0)
+             - DOX DOSE
+             - DEX (0; >0, <=Med; >Med) where Med is the median without 0's
+             - GESTATIONAL AGE AT BIRTH (<37w, >=37w)
+             - WEIGHT AT BIRTH (<2500g, >=2500g)
 
+            Complications:
+            - Neurocognitive (0: No, 1: Yes)
+            - Skeletal/Bone (0: No, 1: Yes)
+            - Cardiometabolic (0: No, 1: Yes)
 
+Date of last modification : 2021/11/05
 """
+
+import pandas as pd
+import sys
 
 from numpy import select
 from numpy import minimum as npmin
 from os.path import dirname, realpath
-
-import pandas as pd
-import sys
 
 if __name__ == '__main__':
 
     # Imports specific to project
     sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
     from src.data.extraction.constants import *
-    from src.data.extraction.data_management import initialize_petale_data_manager
-    from src.data.extraction.helpers import AbsTimeLapse, get_missing_update
+    from src.data.extraction.data_management import PetaleDataManager
+    from src.data.extraction.helpers import get_abs_years_timelapse, get_missing_update
 
     # We build a PetaleDataManager that will help interacting with PETALE database
-    data_manager = initialize_petale_data_manager()
+    data_manager = PetaleDataManager()
 
     # We save the variables needed from General_1
     G1_vars = PKEY + [SEX, BIRTH_AGE, BIRTH_WEIGHT]
@@ -95,7 +97,7 @@ if __name__ == '__main__':
     df_general_2[COMPLICATIONS] = npmin(complications, 1)
 
     # We add a new column "Duration of treatment" (DT) (years)
-    AbsTimeLapse(df_general_2, DT, DATE_OF_DIAGNOSIS, DATE_OF_TREATMENT_END)
+    get_abs_years_timelapse(df_general_2, DT, DATE_OF_DIAGNOSIS, DATE_OF_TREATMENT_END)
 
     # We adjust the column "Radiotherapy dose" because it is null if "Radiotherapy?" column equals 0
     df_general_2.loc[df_general_2[RADIOTHERAPY] == '0.0', RADIOTHERAPY_DOSE] = "0"

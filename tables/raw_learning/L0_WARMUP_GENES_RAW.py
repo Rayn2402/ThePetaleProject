@@ -1,15 +1,17 @@
 """
-Authors : Nicolas Raymond
+Filename: L0_WARMUP_GENES.py
 
-This file contains the procedure to execute in order to obtain "L0_WARMUP_GENES_RAW".
+Authors: Nicolas Raymond
 
+Description: This file contains the procedure to execute in order
+             to obtain "L0_WARMUP_GENES_RAW".
+
+Date of last modification : 2021/11/05
 """
-
-from os.path import join, realpath, dirname
-
 import pandas as pd
 import sys
 
+from os.path import join, realpath, dirname
 
 if __name__ == '__main__':
 
@@ -17,13 +19,13 @@ if __name__ == '__main__':
     sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
     from settings.paths import Paths
     from src.data.extraction.constants import *
-    from src.data.extraction.data_management import initialize_petale_data_manager
+    from src.data.extraction.data_management import PetaleDataManager
     from src.data.extraction.helpers import get_missing_update
     from src.data.processing.cleaning import DataCleaner
     from src.utils.visualization import visualize_class_distribution
 
     # We build a PetaleDataManager that will help interacting with PETALE database
-    data_manager = initialize_petale_data_manager()
+    data_manager = PetaleDataManager()
 
     # We build a data cleaner
     data_cleaner = DataCleaner(join(Paths.CLEANING_RECORDS, "WARMUP_GENES"), column_thresh=COLUMN_REMOVAL_THRESHOLD,
@@ -87,5 +89,3 @@ if __name__ == '__main__':
 
     # We create the RAW learning table
     data_manager.create_and_fill_table(complete_df, f"{LEARNING_0_GENES}_{RAW}", types, primary_key=[PARTICIPANT])
-
-

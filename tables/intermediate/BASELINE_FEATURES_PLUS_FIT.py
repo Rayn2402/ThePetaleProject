@@ -1,35 +1,38 @@
 """
-Author : Nicolas Raymond
+Filename: BASELINE_FEATURES_PLUS_FIT.py
 
-This file stores the procedure to execute in order to obtain "BASE_FEATURES_AND_COMPLICATIONS_+_FITNESS"
-table in the database.
+Authors: Nicolas Raymond
 
- BASE_FEATURES_AND_COMPLICATIONS contains :
+Description: This file stores the procedure to execute in order to obtain
+             "BASE_FEATURES_AND_COMPLICATIONS_+_FITNESS" table in the database.
 
-    Features:
-     - Same features as BASE_FEATURES_AND_COMPLICATIONS but without patients that have missing VO2r_max values
+     BASE_FEATURES_AND_COMPLICATIONS contains :
 
-    Complications:
-    - Same complications as BASE_FEATURES_AND_COMPLICATIONS + Fitness (0: No, 1: Yes)
+        Features:
+         - Same features as BASE_FEATURES_AND_COMPLICATIONS but without patients
+           that have missing VO2r_max values
 
+        Complications:
+        - Same complications as BASE_FEATURES_AND_COMPLICATIONS + Fitness (0: No, 1: Yes)
+
+Date of last modification : 2021/11/05
 """
+import pandas as pd
+import sys
 
 from os.path import dirname, realpath
 from numpy import select
-
-import pandas as pd
-import sys
 
 if __name__ == '__main__':
 
     # Imports specific to project
     sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
     from src.data.extraction.constants import *
-    from src.data.extraction.data_management import initialize_petale_data_manager
+    from src.data.extraction.data_management import PetaleDataManager
     from src.data.extraction.helpers import get_missing_update
 
     # We build a PetaleDataManager that will help interacting with PETALE database
-    data_manager = initialize_petale_data_manager()
+    data_manager = PetaleDataManager()
 
     # We save the variables needed from Cardio_0
     C0_vars = PKEY + [VO2_MAX, VO2_MAX_PRED]

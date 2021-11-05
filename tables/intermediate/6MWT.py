@@ -1,23 +1,28 @@
 """
-Author : Nicolas Raymond
+Filename: 6MWT.py
 
-This file stores the procedure to execute in order to obtain "6MWT" table in the database.
+Authors: Nicolas Raymond
+
+Description: This file stores the procedure to execute in order
+             to obtain "6MWT" table in the database.
+
+Date of last modification : 2021/11/05
 """
-
-from os.path import realpath, dirname
 
 import pandas as pd
 import sys
+
+from os.path import realpath, dirname
 
 if __name__ == '__main__':
 
     # Imports specific to project
     sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
     from src.data.extraction.constants import *
-    from src.data.extraction.data_management import initialize_petale_data_manager
+    from src.data.extraction.data_management import PetaleDataManager
 
     # We build a PetaleDataManager that will help interacting with PETALE database
-    data_manager = initialize_petale_data_manager()
+    data_manager = PetaleDataManager()
 
     # We save the variables needed from Cardio_4
     C4_vars = PKEY + [TDM6_DIST, TDM6_HR_END, TDM6_HR_REST, TDM6_TAS_END, TDM6_TAD_END]

@@ -1,19 +1,26 @@
 """
-Author : Nicolas Raymond
+Filename: SNPS.py
 
-This file contains the procedure to create the tables containing the genomic data related to SNPs.
+Authors: Nicolas Raymond
 
+Description: This file stores the procedure to create the
+             tables containing the genomic data related to SNPs
+
+Date of last modification : 2021/11/05
 """
+import sys
 
 from os.path import join, dirname, realpath
 from pandas import read_csv
 from typing import Any
-import sys
 
 
-def build_snp_table(directory: str, table_name: str, data_manager: Any) -> None:
+def build_snp_table(directory: str,
+                    table_name: str,
+                    data_manager: Any) -> None:
     """
     Creates an snps table using original csv data
+
     Args:
         directory: directory containing the csv files
         table_name: name of the csv file containing the table (will be also used for table name)
@@ -43,10 +50,10 @@ if __name__ == '__main__':
     sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
     from settings.paths import Paths
     from src.data.extraction.constants import SNPS_COMMON, SNPS_RARE, CATEGORICAL_TYPE, TYPES
-    from src.data.extraction.data_management import initialize_petale_data_manager
+    from src.data.extraction.data_management import PetaleDataManager
 
     # We create a data manager
-    dm = initialize_petale_data_manager()
+    dm = PetaleDataManager()
 
     # We build SNPS_RARE and SNPS_COMMON tables
     for t in [SNPS_RARE, SNPS_COMMON]:

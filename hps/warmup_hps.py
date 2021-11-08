@@ -7,7 +7,7 @@ from src.models.han import HanHP
 from src.models.tabnet import TabNetHP
 from src.models.random_forest import RandomForestHP
 from src.models.xgboost_ import XGBoostHP
-from src.training.enums import Range
+from src.utils.hyperparameters import Range
 
 
 TAB_HPS = {

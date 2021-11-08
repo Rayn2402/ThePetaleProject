@@ -21,14 +21,13 @@ if __name__ == '__main__':
     from settings.paths import Paths
     from src.data.extraction.data_management import PetaleDataManager
     from src.data.processing.datasets import PetaleDataset, PetaleStaticGNNDataset
-    from src.data.processing.sampling import get_warmup_data, extract_masks, TRAIN, TEST, VALID,\
-        push_valid_to_train, ALL, SIGNIFICANT
+    from src.data.processing.sampling import extract_masks, GeneChoice, get_warmup_data, MaskType, push_valid_to_train
     from src.models.mlp import PetaleMLPR
     from src.models.han import PetaleHANR
     from src.utils.score_metrics import AbsoluteError, Pearson, RootMeanSquaredError, SquaredError
 
     # Initialization of DataManager and sampler
-    manager = PetaleDataManager("rayn2402")
+    manager = PetaleDataManager()
 
     # Creation of the first datasets
     df, target, cont_cols, cat_cols = get_warmup_data(manager, sex=True)
@@ -37,7 +36,7 @@ if __name__ == '__main__':
 
     # Extraction of the mask
     masks = extract_masks(Paths.WARMUP_MASK, k=1, l=1)
-    train_mask, valid_mask, test_mask = masks[0][TRAIN], masks[0][VALID], masks[0][TEST]
+    train_mask, valid_mask, test_mask = masks[0][MaskType.TRAIN], masks[0][MaskType.VALID], masks[0][MaskType.TEST]
     lin_dataset.update_masks(train_mask=train_mask, test_mask=test_mask, valid_mask=valid_mask)
 
     # Extraction of test data
@@ -61,7 +60,7 @@ if __name__ == '__main__':
     Training and evaluation of meta learner (HAN)
     """
     # Creation of new dataset
-    df, target, cont_cols, cat_cols = get_warmup_data(manager, genes=ALL)
+    df, target, cont_cols, cat_cols = get_warmup_data(manager, genes=GeneChoice.ALL)
     df.drop(cont_cols, inplace=True, axis=1)
     cont_cols = ['feature_1']
     df[cont_cols[0]] = array(pred)

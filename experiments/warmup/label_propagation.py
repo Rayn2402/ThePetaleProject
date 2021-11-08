@@ -50,8 +50,7 @@ if __name__ == '__main__':
     sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
     from settings.paths import Paths
     from src.data.processing.datasets import PetaleDataset
-    from src.data.processing.sampling import get_warmup_data, extract_masks, push_valid_to_train,\
-        TRAIN, VALID, TEST, SIGNIFICANT, ALL
+    from src.data.processing.sampling import extract_masks, GeneChoice, get_warmup_data, MaskType, push_valid_to_train
     from src.data.extraction.data_management import PetaleDataManager
     from src.recording.recording import Recorder, compare_prediction_recordings, get_evaluation_recap
     from src.utils.graph import PetaleGraph, correct_and_smooth
@@ -69,9 +68,9 @@ if __name__ == '__main__':
     evaluation_metrics = [AbsoluteError(), Pearson(), SquaredError(), RootMeanSquaredError()]
 
     # Extraction of data
-    manager = PetaleDataManager('rayn2402')
+    manager = PetaleDataManager()
     df, target, cont_cols, cat_cols = get_warmup_data(manager, baselines=True,
-                                                      genes=SIGNIFICANT, sex=True)
+                                                      genes=GeneChoice.SIGNIFICANT, sex=True)
 
     # Creation of dataset
     dataset = PetaleDataset(df, target, cont_cols, cat_cols, classification=False, to_tensor=True)
@@ -98,7 +97,7 @@ if __name__ == '__main__':
             pred[dataset.ids_to_row_idx[id_]] = float(result_dict['prediction'])
 
         # We update dataset mask
-        dataset.update_masks(train_mask=m[TRAIN], test_mask=m[TEST])
+        dataset.update_masks(train_mask=m[MaskType.TRAIN], test_mask=m[MaskType.TEST])
 
         # Recorder initialization
         recorder = Recorder(evaluation_name=evaluation_name,
@@ -112,7 +111,7 @@ if __name__ == '__main__':
         y_copy = deepcopy(y)
         cs_pred = correct_and_smooth(g, pred, y_copy, m, r=args.restart_proba, nb_iter=args.nb_iter)
 
-        for mask, test in [(m[TRAIN], False), (m[TEST], True)]:
+        for mask, test in [(m[MaskType.TRAIN], False), (m[MaskType.TEST], True)]:
 
             # We record predictions
             pred, ground_truth = cs_pred[mask], y[mask]

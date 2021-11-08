@@ -10,9 +10,9 @@ import sys
 
 sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
 from src.data.extraction.data_management import PetaleDataManager
-from src.data.processing.sampling import TRAIN, TEST, get_warmup_data, extract_masks
 from src.data.processing.datasets import PetaleDataset
 from src.data.processing.transforms import ContinuousTransform
+from src.data.processing.sampling import extract_masks, get_warmup_data, MaskType
 from src.utils.score_metrics import AbsoluteError, Pearson, RootMeanSquaredError, SquaredError
 from src.data.extraction.constants import *
 from torch import tensor
@@ -37,9 +37,6 @@ def argument_parser():
 
     parser.add_argument('-k', '--nb_outer_splits', type=int, default=5,
                         help="Number of outer splits (default = 5)")
-
-    parser.add_argument('-u', '--user', type=str, default='rayn2402',
-                        help="Valid username for petale database")
 
     arguments = parser.parse_args()
 
@@ -74,7 +71,7 @@ def execute_original_equation_experiment(dts: PetaleDataset,
     for k, v in m.items():
 
         # Masks extraction and dataset update
-        train_mask, test_mask = v[TRAIN], v[TEST]
+        train_mask, test_mask = v[MaskType.TRAIN], v[MaskType.TEST]
         dts.update_masks(train_mask=train_mask, test_mask=test_mask)
 
         # Data extraction and preprocessing without normalization
@@ -122,7 +119,7 @@ if __name__ == '__main__':
     k = args.nb_outer_splits
 
     # Generation of dataset
-    data_manager = PetaleDataManager(args.user)
+    data_manager = PetaleDataManager()
     df, target, cont_cols, cat_cols = get_warmup_data(data_manager)
 
     # Creation of the dataset

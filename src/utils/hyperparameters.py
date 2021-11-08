@@ -80,3 +80,15 @@ class Distribution:
     INT: str = "int"                # Int uniform
     UNIFORM: str = "uniform"
     CATEGORICAL: str = "categorical"
+
+
+class Range:
+    """
+    Stores possible hyperparameters' range types
+    """
+    MIN: str = "min"
+    MAX: str = "max"
+    STEP: str = "step"
+    VALUES: str = "values"
+    VALUE: str = "value"
+

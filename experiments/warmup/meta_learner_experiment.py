@@ -1,18 +1,21 @@
 """
-Author: Nicolas Raymond
+Filename: meta_learner_experiment.py
 
-This file is used to store the meta learner experiment.
-We first train a linear regression, make a prediction on all data points and
-register scores on the test set.
+Authors: Nicolas Raymond
 
-We then train an heterogeneous graph attention network using only the predictions
-of the linear prediction as features.
+Description: This file is used to store the meta learner experiment.
+             We first train a linear regression, make a prediction on all the data points and
+             register scores on the test set.
+
+             We then train an heterogeneous graph attention network using only the predictions
+             of the linear prediction as features.
+
+Date of last modification : 2021/11/08
 """
-
 
 import sys
 from numpy import array
-from os.path import join, dirname, realpath
+from os.path import dirname, realpath
 
 if __name__ == '__main__':
 
@@ -21,7 +24,7 @@ if __name__ == '__main__':
     from settings.paths import Paths
     from src.data.extraction.data_management import PetaleDataManager
     from src.data.processing.datasets import PetaleDataset, PetaleStaticGNNDataset
-    from src.data.processing.sampling import extract_masks, GeneChoice, get_warmup_data, MaskType, push_valid_to_train
+    from src.data.processing.sampling import extract_masks, GeneChoice, get_warmup_data, MaskType
     from src.models.mlp import PetaleMLPR
     from src.models.han import PetaleHANR
     from src.utils.score_metrics import AbsoluteError, Pearson, RootMeanSquaredError, SquaredError

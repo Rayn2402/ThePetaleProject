@@ -1,10 +1,18 @@
 """
-This file is used to experiment label propagation method using warmup dataset
+Filename: label_propagation.py
+
+Authors: Nicolas Raymond
+
+Description: This file is used to to experiment the
+             label propagation method using warmup dataset
+
+Date of last modification : 2021/11/08
 """
 
 import argparse
 import json
 import sys
+
 from copy import deepcopy
 from os.path import dirname, realpath, join
 from torch import zeros

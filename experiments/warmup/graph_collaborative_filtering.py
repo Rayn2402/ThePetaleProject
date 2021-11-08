@@ -1,12 +1,18 @@
 """
-Author: Nicolas Raymond
+Filename: graph_collaborative_filtering.py
 
-This file is used to store the graph collaborative filtering experiment on warmup dataset
+Authors: Nicolas Raymond
+
+Description: This file is used to execute the graph collaborative
+             filtering experiment on warmup dataset
+
+Date of last modification : 2021/11/08
 """
+
+import sys
 
 from os.path import dirname, realpath
 from tqdm import tqdm
-import sys
 
 
 if __name__ == '__main__':

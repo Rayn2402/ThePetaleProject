@@ -1,10 +1,15 @@
 """
+Filename: original_equation.py
 
+Authors: Nicolas Raymond
 
-This file is used to store the experiment testing the original equation on the WarmUp dataset.
+Description: This file is used to to experiment the original equation on the warmup dataset.
+
+Date of last modification : 2021/11/08
 """
 
 import argparse
+
 from os.path import dirname, realpath
 import sys
 

@@ -24,10 +24,9 @@ from os import makedirs
 from os.path import join
 from settings.paths import Paths
 from src.data.processing.datasets import PetaleDataset
-from src.models.abstract_models.base_models import PetaleBinaryClassifier, PetaleRegressor
-from src.training.enums import *
+from src.models.abstract_models.base_models import PetaleBinaryClassifier
 from src.utils.score_metrics import Metric
-from src.utils.hyperparameters import CategoricalHP, Distribution, HP, NumericalContinuousHP, NumericalIntHP
+from src.utils.hyperparameters import CategoricalHP, Distribution, HP, NumericalContinuousHP, NumericalIntHP, Range
 from time import strftime
 from torch import mean, tensor
 from typing import Any, Callable, Dict, List, Optional, Union, Tuple
@@ -247,6 +246,9 @@ class Tuner:
     """
     Object in charge of hyperparameter tuning
     """
+    # HYPERPARAMETERS IMPORTANCE SEED
+    HP_IMPORTANCE_SEED = 2021
+
     def __init__(self,
                  n_trials: int,
                  study_name: Optional[str] = None,
@@ -306,7 +308,7 @@ class Tuner:
         Returns: None
         """
         # We generate the hyperparameters importance graph with optuna
-        fig = plot_param_importances(self._study, evaluator=FanovaImportanceEvaluator(seed=HYPER_PARAMS_SEED))
+        fig = plot_param_importances(self._study, evaluator=FanovaImportanceEvaluator(seed=Tuner.HP_IMPORTANCE_SEED))
 
         # We save the graph
         fig.write_image(join(self.path, "hp_importance.png"))
@@ -372,7 +374,7 @@ class Tuner:
         # We extract the best hyperparameters and their importance
         best_hps = self.get_best_hps()
         hps_importance = get_param_importances(self._study,
-                                               evaluator=FanovaImportanceEvaluator(seed=HYPER_PARAMS_SEED))
+                                               evaluator=FanovaImportanceEvaluator(seed=Tuner.HP_IMPORTANCE_SEED))
 
         # We shutdown ray if it has been initialized in this function
         if not ray_already_init:

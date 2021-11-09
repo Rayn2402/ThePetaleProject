@@ -18,7 +18,7 @@ from json import dump
 from numpy import array, cov, einsum, linalg, mean, nan
 from scipy.stats import chi2
 from src.data.extraction.constants import PARTICIPANT
-from src.data.extraction.helpers import retrieve_numerical
+from src.data.extraction.helpers import retrieve_numerical_var
 from src.data.processing.transforms import ContinuousTransform as CT
 from typing import Any, List, Optional, Tuple
 from os import makedirs
@@ -128,7 +128,7 @@ class DataCleaner:
 
         # We find numerical columns if none are mentioned
         if numerical_columns is None:
-            numerical_df = retrieve_numerical(df, [])
+            numerical_df = retrieve_numerical_var(df, [])
             numerical_columns = list(numerical_df.columns.values)
 
         # We set missing values to NaN

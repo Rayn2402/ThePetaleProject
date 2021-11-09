@@ -1,5 +1,5 @@
 """
-Filename: mlp_blocks.y
+Filename: mlp_blocks.py
 
 Author: Nicolas Raymond
 

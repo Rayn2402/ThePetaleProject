@@ -10,12 +10,12 @@ Description: This file is used to define the MLP model with entity embeddings
              and PetaleBinaryClassifier classes. However, two wrapper classes for torch models
              are provided to enable the use of these mlp models with hyperparameter tuning functions.
 
-Date of last modification : 2021/10/28
+Date of last modification : 2021/11/09
 """
 
 from src.models.abstract_models.custom_torch_base import TorchCustomModel
 from src.models.blocks.mlp_blocks import BaseBlock
-from src.data.processing.datasets import PetaleDataset
+from src.data.processing.datasets import MaskType, PetaleDataset
 from src.training.early_stopping import EarlyStopper
 from src.utils.score_metrics import BinaryCrossEntropy, Metric, RootMeanSquaredError
 from torch import cat, no_grad, tensor, ones, sigmoid
@@ -134,8 +134,8 @@ class MLP(TorchCustomModel):
         # We save mean epoch loss and mean epoch score
         nb_batch = len(train_data)
         mean_epoch_loss = epoch_loss/nb_batch
-        self._evaluations["train"][self._criterion_name].append(mean_epoch_loss)
-        self._evaluations["train"][self._eval_metric.name].append(epoch_score/nb_batch)
+        self._evaluations[MaskType.TRAIN][self._criterion_name].append(mean_epoch_loss)
+        self._evaluations[MaskType.TRAIN][self._eval_metric.name].append(epoch_score/nb_batch)
 
         return mean_epoch_loss
 
@@ -181,8 +181,8 @@ class MLP(TorchCustomModel):
         nb_batch = len(valid_loader)
         mean_epoch_loss = epoch_loss / nb_batch
         mean_epoch_score = epoch_score / nb_batch
-        self._evaluations["valid"][self._criterion_name].append(mean_epoch_loss)
-        self._evaluations["valid"][self._eval_metric.name].append(mean_epoch_score)
+        self._evaluations[MaskType.VALID][self._criterion_name].append(mean_epoch_loss)
+        self._evaluations[MaskType.VALID][self._eval_metric.name].append(mean_epoch_score)
 
         # We check early stopping status
         early_stopper(mean_epoch_score, self)

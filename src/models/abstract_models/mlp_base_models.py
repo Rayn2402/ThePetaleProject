@@ -14,11 +14,12 @@ Date of last modification : 2021/10/28
 """
 
 from src.models.abstract_models.custom_torch_base import TorchCustomModel
+from src.models.blocks.mlp_blocks import BaseBlock, EntityEmbeddingBlock
 from src.data.processing.datasets import PetaleDataset
 from src.training.early_stopping import EarlyStopper
 from src.utils.score_metrics import BinaryCrossEntropy, Metric, RootMeanSquaredError
-from torch import cat, nn, no_grad, tensor, ones, sigmoid
-from torch.nn import BatchNorm1d, BCEWithLogitsLoss, Dropout, Embedding, Linear, ModuleList, MSELoss, Sequential
+from torch import cat, no_grad, tensor, ones, sigmoid
+from torch.nn import BCEWithLogitsLoss, Linear, MSELoss, Sequential
 from torch.utils.data import DataLoader
 from typing import Callable, List, Optional
 
@@ -76,31 +77,30 @@ class MLP(TorchCustomModel):
         # We set the protected attributes that are proper to the model
         self._cat_idx = cat_idx if cat_idx is not None else []
         self._cont_idx = [i for i in range(len(self._cat_idx) + num_cont_col) if i not in self._cat_idx]
-        self._embedding_layers = None
+        self._embedding_block = None
 
         # We initialize the input_size
         input_size = num_cont_col if num_cont_col is not None else 0
 
         # We set the embedding layers
-        if cat_idx is not None and cat_sizes is not None:
+        if len(cat_idx) != 0 and cat_sizes is not None:
 
             # We check embedding sizes (if nothing provided -> emb_sizes = cat_sizes)
             cat_emb_sizes = cat_emb_sizes if cat_emb_sizes is not None else cat_sizes
 
             # We create the embedding layers
-            self._embedding_layers = ModuleList([Embedding(cat_size, emb_size) for
-                                                 cat_size, emb_size in zip(cat_sizes, cat_emb_sizes)])
+            self._embedding_block = EntityEmbeddingBlock(cat_sizes, cat_emb_sizes, cat_idx)
+
             # We sum the length of all embeddings
-            input_size += sum(cat_sizes)
+            input_size += len(self._embedding_block)
 
         # We create the different layers of our model
-        # Linear --> Activation --> Batch Normalization --> Dropout
         all_layers = []
         for i in layers:
-            all_layers.append(Linear(input_size, i))
-            all_layers.append(getattr(nn, activation)())
-            all_layers.append(BatchNorm1d(i))
-            all_layers.append(Dropout(dropout))
+            all_layers.append(BaseBlock(input_size=input_size,
+                                        output_size=i,
+                                        activation=activation,
+                                        p=dropout))
             input_size = i
 
         # We define the output layer
@@ -220,7 +220,7 @@ class MLP(TorchCustomModel):
         Args:
             x: (N,D) tensor with D-dimensional samples
 
-        Returns: tensor with values of the node from the last layer
+        Returns: (N, D') tensor with values of the node within the last layer
 
         """
         # We initialize a list of tensors to concatenate
@@ -232,13 +232,7 @@ class MLP(TorchCustomModel):
 
         # We perform entity embeddings
         if len(self._cat_idx) != 0:
-            x_cat = x[:, self._cat_idx]
-            embeddings = []
-            for i, e in enumerate(self._embedding_layers):
-                embeddings.append(e(x_cat[:, i].long()))
-
-            # We concatenate all the embeddings
-            new_x.append(cat(embeddings, 1))
+            new_x.append(self._embedding_block(x))
 
         # We concatenate all inputs
         x = cat(new_x, 1)

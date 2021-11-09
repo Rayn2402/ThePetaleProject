@@ -14,7 +14,7 @@ Date of last modification : 2021/10/28
 """
 
 from src.models.abstract_models.custom_torch_base import TorchCustomModel
-from src.models.blocks.mlp_blocks import BaseBlock, EntityEmbeddingBlock
+from src.models.blocks.mlp_blocks import BaseBlock
 from src.data.processing.datasets import PetaleDataset
 from src.training.early_stopping import EarlyStopper
 from src.utils.score_metrics import BinaryCrossEntropy, Metric, RootMeanSquaredError
@@ -72,45 +72,24 @@ class MLP(TorchCustomModel):
                          eval_metric=eval_metric,
                          alpha=alpha,
                          beta=beta,
+                         num_cont_col=num_cont_col,
+                         cat_idx=cat_idx,
+                         cat_sizes=cat_sizes,
+                         cat_emb_sizes=cat_emb_sizes,
                          verbose=verbose)
 
-        # We set the protected attributes that are proper to the model
-        self._cat_idx = cat_idx if cat_idx is not None else []
-        self._cont_idx = [i for i in range(len(self._cat_idx) + num_cont_col) if i not in self._cat_idx]
-        self._embedding_block = None
+        # We create the main layers of our model
+        layers.insert(0, self._input_size)
+        all_layers = [BaseBlock(input_size=layers[i-1],
+                                output_size=layers[i],
+                                activation=activation,
+                                p=dropout) for i, _ in enumerate(layers[1:])]
 
-        # We initialize the input_size
-        input_size = num_cont_col if num_cont_col is not None else 0
-
-        # We set the embedding layers
-        if len(cat_idx) != 0 and cat_sizes is not None:
-
-            # We check embedding sizes (if nothing provided -> emb_sizes = cat_sizes)
-            cat_emb_sizes = cat_emb_sizes if cat_emb_sizes is not None else cat_sizes
-
-            # We create the embedding layers
-            self._embedding_block = EntityEmbeddingBlock(cat_sizes, cat_emb_sizes, cat_idx)
-
-            # We sum the length of all embeddings
-            input_size += len(self._embedding_block)
-
-        # We create the different layers of our model
-        all_layers = []
-        for i in layers:
-            all_layers.append(BaseBlock(input_size=input_size,
-                                        output_size=i,
-                                        activation=activation,
-                                        p=dropout))
-            input_size = i
-
-        # We define the output layer
+        # We add a linear layer to complete the layers
         if len(layers) == 0:
-            all_layers.append(Linear(input_size, output_size))
+            self._layers = Sequential(*all_layers, Linear(self._input_size, output_size))
         else:
-            all_layers.append(Linear(layers[-1], output_size))
-
-        # We save all our layers in self.layers
-        self._layers = Sequential(*all_layers)
+            self._layers = Sequential(*all_layers, Linear(layers[-1], output_size))
 
     def _execute_train_step(self,
                             train_data: DataLoader,

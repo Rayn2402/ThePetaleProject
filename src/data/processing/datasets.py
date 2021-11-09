@@ -13,10 +13,22 @@ from numpy import array, concatenate, where
 from pandas import DataFrame, Series
 from src.data.extraction.constants import *
 from src.data.processing.preprocessing import preprocess_categoricals, preprocess_continuous
-from src.data.processing.sampling import MaskType
 from torch.utils.data import Dataset
 from torch import cat, from_numpy, tensor
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+
+
+class MaskType:
+    """
+    Stores the constant related to mask types
+    """
+    TRAIN: str = "train"
+    VALID: str = "valid"
+    TEST: str = "test"
+    INNER: str = "inner"
+
+    def __iter__(self):
+        return iter([self.TRAIN, self.VALID, self.TEST])
 
 
 class PetaleDataset(Dataset):

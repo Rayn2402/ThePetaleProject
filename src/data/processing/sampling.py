@@ -26,19 +26,6 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 COMPLICATIONS_CHOICES = [CARDIOMETABOLIC_COMPLICATIONS, BONE_COMPLICATIONS, NEUROCOGNITIVE_COMPLICATIONS, COMPLICATIONS]
 
 
-class MaskType:
-    """
-    Stores the constant related to mask types
-    """
-    TRAIN: str = "train"
-    VALID: str = "valid"
-    TEST: str = "test"
-    INNER: str = "inner"
-
-    def __iter__(self):
-        return iter([self.TRAIN, self.VALID, self.TEST])
-
-
 class GeneChoice:
     """
     Stores the constant related to gene choices

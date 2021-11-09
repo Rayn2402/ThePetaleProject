@@ -11,8 +11,7 @@ Date of last modification : 2021/11/02
 
 from numpy import cov
 from numpy.linalg import inv
-from src.data.processing.datasets import PetaleDataset
-from src.data.processing.sampling import MaskType
+from src.data.processing.datasets import PetaleDataset, MaskType
 from torch import tensor, zeros, transpose, diag, pow, mm, eye, is_tensor, ones, topk
 from typing import Dict, List, Optional
 

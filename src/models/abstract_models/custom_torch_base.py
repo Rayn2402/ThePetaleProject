@@ -12,7 +12,7 @@ Date of last modification: 2021/10/19
 """
 
 from abc import ABC, abstractmethod
-from src.data.processing.datasets import PetaleDataset, PetaleStaticGNNDataset
+from src.data.processing.datasets import MaskType, PetaleDataset, PetaleStaticGNNDataset
 from src.models.blocks.mlp_blocks import EntityEmbeddingBlock
 from src.training.early_stopping import EarlyStopper
 from src.utils.score_metrics import Metric
@@ -64,7 +64,8 @@ class TorchCustomModel(Module, ABC):
         self._criterion = criterion
         self._criterion_name = criterion_name
         self._eval_metric = eval_metric
-        self._evaluations = {i: {self._criterion_name: [], self._eval_metric.name: []} for i in ["train", "valid"]}
+        self._evaluations = {i: {self._criterion_name: [],
+                                 self._eval_metric.name: []} for i in [MaskType.TRAIN, MaskType.VALID]}
         self._input_size = num_cont_col if num_cont_col is not None else 0
         self._optimizer = None
         self._verbose = verbose
@@ -234,10 +235,10 @@ class TorchCustomModel(Module, ABC):
         Returns: None
         """
         # Extraction of data
-        train_loss = self._evaluations['train'][self._criterion_name]
-        train_metric = self._evaluations['train'][self._eval_metric.name]
-        valid_loss = self._evaluations['valid'][self._criterion_name]
-        valid_metric = self._evaluations['valid'][self._eval_metric.name]
+        train_loss = self._evaluations[MaskType.TRAIN][self._criterion_name]
+        train_metric = self._evaluations[MaskType.TRAIN][self._eval_metric.name]
+        valid_loss = self._evaluations[MaskType.VALID][self._criterion_name]
+        valid_metric = self._evaluations[MaskType.VALID][self._eval_metric.name]
 
         # Figure construction
         visualize_epoch_progression(train_history=[train_loss, train_metric],

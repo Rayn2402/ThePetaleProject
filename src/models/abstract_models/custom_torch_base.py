@@ -13,6 +13,7 @@ Date of last modification: 2021/10/19
 
 from abc import ABC, abstractmethod
 from src.data.processing.datasets import PetaleDataset, PetaleStaticGNNDataset
+from src.models.blocks.mlp_blocks import EntityEmbeddingBlock
 from src.training.early_stopping import EarlyStopper
 from src.utils.score_metrics import Metric
 from src.utils.visualization import visualize_epoch_progression
@@ -21,7 +22,7 @@ from torch.nn import Module
 from torch.nn.functional import l1_loss, mse_loss
 from torch.optim import Adam
 from torch.utils.data import DataLoader, SubsetRandomSampler
-from typing import Callable, Optional, Tuple, Union
+from typing import Callable, List, Optional, Tuple, Union
 
 
 class TorchCustomModel(Module, ABC):
@@ -35,9 +36,13 @@ class TorchCustomModel(Module, ABC):
                  eval_metric: Metric,
                  alpha: float = 0,
                  beta: float = 0,
+                 num_cont_col: Optional[int] = None,
+                 cat_idx: Optional[List[int]] = None,
+                 cat_sizes: Optional[List[int]] = None,
+                 cat_emb_sizes: Optional[List[int]] = None,
                  verbose: bool = False):
         """
-        Sets the protected attributes
+        Sets the protected attributes and creates an embedding block if required
 
         Args:
             criterion: loss function of our model
@@ -47,15 +52,39 @@ class TorchCustomModel(Module, ABC):
             beta: L2 penalty coefficient
             verbose: True if we want to print the training progress
         """
+        if num_cont_col is None and cat_sizes is None:
+            raise ValueError("There must be continuous columns or categorical columns")
+
+        # Call of parent's constructor
         Module.__init__(self)
+
+        # Settings of private attributes
         self._alpha = alpha
         self._beta = beta
         self._criterion = criterion
         self._criterion_name = criterion_name
         self._eval_metric = eval_metric
         self._evaluations = {i: {self._criterion_name: [], self._eval_metric.name: []} for i in ["train", "valid"]}
+        self._input_size = num_cont_col if num_cont_col is not None else 0
         self._optimizer = None
         self._verbose = verbose
+
+        # We set the protected attributes related to entity embedding
+        self._cat_idx = cat_idx if cat_idx is not None else []
+        self._cont_idx = [i for i in range(len(self._cat_idx) + num_cont_col) if i not in self._cat_idx]
+        self._embedding_block = None
+
+        # We set the embedding layers
+        if len(cat_idx) != 0 and cat_sizes is not None:
+
+            # We check embedding sizes (if nothing provided -> emb_sizes = cat_sizes)
+            cat_emb_sizes = cat_emb_sizes if cat_emb_sizes is not None else cat_sizes
+
+            # We create the embedding layers
+            self._embedding_block = EntityEmbeddingBlock(cat_sizes, cat_emb_sizes, cat_idx)
+
+            # We sum the length of all embeddings
+            self._input_size += len(self._embedding_block)
 
     def _create_validation_objects(self,
                                    dataset: PetaleDataset,

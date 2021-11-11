@@ -19,7 +19,7 @@ if __name__ == '__main__':
 
     # Imports specific to project
     sys.path.append(dirname(dirname(realpath(__file__))))
-    from hps.hps import TAB_HPS, RF_HPS, XGBOOST_HPS, MLP_HPS, HAN_HPS
+    from hps.warmup_hps import TAB_HPS, RF_HPS, XGBOOST_HPS, MLP_HPS, HAN_HPS
     from src.data.extraction.constants import SEED, PARTICIPANT
     from src.data.processing.datasets import PetaleDataset, PetaleStaticGNNDataset
     from src.data.processing.sampling import RandomStratifiedSampler, push_valid_to_train
@@ -88,7 +88,8 @@ if __name__ == '__main__':
                           evaluation_metrics=evaluation_metrics,
                           evaluation_name='TabNet_test',
                           save_hps_importance=True,
-                          save_optimization_history=True)
+                          save_optimization_history=True,
+                          seed=SEED)
 
     # Evaluation
     evaluator.evaluate()
@@ -104,7 +105,8 @@ if __name__ == '__main__':
                           evaluation_metrics=evaluation_metrics,
                           evaluation_name='RF_test',
                           save_hps_importance=True,
-                          save_optimization_history=True)
+                          save_optimization_history=True,
+                          seed=SEED)
 
     evaluator.evaluate()
 
@@ -119,7 +121,8 @@ if __name__ == '__main__':
                           evaluation_metrics=evaluation_metrics,
                           evaluation_name='XGBoost_test',
                           save_hps_importance=True,
-                          save_optimization_history=True)
+                          save_optimization_history=True,
+                          seed=SEED)
 
     evaluator.evaluate()
 
@@ -148,7 +151,8 @@ if __name__ == '__main__':
                           fixed_params=fixed_params,
                           evaluation_name='MLP_test',
                           fixed_params_update_function=update_fixed_params,
-                          save_optimization_history=True)
+                          save_optimization_history=True,
+                          seed=SEED)
 
     evaluator.evaluate()
 
@@ -178,6 +182,7 @@ if __name__ == '__main__':
                           fixed_params=fixed_params,
                           evaluation_name='HAN_test',
                           fixed_params_update_function=update_fixed_params,
-                          save_optimization_history=True)
+                          save_optimization_history=True,
+                          seed=SEED)
 
     evaluator.evaluate()

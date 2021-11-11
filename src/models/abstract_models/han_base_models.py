@@ -18,7 +18,7 @@ from src.models.blocks.gnn_blocks import HANLayer
 from src.training.early_stopping import EarlyStopper
 from src.utils.score_metrics import BinaryClassificationMetric, BinaryCrossEntropy, Metric, \
     RegressionMetric, RootMeanSquaredError
-from torch import no_grad, ones, sigmoid, tensor
+from torch import cat, no_grad, ones, sigmoid, tensor
 from torch.nn import BCEWithLogitsLoss, Linear, MSELoss
 from torch.utils.data import DataLoader
 from typing import Callable, List, Optional, Tuple
@@ -30,7 +30,6 @@ class HAN(TorchCustomModel):
     """
     def __init__(self,
                  meta_paths: List[List[str]],
-                 in_size: int,
                  hidden_size: int,
                  out_size: int,
                  num_heads: int,
@@ -38,10 +37,10 @@ class HAN(TorchCustomModel):
                  criterion: Callable,
                  criterion_name: str,
                  eval_metric: Metric,
-                 num_cont_col: int,
                  cat_idx: List[int],
                  cat_sizes: List[int],
                  cat_emb_sizes: List[int],
+                 num_cont_col: Optional[int] = None,
                  alpha: float = 0,
                  beta: float = 0,
                  verbose: bool = False
@@ -51,7 +50,6 @@ class HAN(TorchCustomModel):
 
         Args:
             meta_paths: list of metapaths, each meta path is a list of edge types
-            in_size: input size (number of features per node)
             hidden_size: size of embedding learnt within each attention head
             out_size: output size (number of node in last layer)
             num_heads: number of attention heads in the HANLayer
@@ -79,9 +77,9 @@ class HAN(TorchCustomModel):
                          cat_emb_sizes=cat_emb_sizes,
                          verbose=verbose)
 
-        # Initialization of layers (nb of layers = length of num heads list)
+        # Initialization of the main layer
         self._gnn_layer = HANLayer(meta_paths=meta_paths,
-                                   in_size=in_size,
+                                   in_size=self._input_size,
                                    out_size=hidden_size,
                                    layer_num_heads=num_heads,
                                    dropout=dropout)
@@ -216,6 +214,22 @@ class HAN(TorchCustomModel):
     def forward(self,
                 g: DGLHeteroGraph,
                 x: tensor) -> tensor:
+        """
+        Executes the forward pass
+
+        Args:
+            g: DGL Heterogeneous graph
+            x: (N,D) tensor with D-dimensional samples
+
+        Returns: (N, D') tensor with values of the node within the last layer
+
+        """
+
+        # We perform entity embeddings and concatenate all inputs
+        if len(self._cont_idx) != 0:
+            x = cat([x[:, self._cont_idx], self._embedding_block(x)], 1)
+        else:
+            x = self._embedding_block(x)
 
         # We make a forward pass through the han main layer to get the embeddings
         h = self._gnn_layer(g, x)
@@ -230,15 +244,14 @@ class HANBinaryClassifier(HAN):
     """
     def __init__(self,
                  meta_paths: List[List[str]],
-                 in_size: int,
                  hidden_size: int,
                  num_heads: int,
                  dropout: float,
-                 num_cont_col: int,
                  cat_idx: List[int],
                  cat_sizes: List[int],
                  cat_emb_sizes: List[int],
                  eval_metric: Optional[BinaryClassificationMetric] = None,
+                 num_cont_col: Optional[int] = None,
                  alpha: float = 0,
                  beta: float = 0,
                  verbose: bool = False
@@ -248,7 +261,6 @@ class HANBinaryClassifier(HAN):
 
         Args:
             meta_paths: list of metapaths, each meta path is a list of edge types
-            in_size: input size (number of features per node)
             hidden_size: size of embedding learnt within each attention head
             num_heads: int representing the number of attention heads
             dropout: dropout probability
@@ -264,7 +276,6 @@ class HANBinaryClassifier(HAN):
         # Call parent's constructor
         eval_metric = eval_metric if eval_metric is not None else BinaryCrossEntropy()
         super().__init__(meta_paths=meta_paths,
-                         in_size=in_size,
                          hidden_size=hidden_size,
                          out_size=1,
                          num_heads=num_heads,
@@ -319,15 +330,14 @@ class HANRegressor(HAN):
     """
     def __init__(self,
                  meta_paths: List[List[str]],
-                 in_size: int,
                  hidden_size: int,
                  num_heads: int,
                  dropout: float,
-                 num_cont_col: int,
                  cat_idx: List[int],
                  cat_sizes: List[int],
                  cat_emb_sizes: List[int],
                  eval_metric: Optional[RegressionMetric] = None,
+                 num_cont_col: Optional[int] = None,
                  alpha: float = 0,
                  beta: float = 0,
                  verbose: bool = False
@@ -337,7 +347,6 @@ class HANRegressor(HAN):
 
         Args:
             meta_paths: list of metapaths, each meta path is a list of edge types
-            in_size: input size (number of features per node)
             hidden_size: size of embedding learnt within each attention head
             num_heads: int representing the number of attention heads
             dropout: dropout probability
@@ -353,7 +362,6 @@ class HANRegressor(HAN):
         # Call parent's constructor
         eval_metric = eval_metric if eval_metric is not None else RootMeanSquaredError()
         super().__init__(meta_paths=meta_paths,
-                         in_size=in_size,
                          hidden_size=hidden_size,
                          out_size=1,
                          num_heads=num_heads,

@@ -5,7 +5,7 @@ Authors: Nicolas Raymond
 
 Description: This file is used to define the regression and classification wrappers for HAN models
 
-Date of last modification : 2021/10/25
+Date of last modification : 2021/11/11
 """
 
 from src.models.abstract_models.han_base_models import HANBinaryClassifier, HANRegressor
@@ -24,6 +24,10 @@ class PetaleBinaryHANC(TorchBinaryClassifierWrapper):
                  in_size: int,
                  hidden_size: int,
                  num_heads: int,
+                 num_cont_col: int,
+                 cat_idx: List[int],
+                 cat_sizes: List[int],
+                 cat_emb_sizes: List[int],
                  dropout: float = 0,
                  lr: float = 0.05,
                  batch_size: int = 55,
@@ -44,6 +48,10 @@ class PetaleBinaryHANC(TorchBinaryClassifierWrapper):
             in_size: input size (number of features per node)
             hidden_size: size of embedding learnt within each attention head
             num_heads: number of attention heads
+            num_cont_col: number of numerical continuous columns in the dataset
+            cat_idx: idx of categorical columns in the dataset
+            cat_sizes: list of integer representing the size of each categorical column
+            cat_emb_sizes: list of integer representing the size of each categorical embedding
             dropout: dropout probability
             lr: learning rate
             batch_size: size of the batches in the training loader
@@ -62,6 +70,10 @@ class PetaleBinaryHANC(TorchBinaryClassifierWrapper):
                                     hidden_size=hidden_size,
                                     num_heads=num_heads,
                                     dropout=dropout,
+                                    num_cont_col=num_cont_col,
+                                    cat_idx=cat_idx,
+                                    cat_sizes=cat_sizes,
+                                    cat_emb_sizes=cat_emb_sizes,
                                     eval_metric=eval_metric,
                                     alpha=alpha,
                                     beta=beta,
@@ -95,6 +107,10 @@ class PetaleHANR(TorchRegressorWrapper):
                  in_size: int,
                  hidden_size: int,
                  num_heads: int,
+                 num_cont_col: int,
+                 cat_idx: List[int],
+                 cat_sizes: List[int],
+                 cat_emb_sizes: List[int],
                  dropout: float = 0,
                  lr: float = 0.05,
                  batch_size: int = 55,
@@ -113,6 +129,10 @@ class PetaleHANR(TorchRegressorWrapper):
             in_size: input size (number of features per node)
             hidden_size: size of embedding learnt within each attention head
             num_heads: number of attention heads
+            num_cont_col: number of numerical continuous columns in the dataset
+            cat_idx: idx of categorical columns in the dataset
+            cat_sizes: list of integer representing the size of each categorical column
+            cat_emb_sizes: list of integer representing the size of each categorical embedding
             dropout: dropout probability
             lr: learning rate
             batch_size: size of the batches in the training loader
@@ -129,6 +149,10 @@ class PetaleHANR(TorchRegressorWrapper):
                              hidden_size=hidden_size,
                              num_heads=num_heads,
                              dropout=dropout,
+                             num_cont_col=num_cont_col,
+                             cat_idx=cat_idx,
+                             cat_sizes=cat_sizes,
+                             cat_emb_sizes=cat_emb_sizes,
                              eval_metric=eval_metric,
                              alpha=alpha,
                              beta=beta,

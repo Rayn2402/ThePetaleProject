@@ -12,14 +12,14 @@ Date of last modification: 2021/10/26
 """
 
 from dgl import DGLHeteroGraph
-from src.data.processing.datasets import PetaleStaticGNNDataset
+from src.data.processing.datasets import MaskType, PetaleStaticGNNDataset
 from src.models.abstract_models.custom_torch_base import TorchCustomModel
 from src.models.blocks.gnn_blocks import HANLayer
 from src.training.early_stopping import EarlyStopper
 from src.utils.score_metrics import BinaryClassificationMetric, BinaryCrossEntropy, Metric, \
     RegressionMetric, RootMeanSquaredError
 from torch import no_grad, ones, sigmoid, tensor
-from torch.nn import BCEWithLogitsLoss, Linear, ModuleList, MSELoss
+from torch.nn import BCEWithLogitsLoss, Linear, MSELoss
 from torch.utils.data import DataLoader
 from typing import Callable, List, Optional, Tuple
 
@@ -33,11 +33,15 @@ class HAN(TorchCustomModel):
                  in_size: int,
                  hidden_size: int,
                  out_size: int,
-                 num_heads: List[int],
+                 num_heads: int,
                  dropout: float,
                  criterion: Callable,
                  criterion_name: str,
                  eval_metric: Metric,
+                 num_cont_col: int,
+                 cat_idx: List[int],
+                 cat_sizes: List[int],
+                 cat_emb_sizes: List[int],
                  alpha: float = 0,
                  beta: float = 0,
                  verbose: bool = False
@@ -50,13 +54,18 @@ class HAN(TorchCustomModel):
             in_size: input size (number of features per node)
             hidden_size: size of embedding learnt within each attention head
             out_size: output size (number of node in last layer)
-            num_heads: list with int representing the number of attention heads per layer
+            num_heads: number of attention heads in the HANLayer
             dropout: dropout probability
             criterion: loss function of our model
             criterion_name: name of the loss function of our model
             eval_metric: evaluation metric
+            num_cont_col: number of numerical continuous columns in the dataset
+            cat_idx: idx of categorical columns in the dataset
+            cat_sizes: list of integer representing the size of each categorical column
+            cat_emb_sizes: list of integer representing the size of each categorical embedding
             alpha: L1 penalty coefficient
             beta: L2 penalty coefficient
+            verbose: True if we want trace of the training progress
         """
         # Call of parent's constructor
         super().__init__(criterion=criterion,
@@ -64,24 +73,21 @@ class HAN(TorchCustomModel):
                          eval_metric=eval_metric,
                          alpha=alpha,
                          beta=beta,
+                         num_cont_col=num_cont_col,
+                         cat_idx=cat_idx,
+                         cat_sizes=cat_sizes,
+                         cat_emb_sizes=cat_emb_sizes,
                          verbose=verbose)
 
         # Initialization of layers (nb of layers = length of num heads list)
-        self.gnn_layers = ModuleList()
-        self.gnn_layers.append(HANLayer(meta_paths=meta_paths,
-                                        in_size=in_size,
-                                        out_size=hidden_size,
-                                        layer_num_heads=num_heads[0],
-                                        dropout=dropout))
-        for l in range(1, len(num_heads)):
-            self.gnn_layers.append(HANLayer(meta_paths=meta_paths,
-                                            in_size=hidden_size * num_heads[l-1],
-                                            out_size=hidden_size,
-                                            layer_num_heads=num_heads[l],
-                                            dropout=dropout))
+        self._gnn_layer = HANLayer(meta_paths=meta_paths,
+                                   in_size=in_size,
+                                   out_size=hidden_size,
+                                   layer_num_heads=num_heads,
+                                   dropout=dropout)
 
         # Addition of linear layer before calculation of the loss
-        self.linear_layer = Linear(hidden_size * num_heads[-1], out_size)
+        self._linear_layer = Linear(hidden_size * num_heads, out_size)
 
         # Attribute dedicated to training
         self._optimizer = None
@@ -139,8 +145,8 @@ class HAN(TorchCustomModel):
         # We save mean epoch loss and mean epoch score
         nb_batch = len(train_data)
         mean_epoch_loss = epoch_loss / nb_batch
-        self._evaluations["train"][self._criterion_name].append(mean_epoch_loss)
-        self._evaluations["train"][self._eval_metric.name].append(epoch_score / nb_batch)
+        self._evaluations[MaskType.TRAIN][self._criterion_name].append(mean_epoch_loss)
+        self._evaluations[MaskType.TRAIN][self._eval_metric.name].append(epoch_score / nb_batch)
 
         return mean_epoch_loss
 
@@ -196,8 +202,8 @@ class HAN(TorchCustomModel):
         nb_batch = len(valid_loader)
         mean_epoch_loss = epoch_loss / nb_batch
         mean_epoch_score = epoch_score / nb_batch
-        self._evaluations["valid"][self._criterion_name].append(mean_epoch_loss)
-        self._evaluations["valid"][self._eval_metric.name].append(mean_epoch_score)
+        self._evaluations[MaskType.VALID][self._criterion_name].append(mean_epoch_loss)
+        self._evaluations[MaskType.VALID][self._eval_metric.name].append(mean_epoch_score)
 
         # We check early stopping status
         early_stopper(mean_epoch_score, self)
@@ -209,11 +215,10 @@ class HAN(TorchCustomModel):
 
     def forward(self,
                 g: DGLHeteroGraph,
-                h: tensor) -> tensor:
+                x: tensor) -> tensor:
 
-        # We make a forward pass through han layers
-        for gnn in self.gnn_layers:
-            h = gnn(g, h)
+        # We make a forward pass through the han main layer to get the embeddings
+        h = self._gnn_layer(g, x)
 
         # We pass the final embedding through a linear layer
         return self.linear_layer(h).squeeze()
@@ -229,6 +234,10 @@ class HANBinaryClassifier(HAN):
                  hidden_size: int,
                  num_heads: int,
                  dropout: float,
+                 num_cont_col: int,
+                 cat_idx: List[int],
+                 cat_sizes: List[int],
+                 cat_emb_sizes: List[int],
                  eval_metric: Optional[BinaryClassificationMetric] = None,
                  alpha: float = 0,
                  beta: float = 0,
@@ -243,6 +252,10 @@ class HANBinaryClassifier(HAN):
             hidden_size: size of embedding learnt within each attention head
             num_heads: int representing the number of attention heads
             dropout: dropout probability
+            num_cont_col: number of numerical continuous columns in the dataset
+            cat_idx: idx of categorical columns in the dataset
+            cat_sizes: list of integer representing the size of each categorical column
+            cat_emb_sizes: list of integer representing the size of each categorical embedding
             eval_metric: evaluation metric
             alpha: L1 penalty coefficient
             beta: L2 penalty coefficient
@@ -254,11 +267,15 @@ class HANBinaryClassifier(HAN):
                          in_size=in_size,
                          hidden_size=hidden_size,
                          out_size=1,
-                         num_heads=[num_heads],
+                         num_heads=num_heads,
                          dropout=dropout,
                          criterion=BCEWithLogitsLoss(reduction='none'),
                          criterion_name='WBCE',
                          eval_metric=eval_metric,
+                         num_cont_col=num_cont_col,
+                         cat_idx=cat_idx,
+                         cat_sizes=cat_sizes,
+                         cat_emb_sizes=cat_emb_sizes,
                          alpha=alpha,
                          beta=beta,
                          verbose=verbose)
@@ -306,6 +323,10 @@ class HANRegressor(HAN):
                  hidden_size: int,
                  num_heads: int,
                  dropout: float,
+                 num_cont_col: int,
+                 cat_idx: List[int],
+                 cat_sizes: List[int],
+                 cat_emb_sizes: List[int],
                  eval_metric: Optional[RegressionMetric] = None,
                  alpha: float = 0,
                  beta: float = 0,
@@ -320,6 +341,10 @@ class HANRegressor(HAN):
             hidden_size: size of embedding learnt within each attention head
             num_heads: int representing the number of attention heads
             dropout: dropout probability
+            num_cont_col: number of numerical continuous columns in the dataset
+            cat_idx: idx of categorical columns in the dataset
+            cat_sizes: list of integer representing the size of each categorical column
+            cat_emb_sizes: list of integer representing the size of each categorical embedding
             eval_metric: evaluation metric
             alpha: L1 penalty coefficient
             beta: L2 penalty coefficient
@@ -331,11 +356,15 @@ class HANRegressor(HAN):
                          in_size=in_size,
                          hidden_size=hidden_size,
                          out_size=1,
-                         num_heads=[num_heads],
+                         num_heads=num_heads,
                          dropout=dropout,
                          criterion=MSELoss(reduction='none'),
                          criterion_name='MSE',
                          eval_metric=eval_metric,
+                         num_cont_col=num_cont_col,
+                         cat_idx=cat_idx,
+                         cat_sizes=cat_sizes,
+                         cat_emb_sizes=cat_emb_sizes,
                          alpha=alpha,
                          beta=beta,
                          verbose=verbose)

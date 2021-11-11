@@ -87,7 +87,7 @@ class BaseBlock(nn.Module):
         super().__init__()
 
         # We create a list with the modules
-        module_list = [nn.Linear(input_size, output_size),
+        module_list = [nn.Linear(in_features=input_size, out_features=output_size),
                        getattr(nn, activation)(),
                        nn.BatchNorm1d(output_size)]
         if p != 0:
@@ -105,5 +105,5 @@ class BaseBlock(nn.Module):
 
         Returns: (N, D') tensor with concatenated embedding
         """
-        self.__layer(x).squeeze()
 
+        return self.__layer(x)

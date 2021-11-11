@@ -73,16 +73,30 @@ class HANLayer(Module):
         # We initialize the storage for semantic embeddings
         semantic_embeddings = []
 
-        # We create a list of sub graphs associated to each meta path (if it is not done already)
+        # We create a cache of sub graphs associated to each meta path
         if self._cached_graph is None or self._cached_graph is not g:
             self._cached_graph = g
             self._cached_coalesced_graph.clear()
-            for meta_path in self.meta_paths:
-                self._cached_coalesced_graph[meta_path] = metapath_reachable_graph(g, meta_path)
 
-        # For each meta path we proceed to a forward pass in a GAT
+            # For each metapath
+            for meta_path in self.meta_paths:
+
+                # We extract the homogenous graph associated
+                homogeneous_g = metapath_reachable_graph(g, meta_path)
+
+                # We make sure that each node has a single self-loop
+                homogeneous_g.remove_self_loop()
+                homogeneous_g.add_self_loop()
+
+                self._cached_coalesced_graph[meta_path] = homogeneous_g
+
+        # For each meta path
         for i, meta_path in enumerate(self.meta_paths):
+
+            # We extract the homogeneous graph associated to the metapath
             new_g = self._cached_coalesced_graph[meta_path]
+
+            # We proceed to a forward pass in a GAT
             semantic_embeddings.append(self.gat_layers[i](new_g, h).flatten(1))
 
         # We stack the embeddings learnt using each meta path neighborhood

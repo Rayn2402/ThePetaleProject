@@ -21,13 +21,12 @@ class PetaleBinaryHANC(TorchBinaryClassifierWrapper):
     """
     def __init__(self,
                  meta_paths: List[List[str]],
-                 in_size: int,
                  hidden_size: int,
                  num_heads: int,
-                 num_cont_col: int,
                  cat_idx: List[int],
                  cat_sizes: List[int],
                  cat_emb_sizes: List[int],
+                 num_cont_col: Optional[int] = None,
                  dropout: float = 0,
                  lr: float = 0.05,
                  batch_size: int = 55,
@@ -45,7 +44,6 @@ class PetaleBinaryHANC(TorchBinaryClassifierWrapper):
 
         Args:
             meta_paths: list of metapaths, each meta path is a list of edge types
-            in_size: input size (number of features per node)
             hidden_size: size of embedding learnt within each attention head
             num_heads: number of attention heads
             num_cont_col: number of numerical continuous columns in the dataset
@@ -66,7 +64,6 @@ class PetaleBinaryHANC(TorchBinaryClassifierWrapper):
         """
         # Creation of model
         model = HANBinaryClassifier(meta_paths=meta_paths,
-                                    in_size=in_size,
                                     hidden_size=hidden_size,
                                     num_heads=num_heads,
                                     dropout=dropout,
@@ -104,13 +101,12 @@ class PetaleHANR(TorchRegressorWrapper):
     """
     def __init__(self,
                  meta_paths: List[List[str]],
-                 in_size: int,
                  hidden_size: int,
                  num_heads: int,
-                 num_cont_col: int,
                  cat_idx: List[int],
                  cat_sizes: List[int],
                  cat_emb_sizes: List[int],
+                 num_cont_col: Optional[int] = None,
                  dropout: float = 0,
                  lr: float = 0.05,
                  batch_size: int = 55,
@@ -126,7 +122,6 @@ class PetaleHANR(TorchRegressorWrapper):
 
         Args:
             meta_paths: List of metapaths, each meta path is a list of edge types
-            in_size: input size (number of features per node)
             hidden_size: size of embedding learnt within each attention head
             num_heads: number of attention heads
             num_cont_col: number of numerical continuous columns in the dataset
@@ -145,7 +140,6 @@ class PetaleHANR(TorchRegressorWrapper):
         """
         # Creation of model
         model = HANRegressor(meta_paths=meta_paths,
-                             in_size=in_size,
                              hidden_size=hidden_size,
                              num_heads=num_heads,
                              dropout=dropout,

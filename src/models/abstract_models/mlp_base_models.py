@@ -80,16 +80,15 @@ class MLP(TorchCustomModel):
 
         # We create the main layers of our model
         layers.insert(0, self._input_size)
-        all_layers = [BaseBlock(input_size=layers[i-1],
-                                output_size=layers[i],
-                                activation=activation,
-                                p=dropout) for i, _ in enumerate(layers[1:])]
+        all_layers = []
+        if len(layers) > 1:
+            all_layers = [BaseBlock(input_size=layers[i-1],
+                                    output_size=layers[i],
+                                    activation=activation,
+                                    p=dropout) for i, _ in enumerate(layers[1:])]
 
         # We add a linear layer to complete the layers
-        if len(layers) == 0:
-            self._layers = Sequential(*all_layers, Linear(self._input_size, output_size))
-        else:
-            self._layers = Sequential(*all_layers, Linear(layers[-1], output_size))
+        self._layers = Sequential(*all_layers, Linear(layers[-1], output_size))
 
     def _execute_train_step(self,
                             train_data: DataLoader,

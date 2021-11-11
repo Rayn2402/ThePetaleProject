@@ -85,7 +85,7 @@ class MLP(TorchCustomModel):
             all_layers = [BaseBlock(input_size=layers[i-1],
                                     output_size=layers[i],
                                     activation=activation,
-                                    p=dropout) for i, _ in enumerate(layers[1:])]
+                                    p=dropout) for i in range(1, len(layers))]
 
         # We add a linear layer to complete the layers
         self._layers = Sequential(*all_layers, Linear(layers[-1], output_size))

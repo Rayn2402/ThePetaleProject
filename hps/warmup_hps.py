@@ -103,9 +103,9 @@ HAN_HPS = {
         Range.MAX: 2
     },
     HanHP.HIDDEN_SIZE.name: {
-        Range.MIN: 5,
-        Range.MAX: 25,
-        Range.STEP: 5
+        Range.MIN: 2,
+        Range.MAX: 10,
+        Range.STEP: 2
     },
     HanHP.LR.name: {
         Range.MIN: 0.001,

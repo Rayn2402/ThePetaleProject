@@ -49,7 +49,7 @@ if __name__ == '__main__':
     # Masks creation
     sampler = RandomStratifiedSampler(dataset=dataset,
                                       n_out_split=3,
-                                      n_in_split=3,
+                                      n_in_split=5,
                                       random_state=SEED,
                                       alpha=15)
     masks = sampler()

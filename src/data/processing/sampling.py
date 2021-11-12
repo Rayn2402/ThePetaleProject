@@ -18,7 +18,7 @@ from pandas import qcut, DataFrame
 from sklearn.model_selection import train_test_split
 from src.data.extraction.constants import *
 from src.data.extraction.data_management import PetaleDataManager
-from src.data.processing.datasets import PetaleDataset
+from src.data.processing.datasets import MaskType, PetaleDataset
 from torch import tensor
 from tqdm import tqdm
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union

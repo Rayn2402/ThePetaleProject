@@ -19,7 +19,7 @@ if __name__ == '__main__':
 
     # Imports specific to project
     sys.path.append(dirname(dirname(realpath(__file__))))
-    from hps.warmup_hps import TAB_HPS, RF_HPS, XGBOOST_HPS, MLP_HPS, HAN_HPS
+    from hps.sanity_check_hps import TAB_HPS, RF_HPS, XGBOOST_HPS, MLP_HPS, HAN_HPS
     from src.data.extraction.constants import SEED, PARTICIPANT
     from src.data.processing.datasets import PetaleDataset, PetaleStaticGNNDataset
     from src.data.processing.sampling import RandomStratifiedSampler, push_valid_to_train
@@ -82,7 +82,7 @@ if __name__ == '__main__':
                           dataset=dataset,
                           masks=masks,
                           hps=TAB_HPS,
-                          n_trials=100,
+                          n_trials=250,
                           fixed_params=fixed_params,
                           fixed_params_update_function=update_fixed_params,
                           evaluation_metrics=evaluation_metrics,
@@ -101,7 +101,7 @@ if __name__ == '__main__':
                           dataset=dataset,
                           masks=masks_without_val,
                           hps=RF_HPS,
-                          n_trials=100,
+                          n_trials=250,
                           evaluation_metrics=evaluation_metrics,
                           evaluation_name='RF_test',
                           save_hps_importance=True,
@@ -117,7 +117,7 @@ if __name__ == '__main__':
                           dataset=dataset,
                           masks=masks_without_val,
                           hps=XGBOOST_HPS,
-                          n_trials=100,
+                          n_trials=250,
                           evaluation_metrics=evaluation_metrics,
                           evaluation_name='XGBoost_test',
                           save_hps_importance=True,
@@ -146,7 +146,7 @@ if __name__ == '__main__':
                           dataset=dataset_mlp,
                           masks=masks,
                           hps=MLP_HPS,
-                          n_trials=100,
+                          n_trials=250,
                           evaluation_metrics=evaluation_metrics,
                           fixed_params=fixed_params,
                           evaluation_name='MLP_test',
@@ -177,7 +177,7 @@ if __name__ == '__main__':
                           dataset=dataset_gnn,
                           masks=masks,
                           hps=HAN_HPS,
-                          n_trials=100,
+                          n_trials=250,
                           evaluation_metrics=evaluation_metrics,
                           fixed_params=fixed_params,
                           evaluation_name='HAN_test',

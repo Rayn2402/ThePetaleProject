@@ -113,6 +113,9 @@ class HAN(TorchCustomModel):
         # We extract train_subgraph, train_mask and train_idx_map
         train_subgraph, train_idx_map, train_mask = dataset.train_subgraph
 
+        # We extract the features related to all the train mask
+        x, _, _ = dataset[train_mask]
+
         # We execute one training step
         for item in train_loader:
 
@@ -126,7 +129,7 @@ class HAN(TorchCustomModel):
             self._optimizer.zero_grad()
 
             # We perform the forward pass
-            output = self(train_subgraph, dataset.x_cont[train_mask])
+            output = self(train_subgraph, x)
 
             # We calculate the loss and the score
             loss = self.loss(sample_weights[idx], output[pos_idx], y)
@@ -163,12 +166,15 @@ class HAN(TorchCustomModel):
         # We extract train loader, dataset
         valid_loader, dataset = valid_data
 
-        # We extract valid_subgraph, mask (train + valid) and valid_idx_map
-        valid_subgraph, valid_idx_map, mask = dataset.valid_subgraph
-
         # We check if there is validation to do
         if valid_loader is None:
             return False
+
+        # We extract valid_subgraph, mask (train + valid) and valid_idx_map
+        valid_subgraph, valid_idx_map, mask = dataset.valid_subgraph
+
+        # We extract the features related to all the train + valid
+        x, _, _ = dataset[mask]
 
         # Set model for evaluation
         self.eval()
@@ -186,7 +192,7 @@ class HAN(TorchCustomModel):
                 pos_idx = [valid_idx_map[i.item()] for i in idx]
 
                 # We perform the forward pass: compute predicted outputs by passing inputs to the model
-                output = self(valid_subgraph, dataset.x_cont[mask])
+                output = self(valid_subgraph, x)
 
                 # We calculate the loss and the score
                 batch_size = len(idx)
@@ -235,7 +241,7 @@ class HAN(TorchCustomModel):
         h = self._gnn_layer(g, x)
 
         # We pass the final embedding through a linear layer
-        return self.linear_layer(h).squeeze()
+        return self._linear_layer(h).squeeze()
 
 
 class HANBinaryClassifier(HAN):
@@ -321,7 +327,8 @@ class HANBinaryClassifier(HAN):
         # Execute a forward pass and apply a softmax
         with no_grad():
             pos_idx = [idx_map[i] for i in mask]
-            return sigmoid(self(g, dataset.x_cont[mask_with_train]))[pos_idx]
+            x, _, _ = dataset[mask_with_train]
+            return sigmoid(self(g, x))[pos_idx]
 
 
 class HANRegressor(HAN):
@@ -407,4 +414,5 @@ class HANRegressor(HAN):
         # Execute a forward pass and apply a softmax
         with no_grad():
             pos_idx = [idx_map[i] for i in mask]
-            return self(g, dataset.x_cont[mask_with_train])[pos_idx]
+            x, _, _ = dataset[mask_with_train]
+            return self(g, x)[pos_idx]

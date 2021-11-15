@@ -223,7 +223,7 @@ def get_evaluation_recap(evaluation_name: str,
     }
 
     # Initialization of a list of key list that we can found within section of records dictionary
-    key_lists = [None]*4
+    key_lists = {}
 
     for folder in folders:
 
@@ -232,22 +232,21 @@ def get_evaluation_recap(evaluation_name: str,
             split_data = json.load(read_file)
 
         # For each section and their respective key list
-        for section, key_list in zip(data.keys(), key_lists):
-
+        for section in data.keys():
             if section in split_data.keys():
 
                 # If the key list is not initialized yet..
-                if key_list is None:
+                if key_lists.get(section) is None:
 
                     # Initialization of the key list
-                    key_list = split_data[section].keys()
+                    key_lists[section] = split_data[section].keys()
 
                     # Initialization of each individual key section in the dictionary
-                    for key in key_list:
+                    for key in key_lists[section]:
                         data[section][key] = {VALUES: [], INFO: ""}
 
                 # We add values to each key associated to the current section
-                for key in key_list:
+                for key in key_lists[section]:
                     data[section][key][VALUES].append(split_data[section][key])
 
     # We add the info about the mean, the standard deviation, the median , the min, and the max

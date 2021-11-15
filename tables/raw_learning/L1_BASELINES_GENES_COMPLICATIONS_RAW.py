@@ -1,17 +1,17 @@
-
 """
-Author : Nicolas Raymond
+Filename: L1_BASELINES_GENES_COMPLICATIONS.py
 
-This file contains the procedure to execute in order to obtain the following table :
-- L1_BASELINES_GENES_COMPLICATIONS_RAW
+Authors: Nicolas Raymond
+
+Description: This file contains the procedure to execute in order
+             to obtain "L1_BASELINES_GENES_COMPLICATIONS_RAW"
+
+Date of last modification : 2021/11/05
 """
-
-
-from os.path import join, realpath, dirname
-
 import pandas as pd
 import sys
 
+from os.path import join, realpath, dirname
 
 if __name__ == '__main__':
 
@@ -19,12 +19,12 @@ if __name__ == '__main__':
     sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
     from settings.paths import Paths
     from src.data.extraction.constants import *
-    from src.data.extraction.data_management import initialize_petale_data_manager
+    from src.data.extraction.data_management import PetaleDataManager
     from src.data.extraction.helpers import get_missing_update
     from src.data.processing.cleaning import DataCleaner
 
     # We build a PetaleDataManager that will help interacting with PETALE database
-    data_manager = initialize_petale_data_manager()
+    data_manager = PetaleDataManager()
 
     # We save the variables needed from BASELINES and COMPLICATIONS table
     base_vars = [PARTICIPANT, SEX, AGE_AT_DIAGNOSIS, DT, RADIOTHERAPY_DOSE,

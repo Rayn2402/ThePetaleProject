@@ -1,26 +1,35 @@
 """
-Author: Nicolas Raymond
+Filename: random_forest.py
 
-This file is used wrap the sklearn random forest models within PetaleClassifier and PetaleRegressor
-abstract classes
+Authors: Nicolas Raymond
+
+Description: This file is used to define the regression and classification
+             wrappers for the sklearn random forest models
+
+Date of last modification : 2021/10/25
 """
 
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from src.models.wrappers.sklearn_wrappers import SklearnBinaryClassifierWrapper, SklearnRegressorWrapper
-from src.utils.hyperparameters import CategoricalHP, NumericalContinuousHP, NumericalIntHP
-from typing import Optional
+from src.utils.hyperparameters import CategoricalHP, HP, NumericalContinuousHP, NumericalIntHP
+from typing import List, Optional
 
 
 class PetaleBinaryRFC(SklearnBinaryClassifierWrapper):
     """
-    Sklearn random forest classifier wrapper
+    Sklearn random forest classifier wrapper for the Petale framework
     """
-    def __init__(self, n_estimators: int = 100, min_samples_split: int = 2, max_features: str = "auto",
-                 max_leaf_nodes: int = 100, max_samples: float = 1, classification_threshold: int = 0.5,
+    def __init__(self,
+                 n_estimators: int = 100,
+                 min_samples_split: int = 2,
+                 max_features: str = "auto",
+                 max_leaf_nodes: int = 100,
+                 max_samples: float = 1,
+                 classification_threshold: int = 0.5,
                  weight: Optional[float] = None):
         """
-        Creates a sklearn random forest classifier model and sets required protected attributes using
-        parent's constructor
+        Creates a sklearn random forest classifier model and sets other protected
+        attributes using parent's constructor
 
         Args:
             n_estimators: number of trees in the forest
@@ -37,22 +46,34 @@ class PetaleBinaryRFC(SklearnBinaryClassifierWrapper):
                                                       max_samples=max_samples,
                                                       max_leaf_nodes=max_leaf_nodes,
                                                       criterion="entropy"),
-                         classification_threshold=classification_threshold, weight=weight)
+                         classification_threshold=classification_threshold,
+                         weight=weight)
 
     @staticmethod
-    def get_hps():
+    def get_hps() -> List[HP]:
+        """
+        Returns a list with the hyperparameters associated to the model
+
+        Returns: list of hyperparameters
+        """
         return list(RandomForestHP()) + [RandomForestHP.WEIGHT]
 
 
 class PetaleRFR(SklearnRegressorWrapper):
     """
-    Sklearn random forest regressor wrapper
+    Sklearn random forest regressor wrapper for the Petale framework
     """
 
-    def __init__(self, n_estimators: int = 100, min_samples_split: int = 2,
-                 max_features: str = "auto", max_samples: float = 1, max_leaf_nodes: int = 100):
+    def __init__(self,
+                 n_estimators: int = 100,
+                 min_samples_split: int = 2,
+                 max_features: str = "auto",
+                 max_samples: float = 1,
+                 max_leaf_nodes: int = 100):
         """
-        Creates a sklearn random forest regression model and sets protected attributes using parent's constructor
+        Creates a sklearn random forest regression model and sets other protected
+        attributes using parent's constructor
+
         Args:
             n_estimators: number of trees in the forest
             min_samples_split: minimum number of samples required to split an internal node
@@ -67,7 +88,12 @@ class PetaleRFR(SklearnRegressorWrapper):
                                                      max_leaf_nodes=max_leaf_nodes))
 
     @staticmethod
-    def get_hps():
+    def get_hps() -> List[HP]:
+        """
+        Returns a list with the hyperparameters associated to the model
+
+        Returns: list of hyperparameters
+        """
         return list(RandomForestHP())
 
 

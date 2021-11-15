@@ -1,9 +1,4 @@
-missing_data
-missing_data_charts
-descriptive_analyses/stats
-descriptive_analyses/charts
-SQL/NewTablesScripts/CleaningRecords
-__pycache__
+settings/database.py
 .idea
 *.pt
 *.json

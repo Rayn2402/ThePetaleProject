@@ -1,68 +1,114 @@
 """
+Filename: custom_torch_base.py
+
 Author: Nicolas Raymond
 
-This file is used to store the base skeleton of custom pytorch models
+Description: Defines the abstract class TorchCustomModel from which all custom pytorch models
+             implemented for the project must inherit. This class allows to store common
+             function of all pytorch models.
+
+Date of last modification: 2021/10/19
+
 """
 
 from abc import ABC, abstractmethod
-from src.data.processing.datasets import PetaleDataset, PetaleStaticGNNDataset
+from src.data.processing.datasets import MaskType, PetaleDataset, PetaleStaticGNNDataset
+from src.models.blocks.mlp_blocks import EntityEmbeddingBlock
 from src.training.early_stopping import EarlyStopper
 from src.utils.score_metrics import Metric
 from src.utils.visualization import visualize_epoch_progression
-from torch import tensor, mean, zeros_like, ones
+from torch import ones, sum, tensor, zeros_like
 from torch.nn import Module
 from torch.nn.functional import l1_loss, mse_loss
 from torch.optim import Adam
 from torch.utils.data import DataLoader, SubsetRandomSampler
-from typing import Callable, Optional, Tuple, Union
+from typing import Callable, List, Optional, Tuple, Union
 
 
 class TorchCustomModel(Module, ABC):
     """
-    Use to store common protected attribute of torch custom models
-    and loss function with elastic net penalty
+    Abstract class used to store common attributes
+    and methods of torch models implemented in the project
     """
-    def __init__(self, criterion: Callable, criterion_name: str, eval_metric: Metric,
-                 alpha: float = 0, beta: float = 0, verbose: bool = False):
+    def __init__(self,
+                 criterion: Callable,
+                 criterion_name: str,
+                 eval_metric: Metric,
+                 alpha: float = 0,
+                 beta: float = 0,
+                 num_cont_col: Optional[int] = None,
+                 cat_idx: Optional[List[int]] = None,
+                 cat_sizes: Optional[List[int]] = None,
+                 cat_emb_sizes: Optional[List[int]] = None,
+                 verbose: bool = False):
         """
-        Sets protected attributes
+        Sets the protected attributes and creates an embedding block if required
 
         Args:
             criterion: loss function of our model
-            criterion_name: name of the loss function of our model
-            eval_metric: name of the loss function of our model
+            criterion_name: name of the loss function
+            eval_metric: evaluation metric of our model (Ex. accuracy, mean absolute error)
             alpha: L1 penalty coefficient
             beta: L2 penalty coefficient
-            verbose: True if we want trace of the training progress
+            verbose: True if we want to print the training progress
         """
+        if num_cont_col is None and cat_sizes is None:
+            raise ValueError("There must be continuous columns or categorical columns")
+
+        # Call of parent's constructor
         Module.__init__(self)
+
+        # Settings of private attributes
         self._alpha = alpha
         self._beta = beta
         self._criterion = criterion
         self._criterion_name = criterion_name
         self._eval_metric = eval_metric
-        self._evaluations = {i: {self._criterion_name: [], self._eval_metric.name: []} for i in ["train", "valid"]}
+        self._evaluations = {i: {self._criterion_name: [],
+                                 self._eval_metric.name: []} for i in [MaskType.TRAIN, MaskType.VALID]}
+        self._input_size = num_cont_col if num_cont_col is not None else 0
         self._optimizer = None
         self._verbose = verbose
 
-    def _create_validation_objects(self, dataset: PetaleDataset, valid_batch_size: Optional[int], patience: int
+        # We set the protected attributes related to entity embedding
+        self._cat_idx = cat_idx if cat_idx is not None else []
+        self._cont_idx = [i for i in range(len(self._cat_idx) + num_cont_col) if i not in self._cat_idx]
+        self._embedding_block = None
+
+        # We set the embedding layers
+        if len(cat_idx) != 0 and cat_sizes is not None:
+
+            # We check embedding sizes (if nothing provided -> emb_sizes = cat_sizes)
+            cat_emb_sizes = cat_emb_sizes if cat_emb_sizes is not None else cat_sizes
+
+            # We create the embedding layers
+            self._embedding_block = EntityEmbeddingBlock(cat_sizes, cat_emb_sizes, cat_idx)
+
+            # We sum the length of all embeddings
+            self._input_size += len(self._embedding_block)
+
+    def _create_validation_objects(self,
+                                   dataset: PetaleDataset,
+                                   valid_batch_size: Optional[int],
+                                   patience: int
                                    ) -> Tuple[Optional[EarlyStopper],
-                                              Optional[Union[DataLoader, Tuple[DataLoader, PetaleStaticGNNDataset]]]]:
+                                              Optional[Union[DataLoader,
+                                                             Tuple[DataLoader,
+                                                                   PetaleStaticGNNDataset]]]]:
         """
-        Creates the object used for validation during the training
+        Creates the objects needed for validation during the training process
 
         Args:
-            dataset: PetaleDataset used to feed data loaders
+            dataset: PetaleDataset used to feed the dataloader
             valid_batch_size: size of the batches in the valid loader (None = one single batch)
-            patience: Number of consecutive epochs without improvement
+            patience: number of consecutive epochs without improvement allowed
 
-        Returns: early stopper, (Dataloader, PetaleDataset)
+        Returns: EarlyStopper, (Dataloader, PetaleDataset)
 
         """
-        # We create the valid data loader
+        # We create the valid dataloader (if valid size != 0)
         valid_size, valid_data, early_stopper = len(dataset.valid_mask), None, None
 
-        # If we need a validation set, we set the variables with real values
         if valid_size != 0:
 
             # We check if a valid batch size was provided
@@ -81,7 +127,7 @@ class TorchCustomModel(Module, ABC):
 
     def _generate_progress_func(self, max_epochs: int) -> Callable:
         """
-        Defines a function that updates the training progress
+        Builds a function that updates the training progress in the terminal
 
         Args:
             max_epochs: maximum number of training epochs
@@ -98,20 +144,25 @@ class TorchCustomModel(Module, ABC):
 
         return update_progress
 
-    def fit(self, dataset: PetaleDataset, lr: float, batch_size: int = 55,
-            valid_batch_size: Optional[int] = None, max_epochs: int = 200, patience: int = 15,
+    def fit(self,
+            dataset: PetaleDataset,
+            lr: float,
+            batch_size: int = 55,
+            valid_batch_size: Optional[int] = None,
+            max_epochs: int = 200,
+            patience: int = 15,
             sample_weights: Optional[tensor] = None) -> None:
         """
         Fits the model to the training data
 
         Args:
-            dataset: PetaleDataset used to feed data loaders
+            dataset: PetaleDataset used to feed the dataloaders
             lr: learning rate
             batch_size: size of the batches in the training loader
             valid_batch_size: size of the batches in the valid loader (None = one single batch)
             max_epochs: Maximum number of epochs for training
-            patience: Number of consecutive epochs without improvement
-            sample_weights: (N,) tensor with weights of the samples in the training set
+            patience: Number of consecutive epochs without improvement allowed
+            sample_weights: (N,) tensor with weights of the samples in the dataset
 
         Returns: None
         """
@@ -121,7 +172,7 @@ class TorchCustomModel(Module, ABC):
         # We create the training objects
         train_data = self._create_train_objects(dataset, batch_size)
 
-        # We create validation objects
+        # We create the objects needed for validation
         early_stopper, valid_data = self._create_validation_objects(dataset, valid_batch_size, patience)
 
         # We init the update function
@@ -137,7 +188,7 @@ class TorchCustomModel(Module, ABC):
             mean_epoch_loss = self._execute_train_step(train_data, sample_weights)
             update_progress(epoch, mean_epoch_loss)
 
-            # We proceed to calculate valid mean epoch loss and apply early stopping if needed
+            # We calculate valid mean epoch loss and apply early stopping if needed
             if self._execute_valid_step(valid_data, early_stopper):
                 print(f"\nEarly stopping occurred at epoch {epoch} with best_epoch = {epoch - patience}"
                       f" and best_val_{self._eval_metric.name} = {round(early_stopper.val_score_min, 4)}")
@@ -149,12 +200,15 @@ class TorchCustomModel(Module, ABC):
             self.load_state_dict(early_stopper.get_best_params())
             early_stopper.remove_checkpoint()
 
-    def loss(self, sample_weights: tensor, pred: tensor, y: tensor) -> tensor:
+    def loss(self,
+             sample_weights: tensor,
+             pred: tensor,
+             y: tensor) -> tensor:
         """
-        Calls the criterion and add elastic penalty
+        Calls the criterion and add the elastic penalty
 
         Args:
-            sample_weights: (N,) tensor with weights of samples on which we calculate loss
+            sample_weights: (N,) tensor with weights of samples on which we calculate the loss
             pred: (N, C) tensor if classification with C classes, (N,) tensor for regression
             y: (N,) tensor with targets
 
@@ -162,8 +216,8 @@ class TorchCustomModel(Module, ABC):
         """
         # Computations of penalties
         flatten_params = [w.view(-1, 1) for w in self.parameters()]
-        l1_penalty = mean(tensor([l1_loss(w, zeros_like(w)) for w in flatten_params]))
-        l2_penalty = mean(tensor([mse_loss(w, zeros_like(w)) for w in flatten_params]))
+        l1_penalty = sum(tensor([l1_loss(w, zeros_like(w)) for w in flatten_params]))
+        l2_penalty = sum(tensor([mse_loss(w, zeros_like(w)) for w in flatten_params]))
 
         # Computation of loss without reduction
         loss = self._criterion(pred, y.float())  # (N,) tensor
@@ -181,10 +235,10 @@ class TorchCustomModel(Module, ABC):
         Returns: None
         """
         # Extraction of data
-        train_loss = self._evaluations['train'][self._criterion_name]
-        train_metric = self._evaluations['train'][self._eval_metric.name]
-        valid_loss = self._evaluations['valid'][self._criterion_name]
-        valid_metric = self._evaluations['valid'][self._eval_metric.name]
+        train_loss = self._evaluations[MaskType.TRAIN][self._criterion_name]
+        train_metric = self._evaluations[MaskType.TRAIN][self._eval_metric.name]
+        valid_loss = self._evaluations[MaskType.VALID][self._criterion_name]
+        valid_metric = self._evaluations[MaskType.VALID][self._eval_metric.name]
 
         # Figure construction
         visualize_epoch_progression(train_history=[train_loss, train_metric],
@@ -193,12 +247,14 @@ class TorchCustomModel(Module, ABC):
                                     path=save_path)
 
     @staticmethod
-    def _create_train_objects(dataset: PetaleDataset, batch_size: int
+    def _create_train_objects(dataset: PetaleDataset,
+                              batch_size: int
                               ) -> Union[DataLoader, Tuple[DataLoader, PetaleStaticGNNDataset]]:
         """
-        Creates objects proper to training
+        Creates the objects needed for the training
+
         Args:
-            dataset: PetaleDataset used to feed data loaders
+            dataset: PetaleDataset used to feed the dataloaders
             batch_size: size of the batches in the train loader
 
         Returns: train loader, PetaleDataset
@@ -218,9 +274,11 @@ class TorchCustomModel(Module, ABC):
     def _validate_sample_weights(dataset: PetaleDataset, sample_weights: Optional[tensor]) -> tensor:
         """
         Validates the provided sample weights and return them.
-        If None are provided, each sample as the same weights of 1/n in the training loss
+        If None are provided, each sample as the same weights of 1/n in the training loss,
+        where n is the number of elements in the dataset.
+
         Args:
-            dataset: PetaleDataset used to feed data loaders
+            dataset: PetaleDataset used to feed the dataloaders
             sample_weights: (N,) tensor with weights of the samples in the training set
 
         Returns:
@@ -229,21 +287,23 @@ class TorchCustomModel(Module, ABC):
         # We check the validity of the samples' weights
         dataset_size = len(dataset)
         if sample_weights is not None:
-            assert (sample_weights.shape[0] == dataset_size),\
-                f"Sample weights as length {sample_weights.shape[0]} while dataset as length {dataset_size}"
+            if sample_weights.shape[0] != dataset_size:
+                raise ValueError(f"sample_weights as length {sample_weights.shape[0]}"
+                                 f" while dataset as length {dataset_size}")
         else:
             sample_weights = ones(dataset_size) / dataset_size
 
         return sample_weights
 
     @abstractmethod
-    def _execute_train_step(self, train_data: Union[DataLoader, Tuple[DataLoader, PetaleStaticGNNDataset]],
+    def _execute_train_step(self,
+                            train_data: Union[DataLoader, Tuple[DataLoader, PetaleStaticGNNDataset]],
                             sample_weights: tensor) -> float:
         """
         Executes one training epoch
 
         Args:
-            train_data: training data loader or tuple (train loader, dataset)
+            train_data: training dataloader or tuple (train loader, dataset)
             sample_weights: weights of the samples in the loss
 
         Returns: mean epoch loss
@@ -251,13 +311,14 @@ class TorchCustomModel(Module, ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def _execute_valid_step(self, valid_data: Optional[Union[DataLoader, Tuple[DataLoader, PetaleStaticGNNDataset]]],
+    def _execute_valid_step(self,
+                            valid_data: Optional[Union[DataLoader, Tuple[DataLoader, PetaleStaticGNNDataset]]],
                             early_stopper: Optional[EarlyStopper]) -> bool:
         """
         Executes an inference step on the validation data
 
         Args:
-            valid_data: valid data loader or tuple (valid loader, dataset)
+            valid_data: valid dataloader or tuple (valid loader, dataset)
             early_stopper: early stopper keeping track of validation loss
 
         Returns: True if we need to early stop

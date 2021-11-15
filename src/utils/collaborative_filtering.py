@@ -1,17 +1,23 @@
 """
-Author: Nicolas Raymond
+Filename: collaborative_filtering.py
 
-This file store functions related to collaborative filtering
+Authors: Nicolas Raymond
+
+Description: This file is used to store functions related to collaborative filtering
+
+Date of last modification : 2021/11/01
 """
-
-from torch import tensor, zeros, mm, topk, ge
+from torch import tensor, zeros, mm, topk
 from typing import Optional
 
 
-def run_collaborative_filtering(weights: tensor, labels: tensor, test_mask: tensor,
+def run_collaborative_filtering(weights: tensor,
+                                labels: tensor,
+                                test_mask: tensor,
                                 top_k: Optional[int] = None) -> tensor:
     """
     Predict the labels of idx in the test mask using a weighted average of others' labels
+
     Args:
         weights: (N,N) tensor with weights between patients
                  The i,j element is the weight of patient j according to i

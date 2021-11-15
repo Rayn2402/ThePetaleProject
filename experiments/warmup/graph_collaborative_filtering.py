@@ -1,12 +1,18 @@
 """
-Author: Nicolas Raymond
+Filename: graph_collaborative_filtering.py
 
-This file is used to store the graph collaborative filtering experiment on warmup dataset
+Authors: Nicolas Raymond
+
+Description: This file is used to execute the graph collaborative
+             filtering experiment on warmup dataset
+
+Date of last modification : 2021/11/08
 """
+
+import sys
 
 from os.path import dirname, realpath
 from tqdm import tqdm
-import sys
 
 
 if __name__ == '__main__':
@@ -14,7 +20,7 @@ if __name__ == '__main__':
     # Imports related to project
     sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
     from src.data.extraction.data_management import PetaleDataManager
-    from src.data.processing.sampling import TRAIN, TEST, SIGNIFICANT, ALL, get_warmup_data, extract_masks
+    from src.data.processing.sampling import extract_masks, GeneChoice, get_warmup_data, MaskType
     from src.data.processing.datasets import PetaleDataset
     from src.utils.graph import PetaleGraph
     from src.utils.collaborative_filtering import run_collaborative_filtering
@@ -23,8 +29,8 @@ if __name__ == '__main__':
     from settings.paths import Paths
 
     # Generation of dataset
-    data_manager = PetaleDataManager("rayn2402")
-    df, target, cont_cols, cat_cols = get_warmup_data(data_manager, genes=SIGNIFICANT, sex=True)
+    data_manager = PetaleDataManager()
+    df, target, cont_cols, cat_cols = get_warmup_data(data_manager, genes=GeneChoice.SIGNIFICANT, sex=True)
 
     # Creation of the dataset
     dataset = PetaleDataset(df, target, cont_cols, cat_cols=cat_cols,
@@ -54,7 +60,7 @@ if __name__ == '__main__':
     for k, v in tqdm(masks.items()):
 
         # Masks extraction and dataset update
-        train_mask, test_mask = v[TRAIN], v[TEST]
+        train_mask, test_mask = v[MaskType.TRAIN], v[MaskType.TEST]
 
         # Recorder initialization
         recorder = Recorder(evaluation_name=evaluation_name,

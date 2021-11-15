@@ -1,15 +1,19 @@
 """
+Filename: paths.py
+
 Authors : Nicolas Raymond
 
-Files that contains Paths enumerations
+Description : Stores a custom enumeration of the important paths within the project
 
+Date of last modification: 2021/10/19
 """
+
 from os.path import dirname, join
 
 
 class Paths:
     """
-    Paths of important folder and files
+    Paths of important directories and files
     """
     PROJECT_DIR: str = dirname(dirname(__file__))
     CHECKPOINTS: str = join(PROJECT_DIR, "checkpoints")

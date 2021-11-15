@@ -1,30 +1,36 @@
 """
-Authors : Nicolas Raymond
-          Mehdi Mitiche
+Filename: cleaning.py
 
-This file stores the class DataCleaner used remove invalid rows and columns from learning dataframes
+Author: Nicolas Raymond
+        Mehdi Mitiche
+
+Description: Defines the DataCleaner used remove invalid rows and columns from learning dataframes.
+             This class also indicates warning about potential outliers in the dataset.
+
+Date of last modification : 2021/11/02
 """
 
-import pandas as pd
 import matplotlib.pyplot as plt
+import pandas as pd
+
 from adjustText import adjust_text
-from src.data.processing.transforms import ContinuousTransform as CT
-from numpy import mean, cov, linalg, array, einsum, nan
+from json import dump
+from numpy import array, cov, einsum, linalg, mean, nan
 from scipy.stats import chi2
 from src.data.extraction.constants import PARTICIPANT
-from src.data.extraction.helpers import retrieve_numerical
-from typing import List, Optional, Any, Tuple
-from json import dump
-from os.path import join
+from src.data.extraction.helpers import retrieve_numerical_var
+from src.data.processing.transforms import ContinuousTransform as CT
+from typing import Any, List, Optional, Tuple
 from os import makedirs
+from os.path import join
 
 
 class DataCleaner:
     """
-    Object use to clean dataframes used for our learning task.
+    Object used to clean dataframes used for our learning task.
 
     It removes rows and columns with too many missing values (percentage above thresh)
-    and then remove outliers according to their numerical attributes.
+    and then identifies outliers according to their numerical attributes.
     """
     # RECORDS CSTS
     CP = "Critical Patients"
@@ -48,25 +54,40 @@ class DataCleaner:
     # MAHALANOBIS COLUMN ID
     MAHALANOBIS = "Mahalanobis"
 
-    def __init__(self, records_path: str, column_thresh: float = 0.15, row_thresh: float = 0.20,
-                 outlier_alpha: float = 1.5, min_n_per_cat: int = 8, max_cat_percentage: float = 0.95,
-                 qchi2_mahalanobis_cutoff: float = 0.975, figure_format: str = 'png'):
+    def __init__(self,
+                 records_path: str,
+                 column_thresh: float = 0.15,
+                 row_thresh: float = 0.20,
+                 outlier_alpha: float = 1.5,
+                 min_n_per_cat: int = 8,
+                 max_cat_percentage: float = 0.95,
+                 qchi2_mahalanobis_cutoff: float = 0.975,
+                 figure_format: str = 'png'):
         """
-        Class constructor
+        Saves private attributes
 
-        :param records_path: json file path to save results of cleaning
-        :param column_thresh: percentage threshold (0 <= thresh <= 1)
-        :param row_thresh: percentage threshold (0 <= thresh <= 1)
-        :param outlier_alpha: constant multiplied by inter quartile range (IQR) to determine outliers
-        :param min_n_per_cat: minimal number of items having a certain category value in a categorical column
-        :param max_cat_percentage: maximal percentage that a category can occupied within a categorical column
-        :param qchi2_mahalanobis_cutoff: Chi-squared quantile probability used to determine Mahalanobis cutoff value
-        :param figure_format: format of figure saved by matplotlib
+        Args:
+            records_path: json file path to save results of cleaning
+            column_thresh: percentage threshold (0 <= thresh <= 1)
+            row_thresh: percentage threshold (0 <= thresh <= 1)
+            outlier_alpha: constant multiplied by inter quartile range (IQR) to determine outliers
+            min_n_per_cat: minimal number of items having a certain category value in a categorical column
+            max_cat_percentage: maximal percentage that a category can occupied within a categorical column
+            qchi2_mahalanobis_cutoff: chi-squared quantile probability used to determine Mahalanobis cutoff value
+            figure_format: format of figure saved by matplotlib
         """
-        assert 0 <= column_thresh <= 1 and 0 <= row_thresh <= 1, "Thresholds must be in range [0, 1]"
-        assert min_n_per_cat > 0, "The minimal number of items per category must be greater than 0"
-        assert 0 < max_cat_percentage < 1, "The maximal percentage must be in range (0, 1)"
-        assert 0 < qchi2_mahalanobis_cutoff < 1, "Chi-squared quantile cutoff must be in range (0, 1)"
+        # We validate parameters choices
+        if not (0 <= column_thresh <= 1 and 0 <= row_thresh <= 1):
+            raise ValueError("Thresholds must be in range [0, 1]")
+
+        if min_n_per_cat >= 0:
+            raise ValueError("The minimal number of items per category must be greater than 0")
+
+        if not (0 < max_cat_percentage < 1):
+            raise ValueError("The maximal percentage must be in range (0, 1)")
+
+        if not (0 < qchi2_mahalanobis_cutoff < 1):
+            raise ValueError("Chi-squared quantile cutoff must be in range (0, 1)")
 
         # Internal private fixed attributes
         self.__column_thresh = column_thresh
@@ -93,23 +114,27 @@ class DataCleaner:
         # Creation of folder to store results
         makedirs(self.__plots_path, exist_ok=True)
 
-    def __call__(self, df: pd.DataFrame, numerical_columns: Optional[List[str]] = None) -> pd.DataFrame:
+    def __call__(self, df: pd.DataFrame,
+                 numerical_columns: Optional[List[str]] = None) -> pd.DataFrame:
         """
-        Executes all the cleaning steps and save records of the procedure
+        Executes all the cleaning steps and saves records of the procedure
 
-        :param df: pandas dataframe
-        :param numerical_columns: list with names of numerical columns
-        :return: cleaned pandas dataframe
+        Args:
+            df: pandas dataframe
+            numerical_columns: list with names of numerical columns
+
+        Returns: cleaned pandas dataframe
         """
+
         # We find numerical columns if none are mentioned
         if numerical_columns is None:
-            numerical_df = retrieve_numerical(df, [])
+            numerical_df = retrieve_numerical_var(df, [])
             numerical_columns = list(numerical_df.columns.values)
 
         # We set missing values to NaN
         df = df.fillna(nan)
 
-        # We identify and remove categories of categorical column with a too low number of appearance.
+        # We identify and remove categories of categorical column with a too low number of appearances.
         # We remove columns with categories that number of appearances is too high
         categorical_columns = [c for c in df.columns.values if c not in [PARTICIPANT] + numerical_columns]
         cleaned_df = self.__identify_critical_categories(df, categorical_columns)
@@ -117,7 +142,7 @@ class DataCleaner:
         # We identify and remove columns and rows with too many missing values
         cleaned_df = self.__identify_critical_rows_and_columns(cleaned_df)
 
-        # With some rows now remove, we got to check again the validity of columns
+        # With some rows now removed, we got to check again the validity of columns
         categorical_columns = [c for c in categorical_columns if c in cleaned_df.columns.values]
         cleaned_df = self.__identify_critical_categories(cleaned_df, categorical_columns)
 
@@ -140,18 +165,23 @@ class DataCleaner:
 
         return cleaned_df
 
-    def __identify_critical_categories(self, df: pd.DataFrame, categorical_columns: List[str]) -> pd.DataFrame:
+    def __identify_critical_categories(self,
+                                       df: pd.DataFrame,
+                                       categorical_columns: List[str]) -> pd.DataFrame:
         """
-        Set category with less than "self.__min_n_per_cat" to NaN
+        Sets categories with less than "self.__min_n_per_cat" to NaN
 
-        :param df: pandas dataframe
-        :param categorical_columns: list with names of categorical columns
-        :return curated dataframe
+        Args:
+            df: pandas dataframe
+            categorical_columns: list with names of categorical columns
+
+        Returns: curated dataframe
         """
+
         # We save a list with column to remove
         to_remove = []
 
-        # For all categorical column
+        # For each categorical column
         for c in categorical_columns:
 
             # We identify the possible categories
@@ -179,7 +209,7 @@ class DataCleaner:
                     self.__update_single_column_records(c, warning)
                     to_remove.append(c)
 
-        # We delete column to remove
+        # We delete columns to remove
         df = df.drop(to_remove, axis=1)
 
         return df
@@ -188,8 +218,10 @@ class DataCleaner:
         """
         Removes rows and columns with too many missing values
 
-        :param df: pandas dataframe
-        :return curated dataframe
+        Args:
+            df: pandas dataframe
+
+        Returns: curated dataframe
         """
 
         # Column cleaning
@@ -209,15 +241,20 @@ class DataCleaner:
 
         return updated_df
 
-    def __identify_univariate_outliers(self, df: pd.DataFrame, numerical_columns: List[str],
+    def __identify_univariate_outliers(self,
+                                       df: pd.DataFrame,
+                                       numerical_columns: List[str],
                                        record: bool = True) -> None:
         """
         Identifies patients (rows) with numerical attribute value lower than
-        Q1 - alpha*(Q3-Q1) or higher than Q3 + alpha*(Q3-Q1)
+        Q1 - alpha*(Q3-Q1) or higher than Q3 + alpha*(Q3-Q1) and creates a plot
 
-        :param df: pandas dataframe
-        :param numerical_columns: list with names of numerical columns
-        :param record: True indicates that we want to save outliers and quartiles in the records
+        Args:
+            df: pandas dataframe
+            numerical_columns: list with names of numerical columns
+            record: true indicates that we want to save outliers and quartiles in the records
+
+        Returns: None
         """
         # Check if there is a single box or there are multiple boxes to create
         nb_numerical_col = len(numerical_columns)
@@ -286,15 +323,21 @@ class DataCleaner:
         fig.tight_layout()
         fig.savefig(f"{filename}.{self.__fig_format}", format=self.__fig_format)
 
-    def __identify_multivariate_outliers(self, df: pd.DataFrame, numerical_columns: List[str]) -> None:
+    def __identify_multivariate_outliers(self,
+                                         df: pd.DataFrame,
+                                         numerical_columns: List[str]) -> None:
         """
         Identifies patients with Mahalanobis distances abnormally high
         (over the qchi2 quantile of Chi-squared distribution with D degrees of freedom)
         where D is the number of numerical dimensions in our dataframe (after cleaning).
 
-        :param df: pandas dataframe
-        :param numerical_columns: list with names of numerical columns
+        Args:
+            df: pandas dataframe
+            numerical_columns: list with names of numerical columns
+
+        Returns: None
         """
+
         # We calculate Mahalanobis distances for all patients
         temporary_df = df.loc[:, [PARTICIPANT]]
         temporary_df[self.MAHALANOBIS] = self.__calculate_squared_mahalanobis_distances(df, numerical_columns)
@@ -317,7 +360,7 @@ class DataCleaner:
             patient, value = temporary_df.iloc[i, 0], round(temporary_df.iloc[i, 1], 4)
             self.__records[self.MAHALANOBIS][patient] = value
 
-            # We had a warning message to the patient if its value is over the cutoff
+            # We add a warning message to the patient if its value is over the cutoff
             if value > cutoff:
                 texts.append(ax.text(i, value, patient))
                 warning = self.__return_mahalanobis_warning(value)
@@ -339,22 +382,29 @@ class DataCleaner:
         ax.set_title(f'Potential mutlivariate outliers (qchi2 = {self.__qchi2})')
         fig.savefig(f"{join(self.__plots_path, self.MAHALANOBIS)}.{self.__fig_format}", format=self.__fig_format)
 
-    def __update_outliers_records(self, subset: pd.DataFrame,
-                                  column: str, lvl: str, box_idx: int, ax: Any, texts: Any,
+    def __update_outliers_records(self,
+                                  subset: pd.DataFrame,
+                                  column: str,
+                                  lvl: str,
+                                  box_idx: int,
+                                  ax: Any,
+                                  texts: Any,
                                   record: bool = True) -> None:
         """
         Adds outliers data to records
 
-        :param subset: subset of pandas dataframe
-        :param column: name of the numerical column
-        :param lvl: "Low" or "High" depending if value is lower than Q1 - alpha*(Q3-Q1) or higher than
-                    Q3 + alpha*(Q3-Q1)
-        :param box_idx: boxplot index
-        :param ax: matplotlib pyplot axis
-        :param texts: list of texts added to boxplot
-        :param record: If true we add outliers id and warning message to record, else we only append
-                       participants' ids to boxplot
+        Args:
+            subset: subset of pandas dataframe
+            column: name of the numerical column
+            lvl: "Low" or "High" depending if value is lower than Q1 - alpha*(Q3-Q1)
+                 or higher than Q3 + alpha*(Q3-Q1)
+            box_idx: boxplot index
+            ax: matplotlib pyplot axis
+            texts: list of texts added to boxplot
+            record: if true we add outliers id and warning message to record, else we only append
+                    participants' ids to boxplot
 
+        Returns: None
         """
         for i in range(subset.shape[0]):
 
@@ -369,34 +419,50 @@ class DataCleaner:
                 # We add the warning to the records
                 self.__update_single_patient_records(patient, warning)
 
-    def __update_records(self, key: str, sub_key: str, warning: str) -> None:
+    def __update_records(self,
+                         key: str,
+                         sub_key: str,
+                         warning: str) -> None:
         """
-        Add warning message to a patient or a column in the records
+        Adds warning message to a patient or a column in the records
 
-        :param key: str, self.CP or self.CC
-        :param sub_key: str, patient of column name
-        :param warning: str, warning message
+        Args:
+            key: self.CP or self.CC
+            sub_key: patient of column name
+            warning: warning message
+
+        Returns: None
         """
         if sub_key in self.__records[key].keys():
             self.__records[key][sub_key].update({len(self.__records[key][sub_key].keys()): warning})
         else:
             self.__records[key][sub_key] = {0: warning}
 
-    def __update_single_patient_records(self, patient: str, warning: str):
+    def __update_single_patient_records(self,
+                                        patient: str,
+                                        warning: str) -> None:
         """
-        Add warning message to a patient in the records
+        Adds a warning message to a patient in the records
 
-        :param patient: str
-        :param warning: str, warning message
+        Args:
+            patient: patient ID
+            warning: warning message
+
+        Returns: None
         """
         self.__update_records(self.CP, patient, warning)
 
-    def __update_single_column_records(self, column: str, warning: str):
+    def __update_single_column_records(self,
+                                       column: str,
+                                       warning: str) -> None:
         """
-        Add warning message to a patient in the records
+        Adds a warning message to a column in the records
 
-        :param column: str
-        :param warning: str, warning message
+        Args:
+            column: column name
+            warning: warning message
+
+        Returns: None
         """
         self.__update_records(self.CC, column, warning)
 
@@ -409,19 +475,23 @@ class DataCleaner:
             dump(self.__records, file, indent=True)
 
     @staticmethod
-    def __calculate_squared_mahalanobis_distances(df: pd.DataFrame, numerical_columns: List[str]) -> array:
+    def __calculate_squared_mahalanobis_distances(df: pd.DataFrame,
+                                                  numerical_columns: List[str]) -> array:
         """
         Computes mahalanobis distances of all patients according to their numerical values
 
-        :param df: pandas dataframe
-        :param numerical_columns: list with names of numerical columns
-        :return: numpy array
+        Args:
+            df: pandas dataframe
+            numerical_columns: list with names of numerical columns
+
+        Returns: numpy array
         """
-        # We fill NaN values with column means transform the data to numpy array
+
+        # We fill NaN values with column means and convert the data to numpy array
         numerical_df = df[numerical_columns]
         X = numerical_df.to_numpy().reshape((df.shape[0], -1))
 
-        # We get the center point, the vector composed of the means of each variable
+        # We get the centroid (the vector composed with the means of each variable)
         centroid = mean(X, axis=0).reshape(1, numerical_df.shape[1])
 
         # We get the inverse of the covariance matrix
@@ -437,14 +507,18 @@ class DataCleaner:
         return squared_distances
 
     @staticmethod
-    def __extract_quartiles(bp: Any, idx_of_box: int = 0) -> Tuple[float, float, float, float]:
+    def __extract_quartiles(bp: Any,
+                            idx_of_box: int = 0) -> Tuple[float, float, float, float]:
         """
         Extracts quartiles data out of matplotlib boxplot
 
-        :param bp: matplotlib boxplot
-        :param idx_of_box: index of box in the boxplot in the box plot
-        :return: q1, q2, q3, iqr (q3 - q1)
+        Args:
+            bp: matplotlib boxplot
+            idx_of_box: index of the box in the boxplot
+
+        Returns: q1, q2, q3, iqr (q3 - q1)
         """
+
         q1 = bp['boxes'][idx_of_box].get_ydata()[1]
         q2 = bp['medians'][idx_of_box].get_ydata()[1]
         q3 = bp['boxes'][idx_of_box].get_ydata()[2]
@@ -452,28 +526,38 @@ class DataCleaner:
         return q1, q2, q3, round(q3 - q1, 4)
 
     @staticmethod
-    def __refactor_dataframe(df: pd.DataFrame, numerical_columns: List[str]) -> pd.DataFrame:
+    def __refactor_dataframe(df: pd.DataFrame,
+                             numerical_columns: List[str]) -> pd.DataFrame:
         """
-        Filter the dataframe to only keep PARTICIPANT column and specific numerical column
+        Filters the dataframe to only keep the PARTICIPANT column and specific numerical columns
 
-        :param df: pandas dataframe
-        :param numerical_columns: list with names of numerical columns
-        :return: same dataframe with only numeric
+        Args:
+            df: pandas dataframe
+            numerical_columns: list with names of numerical columns
+
+        Returns: same dataframe with only numerical columns
         """
-        assert PARTICIPANT in df.columns.values, f"{PARTICIPANT} column must be in the dataframe"
+        if PARTICIPANT not in df.columns.values:
+            raise ValueError(f"{PARTICIPANT} column must be in the dataframe")
+
         updated_df = df.copy()
         updated_df[numerical_columns] = df[numerical_columns].astype(float).fillna(df[numerical_columns].mean())
 
         return updated_df
 
     @staticmethod
-    def __return_categorical_warning(category: str, value: float, min_warning: bool = True) -> str:
+    def __return_categorical_warning(category: str,
+                                     value: float,
+                                     min_warning: bool = True) -> str:
         """
-        Return a string to use as warning message for column in the records
+        Returns a string to use as a warning message for column in the records
 
-        :param category: str, category of a categorical variable
-        :param value: number of times the category appears or percentage of column occupied by the category
-        :return: str
+        Args:
+            category: category of a categorical variable
+            value: number of times the category appears or percentage of column occupied by the category
+            min_warning: true if the warning is associated to a low count of category appearances
+
+        Returns: warning message
         """
         if min_warning:
             return f"Only {value} items had the category {category}."
@@ -481,25 +565,30 @@ class DataCleaner:
             return f"Category {category} was representing {round(value*100,2)} % of the column."
 
     @staticmethod
-    def __return_outlier_warning(numerical_attribute: str, value: float, lvl: str) -> str:
+    def __return_outlier_warning(numerical_attribute: str,
+                                 value: float,
+                                 lvl: str) -> str:
         """
-        Returns a string to use as warning message in the records.
+        Returns a string to use as warning message for the patient in the records.
+        Args:
+            numerical_attribute: name of the column in the dataframe
+            value: value of the patient
+            lvl: "Low" or "High" depending if value is lower than Q1 - alpha*(Q3-Q1) or higher than
+                 Q3 + alpha*(Q3-Q1)
 
-        :param numerical_attribute: name of the column in the dataframe
-        :param value: value of the patient
-        :param lvl: "Low" or "High" depending if value is lower than Q1 - alpha*(Q3-Q1) or higher than
-                    Q3 + alpha*(Q3-Q1)
-        :return: str
+        Returns: warning message
         """
+
         return f"Patient targeted as an outlier" \
                f" due to a {lvl} '{numerical_attribute}' value of {value}."
 
     @staticmethod
     def __return_mahalanobis_warning(value: float) -> str:
         """
-        Returns a string to use as warning message in the records.
-        The warning is for a Mahalanobis distance that is to high
-        :param value: Patient's Mahalanobis distance
-        :return: str
+        Returns a string to use as warning message for patient in the records.
+        Args:
+            value: Patient's Mahalanobis distance
+
+        Returns: warning message
         """
         return f"Patient targeted as an outlier due to its Mahalanobis distance of {value}."

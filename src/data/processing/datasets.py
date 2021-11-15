@@ -1,27 +1,47 @@
 """
-Authors : Nicolas Raymond
+Filename: datasets.py
 
-Files that contains class related to Datasets
+Author: Nicolas Raymond
 
+Description: Defines the classes related to datasets
+
+Date of last modification : 2021/11/02
 """
 
-from dgl import graph, heterograph, DGLGraph, DGLHeteroGraph, node_subgraph
+from dgl import DGLGraph, DGLHeteroGraph, graph, heterograph, node_subgraph
 from numpy import array, concatenate, where
 from pandas import DataFrame, Series
 from src.data.extraction.constants import *
-from src.data.processing.preprocessing import preprocess_continuous, preprocess_categoricals
+from src.data.processing.preprocessing import preprocess_categoricals, preprocess_continuous
 from torch.utils.data import Dataset
-from torch import from_numpy, tensor, cat
-from typing import Optional, List, Callable, Tuple, Union, Any, Dict
+from torch import cat, from_numpy, tensor
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+
+
+class MaskType:
+    """
+    Stores the constant related to mask types
+    """
+    TRAIN: str = "train"
+    VALID: str = "valid"
+    TEST: str = "test"
+    INNER: str = "inner"
+
+    def __iter__(self):
+        return iter([self.TRAIN, self.VALID, self.TEST])
 
 
 class PetaleDataset(Dataset):
     """
-    Scaffolding of all dataset classes implemented for our experiments
+    Custom dataset class for Petale experiments
     """
-    def __init__(self, df: DataFrame, target: str,
-                 cont_cols: Optional[List[str]] = None, cat_cols: Optional[List[str]] = None,
-                 classification: bool = True, to_tensor: bool = False):
+    def __init__(self,
+                 df: DataFrame,
+                 target: str,
+                 cont_cols: Optional[List[str]] = None,
+                 cat_cols: Optional[List[str]] = None,
+                 classification: bool = True,
+                 to_tensor: bool = False):
         """
         Sets protected and public attributes of our custom dataset class
 
@@ -30,14 +50,17 @@ class PetaleDataset(Dataset):
             target: name of the column with the targets
             cont_cols: list of column names associated with continuous data
             cat_cols: list of column names associated with categorical data
-            classification: True for classification task, False for regression
-            to_tensor: True if we want the features and targets in tensors, False for numpy arrays
+            classification: true for classification task, false for regression
+            to_tensor: true if we want the features and targets in tensors, false for numpy arrays
 
         """
         # Validations of inputs
-        assert PARTICIPANT in df.columns, "Patients' ids missing from the dataframe."
-        assert (cont_cols is not None or cat_cols is not None), "At least a list of continuous columns" \
-                                                                " or a list of categorical columns must be given."
+        if PARTICIPANT not in df.columns:
+            raise ValueError("Patients' ids missing from the dataframe")
+
+        if cont_cols is None and cat_cols is None:
+            raise ValueError("At least a list of continuous columns or a list of categorical columns must be given.")
+
         for columns in [cont_cols, cat_cols]:
             self._check_columns_validity(df, columns)
 
@@ -77,7 +100,7 @@ class PetaleDataset(Dataset):
         return self._n
 
     def __getitem__(self, idx: Union[int, List[int]]
-                    ) -> Tuple[Union[array, tensor], Union[array, tensor], Union[array, tensor]]:
+                    ) -> Union[Tuple[array, array, array], Tuple[tensor, tensor, tensor]]:
         return self.x[idx], self.y[idx], idx
 
     @property
@@ -151,14 +174,24 @@ class PetaleDataset(Dataset):
         # We apply an ordinal encoding to categorical columns
         x_cat, _ = preprocess_categoricals(self._original_data[self.cat_cols].copy(),
                                            mode=modes, encodings=self._encodings)
+
         self._x_cat = x_cat.to_numpy(dtype=int)
 
-    def _define_categorical_data_setter(self, cat_cols: Optional[List[str]] = None,
+    def _define_categorical_data_setter(self,
+                                        cat_cols: Optional[List[str]] = None,
                                         to_tensor: bool = False) -> Callable:
         """
         Defines the function used to set categorical data after masks update
+
+        Args:
+            cat_cols: list with names of categorical columns
+            to_tensor: true if we want the data to be converted into tensor
+
+        Returns: function
         """
+        # If there is no categorical columns
         if cat_cols is None:
+
             def set_categorical(modes: Optional[Series]) -> None:
                 pass
 
@@ -166,6 +199,7 @@ class PetaleDataset(Dataset):
 
         else:
             if to_tensor:
+
                 def set_categorical(modes: Optional[Series]) -> None:
                     self._categorical_setter(modes)
                     self._x_cat = from_numpy(self._x_cat).long()
@@ -174,16 +208,25 @@ class PetaleDataset(Dataset):
 
             return self._categorical_setter
 
-    def _define_categorical_stats_getter(self, cat_cols: Optional[List[str]] = None
+    def _define_categorical_stats_getter(self,
+                                         cat_cols: Optional[List[str]] = None
                                          ) -> Tuple[Callable, Dict[str, Dict[str, int]]]:
         """
         Defines the function used to extract the modes of categorical columns
+
+        Args:
+            cat_cols: list of categorical column names
+
+        Returns: function, dictionary with categories encodings
         """
+        # If there is not categorical column
         if cat_cols is None:
+
             def get_modes(df: Optional[DataFrame]) -> None:
                 return None
 
             encodings = None
+
         else:
             # Make sure that categorical data in the original dataframe is in the correct format
             self._original_data[cat_cols] = self._original_data[cat_cols].astype('category')
@@ -196,12 +239,20 @@ class PetaleDataset(Dataset):
 
         return get_modes, encodings
 
-    def _define_feature_getter(self, cont_cols: Optional[List[str]] = None,
-                               cat_cols: Optional[List[str]] = None, to_tensor: bool = False) -> Callable:
+    def _define_feature_getter(self,
+                               cont_cols: Optional[List[str]] = None,
+                               cat_cols: Optional[List[str]] = None,
+                               to_tensor: bool = False) -> Callable:
         """
-        Defines the method used to extract features (processed data) available for training
-        """
+        Defines the method used to extract the features (processed data) for training
 
+        Args:
+            cont_cols: list of continuous column names
+            cat_cols: list of categorical column names
+            to_tensor: true if the data must be converted to tensor
+
+        Returns: function
+        """
         if cont_cols is None:
 
             # Only categorical column idx
@@ -221,6 +272,7 @@ class PetaleDataset(Dataset):
                 return self.x_cont
 
         else:
+
             # Continuous and categorical column idx
             nb_cont_cols = len(cont_cols)
             self.cont_idx = list(range(nb_cont_cols))
@@ -236,18 +288,29 @@ class PetaleDataset(Dataset):
 
         return x
 
-    def _define_numerical_data_setter(self, cont_cols: Optional[List[str]] = None,
+    def _define_numerical_data_setter(self,
+                                      cont_cols: Optional[List[str]] = None,
                                       to_tensor: bool = False) -> Callable:
         """
         Defines the function used to set numerical continuous data after masks update
+
+        Args:
+            cont_cols: list of continuous column names
+            to_tensor: true if data needs to be converted into tensor
+
+        Returns: function
         """
+        # If there is no continuous column
         if cont_cols is None:
+
             def set_numerical(mu: Optional[Series], std: Optional[Series]) -> None:
                 pass
 
             return set_numerical
+
         else:
             if to_tensor:
+
                 def set_numerical(mu: Optional[Series], std: Optional[Series]) -> None:
                     self._numerical_setter(mu, std)
                     self._x_cont = from_numpy(self._x_cont).float()
@@ -258,13 +321,21 @@ class PetaleDataset(Dataset):
 
     def _define_numerical_stats_getter(self, cont_cols: Optional[List[str]] = None) -> Callable:
         """
-        Defines the function used to extract the mean and the standard deviations of numerical columns
-        in a dataframe.
+        Defines the function used to extract the mean and the standard deviations
+        of numerical columns in a dataframe.
+
+        Args:
+            cont_cols: list with names of continuous columns
+
+        Returns: function
         """
+        # If there is no continuous column
         if cont_cols is None:
+
             def get_mu_and_std(df: DataFrame) -> Tuple[None, None]:
                 return None, None
         else:
+
             # Make sure that numerical data in the original dataframe is in the correct format
             self._original_data[cont_cols] = self._original_data[cont_cols].astype(float)
 
@@ -273,11 +344,13 @@ class PetaleDataset(Dataset):
 
         return get_mu_and_std
 
-    def _numerical_setter(self, mu: Series, std: Series) -> None:
+    def _numerical_setter(self,
+                          mu: Series,
+                          std: Series) -> None:
         """
         Fills missing values of numerical continuous data according according to the means of the
-        training set and then normalize continuous data using the means and the standard
-        deviations of the training set.
+        training mask and then normalizes continuous data using the means and the standard
+        deviations of the training mask.
 
         Args:
             mu: means of the numerical column according to the training mask
@@ -291,7 +364,8 @@ class PetaleDataset(Dataset):
         # We apply the basis function
         self._x_cont = x_cont.to_numpy(dtype=float)
 
-    def _retrieve_subset_from_original(self, cont_cols: Optional[List[str]] = None,
+    def _retrieve_subset_from_original(self,
+                                       cont_cols: Optional[List[str]] = None,
                                        cat_cols: List[str] = None) -> DataFrame:
         """
         Returns a copy of a subset of the original dataframe
@@ -310,10 +384,12 @@ class PetaleDataset(Dataset):
 
         return self.original_data[[PARTICIPANT, self._target] + selected_cols].copy()
 
-    def get_imputed_dataframe(self):
+    def get_imputed_dataframe(self) -> DataFrame:
         """
-        Returns a copy of the original pandas dataframe where missing values are imputed according to
-        the training mask.
+        Returns a copy of the original pandas dataframe where missing values
+        are imputed according to the training mask.
+
+        Returns: pandas dataframe
         """
         imputed_df = self.original_data.drop([PARTICIPANT, self.target], axis=1).copy()
         if self.cont_cols is not None:
@@ -325,7 +401,8 @@ class PetaleDataset(Dataset):
 
     def build_homogeneous_graph(self, cat_cols: Optional[List[str]] = None) -> DGLGraph:
         """
-        Builds and undirected homogeneous graph from the categorical columns mentioned
+        Builds an undirected homogeneous graph from the categorical columns mentioned
+
         Args:
             cat_cols: list of categorical columns
 
@@ -334,7 +411,8 @@ class PetaleDataset(Dataset):
         # We make sure that given categorical columns are ok
         if cat_cols is not None:
             for c in cat_cols:
-                assert c in self.cat_cols, f"Unrecognized categorical column name : {c}"
+                if c not in self.cat_cols:
+                    raise ValueError(f"Unrecognized categorical column name : {c}")
         else:
             cat_cols = self.cat_cols
 
@@ -346,24 +424,19 @@ class PetaleDataset(Dataset):
 
         # We look through categorical columns to generate graph structure
         u, v = [], []
-        for e_types, e_values in self.encodings.items():
-            if e_types in cat_cols:
+        for e_type, e_values in self.encodings.items():
+            if e_type in cat_cols:
                 for value in e_values.values():
-                    idx_subset = df.loc[df[e_types] == value].index.to_numpy()
-                    subset_size = idx_subset.shape[0]
-
-                    # For patient with common value we add edges in both direction
-                    for i in range(subset_size):
-                        u += [idx_subset[i]] * (subset_size - 1)
-                        remaining_idx = list(range(i)) + list(range(i + 1, subset_size))
-                        v += list(idx_subset[remaining_idx])
+                    u, v = self._get_graphs_edges(u=u, v=v, df=df, e_type=e_type, value=value)
 
         # We turn u,v into tensors
         u, v = tensor(u).long(), tensor(v).long()
 
         return graph((u, v))
 
-    def create_subset(self, cont_cols: Optional[List[str]] = None, cat_cols: List[str] = None) -> Any:
+    def create_subset(self,
+                      cont_cols: Optional[List[str]] = None,
+                      cat_cols: List[str] = None) -> Any:
         """
         Returns a subset of the current dataset using the given cont_cols and cat_cols
 
@@ -371,10 +444,15 @@ class PetaleDataset(Dataset):
             cont_cols: list of continuous columns
             cat_cols: list of categorical columns
 
-        Returns: instance of the same class
+        Returns: instance of the PetaleDataset class
         """
         subset = self._retrieve_subset_from_original(cont_cols, cat_cols)
-        return PetaleDataset(subset, self.target, cont_cols, cat_cols, self.classification, self._to_tensor)
+        return PetaleDataset(df=subset,
+                             target=self.target,
+                             cont_cols=cont_cols,
+                             cat_cols=cat_cols,
+                             classification=self.classification,
+                             to_tensor=self._to_tensor)
 
     def current_train_stats(self) -> Tuple[Optional[Series], Optional[Series], Optional[Series]]:
         """
@@ -389,12 +467,22 @@ class PetaleDataset(Dataset):
 
         return mu, std, modes
 
-    def update_masks(self, train_mask: List[int], test_mask: List[int],
+    def update_masks(self,
+                     train_mask: List[int],
+                     test_mask: List[int],
                      valid_mask: Optional[List[int]] = None) -> None:
         """
-        Updates the train, valid and test masks and then preprocess the data available
+        Updates the train, valid and test masks and then preprocesses the data available
         according to the current statistics of the training data
+
+        Args:
+            train_mask: list of idx in the training set
+            test_mask: list of idx in the test set
+            valid_mask: list of idx in the valid set
+
+        Returns: None
         """
+
         # We set the new masks values
         self._train_mask, self._test_mask = train_mask, test_mask
         self._valid_mask = valid_mask if valid_mask is not None else []
@@ -407,14 +495,16 @@ class PetaleDataset(Dataset):
         self._set_categorical(modes)
 
     @staticmethod
-    def _initialize_targets(targets_column: Series, classification: bool,
+    def _initialize_targets(targets_column: Series,
+                            classification: bool,
                             target_to_tensor: bool) -> Union[array, tensor]:
         """
         Sets the targets according to the task and the choice of container
+
         Args:
             targets_column: column of the dataframe with the targets
-            classification: True for classification task, False for regression
-            target_to_tensor: True if we want the targets to be in a tensor, False for numpy array
+            classification: true for classification task, false for regression
+            target_to_tensor: true if we want the targets to be in a tensor, false for numpy array
 
         Returns: targets
         """
@@ -431,14 +521,48 @@ class PetaleDataset(Dataset):
         return t.squeeze()
 
     @staticmethod
-    def _check_columns_validity(df: DataFrame, columns: Optional[List[str]] = None) -> None:
+    def _check_columns_validity(df: DataFrame,
+                                columns: Optional[List[str]] = None) -> None:
         """
         Checks if the columns are all in the dataframe
         """
         if columns is not None:
             dataframe_columns = list(df.columns.values)
             for c in columns:
-                assert c in dataframe_columns, f"Column {c} is not part of the given dataframe"
+                if c not in dataframe_columns:
+                    raise ValueError(f"Column {c} is not part of the given dataframe")
+
+    @staticmethod
+    def _get_graphs_edges(u: List[int],
+                          v: List[int],
+                          df: DataFrame,
+                          e_type: str,
+                          value: int) -> Tuple[List[int], List[int]]:
+        """
+        Finds pairs of index in a dataframe that shares the same category "value" for
+        the categorical column "e_type".
+
+        Args:
+            u: list of idx (representing nodes numbers)
+            v: list of idx (representing nodes numbers)
+            df: pandas dataframe
+            e_type: column name (edge type)
+            value: category value shared
+
+        Returns: updated list of nodes u, updated list of nodes v
+        """
+
+        # We retrieve idx of patients having the same value for a categorical column
+        idx_subset = df.loc[df[e_type] == value].index.to_numpy()
+        subset_size = idx_subset.shape[0]
+
+        # For patient with common value we add edges in both direction
+        for i in range(subset_size):
+            u += [idx_subset[i]] * (subset_size - 1)
+            remaining_idx = list(range(i)) + list(range(i + 1, subset_size))
+            v += list(idx_subset[remaining_idx])
+
+        return u, v
 
 
 class PetaleStaticGNNDataset(PetaleDataset):
@@ -448,8 +572,11 @@ class PetaleStaticGNNDataset(PetaleDataset):
     original dataframe. Hence, the structure of the graph does not change after masks update (ie. imputation).
     """
 
-    def __init__(self, df: DataFrame, target: str,
-                 cont_cols: Optional[List[str]] = None, cat_cols: Optional[List[str]] = None,
+    def __init__(self,
+                 df: DataFrame,
+                 target: str,
+                 cont_cols: Optional[List[str]] = None,
+                 cat_cols: Optional[List[str]] = None,
                  classification: bool = True):
         """
         Sets protected and public attributes of our custom dataset class
@@ -459,16 +586,21 @@ class PetaleStaticGNNDataset(PetaleDataset):
             target: name of the column with the targets
             cont_cols: list of column names associated with continuous data
             cat_cols: list of column names associated with categorical data
-            classification: True for classification task, False for regression
+            classification: true for classification task, False for regression
 
         """
         # Sets train, valid and test subgraphs data to default value
-        self._subgraphs = {'train': tuple(), 'valid': tuple(), 'test': tuple()}
+        self._subgraphs = {MaskType.TRAIN: tuple(), MaskType.VALID: tuple(), MaskType.TEST: tuple()}
 
-        # We use the _init_ of the parent class CustomDataset
-        super().__init__(df, target, cont_cols, cat_cols, classification, to_tensor=True)
+        # We use the _init_ of the parent class
+        super().__init__(df=df,
+                         target=target,
+                         cont_cols=cont_cols,
+                         cat_cols=cat_cols,
+                         classification=classification,
+                         to_tensor=True)
 
-        # We initialize the graph attribute proper to GNNDataset class
+        # We initialize the graph attribute proper to StaticGNNDataset class
         self._graph = self._build_graph()
 
     @property
@@ -477,19 +609,19 @@ class PetaleStaticGNNDataset(PetaleDataset):
 
     @property
     def train_subgraph(self) -> Tuple[DGLHeteroGraph, List[int], Dict[int, int]]:
-        return self._subgraphs['train']
+        return self._subgraphs[MaskType.TRAIN]
 
     @property
     def test_subgraph(self) -> Tuple[DGLHeteroGraph, List[int], Dict[int, int]]:
-        return self._subgraphs['test']
+        return self._subgraphs[MaskType.TEST]
 
     @property
     def valid_subgraph(self) -> Tuple[DGLHeteroGraph, List[int], Dict[int, int]]:
-        return self._subgraphs['valid']
+        return self._subgraphs[MaskType.VALID]
 
     def _build_graph(self) -> DGLHeteroGraph:
         """
-        Builds the graph structures
+        Builds the graph structure
 
         Returns: None
         """
@@ -501,41 +633,39 @@ class PetaleStaticGNNDataset(PetaleDataset):
 
         # We look through categorical columns to generate graph structure
         graph_structure = {}
-        for e_types, e_values in self.encodings.items():
-            edges_start, edges_end = [], []
+        for e_type, e_values in self.encodings.items():
+            u, v = [], []
             for value in e_values.values():
-                idx_subset = df.loc[df[e_types] == value].index.to_numpy()
-                subset_size = idx_subset.shape[0]
-                for i in range(subset_size):
-                    edges_start += [idx_subset[i]]*(subset_size - 1)
-                    remaining_idx = list(range(i)) + list(range(i+1, subset_size))
-                    edges_end += list(idx_subset[remaining_idx])
-                graph_structure[(PARTICIPANT, e_types, PARTICIPANT)] = (tensor(edges_start).long(),
-                                                                        tensor(edges_end).long())
+                self._get_graphs_edges(u=u, v=v, df=df, e_type=e_type, value=value)
+                graph_structure[(PARTICIPANT, e_type, PARTICIPANT)] = (tensor(u).long(), tensor(v).long())
+
         return heterograph(graph_structure)
 
     def _set_subgraphs_data(self) -> None:
         """
-        Sets subgraphs data after masks update.
+        Sets subgraphs data after masks update
+
+        Returns: None
         """
         # Set the subgraph associated to training set and a map matching each training
         # index to its physical position in the train mask
-        self._subgraphs['train'] = (*self.get_arbitrary_subgraph(idx=self.train_mask), self.train_mask)
+        self._subgraphs[MaskType.TRAIN] = (*self.get_arbitrary_subgraph(idx=self.train_mask), self.train_mask)
 
         # Set the subgraph associated to test and a map matching each test
         # index to its physical position in the train + test mask
         train_test_mask = self.train_mask + self.test_mask
-        self._subgraphs['test'] = (*self.get_arbitrary_subgraph(idx=train_test_mask), train_test_mask)
+        self._subgraphs[MaskType.TEST] = (*self.get_arbitrary_subgraph(idx=train_test_mask), train_test_mask)
 
         if len(self.valid_mask) != 0:
+
             # Set the subgraph associated to validation and a map matching each valid
             # index to its physical position in the train + valid mask
             train_valid_mask = self.train_mask + self.valid_mask
-            self._subgraphs['valid'] = (*self.get_arbitrary_subgraph(idx=train_valid_mask), train_valid_mask)
+            self._subgraphs[MaskType.VALID] = (*self.get_arbitrary_subgraph(idx=train_valid_mask), train_valid_mask)
 
     def get_arbitrary_subgraph(self, idx: List[int]) -> Tuple[DGLHeteroGraph, Dict[int, int]]:
         """
-        Returns
+        Returns a tuple with :
         1 - heterogeneous subgraph with only nodes associated to idx in the list
         2-  dictionary mapping each idx to each position in the list
 
@@ -547,9 +677,17 @@ class PetaleStaticGNNDataset(PetaleDataset):
         return node_subgraph(self.graph, nodes=idx, store_ids=True), {v: i for i, v in enumerate(idx)}
 
     def get_metapaths(self) -> List[List[str]]:
+        """
+        Return list of metapaths that can relate patients together.
+        In our case, metapaths are juste edges types (categorical columns)
+
+        Returns: list of list with edges types
+        """
         return [[key] for key in self.encodings.keys()]
 
-    def update_masks(self, train_mask: List[int], test_mask: List[int],
+    def update_masks(self,
+                     train_mask: List[int],
+                     test_mask: List[int],
                      valid_mask: Optional[List[int]] = None) -> None:
         """
         First, updates the train, valid and test masks and preprocess the data available
@@ -559,13 +697,15 @@ class PetaleStaticGNNDataset(PetaleDataset):
 
         """
         # We first update masks as usual for datasets
-        PetaleDataset.update_masks(self, train_mask, test_mask, valid_mask)
+        PetaleDataset.update_masks(self, train_mask=train_mask, test_mask=test_mask, valid_mask=valid_mask)
 
         # If we are not calling update_masks for initialization purpose
         if len(test_mask) != 0:
             self._set_subgraphs_data()
 
-    def create_subset(self, cont_cols: Optional[List[str]] = None, cat_cols: List[str] = None) -> Any:
+    def create_subset(self,
+                      cont_cols: Optional[List[str]] = None,
+                      cat_cols: List[str] = None) -> Any:
         """
         Returns a subset of the current dataset using the given cont_cols and cat_cols
 
@@ -573,7 +713,11 @@ class PetaleStaticGNNDataset(PetaleDataset):
             cont_cols: list of continuous columns
             cat_cols: list of categorical columns
 
-        Returns: instance of the same class
+        Returns: instance of the PetaleStaticGNNDataset class
         """
         subset = self._retrieve_subset_from_original(cont_cols, cat_cols)
-        return PetaleStaticGNNDataset(subset, self.target, cont_cols, cat_cols, self.classification)
+        return PetaleStaticGNNDataset(df=subset,
+                                      target=self.target,
+                                      cont_cols=cont_cols,
+                                      cat_cols=cat_cols,
+                                      classification=self.classification)

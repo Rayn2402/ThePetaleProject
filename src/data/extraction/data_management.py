@@ -1,48 +1,526 @@
 """
+Filename: data_management.py
 
-Authors : Nicolas Raymond
-          Mehdi Mitiche
+Author: Nicolas Raymond
+        Mehdi Mitiche
 
-This file contains all functions linked to SQL data management
+Description: Defines the DataManager class that helps interaction with SQL data
 
+Date of last modification : 2021/11/04
 """
-from src.data.extraction import helpers, chart_services
-from src.data.extraction.constants import *
-from tqdm import tqdm
+
+import csv
 import psycopg2
 import pandas as pd
 import os
-import csv
+
+from settings.database import *
+from settings.paths import Paths
+from src.data.extraction import helpers
+from src.data.extraction.constants import *
+from tqdm import tqdm
+from typing import Any, Dict, List, Optional, Tuple
 
 
 class DataManager:
+    """
+    Object that can interact with a PostgresSQL database
+    """
+    # Common count csv headers constants
+    TABLES: str = "tables"
+    COMMON_ELEMENTS: str = "common elements"
 
-    def __init__(self, user, password, database, host='localhost', port='5432', schema='public'):
-        """
-        Object that can interact with a PostgreSQL database
+    # Results dictionary keys constants
+    VAR_NAME: str = "Variable Name"
+    ALL: str = "All"
 
-        :param user: username to access 'database'
-        :param password: password linked to the user
-        :param database: name of the database
-        :param host: database host address
-        :param port: connection port number
+    # Temporary table name constant
+    TEMP: str = "temp"
+
+    def __init__(self,
+                 user: str,
+                 password: str,
+                 database: str,
+                 host: str = 'localhost',
+                 port: str = '5432',
+                 schema: str = 'public'):
         """
-        self.conn, self.cur = DataManager.connect(
-            user, password, database, host, port)
-        self.schema = schema
-        self.database = database
+        Sets the private attributes
+
+        Args:
+            user: username to access the database
+            password: password linked to the user
+            database: name of the database
+            host: database host address
+            port: connection port number
+            schema: schema we want to access in the database
+        """
+        self.__conn, self.__cur = DataManager._connect(user, password, database, host, port)
+        self.__schema = schema
+        self.__database = database
+
+    def _create_table(self,
+                      table_name: str,
+                      types: Dict[str, str],
+                      primary_key: Optional[List[str]] = None) -> None:
+        """
+        Creates a table named "table_name" that has the columns with the types indicated
+        in the dictionary types.
+
+        Args:
+            table_name: name of the table
+            types: dictionary with names of the columns (key) and their respective types (value)
+            primary_key: list of column names to use as primary key (or composite key when more than 1)
+
+        Returns:
+        """
+        # We save the start of the query
+        query = f"CREATE TABLE {self.__schema}.\"{table_name}\" (" + self._reformat_columns_and_types(types)
+
+        # If a primary key is given we add it to the query
+        if primary_key is not None:
+
+            # We define the primary key
+            keys = self._reformat_columns(primary_key)
+            query += f", PRIMARY KEY ({keys}) );"
+
+        else:
+            query += ");"
+
+        # We execute the query
+        try:
+            self.__cur.execute(query)
+            self.__conn.commit()
+
+        except psycopg2.Error as e:
+            print(e.pgerror)
+            raise
+
+        # We reset the cursor
+        self._reset_cursor()
+
+    def _reset_cursor(self) -> None:
+        """
+        Resets the cursor
+        """
+        self.__cur.close()
+        self.__cur = self.__conn.cursor()
+
+    def create_and_fill_table(self,
+                              df: pd.DataFrame,
+                              table_name: str,
+                              types: Dict[str, str],
+                              primary_key: Optional[List[str]] = None) -> None:
+        """
+        Creates a new table and fills it using data from the dataframe "df"
+
+        Args:
+            df: pandas dataframe
+            table_name: name of the new table
+            types: dict with the names of the columns (key) and their respective types (value)
+            primary_key: list of column names to use as primary key (or composite key when more than 1)
+
+        Returns: None
+        """
+        # We first create the table
+        self._create_table(table_name, types, primary_key)
+
+        # We order columns of dataframe according to "types" dictionary
+        df = df[types.keys()]
+
+        # We save the df in a temporary csv
+        df.to_csv(DataManager.TEMP, index=False, na_rep=" ", sep="!")
+
+        # We copy the data from the csv into the table
+        file = open(DataManager.TEMP, mode="r", newline="\n")
+        file.readline()
+
+        # We copy the data to the table
+        try:
+            self.__cur.copy_from(file, f"{self.__schema}.\"{table_name}\"", sep="!", null=" ")
+            self.__conn.commit()
+            os.remove(DataManager.TEMP)
+
+        except psycopg2.Error as e:
+            print(e.pgerror)
+            os.remove(DataManager.TEMP)
+            raise
+
+        # We reset the cursor
+        self._reset_cursor()
+
+    def get_all_missing_data_count(self,
+                                   directory: Optional[str] = None,
+                                   filename: str = "missing_data.csv") -> None:
+        """
+        Generates a csv file containing the count of the missing data of all the tables in the database
+
+        Args:
+            directory: path of the directory where the results will be saved
+            filename: name of the file containing the results
+
+        Returns: None
+        """
+        # We get all the table names
+        tables = self.get_all_table_names()
+
+        # For each table we get the missing data count
+        with tqdm(total=len(tables)) as pbar:
+            results = []
+            for table in tables:
+
+                # We extract the count of missing data
+                _, missing_data_count = self.get_missing_data_count(table)
+
+                # We save the missing data count in results
+                results.append(missing_data_count)
+
+                # We update the progress bar
+                pbar.update(1)
+
+        # We generate a csv file with all the results
+        directory = directory if directory is not None else os.getcwd()
+        self.write_csv_from_dict(data=results, filename=filename, directory=directory)
+        print(f"File is ready in the folder {directory}")
+
+    def get_all_table_names(self) -> List[str]:
+        """
+        Retrieves the names of all the tables in the specific schema of the database
+
+        Returns: list of table names
+        """
+        # We execute the query
+        try:
+            self.__cur.execute(
+                f"SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE"
+                f" TABLE_TYPE = 'BASE TABLE' AND TABLE_CATALOG='{self.__database}'"
+                f" AND table_schema = '{self.__schema}' ")
+
+        except psycopg2.Error as e:
+            print(e.pgerror)
+            raise
+
+        # We extract the tables' names
+        tables_names = list(map(lambda t: t[0], self.__cur.fetchall()))
+
+        # We reset the cursor
+        self._reset_cursor()
+
+        # We return the names of the tables in the database
+        return tables_names
+
+    def get_categorical_var_analysis(self,
+                                     df: pd.DataFrame,
+                                     group: Optional[str] = None) -> pd.DataFrame:
+        """
+        Calculates the counts and percentage of all the categorical variables given in dataframe
+        over all rows, and also over groups contained in a specified column "group"
+
+        Args:
+            df: pandas dataframe with the categorical variables
+            group: name of a column, Ex : group = "Sex" will give us the stats for all the data, for men, and for women
+
+        Returns: pandas dataframe with the statistics
+        """
+
+        # We initialize a python dictionary in which we will save the results
+        results, group_values = self._initialize_results_dict(df, group)
+
+        # We get the columns on which we will calculate the stats
+        cols = [col for col in df.columns if col != group]
+
+        # We initialize a dictionary that will store to totals of each group within the column "group"
+        group_totals = {}
+
+        # For each column we calculate the count and the percentage
+        for col in cols:
+
+            # We get all the categories of this variable
+            categories = df[col].dropna().unique()
+
+            # We get the total count
+            total = df.shape[0] - df[col].isna().sum()
+
+            # For each category of this variable we get the counts and the percentage
+            for category in categories:
+
+                # We get the total count of this category
+                category_total = df[df[col] == category].shape[0]
+
+                # We get the total percentage of this category
+                all_percent = round(category_total/total * 100, 2)
+
+                # We save the results
+                results[DataManager.VAR_NAME].append(f"{col} : {category}")
+                results[DataManager.ALL].append(f"{category_total} ({all_percent}%)")
+
+                if group is not None:
+                    for group_val in group_values:
+
+                        # We get the number of elements within the group
+                        group_totals[group_val] = df.loc[df[group] == group_val, col].dropna().shape[0]
+
+                        # We create a filter to get the number of items in a group that has the correspond category
+                        filter_ = (df[group] == group_val) & (df[col] == category)
+
+                        # We compute the statistics needed
+                        sub_category_total = df[filter_].shape[0]
+                        sub_category_percent = round(sub_category_total/(group_totals[group_val]) * 100, 2)
+                        results[f"{group} {group_val}"].append(f"{sub_category_total} ({sub_category_percent}%)")
+
+        return pd.DataFrame(results)
+
+    def get_column_names(self, table_name: str) -> List[str]:
+        """
+        Retrieves the names of all the columns in a given table
+
+        Args:
+            table_name: name of the table
+
+        Returns: list of column names
+        """
+        table_name = table_name.replace("'", "''")
+
+        try:
+            self.__cur.execute(
+                f"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME= \'{table_name}\'")
+
+        except psycopg2.Error as e:
+            print(e.pgerror)
+            raise
+
+        # We extract the columns' names
+        columns_names = list(map(lambda c: c[0], self.__cur.fetchall()))
+
+        # We reset the cursor
+        self._reset_cursor()
+
+        return columns_names
+
+    def get_common_count(self,
+                         tables: List[str],
+                         columns: List[str],
+                         filename: Optional[str] = None) -> int:
+        """
+        Retrieves the number of common elements in multiple tables, using the values
+        of the given columns to identify the unique elements in each table
+
+        Args:
+            tables: list of table names
+            columns: list of columns identifying unique elements (composite key)
+            filename: if provided, will be the name of the csv file containing the results
+
+        Returns: number of common elements
+        """
+        # We prepare the columns to be in the SQL query
+        cols_in_query = self._reformat_columns(columns)
+
+        # We build the query
+        query = 'SELECT COUNT(*) FROM ('
+        for index, table in enumerate(tables):
+            if index == 0:
+                query += f'(SELECT {cols_in_query} FROM \"{table}\")'
+            else:
+                query += f' INTERSECT (SELECT {cols_in_query} FROM \"{table}\")'
+        query += ') l'
+
+        # We execute the query
+        try:
+            self.__cur.execute(query)
+        except psycopg2.Error as e:
+            print(e.pgerror)
+
+        # We extract the common count
+        count = self.__cur.fetchall()[0][0]
+
+        # We add the csv extension to the filename
+        filename += ".csv"
+
+        if filename is not None:
+
+            # If the file does not exist
+            if not os.path.isfile(filename):
+
+                # We will need to write a header and use the opening mode "write"
+                write_header, mode = True, "w"
+
+            else:
+                # We will use the opening mode "append"
+                write_header, mode = False, "a+"
+
+            # We try to write the results
+            try:
+                with open(filename, mode, newline='') as csv_file:
+                    writer = csv.DictWriter(csv_file, [DataManager.TABLES, DataManager.COMMON_ELEMENTS])
+                    if write_header:
+                        writer.writeheader()
+                    writer.writerow({DataManager.TABLES: " & ".join(tables), DataManager.COMMON_ELEMENTS: count})
+            except IOError:
+                print("I/O error")
+
+        return count
+
+    def get_group_count(self,
+                        df: pd.DataFrame,
+                        group: str) -> pd.DataFrame:
+        """
+        Count the number of items within each group of the categorical variable "group"
+
+        Args:
+            df: pandas dataframe
+            group: name of a categorical column
+
+        Returns: pandas dataframe with the counts
+        """
+
+        # We initialize a python dictionary where we will save the results
+        results, group_values = self._initialize_results_dict(df, group)
+
+        # We set the variable name as "n"
+        results[DataManager.VAR_NAME].append("n")
+
+        # We count the total number of rows
+        results[DataManager.ALL].append(df.shape[0])
+
+        # We count the number of rows from each group
+        for group_val in group_values:
+            results[f"{group} {group_val}"].append(df[df[group] == group_val].shape[0])
+
+        return pd.DataFrame(results)
+
+    def get_missing_data_count(self,
+                               table_name: str,
+                               directory: Optional[str] = None,
+                               excluded_cols: Optional[List[str]] = None) -> Tuple[pd.DataFrame, Dict[str, Any]]:
+        """
+        Gets the count of all the missing data in the given table
+
+        Args:
+            table_name: name of the table
+            directory: if provided, a csv with the results will be saved at the given directory
+            excluded_cols: list with names of columns to exclude during the count
+
+        Returns: dataframe with nb of missing data per column, dictionary with details on the missing data
+        """
+
+        # We retrieve the table
+        excluded_cols = excluded_cols if excluded_cols is not None else []
+        df_table = self.get_table(table_name=table_name,
+                                  columns=[c for c in self.get_column_names(table_name) if c not in excluded_cols])
+
+        # We count the number of missing values per column
+        missing_df = df_table.isnull().sum()
+
+        # We get the counts we need from the dataframe
+        missing_count = missing_df.sum()
+        complete_row_count = len([complete for complete in missing_df.sum(axis=1) if complete == 0])
+        total_rows = df_table.shape[0]
+
+        # We save the csv with the results if required
+        if directory is not None:
+            table_name = self._reformat_table_name(table_name)
+            file_path = os.path.join(directory, f"{table_name}_missing_count.csv")
+            missing_df.to_csv(file_path, index=True, header=False)
+
+        # Returning a dictionary containing the data needed
+        return missing_df, {"table_name": table_name,
+                            "missing_count": missing_count,
+                            "complete_row_count": complete_row_count,
+                            "total_rows": total_rows}
+
+    def get_numerical_var_analysis(self,
+                                   df: pd.DataFrame,
+                                   group: Optional[str] = None) -> pd.DataFrame:
+        """
+        Calculates the mean, the variance, the min and the max of variables
+        within a given data frame over all rows, and also over groups contained in a specified column "group".
+
+        Args:
+            df: pandas data frame containing the data of numerical variables
+            group: name of a column, Ex : group = "Sex" will give us the stats for all the data, for men, and for women
+
+        Returns: pandas dataframe with the statistics
+        """
+        # We initialize a python dictionary in which we will save the results
+        results, group_values = self._initialize_results_dict(df, group)
+
+        # We get the columns on which we will calculate the stats
+        cols = [col for col in df.columns if col != group]
+
+        # For each column we calculate the mean and the variance
+        for col in cols:
+
+            # We append the statistics for all participants to the results dictionary
+            results[DataManager.VAR_NAME].append(col)
+            all_mean, all_var, all_min, all_max = helpers.get_column_stats(df, col)
+            results[DataManager.ALL].append(f"{all_mean} ({all_var}) [{all_min}, {all_max}]")
+
+            # If a group column is given, we calculate the stats for each possible value of that group
+            if group is not None:
+                for group_val in group_values:
+
+                    # We append the statistics for sub group participants to the results dictionary
+                    df_group = df[df[group] == group_val]
+                    group_mean, group_var, group_min, group_max = helpers.get_column_stats(df_group, col)
+                    results[f"{group} {group_val}"].append(f"{group_mean} ({group_var}) [{group_min}, {group_max}]")
+
+        return pd.DataFrame(results)
+
+    def get_table(self,
+                  table_name: str,
+                  columns: Optional[List[str]] = None) -> pd.DataFrame:
+        """
+        Retrieves a table from the database
+
+        Args:
+            table_name: name of the table
+            columns: list of the columns we want to select (default = None (all columns))
+
+        Returns: pandas dataframe
+        """
+
+        # If no column name is specified, we select all columns
+        query = "SELECT *" if columns is None else f"SELECT {self._reformat_columns(columns)} "
+
+        # We add the table name to the query
+        query = f"{query} FROM {self.__schema}.\"{table_name}\""
+
+        # We execute the query
+        try:
+            self.__cur.execute(query)
+
+        except psycopg2.Error as e:
+            print(e.pgerror)
+
+        # We retrieve the column names and the data
+        columns = [desc[0] for desc in self.__cur.description]
+        data = self.__cur.fetchall()
+
+        # We create a pandas dataframe
+        df = pd.DataFrame(data=data, columns=columns)
+
+        # We reset the cursor
+        self._reset_cursor()
+
+        return df
 
     @staticmethod
-    def connect(user, password, database, host, port):
+    def _connect(user: str,
+                 password: str,
+                 database: str,
+                 host: str,
+                 port: str) -> Tuple[Any, Any]:
         """
-        Creates a connection to the database
+        Creates a connection with a database
 
-        :param user: username to access 'database'
-        :param password: password linked to the user
-        :param database: name of the database
-        :param host: database host address
-        :param port: connection port number
-        :return: connection and cursor
+        Args:
+            user: username to access the database
+            password: password linked to the user
+            database: name of the database
+            host: database host address
+            port: connection port number
+
+        Returns: connection, cursor
         """
         try:
             conn = psycopg2.connect(database=database,
@@ -58,526 +536,198 @@ class DataManager:
 
         return conn, cur
 
-    def __create_table(self, table_name, types, primary_key=None):
-        """
-        Creates a table named "table_name" that as columns and types indicates in the dict "types".
-
-        :param table_name: name of the table
-        :param types: names of the columns (key) and their respective types (value) in a dict
-        :param primary_key: list of column names to use as primary key (or composite key when more than 1)
-        """
-
-        query = f"CREATE TABLE {self.schema}.\"{table_name}\" (" + helpers.colsAndTypes(
-            types)
-
-        if primary_key is not None:
-
-            # We define the primary key
-            keys = helpers.colsForSql(primary_key)
-            query += f", PRIMARY KEY ({keys}) );"
-        else:
-            query += ");"
-
-        # We execute the query
-        try:
-            self.cur.execute(query)
-            self.conn.commit()
-
-        except psycopg2.Error as e:
-            print(e.pgerror)
-            raise
-
-        # We reset the cursor
-        self.reset_cursor()
-
-    def create_and_fill_table(self, df, table_name, types, primary_key=None):
-        """
-        Creates a new table and fill it using data from the dataframe "df"
-
-        :param df: pandas dataframe
-        :param table_name: name of the new table
-        :param types: names of the columns (key) and their respective types (value) in a dict
-        :param primary_key: list of column names to use as primary key (or composite key when more than 1)
-        """
-        # We first create the table
-        self.__create_table(table_name, types, primary_key)
-
-        # We order columns of dataframe according to "types" dictionary
-        df = df[types.keys()]
-
-        # We save the df in a temporary csv
-        df.to_csv("temp", index=False, na_rep=" ", sep="!")
-
-        # We copy the data from the csv into the table
-        file = open("temp", mode="r", newline="\n")
-        file.readline()
-
-        # We copy the data to the table
-        try:
-            self.cur.copy_from(
-                file, f"{self.schema}.\"{table_name}\"", sep="!", null=" ")
-            self.conn.commit()
-            os.remove("temp")
-
-        except psycopg2.Error as e:
-            print(e.pgerror)
-            os.remove("temp")
-            raise
-
-        # We reset the cursor
-        self.reset_cursor()
-
-    def get_table(self, table_name, columns=None):
-        """
-        Retrieves a table from the database
-
-        :param table_name: name of the table
-        :param columns: list of the columns we want to select (default : None (all columns))
-        :return: Pandas dataframe
-
-        """
-        query = "SELECT"
-
-        # If no column name is specified, we select all columns
-        if columns is None:
-            query = f"{query} *"
-
-        # Else, we add the corresponding column names to the query
-        else:
-            query = query
-            columnsToFetch = helpers.colsForSql(columns)
-            query = f"{query} {columnsToFetch}"
-
-        # We add table name to the query
-        query = f"{query} FROM {self.schema}.\"{table_name}\""
-
-        # We execute the query
-        try:
-            self.cur.execute(query)
-
-        except psycopg2.Error as e:
-            print(e.pgerror)
-
-        # We retrieve column names and data
-        columns = [desc[0] for desc in self.cur.description]
-        data = self.cur.fetchall()
-
-        # We create a pandas dataframe
-        df = pd.DataFrame(data=data, columns=columns)
-
-        # We reset the cursor
-        self.reset_cursor()
-
-        return df
-
-    def reset_cursor(self):
-        """
-        Resets the cursor
-        """
-        self.cur.close()
-        self.cur = self.conn.cursor()
-
-    def get_all_tables(self):
-        """
-        Retrieves the names of all the tables of the database
-
-        :return: list of strings
-
-        """
-        # We execute the query
-        try:
-            self.cur.execute(
-                f"SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE"
-                f" TABLE_TYPE = 'BASE TABLE' AND TABLE_CATALOG='{self.database}' AND table_schema = '{self.schema}' ")
-        except psycopg2.Error as e:
-            print(e.pgerror)
-            raise
-
-        tables = self.cur.fetchall()
-
-        # We reset the cursor
-        self.reset_cursor()
-
-        # We return the names of the tables in the database
-        return list(map(lambda t: t[0], tables))
-
-    def get_column_names(self, table_name: str):
-        """
-        Function that retrieves the names of all the columns in a given table
-
-        :param table_name : the name of the table
-        :return: list of strings
-
-        """
-        table_name = table_name.replace("'", "''")
-
-        try:
-            self.cur.execute(
-                f"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME= \'{table_name}\'")
-        except psycopg2.Error as e:
-            print(e.pgerror)
-            raise
-
-        cols = self.cur.fetchall()
-        cols = list(map(lambda c: c[0], cols))
-
-        # We reset the cursor
-        self.reset_cursor()
-        return cols
-
-    def get_missing_data_count(self, tableName, drawChart=False, save_csv=False, excludedCols=["Remarks"]):
-        """
-        get the count of all the missing data of one given table
-
-        :param tableName: name of the table
-        :param drawChart: boolean to indicate if a chart should be created to visualize the missing data
-        :param save_csv: boolean to indicate if a csv file should be create to store missing values per column
-        :param: excludedCols: list of strings containing the list of columns to exclude
-        :return: a python dictionary containing the missing data count and the number of complete rows
-
-        """
-
-        # Extracting the name of the columns of the given  table
-        cols = self.get_column_names(tableName)
-
-        # Excluding the non needed columns
-        cols = [col for col in cols if col not in excludedCols]
-
-        # We retrieve the table
-        df_table = self.get_table(tableName, cols)
-
-        # We count the number of missing values per column
-        missing_df = df_table.isnull().sum()
-
-        # we get the counts we need from the dataframe
-        missingCount = df_table.isnull().sum().sum()
-        completedRowCount = len([complete for complete in df_table.isnull().sum(axis=1) if complete == 0])
-        totalRows = df_table.shape[0]
-
-        # Plotting the bar chart
-        if drawChart:
-            fileName = helpers.reformat_string(tableName)
-            folderName = "missing_data_charts"
-            figureTitle = f'Count of missing data by columns names for the table {tableName}'
-            chart_services.drawBarhChart(cols, missing_df.values, "Columns",
-                                        "Data missing", figureTitle, fileName, folderName)
-        if save_csv:
-            tableName = helpers.reformat_string(tableName)
-            helpers.save_stats_file(tableName, "missing", missing_df, index=True, header=False)
-
-        # returning a dictionary containing the data needed
-        return missing_df, {"tableName": tableName, "missingCount": missingCount,
-                            "completedRowCount": completedRowCount, "totalRows": totalRows}
-
-    def get_all_missing_data_count(self, filename="petale_missing_data.csv", drawCharts=True):
-        """
-        Function that generates a csv file containing the count of the missing data of all the tables of the database
-
-        :param filename: the name of file to be generated
-
-        :generates a csv file
-        """
-        # we initialize the results
-        results = []
-
-        # we get all the table names
-        tables = self.get_all_tables()
-
-        # For each table we get the missing data count
-        with tqdm(total=len(tables)) as pbar:
-            for table in tables:
-                pbar.update(1)
-                _, missingDataCount = self.get_missing_data_count(table, drawCharts)
-
-                # we save the missing data count in results
-                results.append(missingDataCount)
-
-        # we generate a csv file from the data in results
-        helpers.writeCsvFile(results, filename, "missing_data")
-        print("File is ready in the folder missing_data! ")
-
-    def get_common_count(self, tables, columns=[PARTICIPANT, TAG], saveInFile=False):
-        """
-        Gets the number of common survivors from a list of tables
-
-        :param tables: the list of tables
-        :param columns: list of the columns according to we want to get the the common survivors
-        :return: number of common survivors
-
-        """
-        # we prepare the columns to be in the SQL query
-        colsInQuery = helpers.colsForSql(columns)
-
-        # we build the request
-        query = 'SELECT COUNT(*) FROM ('
-        for index, table in enumerate(tables):
-            if index == 0:
-                query += f'(SELECT {colsInQuery} FROM \"{table}\")'
-            else:
-                query += f' INTERSECT (SELECT {colsInQuery} FROM \"{table}\")'
-        query += ') l'
-
-        # We execute the query
-        try:
-            self.cur.execute(query)
-        except psycopg2.Error as e:
-            print(e.pgerror)
-
-        row = self.cur.fetchall()[0]
-
-        if saveInFile:
-            # Saving in file
-            if not os.path.isfile("commonPatients.csv"):
-                try:
-                    with open("commonPatients.csv", 'w', newline='') as csvfile:
-                        writer = csv.DictWriter(
-                            csvfile, ["tables", "commonSurvivors"])
-                        writer.writeheader()
-                        separator = " & "
-                        writer.writerow({"tables": separator.join(
-                            tables), "commonSurvivors": row[0]})
-                except IOError:
-                    print("I/O error")
-            else:
-                try:
-                    # Open file in append mode
-                    with open("commonPatients.csv", 'a+', newline='') as csvfile:
-                        # Create a writer object from csv module
-                        writer = csv.DictWriter(
-                            csvfile, ["tables", "commonSurvivors"])
-                        # Add a new row to the csv file
-                        separator = " & "
-                        writer.writerow({"tables": separator.join(
-                            tables), "commonSurvivors": row[0]})
-                except IOError:
-                    print("I/O error")
-        return row[0]
-
     @staticmethod
-    def get_numerical_var_analysis(table_name, df, group=None):
+    def _initialize_results_dict(df: pd.DataFrame,
+                                 group: str) -> Tuple[Dict[str, List[Any]], List[Any]]:
         """
+        Initializes a dictionary that will contains results of a descriptive analyses
 
-        Function that calculates the mean and variance of variable of a given data frame over all rows,
-        and also over groups contained in a specified column "group".
+        Args:
+            df: pandas dataframe
+            group: name of a column
 
-        Male, and Female survivors fot each variable in the given data frame
-
-        :param table_name: name of the table
-        :param df: pandas data frame containing the data of numerical variables
-        :param group: name of a column, we calculate the stats for the overall data and the stats of the data grouped
-        by this column, Ex : group = 34500 Sex will give us the stats for all the data, for Male, and for Female
-
-        return: a pandas data frame
+        Returns: initialized dictionary, list with the different group values
         """
-        # we initialize a python dictionary where we will save the results
-        results, var_name, all_, group_values = DataManager.__initialize_results_dict(df, group)
-
-        # we get the columns on which we will calculate the stats
-        cols = [col for col in df.columns if col != group]
-
-        # for each column we calculate the mean and the variance
-        for col in cols:
-
-            # we append the mean and the var for all participants to the results dictionary
-            results[var_name].append(col)
-            all_mean, all_var, all_min, all_max = helpers.get_column_stats(df, col)
-            results[all_].append(f"{all_mean} ({all_var}) [{all_min}, {all_max}]")
-
-            # if the group is given, we calculate the stats for each possible value of that group
-            if group is not None:
-                for group_val in group_values:
-                    # we append the mean and the var for sub group participants to the results dictionary
-                    df_group = df[df[group] == group_val]
-                    group_mean, group_var, group_min, group_max = helpers.get_column_stats(df_group, col)
-                    results[f"{group} {group_val}"].append(f"{group_mean} ({group_var}) [{group_min}, {group_max}]")
-
-        # for each variable of the given dataframe we plot a chart
-        folder_name = helpers.reformat_string(table_name)
-        for var_name in cols:
-
-            # we plot and save a chart for a single variable
-            file_name = helpers.reformat_string(var_name)
-            chart_services.drawHistogram(df, var_name, f"Estimated density of {var_name}", file_name, folder_name)
-
-        # we return the results
-        return pd.DataFrame(results)
-
-    @staticmethod
-    def get_categorical_var_analysis(table_name, df, group=None):
-        """Function that calculates the counts and percentage of all the categorical variables given in dataframe
-         over all rows, and also over groups contained in a specified column "group".
-
-        :param table_name: name of the table
-        :param df: pandas data frame containing the data of numerical variables
-        :param group: name of a column, we calculate the stats for the overall data and the stats of the data grouped
-        by this column, Ex : group = 34500 Sex will give us the stats for all the data, for Male, and for Female
-        return: a pandas dataframe
-        """
-
-        # we initialize a python dictionary where we will save the results
-        results, var_name, all_, group_values = DataManager.__initialize_results_dict(df, group)
-
-        # we get the columns on which we will calculate the stats
-        cols = [col for col in df.columns if col != group]
-
-        # we initialize a python list where we will save data that will be useful when plotting the charts
-        data_for_chart = []
-
-        # for each column we calculate the count and the percentage
-        for col in cols:
-
-            # we initialize an object that will contain data that will be useful to plot this particular variable
-            single_data_for_chart = {"col_name": col, "values": [], "all": []}
-
-            if group is not None:
-
-                group_totals = {}
-
-                for group_val in group_values:
-                    single_data_for_chart[group_val] = []
-                    group_totals[group_val] = df.loc[df[group] == group_val, col].dropna().shape[0]
-
-            # we get all the categories of this variable
-            categories = df[col].dropna().unique()
-
-            # we get the total count
-            total = df.shape[0] - df[col].isna().sum()
-
-            # for each category of this variable we get the counts and the percentage
-            for category in categories:
-
-                # we get the total count of this category
-                category_total = df[df[col] == category].shape[0]
-
-                # we get the total percentage of this category
-                all_percent = round(category_total/total * 100, 2)
-
-                # we save the results
-                results[var_name].append(f"{col} : {category}")
-                results[all_].append(f"{category_total} ({all_percent}%)")
-
-                # we save the data that will be useful when plotting
-                single_data_for_chart["values"].append(category)
-                single_data_for_chart["all"].append(float(category_total))
-
-                if group is not None:
-
-                    for group_val in group_values:
-
-                        # We create a filter to get the number of items in a group that has the correspond category
-                        filter = (df[group] == group_val) & (df[col] == category)
-
-                        # We compute the statistics needed
-                        sub_category_total = df[filter].shape[0]
-                        sub_category_percent = round(sub_category_total/(group_totals[group_val]) * 100, 2)
-                        results[f"{group} {group_val}"].append(f"{sub_category_total} ({sub_category_percent}%)")
-
-                        # We save data for the charts
-                        single_data_for_chart[group_val].append(float(sub_category_total))
-
-            data_for_chart.append(single_data_for_chart)
-
-        # we make a chart from this analysis
-        for item in data_for_chart:
-            if group is not None:
-
-                # plotting the chart
-                filename = helpers.reformat_string(item["col_name"])
-                folder_name = helpers.reformat_string(table_name)
-                chart_services.drawBinaryGroupedBarChart(
-                    item["values"], {"label": "Men", "values": item["Men"]},
-                    {"label": "Women", "values": item["Women"]}, "Categories", "Count", item["col_name"],
-                    f"chart_{filename}", f"charts_{folder_name}")
-
-        # we return the data frame containing the informations
-        return pd.DataFrame(results)
-
-    @staticmethod
-    def get_group_count(df, group):
-        """
-        Count the number of items from each group
-
-        :param df: pandas dataframe
-        :param group: name of a column, we calculate the stats for the overall data and the stats of the data grouped
-        by this column, Ex : group = 34500 Sex will give us the stats for all the data, for Male, and for Female
-        :return: pandas dataframe
-        """
-
-        # we initialize a python dictionary where we will save the results
-        results, var_name, all_, group_values = DataManager.__initialize_results_dict(df, group)
-
-        # We set the variable name as "n"
-        results[var_name].append("n")
-
-        # We count the total number of rows
-        results[all_].append(df.shape[0])
-
-        # We count the number of rows from each group
-        for group_val in group_values:
-            results[f"{group} {group_val}"].append(df[df[group] == group_val].shape[0])
-
-        # We return the resulting dataframe
-        return pd.DataFrame(results)
-
-    @staticmethod
-    def __initialize_results_dict(df, group):
-
-        var_name = "Variable Name"
-        all_ = "All"
         group_values = None
-
-        if group is None:
-            results = {
-                var_name: [],
-                all_: []
-            }
-        else:
+        results = {
+            DataManager.VAR_NAME: [],
+            DataManager.ALL: []
+        }
+        if group is not None:
             group_values = df[group].unique()
-            results = {
-                var_name: [],
-                all_: []
-            }
             for group_val in group_values:
                 results[f"{group} {group_val}"] = []
 
-        return results, var_name, all_, group_values
+        return results, group_values
+
+    @staticmethod
+    def _reformat_columns(cols: List[str]) -> str:
+        """
+        Converts a list of strings containing the name of some columns to a string
+        ready to use in an SQL query. Ex: ["name","age","gender"]  ==> "name","age","gender"
+
+        Args:
+            cols: list of column names
+
+        Returns: str to include in a query
+        """
+        cols = list(map(lambda c: '"'+c+'"', cols))
+
+        return ",".join(cols)
+
+    @staticmethod
+    def _reformat_columns_and_types(types: Dict[str, str]) -> str:
+        """
+        Converts a dictionary with column names as keys and types as values to a string to
+        use in an SQL query. Ex: {"name":"text", "Age":"numeric"} ==> '"name" text, "Age" numeric'
+
+        Args:
+            types: dictionary with column names (keys) and types (values)
+
+        Returns: str to include in a query
+        """
+        cols = types.keys()
+        query_parts = list(map(lambda c: f"\"{c}\" {types[c]}", cols))
+
+        return ",".join(query_parts)
+
+    @staticmethod
+    def _reformat_table_name(table_name: str) -> str:
+        """
+        Removes special characters in a table name so it can be used as a directory name
+
+        Args:
+            table_name: str
+
+        Returns:
+        """
+        return table_name.replace(".", "").replace(": ", "").replace("?", "").replace("/", "")
+
+    @staticmethod
+    def write_csv_from_dict(data: List[Dict[str, Any]],
+                            filename: str,
+                            directory: str) -> None:
+        """
+        Takes a list of dictionaries sharing the same keys and generates a CSV file from them
+
+        Args:
+            data: list of dictionaries
+            filename: name of the csv file that will be generated
+            directory: directory where the file will be saved
+
+        Returns: None
+        """
+        try:
+            # We create the directory if it does not exist
+            os.makedirs(directory, exist_ok=True)
+
+            # We write in the new csv file
+            with open(os.path.join(directory, filename), 'w', newline='') as csv_file:
+                writer = csv.DictWriter(csv_file, fieldnames=data[0].keys())
+                writer.writeheader()
+                for item in data:
+                    writer.writerow(item)
+
+        except IOError:
+            print("I/O error")
 
 
 class PetaleDataManager(DataManager):
+    """
+    DataManager that has specific methods for Petale database
+    """
+    # Constant related to variable meta data file
+    VARIABLE_INFOS = ["test_id", "editorial_board", "form", "number",
+                      "section", "test", "description", "type", "option", "unit", "remarks"]
 
-    def __init__(self, user, host='localhost', port='5437'):
-        super().__init__(user, 'petale101', 'petale', host, port, 'public')
+    # Constant related to snp dataframe column
+    KEY = "CHROM_POS"
 
-    def get_table_stats(self, table_name, include="ALL",
-                        exclude=["Date", "Form", "Status", "Remarks"], save_in_file=True):
+    def __init__(self):
         """
-        Function that return a dataframe containing statistics from any given table of the PETALE database
-
-        :param table_name: The name of the table
-        :param include: a list of all the columns to include, "ALL" if all columns included
-        :param exclude: a list of all the columns to exclude
-        :param save_in_file: Boolean, if true the dataframe will be saved in a csv file
-        :return: pandas DataFrame
+        Sets the private attributes using database configurations in settings/database.py
         """
-        # we get a dataframe for the given tablename
-        if include == "ALL":
+        super().__init__(user=USER,
+                         password=PASSWORD,
+                         database=DATABASE,
+                         host=HOST,
+                         port=PORT,
+                         schema=SCHEMA)
+
+    def get_common_survivor(self,
+                            tables: List[str],
+                            filename: Optional[str] = None) -> int:
+        """
+        Retrieves the number of common survivors among multiple tables
+
+        Args:
+            tables: list of table names
+            filename: if provided, will be the name of the csv file containing the results
+
+        Returns: number of common survivors
+        """
+        return self.get_common_count(tables=tables, columns=[PARTICIPANT, TAG], filename=filename)
+
+    def get_missing_data_count(self,
+                               table_name: str,
+                               directory: Optional[str] = Paths.DESC_STATS,
+                               excluded_cols: Optional[List[str]] = None) -> Tuple[pd.DataFrame, Dict[str, Any]]:
+        """
+        Gets the count of all the missing data in the given table.
+        Remarks column will be automatically excluded from the count.
+
+        Args:
+            table_name: name of the table
+            directory: if provided, a csv with the results will be saved at the given directory
+            excluded_cols: list with names of columns to exclude during the count
+
+        Returns: dataframe with nb of missing data per column, dictionary with details on the missing data
+        """
+        # We add Remarks to excluded columns
+        if excluded_cols is None:
+            excluded_cols = []
+        excluded_cols.append(REMARKS)
+
+        return DataManager.get_missing_data_count(self, table_name, directory, excluded_cols)
+
+    def get_table_stats(self,
+                        table_name: str,
+                        included_cols: Optional[List[str]] = None,
+                        excluded_cols: Optional[List[str]] = None,
+                        save_in_file: bool = True) -> pd.DataFrame:
+        """
+        Retrieves numerical and categorical statistics of a Petale table
+
+        Args:
+            table_name: name of the table
+            included_cols: list of all the columns to include (default = None (all columns))
+            excluded_cols: list of all the columns to exclude (default = None)
+            save_in_file: true if we want to save the statistics in a csv file associated to the table name
+
+        Returns: dataframe with all the statistics
+        """
+
+        # We get a the dataframe containing the table
+        if included_cols is None:
             table_df = self.get_table(table_name)
         else:
-            table_df = self.get_table(table_name, include)
+            table_df = self.get_table(table_name, included_cols)
 
-        # we retrieve the columns of the table
-        cols = table_df.columns
+        # We update the list of all columns that must be excluded
+        if excluded_cols is None:
+            excluded_cols = []
+        excluded_cols += [DATE, FORM, STATUS, REMARKS]
 
-        # we exclude the parameters specified with the exclude parameter
-        cols = [col for col in cols if col not in exclude]
+        # We exclude the variables specified
+        cols = [col for col in table_df.columns if col not in excluded_cols]
         table_df = table_df[cols]
 
-        # we get only the rows that satisfy the given conditions
+        # We get only the rows associated to a specific phase
         if TAG in cols:
             table_df = table_df[table_df[TAG] == PHASE]
             table_df = table_df.drop([TAG], axis=1)
 
-        # We get the dataframe from the table the table containing the sex information
+        # We get the dataframe from the table containing the sex information
         if SEX in cols:
             sex_df = table_df[[PARTICIPANT, SEX]]
             table_df = table_df.drop([SEX], axis=1)
@@ -586,91 +736,159 @@ class PetaleDataManager(DataManager):
             sex_df = sex_df[sex_df[TAG] == PHASE]
             sex_df = sex_df.drop([TAG], axis=1)
 
-        # we retrieve categorical and numerical data
-        categorical_df = helpers.retrieve_categorical(table_df, ids=[PARTICIPANT])
-        numerical_df = helpers.retrieve_numerical(table_df, ids=[PARTICIPANT])
+        # We retrieve categorical and numerical data
+        categorical_df = helpers.retrieve_categorical_var(table_df, ids=[PARTICIPANT])
+        numerical_df = helpers.retrieve_numerical_var(table_df, ids=[PARTICIPANT])
 
-        # we merge the the categorical dataframe with the general dataframe by the column PARTICIPANT
+        # We merge the the categorical dataframe with the sex dataframe by the column PARTICIPANT
         categorical_df = pd.merge(sex_df, categorical_df, on=PARTICIPANT, how=INNER)
         categorical_df = categorical_df.drop([PARTICIPANT], axis=1)
 
-        # we merge the the numerical dataframe with the general dataframe by the column PARTICIPANT
+        # We merge the the numerical dataframe with the sex dataframe by the column PARTICIPANT
         numerical_df = pd.merge(sex_df, numerical_df, on=PARTICIPANT, how=INNER)
         numerical_df = numerical_df.drop([PARTICIPANT], axis=1)
 
-        # we retrieve number of individuals from each sex
+        # We retrieve number of individuals from each sex
         sex_stats = self.get_group_count(numerical_df, group=SEX)
 
-        # we make a categorical var analysis for this table
-        categorical_stats = self.get_categorical_var_analysis(table_name, categorical_df, group=SEX)
+        # We make a categorical variable analysis for this table
+        categorical_stats = self.get_categorical_var_analysis(categorical_df, group=SEX)
 
-        # we make a numerical var analysis for this table
-        numerical_stats = self.get_numerical_var_analysis(table_name, numerical_df, group=SEX)
+        # we make a numerical variable analysis for this table
+        numerical_stats = self.get_numerical_var_analysis(numerical_df, group=SEX)
 
-        # we concatenate all the results to get the final stats dataframe
+        # We concatenate all the results to get the final stats dataframe
         stats_df = pd.concat([sex_stats, categorical_stats, numerical_stats], ignore_index=True)
-        table_name = helpers.reformat_string(table_name)
+        table_name = self._reformat_table_name(table_name)
 
-        # if saveInFile True we save the dataframe in a csv file
         if save_in_file:
-            helpers.save_stats_file(table_name, "statistics", stats_df)
+            self._save_stats_file(table_name, "statistics", stats_df)
 
-        # we return the dataframe
         return stats_df
 
-    def get_variable_info(self, var_name):
+    def get_variable_info(self, var_name: str) -> Dict[str, Any]:
         """
-        Function that returns all the information about a specific variable
+        Retrieves all the information about a specific variable from the original tables
 
-        :param var_name: The name of the variable
-        :return: a python dictionary containing all the infos
+        Args:
+            var_name: name of the variable
+
+        Returns: dictionary with all the infos
         """
-        # we extract the variable id from the variable name
-        var_id = helpers.extract_var_id(var_name)
+        # We extract the variable id from the variable name
+        var_id = self.extract_var_id(var_name)
 
         # we prepare the query
         query = f'SELECT * FROM "PETALE_meta_data" WHERE "Test ID" = {var_id}'
 
         # We execute the query
         try:
-            self.cur.execute(query)
+            self.__cur.execute(query)
         except psycopg2.Error as e:
             print(e.pgerror)
 
-        row = self.cur.fetchall()
-
-        # we initialize the dictionary that will contain the result
-        var_info = {}
-
-        # we create an array containing all the keys
-        var_info_labels = ["test_id", "editorial_board", "form", "number",
-                           "section", "test", "description", "type", "option", "unit", "remarks"]
-
-        # we fill the dictionary with informations
-        for index, data in enumerate(row[0]):
-            var_info[var_info_labels[index]] = data
+        # We create the dictionary with the results
+        var_info = {PetaleDataManager.VARIABLE_INFOS[i]: data for i, data in enumerate(self.__cur.fetchall()[0])}
 
         # We reset the cursor
-        self.reset_cursor()
+        self._reset_cursor()
 
-        # we return the result
         return var_info
 
-    def get_id_conversion_map(self):
+    def get_id_conversion_map(self) -> Dict[str, str]:
         """
-        Returns a map that links genomic patients' reference names to their IDs
-        :return: dict
+        Returns a map that links patients' genomic reference names to their IDs
+
+        Returns: dictionary
         """
         conversion_df = self.get_table(PETALE_PANDORA)
         conversion_map = {k: v[0] for k, v in conversion_df.set_index('Reference name').T.to_dict('series').items()}
 
         return conversion_map
 
+    @staticmethod
+    def _save_stats_file(table_name: str,
+                         file_name: str,
+                         df: pd.DataFrame,
+                         index: bool = False,
+                         header: bool = True) -> None:
+        """
+        Saves a csv file in the stats directory associated to a table
 
-def initialize_petale_data_manager():
-    """
-    Asks petale database user name to initialise a PetaleDataManager object
-    :return: PetaleDataManager
-    """
-    user_name = input("Enter your username to access PETALE database : ")
-    return PetaleDataManager(user_name)
+        Args:
+            table_name: name of the table for which we save the statistics
+            file_name: name of the csv file
+            df: pandas dataframe to turn into csv
+            index: true if we need to add indexes in the csv
+            header: true if we need to store the header of the df in the csv
+
+        Returns: None
+        """
+        # We save the file path
+        directory = os.path.join(Paths.DESC_STATS, table_name)
+        os.makedirs(directory, exist_ok=True)
+        file_path = os.path.join(directory, f"{file_name}.csv")
+
+        # We remove the current csv if it is already existing
+        if os.path.isfile(file_path):
+            os.remove(file_path)
+
+        df.to_csv(file_path, index=index, header=header)
+
+    @staticmethod
+    def extract_var_id(var_name: str) -> str:
+        """
+        Extracts the id of the given variable
+
+        Args:
+            var_name: variable name from a Petale original table
+
+        Returns: id of the variable
+        """
+        return var_name.split()[0]
+
+    @staticmethod
+    def fill_participant_id(participant_id: str) -> str:
+        """
+        Adds characters missing to a participant ID
+
+        Args:
+            participant_id: current ID
+
+        Returns: corrected participant ID
+        """
+
+        return f"P" + "".join(["0"]*(3-len(participant_id))) + participant_id
+
+    @staticmethod
+    def pivot_snp_dataframe(df: pd.DataFrame,
+                            snps_id_filter: Optional[pd.DataFrame] = None) -> pd.DataFrame:
+        """
+        Filters the patients snps table and execute a transposition
+
+        Args:
+            df: pandas dataframe
+            snps_id_filter: list with snps id to keep
+
+        Returns: pandas dataframe
+        """
+
+        # We add a new column to the dataframe
+        df[PetaleDataManager.KEY] = df[CHROM].astype(str) + "_" + df[SNPS_POSITION].astype(str)
+
+        # We filter the table to only keep rows where CHROM and POS match with an SNP in the filter
+        if snps_id_filter is not None:
+            df = df[df[PetaleDataManager.KEY].isin(list(snps_id_filter[PetaleDataManager.KEY].values))]
+
+        # We dump CHROM and POS columns
+        df = df.drop([CHROM, SNPS_POSITION, REF, ALT, GENE_REF_GEN], axis=1, errors='ignore')
+
+        # We change index for CHROM_POS column
+        df = df.set_index(PetaleDataManager.KEY)
+
+        # We transpose the dataframe
+        df = df.T
+        df.index.rename(PARTICIPANT, inplace=True)
+        df.reset_index(inplace=True)
+
+        return df

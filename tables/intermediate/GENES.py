@@ -1,27 +1,30 @@
 """
-Author : Nicolas Raymond
+Filename: GENES.py
 
-This file contains the procedure to create the pivoted tables containing the patients genomic data
-related to the top 5 and the top 12 SNPs most significantly associated to cardiorespiratory fitness.
+Authors: Nicolas Raymond
 
+Description: This file stores the procedure to create the pivoted tables containing
+             the patients genomic data related to the top 5 and the top 12 SNPs most
+             significantly associated to cardiorespiratory fitness.
+
+
+Date of last modification : 2021/11/05
 """
+import sys
 
 from os.path import realpath, dirname
 from pandas import merge
-import sys
-
-KEY = "CHROM_POS"
 
 if __name__ == '__main__':
 
     # Imports specific to project
     sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
     from src.data.extraction.constants import *
-    from src.data.extraction.data_management import initialize_petale_data_manager
-    from src.data.extraction.helpers import get_missing_update, pivot_snp_dataframe
+    from src.data.extraction.data_management import PetaleDataManager
+    from src.data.extraction.helpers import get_missing_update
 
     # We build a PetaleDataManager
-    dm = initialize_petale_data_manager()
+    dm = PetaleDataManager()
 
     # We load SNPS_COMMON and SNPS_RARE tables
     common_df = dm.get_table(SNPS_COMMON)
@@ -33,7 +36,7 @@ if __name__ == '__main__':
 
             # We load TOP_SNPS table and add a column concatenating CHROM and POS
             top_snps_df = dm.get_table(top_snps_table)
-            top_snps_df[KEY] = top_snps_df[CHROM].astype(str) + "_" + top_snps_df[SNPS_POSITION].astype(str)
+            top_snps_df[dm.KEY] = top_snps_df[CHROM].astype(str) + "_" + top_snps_df[SNPS_POSITION].astype(str)
 
             # We dump CHROM and POS columns
             top_snps_df = top_snps_df.drop([CHROM, SNPS_POSITION], axis=1)
@@ -44,8 +47,8 @@ if __name__ == '__main__':
             top_common_snps_df, top_rare_snps_df = None, None
 
         # For both dataframes we execute some preprocessing to enable
-        common_df_copy = pivot_snp_dataframe(common_df.copy(), top_common_snps_df)
-        rare_df_copy = pivot_snp_dataframe(rare_df.copy(), top_rare_snps_df)
+        common_df_copy = dm.pivot_snp_dataframe(common_df.copy(), top_common_snps_df)
+        rare_df_copy = dm.pivot_snp_dataframe(rare_df.copy(), top_rare_snps_df)
 
         # We concat both dataframes
         gen_df = merge(common_df_copy, rare_df_copy, on=[PARTICIPANT], how=INNER, suffixes=('', '_y'))

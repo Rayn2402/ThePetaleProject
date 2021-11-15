@@ -1,49 +1,58 @@
 """
-Authors : Mehdi Mitiche
-          Nicolas Raymond
+Filename: evaluation.py
 
-File that contains the class related to the evaluation of the models
+Authors: Nicolas Raymond
+         Mehdi Mitiche
 
+Description: This file is used to define the Evaluator class in charge
+             of comparing models against each other
+
+Date of last modification : 2021/10/29
 """
 import ray
 
 from copy import deepcopy
 from numpy.random import seed as np_seed
-from os import path, makedirs
+from os import makedirs, path
 from settings.paths import Paths
 from src.data.processing.datasets import PetaleDataset
 from src.data.processing.feature_selection import FeatureSelector
 from src.models.abstract_models.base_models import PetaleBinaryClassifier, PetaleRegressor
 from src.recording.recording import Recorder, compare_prediction_recordings, \
-    get_evaluation_recap, plot_hyperparameter_importance_chart
-from src.training.tuning import Tuner, Objective
+    get_evaluation_recap, plot_hps_importance_chart
+from src.training.tuning import Objective, Tuner
 from src.utils.score_metrics import Metric
 from time import strftime
-from torch import manual_seed, is_tensor, from_numpy
+from torch import is_tensor, from_numpy, manual_seed
 from typing import Any, Callable, Dict, List, Optional, Union
 
 
 class Evaluator:
     """
-    Abstract class representing the skeleton of the objects used for model evaluation
+    Object in charge of evaluating a model over multiple different data splits.
     """
-
-    def __init__(self, model_constructor: Callable,
-                 dataset: PetaleDataset, masks: Dict[int, Dict[str, List[int]]],
-                 hps: Dict[str, Dict[str, Any]], n_trials: int,
-                 evaluation_metrics: List[Metric], fixed_params: Optional[Dict[str, Any]] = None,
-                 seed: Optional[int] = None, gpu_device: bool = False, evaluation_name: Optional[str] = None,
+    def __init__(self,
+                 model_constructor: Callable,
+                 dataset: PetaleDataset,
+                 masks: Dict[int, Dict[str, List[int]]],
+                 hps: Dict[str, Dict[str, Any]],
+                 n_trials: int,
+                 evaluation_metrics: List[Metric],
+                 fixed_params: Optional[Dict[str, Any]] = None,
+                 seed: Optional[int] = None,
+                 gpu_device: bool = False,
+                 evaluation_name: Optional[str] = None,
                  feature_selector: Optional[FeatureSelector] = None,
                  fixed_params_update_function: Optional[Callable] = None,
                  save_hps_importance: Optional[bool] = False,
                  save_parallel_coordinates: Optional[bool] = False,
                  save_optimization_history: Optional[bool] = False):
         """
-        Set protected and public attributes of the abstract class
+        Set protected and public attributes
 
         Args:
             model_constructor: callable object used to generate a model according to a set of hyperparameters
-            dataset: custom dataset containing the whole learning dataset needed for our evaluation
+            dataset: custom dataset containing the whole learning dataset needed for our evaluations
             masks: dict with list of idx to use as train, valid and test masks
             hps: dictionary with information on the hyperparameters we want to tune
             fixed_params: dictionary with parameters used by the model constructor for building model
@@ -53,18 +62,18 @@ class Evaluator:
             seed: random state used for reproducibility
             gpu_device: True if we want to use the gpu
             evaluation_name: name of the results file saved at the recordings_path
-            feature_selector: feature selector object used to proceed to feature selection during nested cross valid
-            fixed_params_update_function: function to update fixed params dictionary from PetaleSubset after
+            feature_selector: object used to proceed to feature selection during nested cross valid
+            fixed_params_update_function: function that updates fixed params dictionary from PetaleSubset after
                                           feature selection. Might be necessary for model with entity embedding.
-            save_hps_importance: True if we want to plot the hyperparameters importance graph after tuning
-            save_parallel_coordinates: True if we want to plot the parallel coordinates graph after tuning
-            save_optimization_history: True if we want to plot the optimization history graph after tuning
+            save_hps_importance: true if we want to plot the hyperparameters importance graph after tuning
+            save_parallel_coordinates: true if we want to plot the parallel coordinates graph after tuning
+            save_optimization_history: true if we want to plot the optimization history graph after tuning
         """
 
         # We look if a file with the same evaluation name exists
         if evaluation_name is not None:
-            assert not path.exists(path.join(Paths.EXPERIMENTS_RECORDS, evaluation_name)), \
-                "Evaluation with this name already exists"
+            if path.exists(path.join(Paths.EXPERIMENTS_RECORDS, evaluation_name)):
+                raise ValueError("evaluation with this name already exists")
         else:
             makedirs(Paths.EXPERIMENTS_RECORDS, exist_ok=True)
             evaluation_name = f"{strftime('%Y%m%d-%H%M%S')}"
@@ -98,12 +107,13 @@ class Evaluator:
 
     def extract_subset(self, records_path: str) -> PetaleDataset:
         """
-        Executes the feature selection process, save the subset in the protected attributes
-        and save a record of the procedure in at the "record_path".
+        Executes the feature selection process and save a record of
+        the procedure at the "records_path".
 
         Args:
             records_path: directory where the feature selection record will be save
-        Returns:
+
+        Returns: Columns subset of the current dataset (PetaleDataset)
         """
         # Creation of subset using feature selection
         if self._feature_selector is not None:
@@ -118,7 +128,7 @@ class Evaluator:
 
         return subset
 
-    def nested_cross_valid(self) -> None:
+    def evaluate(self) -> None:
         """
         Performs nested subsampling validations to evaluate a model and saves results
         in specific files using a recorder
@@ -126,7 +136,7 @@ class Evaluator:
         Returns: None
 
         """
-        # We set the seed for the nested cross valid procedure
+        # We set the seed for the nested subsampling valid procedure
         if self.seed is not None:
             np_seed(self.seed)
             manual_seed(self.seed)
@@ -140,11 +150,12 @@ class Evaluator:
             # We extract the masks
             train_mask, valid_mask, test_mask, in_masks = v["train"], v["valid"], v["test"], v["inner"]
 
-            # We update the original datasets masks
+            # We update the dataset's masks
             self._dataset.update_masks(train_mask=train_mask, valid_mask=valid_mask, test_mask=test_mask)
 
             # We create the Recorder object to save the result of this experience
-            recorder = Recorder(evaluation_name=self.evaluation_name, index=k,
+            recorder = Recorder(evaluation_name=self.evaluation_name,
+                                index=k,
                                 recordings_path=Paths.EXPERIMENTS_RECORDS)
 
             # We save the saving path
@@ -153,7 +164,7 @@ class Evaluator:
             # We proceed to feature selection
             subset = self.extract_subset(records_path=saving_path)
 
-            # We udpate fixed parameters according to the subset
+            # We update the fixed parameters according to the subset
             self._fixed_params = self._update_fixed_params(subset)
 
             # We record the data count
@@ -163,6 +174,7 @@ class Evaluator:
 
             # We update the tuner to perform the hyperparameters optimization
             if self._hp_tuning:
+
                 print(f"\nHyperparameter tuning started - K = {k}\n")
 
                 # We update the tuner
@@ -205,19 +217,22 @@ class Evaluator:
 
             # We generate a plot that compares predictions to ground_truth
             compare_prediction_recordings(evaluations=[self.evaluation_name],
-                                          split_index=k, recording_path=Paths.EXPERIMENTS_RECORDS)
+                                          split_index=k,
+                                          recording_path=Paths.EXPERIMENTS_RECORDS)
 
         # We save the evaluation recap
         get_evaluation_recap(evaluation_name=self.evaluation_name, recordings_path=Paths.EXPERIMENTS_RECORDS)
 
-        # We save the hyperparameters plot
-        plot_hyperparameter_importance_chart(evaluation_name=self.evaluation_name,
-                                             recordings_path=Paths.EXPERIMENTS_RECORDS)
+        # We save the hyperparameters importance chart
+        plot_hps_importance_chart(evaluation_name=self.evaluation_name,
+                                  recordings_path=Paths.EXPERIMENTS_RECORDS)
 
         # We shutdown ray
         ray.shutdown()
 
-    def _create_objective(self, masks: Dict[int, Dict[str, List[int]]], subset: PetaleDataset) -> Objective:
+    def _create_objective(self,
+                          masks: Dict[int, Dict[str, List[int]]],
+                          subset: PetaleDataset) -> Objective:
         """
         Creates an adapted objective function to pass to our tuner
 
@@ -228,15 +243,21 @@ class Evaluator:
         Returns: objective function
         """
 
-        return Objective(dataset=subset, masks=masks, hps=self._hps, fixed_params=self._fixed_params,
-                         metric=self.evaluation_metrics[-1], model_constructor=self.model_constructor,
+        return Objective(dataset=subset,
+                         masks=masks,
+                         hps=self._hps,
+                         fixed_params=self._fixed_params,
+                         metric=self.evaluation_metrics[-1],
+                         model_constructor=self.model_constructor,
                          gpu_device=self._gpu_device)
 
-    def _record_scores_and_pred(self, model: Union[PetaleBinaryClassifier, PetaleRegressor],
-                                recorder: Recorder, subset: PetaleDataset) -> None:
+    def _record_scores_and_pred(self,
+                                model: Union[PetaleBinaryClassifier, PetaleRegressor],
+                                recorder: Recorder,
+                                subset: PetaleDataset) -> None:
         """
-        Records the scores associated to train and test set and also save the prediction linked to
-        each individual
+        Records the scores associated to train and test set
+        and also saves the prediction linked to each individual
 
         Args:
             model: model trained with best found hyperparameters
@@ -263,8 +284,7 @@ class Evaluator:
 
                 # We record all metric scores
                 for metric in self.evaluation_metrics:
-                    recorder.record_scores(score=metric(pred, y, thresh=model.thresh),
-                                           metric=metric.name, test=test_bool)
+                    recorder.record_scores(score=metric(pred, y, thresh=model.thresh), metric=metric.name, test=test_bool)
 
                 if not is_tensor(pred):
                     pred = from_numpy(pred)

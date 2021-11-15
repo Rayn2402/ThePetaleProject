@@ -1,8 +1,13 @@
 """
-File that will be responsible of creating the experiment recap: an html page which will contain all the information
- about all the experiments
-"""
+Filename: create_experiments_recap.py
 
+Author: Nicolas Raymond
+
+Description: File responsible of creating the experiment recap: an html page which will contain all the information
+             about all the experiments
+
+Date of last modification: 2021/11/15
+"""
 import argparse
 import os
 import json
@@ -46,7 +51,6 @@ def create_experiments_recap(path):
     parallel_coordinate_file = "parallel_coordinate.png"
     optimization_history_file = "optimization_history.png"
     loss_over_epochs_file = "epochs_progression.png"
-
 
     # We define the style of our webpage with css
     style = """<style>

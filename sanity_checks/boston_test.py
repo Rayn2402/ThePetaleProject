@@ -1,7 +1,12 @@
 """
+Filename: boston_test.py
+
 Author: Nicolas Raymond
 
-This file is used to test the evaluator class with all models, using boston housing-prices dataset.
+Description: This file is used to test the evaluator class
+             with all models, using boston housing-prices dataset.
+
+Date of last modification: 2021/11/11
 """
 
 import sys
@@ -14,7 +19,7 @@ if __name__ == '__main__':
 
     # Imports specific to project
     sys.path.append(dirname(dirname(realpath(__file__))))
-    from sanity_checks.hps import TAB_HPS, RF_HPS, XGBOOST_HPS, MLP_HPS, HAN_HPS
+    from hps.sanity_check_hps import TAB_HPS, RF_HPS, XGBOOST_HPS, MLP_HPS, HAN_HPS
     from src.data.extraction.constants import SEED, PARTICIPANT
     from src.data.processing.datasets import PetaleDataset, PetaleStaticGNNDataset
     from src.data.processing.sampling import RandomStratifiedSampler, push_valid_to_train
@@ -42,8 +47,11 @@ if __name__ == '__main__':
     dataset = PetaleDataset(df, target, cont_col, cat_col, classification=False)
 
     # Masks creation
-    sampler = RandomStratifiedSampler(dataset=dataset, n_out_split=3, n_in_split=3,
-                                      random_state=SEED, alpha=15)
+    sampler = RandomStratifiedSampler(dataset=dataset,
+                                      n_out_split=3,
+                                      n_in_split=5,
+                                      random_state=SEED,
+                                      alpha=15)
     masks = sampler()
 
     # Creation of another mask without valid
@@ -61,41 +69,62 @@ if __name__ == '__main__':
 
     # Saving of fixed params for TabNet
     def update_fixed_params(subset):
-        return {'cat_idx': subset.cat_idx, 'cat_sizes': subset.cat_sizes,
-                'cat_emb_sizes': subset.cat_sizes, 'max_epochs': 250,
+        return {'cat_idx': subset.cat_idx,
+                'cat_sizes': subset.cat_sizes,
+                'cat_emb_sizes': subset.cat_sizes,
+                'max_epochs': 250,
                 'patience': 50}
 
     fixed_params = update_fixed_params(dataset)
 
     # Creation of the evaluator
-    evaluator = Evaluator(model_constructor=PetaleTNR, dataset=dataset,
-                          masks=masks, hps=TAB_HPS, n_trials=100, fixed_params=fixed_params,
+    evaluator = Evaluator(model_constructor=PetaleTNR,
+                          dataset=dataset,
+                          masks=masks,
+                          hps=TAB_HPS,
+                          n_trials=250,
+                          fixed_params=fixed_params,
                           fixed_params_update_function=update_fixed_params,
-                          evaluation_metrics=evaluation_metrics, evaluation_name='TabNet_test',
-                          save_hps_importance=True, save_optimization_history=True)
+                          evaluation_metrics=evaluation_metrics,
+                          evaluation_name='TabNet_test',
+                          save_hps_importance=True,
+                          save_optimization_history=True,
+                          seed=SEED)
 
     # Evaluation
-    evaluator.nested_cross_valid()
+    evaluator.evaluate()
 
     """
     Test with RF
     """
-    evaluator = Evaluator(model_constructor=PetaleRFR, dataset=dataset, masks=masks_without_val,
-                          hps=RF_HPS, n_trials=100, evaluation_metrics=evaluation_metrics,
+    evaluator = Evaluator(model_constructor=PetaleRFR,
+                          dataset=dataset,
+                          masks=masks_without_val,
+                          hps=RF_HPS,
+                          n_trials=250,
+                          evaluation_metrics=evaluation_metrics,
                           evaluation_name='RF_test',
-                          save_hps_importance=True, save_optimization_history=True)
+                          save_hps_importance=True,
+                          save_optimization_history=True,
+                          seed=SEED)
 
-    evaluator.nested_cross_valid()
+    evaluator.evaluate()
 
     """
     Test with XGBoost
     """
-    evaluator = Evaluator(model_constructor=PetaleXGBR, dataset=dataset, masks=masks_without_val,
-                          hps=XGBOOST_HPS, n_trials=100, evaluation_metrics=evaluation_metrics,
+    evaluator = Evaluator(model_constructor=PetaleXGBR,
+                          dataset=dataset,
+                          masks=masks_without_val,
+                          hps=XGBOOST_HPS,
+                          n_trials=250,
+                          evaluation_metrics=evaluation_metrics,
                           evaluation_name='XGBoost_test',
-                          save_hps_importance=True, save_optimization_history=True)
+                          save_hps_importance=True,
+                          save_optimization_history=True,
+                          seed=SEED)
 
-    evaluator.nested_cross_valid()
+    evaluator.evaluate()
 
     """
     Test with MLP
@@ -104,36 +133,56 @@ if __name__ == '__main__':
 
     # Saving of fixed_params for MLP
     def update_fixed_params(subset):
-        return {'max_epochs': 250, 'patience': 50, 'num_cont_col': len(subset.cont_cols),
-                'cat_idx': subset.cat_idx, 'cat_sizes': subset.cat_sizes,
+        return {'max_epochs': 250,
+                'patience': 50,
+                'num_cont_col': len(subset.cont_cols),
+                'cat_idx': subset.cat_idx,
+                'cat_sizes': subset.cat_sizes,
                 'cat_emb_sizes': subset.cat_sizes}
 
     fixed_params = update_fixed_params(dataset_mlp)
 
-    evaluator = Evaluator(model_constructor=PetaleMLPR, dataset=dataset_mlp, masks=masks,
-                          hps=MLP_HPS, n_trials=100, evaluation_metrics=evaluation_metrics,
-                          fixed_params=fixed_params, evaluation_name='MLP_test',
-                          fixed_params_update_function=update_fixed_params, save_optimization_history=True)
+    evaluator = Evaluator(model_constructor=PetaleMLPR,
+                          dataset=dataset_mlp,
+                          masks=masks,
+                          hps=MLP_HPS,
+                          n_trials=250,
+                          evaluation_metrics=evaluation_metrics,
+                          fixed_params=fixed_params,
+                          evaluation_name='MLP_test',
+                          fixed_params_update_function=update_fixed_params,
+                          save_optimization_history=True,
+                          seed=SEED)
 
-    evaluator.nested_cross_valid()
+    evaluator.evaluate()
 
     """
     Test with HAN
     """
-
     dataset_gnn = PetaleStaticGNNDataset(df, target, cont_col, cat_col, classification=False)
 
     # Saving of fixed params for TabNet
     def update_fixed_params(subset):
-        return {'meta_paths': subset.get_metapaths(), 'in_size': len(subset.cont_cols),
-                'max_epochs': 250, 'patience': 15}
+        return {'meta_paths': subset.get_metapaths(),
+                'num_cont_col': len(subset.cont_cols),
+                'cat_idx': subset.cat_idx,
+                'cat_sizes': subset.cat_sizes,
+                'cat_emb_sizes': subset.cat_sizes,
+                'max_epochs': 250,
+                'patience': 15}
 
     fixed_params = update_fixed_params(dataset_gnn)
 
-    evaluator = Evaluator(model_constructor=PetaleHANR, dataset=dataset_gnn, masks=masks,
-                          hps=HAN_HPS, n_trials=100, evaluation_metrics=evaluation_metrics,
-                          fixed_params=fixed_params, evaluation_name='HAN_test',
+    evaluator = Evaluator(model_constructor=PetaleHANR,
+                          dataset=dataset_gnn,
+                          masks=masks,
+                          hps=HAN_HPS,
+                          n_trials=250,
+                          evaluation_metrics=evaluation_metrics,
+                          fixed_params=fixed_params,
+                          evaluation_name='HAN_test',
                           fixed_params_update_function=update_fixed_params,
-                          save_optimization_history=True)
+                          save_optimization_history=True,
+                          seed=SEED)
 
-    evaluator.nested_cross_valid()
+    evaluator.evaluate()

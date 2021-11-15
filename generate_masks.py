@@ -1,7 +1,12 @@
 """
-This file is used as a script to produce train, valid and test masks related to a learning table
-"""
+Filename: generate_mask.py
 
+Author: Nicolas Raymond
+
+Description: This file is used as a script to produce train, valid and test masks related to a learning table
+
+Date of last modification: 2021/11/15
+"""
 import argparse
 
 from json import dump
@@ -9,7 +14,7 @@ from src.data.processing.datasets import PetaleDataset
 from src.data.processing.sampling import RandomStratifiedSampler
 from src.data.extraction.constants import *
 from src.data.extraction.data_management import PetaleDataManager
-from src.data.extraction.helpers import retrieve_numerical
+from src.data.extraction.helpers import retrieve_numerical_var
 
 
 def argument_parser():
@@ -69,7 +74,7 @@ if __name__ == '__main__':
     args = argument_parser()
 
     # We initialize a data manager
-    data_manager = PetaleDataManager(args.user)
+    data_manager = PetaleDataManager()
 
     # We retrieve the table needed
     df = data_manager.get_table(args.table)
@@ -79,7 +84,7 @@ if __name__ == '__main__':
     df = df[columns]
 
     # We create stratified mask according to the target columns
-    cont_cols = list(retrieve_numerical(df, []).columns.values)
+    cont_cols = list(retrieve_numerical_var(df, []).columns.values)
     cat_cols = [c for c in df.columns.values if c not in [PARTICIPANT, args.target_column] + cont_cols]
     dataset = PetaleDataset(df, args.target_column, cont_cols=cont_cols, cat_cols=cat_cols)
     rss = RandomStratifiedSampler(dataset, n_out_split=args.nb_out_split, n_in_split=args.nb_in_split,

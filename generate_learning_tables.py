@@ -1,18 +1,21 @@
 """
-Authors : Nicolas Raymond
+Filename: generate_learning_table.py
 
-This file contains the procedure to execute in order to obtain official learning table
-from a RAW table
+Author: Nicolas Raymond
+
+Description: This file contains the procedure to execute in order to obtain official learning table
+             from a RAW table
+
+Date of last modification: 2021/11/15
 """
+import argparse
 
 from pandas import read_csv
 from src.data.extraction.constants import *
 from src.data.extraction.data_management import PetaleDataManager
-from src.data.extraction.helpers import fill_id, retrieve_numerical
-from src.data.processing.datasets import PetaleDataset
+from src.data.extraction.helpers import retrieve_numerical_var
+from src.data.processing.datasets import MaskType, PetaleDataset
 from src.data.processing.sampling import RandomStratifiedSampler
-
-import argparse
 
 
 def argument_parser():
@@ -71,27 +74,31 @@ if __name__ == '__main__':
     args = argument_parser()
 
     # We build a PetaleDataManager that will help interacting with PETALE database
-    data_manager = PetaleDataManager(args.user)
+    data_manager = PetaleDataManager()
 
     # We retrieve the raw table needed
     df = data_manager.get_table(args.raw_table)
 
     # We retrieve participant ids to remove
     outliers_ids = read_csv(args.outliers_csv, sep=args.csv_separator)
-    outliers_ids[PARTICIPANT] = outliers_ids[PARTICIPANT].astype(str).apply(fill_id)
+    outliers_ids[PARTICIPANT] = outliers_ids[PARTICIPANT].astype(str).apply(PetaleDataManager.fill_participant_id)
 
     # We remove the ids
     df = df.loc[~df[PARTICIPANT].isin(list(outliers_ids[PARTICIPANT].values)), :]
 
     # We extract an holdout set from the whole dataframe using a sampler
-    cont_cols = list(retrieve_numerical(df, []).columns.values)
+    cont_cols = list(retrieve_numerical_var(df, []).columns.values)
     cat_cols = [c for c in df.columns.values if c not in [PARTICIPANT, args.target_column] + cont_cols]
     dataset = PetaleDataset(df, args.target_column, cont_cols=cont_cols, cat_cols=cat_cols)
-    rss = RandomStratifiedSampler(dataset, n_out_split=1, n_in_split=0,
-                                  valid_size=0, test_size=args.holdout_size,
-                                  random_state=args.seed, alpha=args.alpha)
+    rss = RandomStratifiedSampler(dataset,
+                                  n_out_split=1,
+                                  n_in_split=0,
+                                  valid_size=0,
+                                  test_size=args.holdout_size,
+                                  random_state=args.seed,
+                                  alpha=args.alpha)
     masks = rss()
-    learning_idx, hold_out_idx = masks[0]["train"], masks[0]["test"]
+    learning_idx, hold_out_idx = masks[0][MaskType.TRAIN], masks[0][MaskType.TEST]
     learning_df, hold_out_df = df.iloc[learning_idx, :], df.iloc[hold_out_idx, :]
 
     # We create the dictionary needed to create the table

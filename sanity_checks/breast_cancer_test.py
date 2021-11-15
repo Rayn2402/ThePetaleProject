@@ -17,7 +17,7 @@ if __name__ == '__main__':
 
     # Imports specific to project
     sys.path.append(dirname(dirname(realpath(__file__))))
-    from hps.warmup_hps import TAB_HPS, RF_HPS, XGBOOST_HPS, MLP_HPS
+    from hps.sanity_check_hps import TAB_HPS, RF_HPS, XGBOOST_HPS, MLP_HPS
     from src.data.extraction.constants import SEED, PARTICIPANT
     from src.data.processing.datasets import PetaleDataset
     from src.data.processing.sampling import RandomStratifiedSampler, push_valid_to_train
@@ -43,7 +43,7 @@ if __name__ == '__main__':
     # Masks creation
     sampler = RandomStratifiedSampler(dataset=dataset,
                                       n_out_split=3,
-                                      n_in_split=3,
+                                      n_in_split=5,
                                       random_state=SEED,
                                       alpha=10)
     masks = sampler()
@@ -77,13 +77,14 @@ if __name__ == '__main__':
                           dataset=dataset,
                           masks=masks,
                           hps=TAB_HPS,
-                          n_trials=100,
+                          n_trials=250,
                           fixed_params=fixed_params,
                           fixed_params_update_function=update_fixed_params,
                           evaluation_metrics=evaluation_metrics,
                           evaluation_name='TabNet_test',
                           save_hps_importance=True,
-                          save_optimization_history=True)
+                          save_optimization_history=True,
+                          seed=SEED)
 
     # Evaluation
     evaluator.evaluate()
@@ -95,11 +96,12 @@ if __name__ == '__main__':
                           dataset=dataset,
                           masks=masks_without_val,
                           hps=RF_HPS,
-                          n_trials=100,
+                          n_trials=250,
                           evaluation_metrics=evaluation_metrics,
                           evaluation_name='RF_test',
                           save_hps_importance=True,
-                          save_optimization_history=True)
+                          save_optimization_history=True,
+                          seed=SEED)
 
     evaluator.evaluate()
 
@@ -110,11 +112,12 @@ if __name__ == '__main__':
                           dataset=dataset,
                           masks=masks_without_val,
                           hps=XGBOOST_HPS,
-                          n_trials=100,
+                          n_trials=250,
                           evaluation_metrics=evaluation_metrics,
                           evaluation_name='XGBoost_test',
                           save_hps_importance=True,
-                          save_optimization_history=True)
+                          save_optimization_history=True,
+                          seed=SEED)
 
     evaluator.evaluate()
 
@@ -137,11 +140,12 @@ if __name__ == '__main__':
     evaluator = Evaluator(model_constructor=PetaleBinaryMLPC,
                           dataset=dataset_mlp, masks=masks,
                           hps=MLP_HPS,
-                          n_trials=100,
+                          n_trials=250,
                           evaluation_metrics=evaluation_metrics,
                           fixed_params=fixed_params,
                           evaluation_name='MLP_test',
                           fixed_params_update_function=update_fixed_params,
-                          save_optimization_history=True)
+                          save_optimization_history=True,
+                          seed=SEED)
 
     evaluator.evaluate()

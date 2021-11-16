@@ -43,7 +43,6 @@ class HAN(TorchCustomModel):
                  num_cont_col: Optional[int] = None,
                  alpha: float = 0,
                  beta: float = 0,
-                 sam: bool = True,
                  verbose: bool = False
                  ):
         """
@@ -64,7 +63,6 @@ class HAN(TorchCustomModel):
             cat_emb_sizes: list of integer representing the size of each categorical embedding
             alpha: L1 penalty coefficient
             beta: L2 penalty coefficient
-            sam: true to use Sharpness-Aware Minimization (SAM)
             verbose: True if we want trace of the training progress
         """
         # Call of parent's constructor
@@ -77,7 +75,6 @@ class HAN(TorchCustomModel):
                          cat_idx=cat_idx,
                          cat_sizes=cat_sizes,
                          cat_emb_sizes=cat_emb_sizes,
-                         sam=sam,
                          verbose=verbose)
 
         # Initialization of the main layer
@@ -263,7 +260,6 @@ class HANBinaryClassifier(HAN):
                  num_cont_col: Optional[int] = None,
                  alpha: float = 0,
                  beta: float = 0,
-                 sam: bool = True,
                  verbose: bool = False
                  ):
         """
@@ -281,7 +277,6 @@ class HANBinaryClassifier(HAN):
             eval_metric: evaluation metric
             alpha: L1 penalty coefficient
             beta: L2 penalty coefficient
-            sam: true to use Sharpness-Aware Minimization (SAM)
             verbose: true to print training progress when fit is called
         """
         # Call parent's constructor
@@ -300,7 +295,6 @@ class HANBinaryClassifier(HAN):
                          cat_emb_sizes=cat_emb_sizes,
                          alpha=alpha,
                          beta=beta,
-                         sam=sam,
                          verbose=verbose)
 
     def predict_proba(self,
@@ -353,7 +347,7 @@ class HANRegressor(HAN):
                  num_cont_col: Optional[int] = None,
                  alpha: float = 0,
                  beta: float = 0,
-                 sam: bool = True,
+
                  verbose: bool = False
                  ):
         """
@@ -371,7 +365,6 @@ class HANRegressor(HAN):
             eval_metric: evaluation metric
             alpha: L1 penalty coefficient
             beta: L2 penalty coefficient
-            sam: true to use Sharpness-Aware Minimization (SAM)
             verbose: true to print training progress when fit is called
         """
         # Call parent's constructor

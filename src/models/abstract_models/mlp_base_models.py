@@ -42,7 +42,6 @@ class MLP(TorchCustomModel):
                  cat_idx: Optional[List[int]] = None,
                  cat_sizes: Optional[List[int]] = None,
                  cat_emb_sizes: Optional[List[int]] = None,
-                 sam: bool = True,
                  verbose: bool = False):
 
         """
@@ -62,7 +61,6 @@ class MLP(TorchCustomModel):
             cat_idx: idx of categorical columns in the dataset
             cat_sizes: list of integer representing the size of each categorical column
             cat_emb_sizes: list of integer representing the size of each categorical embedding
-            sam: true to use Sharpness-Aware Minimization (SAM)
             verbose: True if we want trace of the training progress
         """
         if num_cont_col is None and cat_sizes is None:
@@ -78,7 +76,6 @@ class MLP(TorchCustomModel):
                          cat_idx=cat_idx,
                          cat_sizes=cat_sizes,
                          cat_emb_sizes=cat_emb_sizes,
-                         sam=sam,
                          verbose=verbose)
 
         # We create the main layers of our model
@@ -236,7 +233,6 @@ class MLPBinaryClassifier(MLP):
                  cat_idx: Optional[List[int]] = None,
                  cat_sizes: Optional[List[int]] = None,
                  cat_emb_sizes: Optional[List[int]] = None,
-                 sam: bool = True,
                  verbose: bool = False):
         """
         Sets protected attributes using parent's constructor
@@ -252,7 +248,6 @@ class MLPBinaryClassifier(MLP):
             cat_idx: idx of categorical columns in the dataset
             cat_sizes: list of integer representing the size of each categorical column
             cat_emb_sizes: list of integer representing the size of each categorical embedding
-            sam: true to use Sharpness-Aware Minimization (SAM)
             verbose: true to print training progress when fit is called
         """
         eval_metric = eval_metric if eval_metric is not None else BinaryCrossEntropy()
@@ -269,7 +264,6 @@ class MLPBinaryClassifier(MLP):
                          cat_idx=cat_idx,
                          cat_sizes=cat_sizes,
                          cat_emb_sizes=cat_emb_sizes,
-                         sam=sam,
                          verbose=verbose)
 
     def predict_proba(self,
@@ -317,7 +311,6 @@ class MLPRegressor(MLP):
                  cat_idx: Optional[List[int]] = None,
                  cat_sizes: Optional[List[int]] = None,
                  cat_emb_sizes: Optional[List[int]] = None,
-                 sam: bool = True,
                  verbose: bool = False):
         """
         Sets protected attributes using parent's constructor
@@ -333,7 +326,6 @@ class MLPRegressor(MLP):
             cat_idx: idx of categorical columns in the dataset
             cat_sizes: list of integer representing the size of each categorical column
             cat_emb_sizes: list of integer representing the size of each categorical embedding
-            sam: true to use Sharpness-Aware Minimization (SAM)
             verbose: true to print training progress when fit is called
         """
         eval_metric = eval_metric if eval_metric is not None else RootMeanSquaredError()
@@ -350,7 +342,6 @@ class MLPRegressor(MLP):
                          cat_idx=cat_idx,
                          cat_sizes=cat_sizes,
                          cat_emb_sizes=cat_emb_sizes,
-                         sam=sam,
                          verbose=verbose)
 
     def predict(self,

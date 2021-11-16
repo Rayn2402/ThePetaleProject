@@ -38,6 +38,7 @@ class PetaleBinaryHANC(TorchBinaryClassifierWrapper):
                  beta: float = 0,
                  classification_threshold: float = 0.5,
                  weight:  Optional[float] = None,
+                 sam: bool = True,
                  verbose: bool = False):
         """
         Creates the classifier and sets protected attributes using parent's constructor
@@ -60,6 +61,7 @@ class PetaleBinaryHANC(TorchBinaryClassifierWrapper):
             beta: L2 penalty coefficient
             classification_threshold: threshold used to classify a sample in class 1
             weight: weight attributed to class 1
+            sam: true to use Sharpness-Aware Minimization (SAM)
             verbose: True if we want to show the training progress
         """
         # Creation of model
@@ -74,6 +76,7 @@ class PetaleBinaryHANC(TorchBinaryClassifierWrapper):
                                     eval_metric=eval_metric,
                                     alpha=alpha,
                                     beta=beta,
+                                    sam=sam,
                                     verbose=verbose)
 
         super().__init__(model=model,
@@ -116,6 +119,7 @@ class PetaleHANR(TorchRegressorWrapper):
                  eval_metric: Optional[BinaryClassificationMetric] = None,
                  alpha: float = 0,
                  beta: float = 0,
+                 sam: bool = True,
                  verbose: bool = False):
         """
         Creates the regression model and sets protected attributes using parent's constructor
@@ -136,6 +140,7 @@ class PetaleHANR(TorchRegressorWrapper):
             patience: Number of consecutive epochs without improvement
             alpha: L1 penalty coefficient
             beta: L2 penalty coefficient
+            sam: true to use Sharpness-Aware Minimization (SAM)
             verbose: True if we want to show the training progress
         """
         # Creation of model
@@ -150,6 +155,7 @@ class PetaleHANR(TorchRegressorWrapper):
                              eval_metric=eval_metric,
                              alpha=alpha,
                              beta=beta,
+                             sam=sam,
                              verbose=verbose)
 
         super().__init__(model=model,

@@ -38,6 +38,7 @@ class PetaleBinaryMLPC(TorchBinaryClassifierWrapper):
                  cat_sizes: Optional[List[int]] = None,
                  cat_emb_sizes: Optional[List[int]] = None,
                  verbose: bool = False,
+                 sam: bool = True,
                  classification_threshold: float = 0.5,
                  weight:  Optional[float] = None):
         """
@@ -62,6 +63,7 @@ class PetaleBinaryMLPC(TorchBinaryClassifierWrapper):
             cat_emb_sizes: list of integer representing the size of each categorical embedding
             classification_threshold: threshold used to classify a sample in class 1
             weight: weight attributed to class 1
+            sam: true to use Sharpness-Aware Minimization (SAM)
         """
         # Model creation
         model = MLPBinaryClassifier(layers=[n_unit]*n_layer,
@@ -74,6 +76,7 @@ class PetaleBinaryMLPC(TorchBinaryClassifierWrapper):
                                     cat_idx=cat_idx,
                                     cat_sizes=cat_sizes,
                                     cat_emb_sizes=cat_emb_sizes,
+                                    sam=sam,
                                     verbose=verbose)
 
         super().__init__(model=model,
@@ -116,6 +119,7 @@ class PetaleMLPR(TorchRegressorWrapper):
                  cat_idx: Optional[List[int]] = None,
                  cat_sizes: Optional[List[int]] = None,
                  cat_emb_sizes: Optional[List[int]] = None,
+                 sam: bool = True,
                  verbose: bool = False):
         """
         Builds and MLP regression model and sets the protected attributes using parent's constructor
@@ -137,6 +141,7 @@ class PetaleMLPR(TorchRegressorWrapper):
             cat_idx: idx of categorical columns in the dataset
             cat_sizes: list of integer representing the size of each categorical column
             cat_emb_sizes: list of integer representing the size of each categorical embedding
+            sam: true to use Sharpness-Aware Minimization (SAM)
         """
         # Creation of the model
         model = MLPRegressor(layers=[n_unit]*n_layer,
@@ -149,6 +154,7 @@ class PetaleMLPR(TorchRegressorWrapper):
                              cat_idx=cat_idx,
                              cat_sizes=cat_sizes,
                              cat_emb_sizes=cat_emb_sizes,
+                             sam=sam,
                              verbose=verbose)
 
         # Call of parent's constructor

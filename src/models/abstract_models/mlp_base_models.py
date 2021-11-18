@@ -10,7 +10,7 @@ Description: This file is used to define the MLP model with entity embeddings
              and PetaleBinaryClassifier classes. However, two wrapper classes for torch models
              are provided to enable the use of these mlp models with hyperparameter tuning functions.
 
-Date of last modification : 2021/11/09
+Date of last modification : 2021/11/18
 """
 
 from src.models.abstract_models.custom_torch_base import TorchCustomModel
@@ -116,7 +116,7 @@ class MLP(TorchCustomModel):
             self._optimizer.zero_grad()
 
             # We perform the weight update
-            pred, loss = self._update_weights(sample_weights[idx], x, y)
+            pred, loss = self._update_weights(sample_weights[idx], [x], y)
 
             # We update the metrics history
             score = self._eval_metric(pred, y)

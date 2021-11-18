@@ -7,11 +7,12 @@ Description: Defines the abstract class TorchCustomModel from which all custom p
              implemented for the project must inherit. This class allows to store common
              function of all pytorch models.
 
-Date of last modification: 2021/10/19
+Date of last modification: 2021/11/18
 
 """
 
 from abc import ABC, abstractmethod
+from dgl import DGLHeteroGraph
 from src.data.processing.datasets import MaskType, PetaleDataset, PetaleStaticGNNDataset
 from src.models.blocks.mlp_blocks import EntityEmbeddingBlock
 from src.training.early_stopping import EarlyStopper
@@ -149,7 +150,10 @@ class TorchCustomModel(Module, ABC):
         """
         self.apply(self._enable_module_running_stats)
 
-    def _sam_weight_update(self, sample_weights: tensor, x: tensor, y: tensor) -> Tuple[tensor, float]:
+    def _sam_weight_update(self, sample_weights: tensor,
+                           x: List[Union[DGLHeteroGraph, tensor]],
+                           y: tensor,
+                           pos_idx: Optional[List[int]]) -> Tuple[tensor, float]:
         """
         Executes a weights update using Sharpness-Aware Minimization (SAM) optimizer
 
@@ -160,13 +164,16 @@ class TorchCustomModel(Module, ABC):
 
         Args:
             sample_weights: weights of each sample associated to a batch
-            x: (N', D) inputs associated to a batch
+            x: list of arguments taken for the forward pass (HeteroGraph and (N', D) tensor with batch inputs)
             y: (N',) ground truth associated to a batch
+            pos_idx: dictionary that maps the original dataset's idx to their current
+                     position in the mask used for the forward pass (used only with GNNs)
 
         Returns: (N',) tensor with predictions, training loss
         """
         # We compute the predictions
-        pred = self(x)
+        pred = self(*x)
+        pred = pred if pos_idx is None else pred[pos_idx]
 
         # First forward-backward pass
         loss = self.loss(sample_weights, pred, y)
@@ -175,7 +182,9 @@ class TorchCustomModel(Module, ABC):
 
         # Second forward-backward pass
         self._disable_running_stats()
-        self.loss(sample_weights, self(x), y).backward()
+        second_pred = self(*x)
+        second_pred = second_pred if pos_idx is None else second_pred[pos_idx]
+        self.loss(sample_weights, second_pred, y).backward()
         self._optimizer.second_step()
 
         # We enable running stats again
@@ -183,19 +192,25 @@ class TorchCustomModel(Module, ABC):
 
         return pred, loss.item()
 
-    def _basic_weight_update(self, sample_weights: tensor, x: tensor, y: tensor) -> Tuple[tensor, float]:
+    def _basic_weight_update(self, sample_weights: tensor,
+                             x: List[Union[DGLHeteroGraph, tensor]],
+                             y: tensor,
+                             pos_idx: Optional[List[int]]) -> Tuple[tensor, float]:
         """
         Executes a weights update without using Sharpness-Aware Minimization (SAM)
 
         Args:
             sample_weights: weights of each sample associated to a batch
-            x: (N', D) inputs associated to a batch
+            x: list of arguments taken for the forward pass (HeteroGraph and (N', D) tensor with batch inputs)
             y: (N',) ground truth associated to a batch
+            pos_idx: dictionary that maps the original dataset's idx to their current
+                     position in the mask used for the forward pass (used only with GNNs)
 
         Returns: (N',) tensor with predictions, training loss
         """
         # We compute the predictions
-        pred = self(x)
+        pred = self(*x)
+        pred = pred if pos_idx is None else pred[pos_idx]
 
         # We execute a single forward-backward pass
         loss = self.loss(sample_weights, pred, y)

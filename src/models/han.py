@@ -29,6 +29,7 @@ class PetaleBinaryHANC(TorchBinaryClassifierWrapper):
                  num_cont_col: Optional[int] = None,
                  dropout: float = 0,
                  lr: float = 0.05,
+                 rho: float = 0,
                  batch_size: int = 55,
                  valid_batch_size: Optional[int] = None,
                  max_epochs: int = 200,
@@ -38,7 +39,6 @@ class PetaleBinaryHANC(TorchBinaryClassifierWrapper):
                  beta: float = 0,
                  classification_threshold: float = 0.5,
                  weight:  Optional[float] = None,
-                 sam: bool = True,
                  verbose: bool = False):
         """
         Creates the classifier and sets protected attributes using parent's constructor
@@ -53,6 +53,8 @@ class PetaleBinaryHANC(TorchBinaryClassifierWrapper):
             cat_emb_sizes: list of integer representing the size of each categorical embedding
             dropout: dropout probability
             lr: learning rate
+            rho: if >=0 will be used as neighborhood size in Sharpness-Aware Minimization optimizer,
+                 otherwise, standard SGD optimizer with momentum will be used
             batch_size: size of the batches in the training loader
             valid_batch_size: size of the batches in the valid loader (None = one single batch)
             max_epochs: maximum number of epochs for training
@@ -61,7 +63,6 @@ class PetaleBinaryHANC(TorchBinaryClassifierWrapper):
             beta: L2 penalty coefficient
             classification_threshold: threshold used to classify a sample in class 1
             weight: weight attributed to class 1
-            sam: true to use Sharpness-Aware Minimization (SAM)
             verbose: True if we want to show the training progress
         """
         # Creation of model
@@ -76,13 +77,13 @@ class PetaleBinaryHANC(TorchBinaryClassifierWrapper):
                                     eval_metric=eval_metric,
                                     alpha=alpha,
                                     beta=beta,
-                                    sam=sam,
                                     verbose=verbose)
 
         super().__init__(model=model,
                          classification_threshold=classification_threshold,
                          weight=weight,
                          train_params={'lr': lr,
+                                       'rho': rho,
                                        'batch_size': batch_size,
                                        'valid_batch_size': valid_batch_size,
                                        'patience': patience,
@@ -112,6 +113,7 @@ class PetaleHANR(TorchRegressorWrapper):
                  num_cont_col: Optional[int] = None,
                  dropout: float = 0,
                  lr: float = 0.05,
+                 rho: float = 0,
                  batch_size: int = 55,
                  valid_batch_size: Optional[int] = None,
                  max_epochs: int = 200,
@@ -119,7 +121,6 @@ class PetaleHANR(TorchRegressorWrapper):
                  eval_metric: Optional[BinaryClassificationMetric] = None,
                  alpha: float = 0,
                  beta: float = 0,
-                 sam: bool = True,
                  verbose: bool = False):
         """
         Creates the regression model and sets protected attributes using parent's constructor
@@ -134,13 +135,14 @@ class PetaleHANR(TorchRegressorWrapper):
             cat_emb_sizes: list of integer representing the size of each categorical embedding
             dropout: dropout probability
             lr: learning rate
+            rho: if >=0 will be used as neighborhood size in Sharpness-Aware Minimization optimizer,
+                 otherwise, standard SGD optimizer with momentum will be used
             batch_size: size of the batches in the training loader
             valid_batch_size: size of the batches in the valid loader (None = one single batch)
             max_epochs: Maximum number of epochs for training
             patience: Number of consecutive epochs without improvement
             alpha: L1 penalty coefficient
             beta: L2 penalty coefficient
-            sam: true to use Sharpness-Aware Minimization (SAM)
             verbose: True if we want to show the training progress
         """
         # Creation of model
@@ -155,11 +157,11 @@ class PetaleHANR(TorchRegressorWrapper):
                              eval_metric=eval_metric,
                              alpha=alpha,
                              beta=beta,
-                             sam=sam,
                              verbose=verbose)
 
         super().__init__(model=model,
                          train_params={'lr': lr,
+                                       'rho': rho,
                                        'batch_size': batch_size,
                                        'valid_batch_size': valid_batch_size,
                                        'patience': patience,
@@ -185,7 +187,9 @@ class HanHP:
     HIDDEN_SIZE = NumericalIntHP("hidden_size")
     LR = NumericalContinuousHP("lr")
     NUM_HEADS = NumericalIntHP("num_heads")
+    RHO = NumericalContinuousHP("rho")
     WEIGHT = NumericalContinuousHP("weight")
 
     def __iter__(self):
-        return iter([self.ALPHA, self.BATCH_SIZE, self.BETA, self.HIDDEN_SIZE, self.LR, self.NUM_HEADS])
+        return iter([self.ALPHA, self.BATCH_SIZE, self.BETA,
+                     self.HIDDEN_SIZE, self.LR, self.NUM_HEADS, self.RHO])

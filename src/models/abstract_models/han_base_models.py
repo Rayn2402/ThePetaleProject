@@ -18,7 +18,7 @@ from src.models.blocks.gnn_blocks import HANLayer
 from src.training.early_stopping import EarlyStopper
 from src.utils.score_metrics import BinaryClassificationMetric, BinaryCrossEntropy, Metric, \
     RegressionMetric, RootMeanSquaredError
-from torch import cat, no_grad, ones, sigmoid, tensor
+from torch import cat, Module, no_grad, ones, sigmoid, tensor
 from torch.nn import BCEWithLogitsLoss, Linear, MSELoss
 from torch.utils.data import DataLoader
 from typing import Callable, List, Optional, Tuple
@@ -233,6 +233,14 @@ class HAN(TorchCustomModel):
 
         # We pass the final embedding through a linear layer
         return self._linear_layer(h).squeeze()
+
+    @staticmethod
+    def _disable_module_running_stats(module: Module) -> None:
+        pass
+
+    @staticmethod
+    def _enable_module_running_stats(module: Module) -> None:
+        pass
 
 
 class HANBinaryClassifier(HAN):

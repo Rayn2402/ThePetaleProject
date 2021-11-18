@@ -18,8 +18,8 @@ from src.models.blocks.mlp_blocks import BaseBlock
 from src.data.processing.datasets import MaskType, PetaleDataset
 from src.training.early_stopping import EarlyStopper
 from src.utils.score_metrics import BinaryCrossEntropy, Metric, RootMeanSquaredError
-from torch import cat, no_grad, tensor, ones, sigmoid
-from torch.nn import BCEWithLogitsLoss, Linear, MSELoss, Sequential
+from torch import cat, Module, no_grad, tensor, ones, sigmoid
+from torch.nn import BatchNorm1d, BCEWithLogitsLoss, Linear, MSELoss, Sequential
 from torch.utils.data import DataLoader
 from typing import Callable, List, Optional
 
@@ -207,6 +207,17 @@ class MLP(TorchCustomModel):
         x = cat(new_x, 1)
 
         return self._layers(x).squeeze()
+
+    @staticmethod
+    def _disable_module_running_stats(module: Module) -> None:
+        if isinstance(module, BatchNorm1d):
+            module.backup_momentum = module.momentum
+            module.momentum = 0
+
+    @staticmethod
+    def _enable_module_running_stats(module: Module) -> None:
+        if isinstance(module, BatchNorm1d) and hasattr(module, "backup_momentum"):
+            module.momentum = module.backup_momentum
 
 
 class MLPBinaryClassifier(MLP):

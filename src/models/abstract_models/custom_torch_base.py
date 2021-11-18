@@ -15,12 +15,13 @@ from abc import ABC, abstractmethod
 from src.data.processing.datasets import MaskType, PetaleDataset, PetaleStaticGNNDataset
 from src.models.blocks.mlp_blocks import EntityEmbeddingBlock
 from src.training.early_stopping import EarlyStopper
+from src.training.sam import SAM
 from src.utils.score_metrics import Metric
 from src.utils.visualization import visualize_epoch_progression
 from torch import ones, sum, tensor, zeros_like
 from torch.nn import Module
 from torch.nn.functional import l1_loss, mse_loss
-from torch.optim import Adam
+from torch.optim import SGD
 from torch.utils.data import DataLoader, SubsetRandomSampler
 from typing import Callable, List, Optional, Tuple, Union
 
@@ -50,7 +51,11 @@ class TorchCustomModel(Module, ABC):
             eval_metric: evaluation metric of our model (Ex. accuracy, mean absolute error)
             alpha: L1 penalty coefficient
             beta: L2 penalty coefficient
-            verbose: True if we want to print the training progress
+            num_cont_col: number of numerical continuous columns in the dataset
+            cat_idx: idx of categorical columns in the dataset
+            cat_sizes: list of integer representing the size of each categorical column
+            cat_emb_sizes: list of integer representing the size of each categorical embedding
+            verbose: true if we want to print the training progress
         """
         if num_cont_col is None and cat_sizes is None:
             raise ValueError("There must be continuous columns or categorical columns")
@@ -58,7 +63,7 @@ class TorchCustomModel(Module, ABC):
         # Call of parent's constructor
         Module.__init__(self)
 
-        # Settings of private attributes
+        # Settings of general protected attributes
         self._alpha = alpha
         self._beta = beta
         self._criterion = criterion
@@ -70,10 +75,13 @@ class TorchCustomModel(Module, ABC):
         self._optimizer = None
         self._verbose = verbose
 
-        # We set the protected attributes related to entity embedding
+        # Settings of protected attributes related to entity embedding
         self._cat_idx = cat_idx if cat_idx is not None else []
         self._cont_idx = [i for i in range(len(self._cat_idx) + num_cont_col) if i not in self._cat_idx]
         self._embedding_block = None
+
+        # Initialization of a protected method
+        self._update_weights = None
 
         # We set the embedding layers
         if len(cat_idx) != 0 and cat_sizes is not None:
@@ -125,6 +133,77 @@ class TorchCustomModel(Module, ABC):
 
         return early_stopper, valid_data
 
+    def _disable_running_stats(self) -> None:
+        """
+        Disables batch norm momentum when executing SAM optimization step
+
+        Returns: None
+        """
+        self.apply(self._disable_module_running_stats)
+
+    def _enable_running_stats(self) -> None:
+        """
+        Restores batch norm momentum when executing SAM optimization step
+
+        Returns: None
+        """
+        self.apply(self._enable_module_running_stats)
+
+    def _sam_weight_update(self, sample_weights: tensor, x: tensor, y: tensor) -> Tuple[tensor, float]:
+        """
+        Executes a weights update using Sharpness-Aware Minimization (SAM) optimizer
+
+        Note from https://github.com/davda54/sam :
+            The running statistics are computed in both forward passes, but they should
+            be computed only for the first one. A possible solution is to set BN momentum
+            to zero to bypass the running statistics during the second pass.
+
+        Args:
+            sample_weights: weights of each sample associated to a batch
+            x: (N', D) inputs associated to a batch
+            y: (N',) ground truth associated to a batch
+
+        Returns: (N',) tensor with predictions, training loss
+        """
+        # We compute the predictions
+        pred = self(x)
+
+        # First forward-backward pass
+        loss = self.loss(sample_weights, pred, y)
+        loss.backward()
+        self._optimizer.first_step()
+
+        # Second forward-backward pass
+        self._disable_running_stats()
+        self.loss(sample_weights, self(x), y).backward()
+        self._optimizer.second_step()
+
+        # We enable running stats again
+        self._enable_running_stats()
+
+        return pred, loss.item()
+
+    def _basic_weight_update(self, sample_weights: tensor, x: tensor, y: tensor) -> Tuple[tensor, float]:
+        """
+        Executes a weights update without using Sharpness-Aware Minimization (SAM)
+
+        Args:
+            sample_weights: weights of each sample associated to a batch
+            x: (N', D) inputs associated to a batch
+            y: (N',) ground truth associated to a batch
+
+        Returns: (N',) tensor with predictions, training loss
+        """
+        # We compute the predictions
+        pred = self(x)
+
+        # We execute a single forward-backward pass
+        loss = self.loss(sample_weights, pred, y)
+        loss.backward()
+        self._optimizer.step()
+
+        return pred, loss.item()
+
     def _generate_progress_func(self, max_epochs: int) -> Callable:
         """
         Builds a function that updates the training progress in the terminal
@@ -147,6 +226,7 @@ class TorchCustomModel(Module, ABC):
     def fit(self,
             dataset: PetaleDataset,
             lr: float,
+            rho: float = 0,
             batch_size: int = 55,
             valid_batch_size: Optional[int] = None,
             max_epochs: int = 200,
@@ -158,6 +238,8 @@ class TorchCustomModel(Module, ABC):
         Args:
             dataset: PetaleDataset used to feed the dataloaders
             lr: learning rate
+            rho: if >=0 will be used as neighborhood size in Sharpness-Aware Minimization optimizer,
+                 otherwise, standard SGD optimizer with momentum will be used
             batch_size: size of the batches in the training loader
             valid_batch_size: size of the batches in the valid loader (None = one single batch)
             max_epochs: Maximum number of epochs for training
@@ -179,7 +261,12 @@ class TorchCustomModel(Module, ABC):
         update_progress = self._generate_progress_func(max_epochs)
 
         # We set the optimizer
-        self._optimizer = Adam(self.parameters(), lr=lr)
+        if rho >= 0:
+            self._update_weights = self._sam_weight_update
+            self._optimizer = SAM(self.parameters(), SGD, rho=rho, lr=lr, momentum=0.9)
+        else:
+            self._update_weights = self._basic_weight_update
+            self._optimizer = SGD(self.parameters(), lr=lr, momentum=0.9)
 
         # We execute the epochs
         for epoch in range(max_epochs):
@@ -294,6 +381,16 @@ class TorchCustomModel(Module, ABC):
             sample_weights = ones(dataset_size) / dataset_size
 
         return sample_weights
+
+    @staticmethod
+    @abstractmethod
+    def _disable_module_running_stats(module: Module) -> None:
+        raise NotImplementedError
+
+    @staticmethod
+    @abstractmethod
+    def _enable_module_running_stats(module: Module) -> None:
+        raise NotImplementedError
 
     @abstractmethod
     def _execute_train_step(self,

@@ -115,20 +115,13 @@ class MLP(TorchCustomModel):
             # We clear the gradients
             self._optimizer.zero_grad()
 
-            # We perform the forward pass
-            output = self(x)
+            # We perform the weight update
+            pred, loss = self._update_weights(sample_weights[idx], x, y)
 
-            # We calculate the loss and the score
-            loss = self.loss(sample_weights[idx], output, y)
-            score = self._eval_metric(output, y)
-            epoch_loss += loss.item()
+            # We update the metrics history
+            score = self._eval_metric(pred, y)
+            epoch_loss += loss
             epoch_score += score
-
-            # We perform the backward pass
-            loss.backward()
-
-            # We perform a single optimization step (parameter update)
-            self._optimizer.step()
 
         # We save mean epoch loss and mean epoch score
         nb_batch = len(train_data)
@@ -165,16 +158,14 @@ class MLP(TorchCustomModel):
                 # We extract the data
                 x, y, idx = item
 
-                # We perform the forward pass: compute predicted outputs by passing inputs to the model
+                # We perform the forward pass
                 output = self(x)
 
                 # We calculate the loss and the score
                 batch_size = len(idx)
                 sample_weights = ones(batch_size)/batch_size
-                loss = self.loss(sample_weights, output, y)  # Sample weights are equal for validation (1/N)
-                score = self._eval_metric(output, y)
-                epoch_loss += loss.item()
-                epoch_score += score
+                epoch_loss += self.loss(sample_weights, output, y).item()  # Sample weights are equal for val (1/N)
+                epoch_score += self._eval_metric(output, y)
 
         # We save mean epoch loss and mean epoch score
         nb_batch = len(valid_loader)

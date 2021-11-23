@@ -1,7 +1,8 @@
 # ThePetaleProject
 ## Project Tree
 ```bash
-├── create_experiments_recap.py
+├── create_experiments_recap.py      <- script that retrieves all models results from an experiment and creates
+│                                       an html file to compare them
 ├── generale_learning_tables.py      <- script that creates a learning set and an holdout set
 │                                       from a RAW learning table
 ├── generate_descriptive_analyses.py <- script that generates multiple statistics from a table 

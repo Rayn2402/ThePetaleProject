@@ -24,6 +24,8 @@ def argument_parser():
     parser.add_argument('-p', '--path', type=str,
                         help='Path of the experiment folder')
 
+    parser.add_argument('-fn', '--filename', type=str, help='Name of the html file containing the recap')
+
     arguments = parser.parse_args()
 
     # Print arguments
@@ -35,17 +37,21 @@ def argument_parser():
     return arguments
 
 
-def create_experiments_recap(path):
-
+def create_experiments_recap(path: str,
+                             filename: str) -> None:
     """
-    Function that will create an HTML page containing all the information about the different splits
-     of our experiments
+    Creates an HTML page containing all the information about the different splits
+    of the experiments
 
-    :param path: The path to the recordings Folder, the folder that contains all the data about our experiments
+    Args:
+        path: path to the folders that contains all the data about the experiments
+        filename: name of the html in which we will store the recap
 
+    Returns: None
     """
 
-    assert os.path.exists(path), "Recordings Folder not found"
+    if not os.path.exists(path):
+        raise ValueError("Recordings Folder not found")
 
     hyperparams_importance_file = "hyperparameters_importance.png"
     parallel_coordinate_file = "parallel_coordinate.png"
@@ -250,7 +256,7 @@ x   }
         split_board = f"""<div class="split center {"split-active" if i==0 else None}">General</div>"""
 
         # We open the json file containing the general information of an evaluation
-        with open(os.path.join(path, evaluation, "general.json"), "r") as read_file:
+        with open(os.path.join(path, evaluation, "summary.json"), "r") as read_file:
             general_data = json.load(read_file)
 
         main_metrics = ""
@@ -449,7 +455,7 @@ x   }
     """
     
     # We save the html file
-    file = open("experiments_recap.html", "w")
+    file = open(f"{filename}.html", "w")
     file.write(body)
     file.close()
 
@@ -458,4 +464,4 @@ if __name__ == '__main__':
 
     # Arguments parsing
     args = argument_parser()
-    create_experiments_recap(path=args.path)
+    create_experiments_recap(path=args.path, filename=args.filename)

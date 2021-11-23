@@ -10,7 +10,7 @@ Description: This file is used to define the MLP model with entity embeddings
              and PetaleBinaryClassifier classes. However, two wrapper classes for torch models
              are provided to enable the use of these mlp models with hyperparameter tuning functions.
 
-Date of last modification : 2021/11/09
+Date of last modification : 2021/11/18
 """
 
 from src.models.abstract_models.custom_torch_base import TorchCustomModel
@@ -19,7 +19,7 @@ from src.data.processing.datasets import MaskType, PetaleDataset
 from src.training.early_stopping import EarlyStopper
 from src.utils.score_metrics import BinaryCrossEntropy, Metric, RootMeanSquaredError
 from torch import cat, no_grad, tensor, ones, sigmoid
-from torch.nn import BCEWithLogitsLoss, Linear, MSELoss, Sequential
+from torch.nn import BatchNorm1d, BCEWithLogitsLoss, Module, Linear, MSELoss, Sequential
 from torch.utils.data import DataLoader
 from typing import Callable, List, Optional
 
@@ -115,20 +115,13 @@ class MLP(TorchCustomModel):
             # We clear the gradients
             self._optimizer.zero_grad()
 
-            # We perform the forward pass
-            output = self(x)
+            # We perform the weight update
+            pred, loss = self._update_weights(sample_weights[idx], [x], y)
 
-            # We calculate the loss and the score
-            loss = self.loss(sample_weights[idx], output, y)
-            score = self._eval_metric(output, y)
-            epoch_loss += loss.item()
+            # We update the metrics history
+            score = self._eval_metric(pred, y)
+            epoch_loss += loss
             epoch_score += score
-
-            # We perform the backward pass
-            loss.backward()
-
-            # We perform a single optimization step (parameter update)
-            self._optimizer.step()
 
         # We save mean epoch loss and mean epoch score
         nb_batch = len(train_data)
@@ -165,16 +158,14 @@ class MLP(TorchCustomModel):
                 # We extract the data
                 x, y, idx = item
 
-                # We perform the forward pass: compute predicted outputs by passing inputs to the model
+                # We perform the forward pass
                 output = self(x)
 
                 # We calculate the loss and the score
                 batch_size = len(idx)
                 sample_weights = ones(batch_size)/batch_size
-                loss = self.loss(sample_weights, output, y)  # Sample weights are equal for validation (1/N)
-                score = self._eval_metric(output, y)
-                epoch_loss += loss.item()
-                epoch_score += score
+                epoch_loss += self.loss(sample_weights, output, y).item()  # Sample weights are equal for val (1/N)
+                epoch_score += self._eval_metric(output, y)
 
         # We save mean epoch loss and mean epoch score
         nb_batch = len(valid_loader)
@@ -216,6 +207,17 @@ class MLP(TorchCustomModel):
         x = cat(new_x, 1)
 
         return self._layers(x).squeeze()
+
+    @staticmethod
+    def _disable_module_running_stats(module: Module) -> None:
+        if isinstance(module, BatchNorm1d):
+            module.backup_momentum = module.momentum
+            module.momentum = 0
+
+    @staticmethod
+    def _enable_module_running_stats(module: Module) -> None:
+        if isinstance(module, BatchNorm1d) and hasattr(module, "backup_momentum"):
+            module.momentum = module.backup_momentum
 
 
 class MLPBinaryClassifier(MLP):

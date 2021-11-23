@@ -7,7 +7,7 @@ Description: Defines all components related to Heterogeneous Graph Attention Net
              The code was mainly taken from this DGL code example :
              https://github.com/dmlc/dgl/tree/master/examples/pytorch/han
 
-Date of last modification: 2021/10/26
+Date of last modification: 2021/11/18
 
 """
 
@@ -19,7 +19,7 @@ from src.training.early_stopping import EarlyStopper
 from src.utils.score_metrics import BinaryClassificationMetric, BinaryCrossEntropy, Metric, \
     RegressionMetric, RootMeanSquaredError
 from torch import cat, no_grad, ones, sigmoid, tensor
-from torch.nn import BCEWithLogitsLoss, Linear, MSELoss
+from torch.nn import BCEWithLogitsLoss, Module, Linear, MSELoss
 from torch.utils.data import DataLoader
 from typing import Callable, List, Optional, Tuple
 
@@ -122,26 +122,19 @@ class HAN(TorchCustomModel):
             # We extract the data
             _, y, idx = item
 
-            # We map original idx to their position in the train mask
+            # We map the original idx to their position in the train mask
             pos_idx = [train_idx_map[i.item()] for i in idx]
 
             # We clear the gradients
             self._optimizer.zero_grad()
 
-            # We perform the forward pass
-            output = self(train_subgraph, x)
+            # We perform the weight update
+            pred, loss = self._update_weights(sample_weights[idx], [train_subgraph, x], y, pos_idx)
 
-            # We calculate the loss and the score
-            loss = self.loss(sample_weights[idx], output[pos_idx], y)
-            score = self._eval_metric(output[pos_idx], y)
-            epoch_loss += loss.item()
+            # We update the metrics history
+            score = self._eval_metric(pred, y)
+            epoch_loss += loss
             epoch_score += score
-
-            # We perform the backward pass
-            loss.backward()
-
-            # We perform a single optimization step (parameter update)
-            self._optimizer.step()
 
         # We save mean epoch loss and mean epoch score
         nb_batch = len(train_data)
@@ -192,15 +185,13 @@ class HAN(TorchCustomModel):
                 pos_idx = [valid_idx_map[i.item()] for i in idx]
 
                 # We perform the forward pass: compute predicted outputs by passing inputs to the model
-                output = self(valid_subgraph, x)
+                pred = self(valid_subgraph, x)
 
                 # We calculate the loss and the score
                 batch_size = len(idx)
                 sample_weights = ones(batch_size) / batch_size  # Sample weights are equal for validation (1/N)
-                loss = self.loss(sample_weights, output[pos_idx], y)
-                score = self._eval_metric(output[pos_idx], y)
-                epoch_loss += loss.item()
-                epoch_score += score
+                epoch_loss += self.loss(sample_weights, pred[pos_idx], y).item()
+                epoch_score += self._eval_metric(pred[pos_idx], y)
 
         # We save mean epoch loss and mean epoch score
         nb_batch = len(valid_loader)
@@ -242,6 +233,14 @@ class HAN(TorchCustomModel):
 
         # We pass the final embedding through a linear layer
         return self._linear_layer(h).squeeze()
+
+    @staticmethod
+    def _disable_module_running_stats(module: Module) -> None:
+        pass
+
+    @staticmethod
+    def _enable_module_running_stats(module: Module) -> None:
+        pass
 
 
 class HANBinaryClassifier(HAN):

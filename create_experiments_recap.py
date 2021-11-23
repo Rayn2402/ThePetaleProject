@@ -6,11 +6,14 @@ Author: Nicolas Raymond
 Description: File responsible of creating the experiment recap: an html page which will contain all the information
              about all the experiments
 
-Date of last modification: 2021/11/15
+Date of last modification: 2021/11/23
 """
 import argparse
 import os
 import json
+
+from src.training.tuning import Tuner
+from src.utils.visualization import EPOCHS_PROGRESSION_FIG
 
 
 def argument_parser():
@@ -52,11 +55,6 @@ def create_experiments_recap(path: str,
 
     if not os.path.exists(path):
         raise ValueError("Recordings Folder not found")
-
-    hyperparams_importance_file = "hyperparameters_importance.png"
-    parallel_coordinate_file = "parallel_coordinate.png"
-    optimization_history_file = "optimization_history.png"
-    loss_over_epochs_file = "epochs_progression.png"
 
     # We define the style of our webpage with css
     style = """<style>
@@ -241,7 +239,6 @@ x   }
     evaluations = os.listdir(os.path.join(path))
     evaluations = [folder for folder in evaluations if os.path.isdir(os.path.join(path,folder))]
     evaluations.sort()
-    body = ""
     board = ""
     evaluation_sections = ""
 
@@ -368,26 +365,26 @@ x   }
             # We add the hyperparameters importance section
             hyperparameters_importance_section = f"""
                         <div class="row center bottom-space">
-                            <img width="1200" src="{os.path.join(path, evaluation, split, hyperparams_importance_file)}" 
+                            <img width="1200" src="{os.path.join(path, evaluation, split, Tuner.HPS_IMPORTANCE_FIG)}" 
                             >
                         </div>
-                    """ if os.path.exists(os.path.join(path, evaluation, split, hyperparams_importance_file)) else ""
+                    """ if os.path.exists(os.path.join(path, evaluation, split, Tuner.HPS_IMPORTANCE_FIG)) else ""
 
             # We add the parallel  coordinate graph
             parallel_coordinate_section = f"""
                         <div class="row center bottom-space">
-                            <img src="{os.path.join(path, evaluation, split, parallel_coordinate_file)}" 
+                            <img src="{os.path.join(path, evaluation, split, Tuner.PARALLEL_COORD_FIG)}" 
                             >
                         </div>
-                    """ if os.path.exists(os.path.join(path, evaluation, split, parallel_coordinate_file)) else ""
+                    """ if os.path.exists(os.path.join(path, evaluation, split, Tuner.PARALLEL_COORD_FIG)) else ""
 
             # We add the optimization history graph
             optimization_history_section = f"""
                         <div class="row center bottom-space">
-                            <img src="{os.path.join(path, evaluation, split, optimization_history_file)}" 
+                            <img src="{os.path.join(path, evaluation, split, Tuner.OPTIMIZATION_HIST_FIG)}" 
                             ></img>
                         </div>
-                """ if os.path.exists(os.path.join(path, evaluation, split, optimization_history_file)) else ""
+                """ if os.path.exists(os.path.join(path, evaluation, split, Tuner.OPTIMIZATION_HIST_FIG)) else ""
 
             # We add the predictions section
             predictions_section = f"""
@@ -399,12 +396,11 @@ x   }
             # We add the section visualizing the progression of the loss over the epochs
             loss_over_epochs_section = f"""
                                     <div class="row center bottom-space">
-                                        <img width="800" src="{os.path.join(path, evaluation, split, loss_over_epochs_file)}">
+                                        <img width="800" src="{os.path.join(path, evaluation,
+                                                                            split, EPOCHS_PROGRESSION_FIG)}">
                                     </div>
                         """ if os.path.exists(
-                os.path.join(path, evaluation, split, loss_over_epochs_file)) else ""
-
-
+                os.path.join(path, evaluation, split, EPOCHS_PROGRESSION_FIG)) else ""
 
             # We arrange the different sections
             section = f"""<div class="main hidden" id="{evaluation}{split}">

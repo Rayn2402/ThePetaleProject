@@ -23,7 +23,7 @@ from optuna.visualization import plot_parallel_coordinate, plot_param_importance
 from os import makedirs
 from os.path import join
 from settings.paths import Paths
-from src.data.processing.datasets import PetaleDataset
+from src.data.processing.datasets import MaskType, PetaleDataset
 from src.models.abstract_models.base_models import PetaleBinaryClassifier
 from src.utils.score_metrics import Metric
 from src.utils.hyperparameters import CategoricalHP, Distribution, HP, NumericalContinuousHP, NumericalIntHP, Range
@@ -200,7 +200,7 @@ class Objective:
             Returns: metric score
             """
             # We extract masks
-            train_idx, valid_idx, test_idx = masks['train'], masks['valid'], masks['test']
+            train_idx, valid_idx, test_idx = masks[MaskType.TRAIN], masks[MaskType.VALID], masks[MaskType.TEST]
 
             # We create a copy of the current dataset and update its masks
             dts = deepcopy(self._dataset)
@@ -247,7 +247,12 @@ class Tuner:
     Object in charge of hyperparameter tuning
     """
     # HYPERPARAMETERS IMPORTANCE SEED
-    HP_IMPORTANCE_SEED = 2021
+    HP_IMPORTANCE_SEED: int = 2021
+
+    # FIGURES NAME
+    HPS_IMPORTANCE_FIG: str = "hp_importance.png"
+    PARALLEL_COORD_FIG: str = "parallel_coordinates.png"
+    OPTIMIZATION_HIST_FIG: str = "optimization_history.png"
 
     def __init__(self,
                  n_trials: int,
@@ -311,7 +316,7 @@ class Tuner:
         fig = plot_param_importances(self._study, evaluator=FanovaImportanceEvaluator(seed=Tuner.HP_IMPORTANCE_SEED))
 
         # We save the graph
-        fig.write_image(join(self.path, "hp_importance.png"))
+        fig.write_image(join(self.path, Tuner.HPS_IMPORTANCE_FIG))
 
     def _plot_parallel_coordinates_graph(self) -> None:
         """
@@ -322,7 +327,7 @@ class Tuner:
         fig = plot_parallel_coordinate(self._study)
 
         # We save the graph
-        fig.write_image(join(self.path, "parallel_coordinates.png"))
+        fig.write_image(join(self.path, Tuner.PARALLEL_COORD_FIG))
 
     def _plot_optimization_history_graph(self) -> None:
         """
@@ -333,7 +338,7 @@ class Tuner:
         fig = plot_optimization_history(self._study)
 
         # We save the graph
-        fig.write_image(join(self.path, "optimization_history.png"))
+        fig.write_image(join(self.path, Tuner.OPTIMIZATION_HIST_FIG))
 
     def get_best_hps(self) -> Dict[str, Any]:
         """

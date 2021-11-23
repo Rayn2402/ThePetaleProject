@@ -22,7 +22,7 @@ from src.utils.visualization import visualize_epoch_progression
 from torch import ones, sum, tensor, zeros_like
 from torch.nn import Module
 from torch.nn.functional import l1_loss, mse_loss
-from torch.optim import SGD
+from torch.optim import Adam, SGD
 from torch.utils.data import DataLoader, SubsetRandomSampler
 from typing import Callable, List, Optional, Tuple, Union
 
@@ -153,7 +153,7 @@ class TorchCustomModel(Module, ABC):
     def _sam_weight_update(self, sample_weights: tensor,
                            x: List[Union[DGLHeteroGraph, tensor]],
                            y: tensor,
-                           pos_idx: Optional[List[int]]) -> Tuple[tensor, float]:
+                           pos_idx: Optional[List[int]] = None) -> Tuple[tensor, float]:
         """
         Executes a weights update using Sharpness-Aware Minimization (SAM) optimizer
 
@@ -195,7 +195,7 @@ class TorchCustomModel(Module, ABC):
     def _basic_weight_update(self, sample_weights: tensor,
                              x: List[Union[DGLHeteroGraph, tensor]],
                              y: tensor,
-                             pos_idx: Optional[List[int]]) -> Tuple[tensor, float]:
+                             pos_idx: Optional[List[int]] = None) -> Tuple[tensor, float]:
         """
         Executes a weights update without using Sharpness-Aware Minimization (SAM)
 
@@ -276,12 +276,12 @@ class TorchCustomModel(Module, ABC):
         update_progress = self._generate_progress_func(max_epochs)
 
         # We set the optimizer
-        if rho >= 0:
+        if rho > 0:
             self._update_weights = self._sam_weight_update
-            self._optimizer = SAM(self.parameters(), SGD, rho=rho, lr=lr, momentum=0.9)
+            self._optimizer = SAM(self.parameters(), Adam, rho=rho, lr=lr)
         else:
             self._update_weights = self._basic_weight_update
-            self._optimizer = SGD(self.parameters(), lr=lr, momentum=0.9)
+            self._optimizer = Adam(self.parameters(), lr=lr)
 
         # We execute the epochs
         for epoch in range(max_epochs):
@@ -373,7 +373,8 @@ class TorchCustomModel(Module, ABC):
         return train_data
 
     @staticmethod
-    def _validate_sample_weights(dataset: PetaleDataset, sample_weights: Optional[tensor]) -> tensor:
+    def _validate_sample_weights(dataset: PetaleDataset,
+                                 sample_weights: Optional[tensor]) -> tensor:
         """
         Validates the provided sample weights and return them.
         If None are provided, each sample as the same weights of 1/n in the training loss,

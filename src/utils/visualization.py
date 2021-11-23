@@ -13,8 +13,12 @@ from numpy import array
 from numpy import sum as npsum
 from os.path import join
 from sklearn.manifold import TSNE
+from src.data.processing.datasets import MaskType
 from torch import tensor
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional
+
+# Epochs progression figure name
+EPOCHS_PROGRESSION_FIG: str = "epochs_progression.png"
 
 
 def format_to_percentage(pct: float, values: List[float]) -> str:
@@ -127,8 +131,8 @@ def visualize_epoch_progression(train_history: List[tensor],
     if len(train_history) == 1:
 
         x = range(len(train_history[0]))
-        plt.plot(x, train_history[0], label=f'train')
-        plt.plot(x, valid_history[0], label=f'valid')
+        plt.plot(x, train_history[0], label=MaskType.TRAIN)
+        plt.plot(x, valid_history[0], label=MaskType.VALID)
 
         plt.legend()
         plt.xlabel('Epochs')
@@ -140,14 +144,14 @@ def visualize_epoch_progression(train_history: List[tensor],
 
             nb_epochs = len(train_history[i])
             plt.subplot(1, 2, i+1)
-            plt.plot(range(nb_epochs), train_history[i], label=f'train')
+            plt.plot(range(nb_epochs), train_history[i], label=MaskType.TRAIN)
             if len(valid_history[i]) != 0:
-                plt.plot(range(nb_epochs), valid_history[i], label=f'valid')
+                plt.plot(range(nb_epochs), valid_history[i], label=MaskType.VALID)
 
             plt.legend()
             plt.xlabel('Epochs')
             plt.ylabel(progression_type[i])
 
     plt.tight_layout()
-    plt.savefig(join(path, "epochs_progression.png"))
+    plt.savefig(join(path, EPOCHS_PROGRESSION_FIG))
     plt.close()

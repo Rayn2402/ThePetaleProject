@@ -18,8 +18,8 @@ from src.models.blocks.mlp_blocks import BaseBlock
 from src.data.processing.datasets import MaskType, PetaleDataset
 from src.training.early_stopping import EarlyStopper
 from src.utils.score_metrics import BinaryCrossEntropy, Metric, RootMeanSquaredError
-from torch import cat, Module, no_grad, tensor, ones, sigmoid
-from torch.nn import BatchNorm1d, BCEWithLogitsLoss, Linear, MSELoss, Sequential
+from torch import cat, no_grad, tensor, ones, sigmoid
+from torch.nn import BatchNorm1d, BCEWithLogitsLoss, Module, Linear, MSELoss, Sequential
 from torch.utils.data import DataLoader
 from typing import Callable, List, Optional
 

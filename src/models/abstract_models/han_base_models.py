@@ -18,8 +18,8 @@ from src.models.blocks.gnn_blocks import HANLayer
 from src.training.early_stopping import EarlyStopper
 from src.utils.score_metrics import BinaryClassificationMetric, BinaryCrossEntropy, Metric, \
     RegressionMetric, RootMeanSquaredError
-from torch import cat, Module, no_grad, ones, sigmoid, tensor
-from torch.nn import BCEWithLogitsLoss, Linear, MSELoss
+from torch import cat, no_grad, ones, sigmoid, tensor
+from torch.nn import BCEWithLogitsLoss, Module, Linear, MSELoss
 from torch.utils.data import DataLoader
 from typing import Callable, List, Optional, Tuple
 

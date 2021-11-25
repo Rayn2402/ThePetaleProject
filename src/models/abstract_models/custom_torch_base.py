@@ -20,9 +20,9 @@ from src.training.sam import SAM
 from src.utils.score_metrics import Metric
 from src.utils.visualization import visualize_epoch_progression
 from torch import ones, sum, tensor, zeros_like
-from torch.nn import Module
+from torch.nn import BatchNorm1d, Module
 from torch.nn.functional import l1_loss, mse_loss
-from torch.optim import Adam, SGD
+from torch.optim import Adam
 from torch.utils.data import DataLoader, SubsetRandomSampler
 from typing import Callable, List, Optional, Tuple, Union
 
@@ -94,7 +94,7 @@ class TorchCustomModel(Module, ABC):
             self._embedding_block = EntityEmbeddingBlock(cat_sizes, cat_emb_sizes, cat_idx)
 
             # We sum the length of all embeddings
-            self._input_size += len(self._embedding_block)
+            self._input_size += self._embedding_block.output_size
 
     def _create_validation_objects(self,
                                    dataset: PetaleDataset,
@@ -399,14 +399,15 @@ class TorchCustomModel(Module, ABC):
         return sample_weights
 
     @staticmethod
-    @abstractmethod
     def _disable_module_running_stats(module: Module) -> None:
-        raise NotImplementedError
+        if isinstance(module, BatchNorm1d):
+            module.backup_momentum = module.momentum
+            module.momentum = 0
 
     @staticmethod
-    @abstractmethod
     def _enable_module_running_stats(module: Module) -> None:
-        raise NotImplementedError
+        if isinstance(module, BatchNorm1d) and hasattr(module, "backup_momentum"):
+            module.momentum = module.backup_momentum
 
     @abstractmethod
     def _execute_train_step(self,

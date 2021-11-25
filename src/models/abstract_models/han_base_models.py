@@ -234,14 +234,6 @@ class HAN(TorchCustomModel):
         # We pass the final embedding through a linear layer
         return self._linear_layer(h).squeeze()
 
-    @staticmethod
-    def _disable_module_running_stats(module: Module) -> None:
-        pass
-
-    @staticmethod
-    def _enable_module_running_stats(module: Module) -> None:
-        pass
-
 
 class HANBinaryClassifier(HAN):
     """

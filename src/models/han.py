@@ -5,13 +5,14 @@ Authors: Nicolas Raymond
 
 Description: This file is used to define the regression and classification wrappers for HAN models
 
-Date of last modification : 2021/11/11
+Date of last modification : 2021/11/25
 """
 
 from src.models.abstract_models.han_base_models import HANBinaryClassifier, HANRegressor
 from src.models.wrappers.torch_wrappers import TorchBinaryClassifierWrapper, TorchRegressorWrapper
 from src.utils.hyperparameters import HP, NumericalContinuousHP, NumericalIntHP
 from src.utils.score_metrics import BinaryClassificationMetric
+from torch.nn import Module
 from typing import List, Optional
 
 
@@ -37,6 +38,7 @@ class PetaleBinaryHANC(TorchBinaryClassifierWrapper):
                  eval_metric: Optional[BinaryClassificationMetric] = None,
                  alpha: float = 0,
                  beta: float = 0,
+                 pre_encoder: Optional[Module] = None,
                  classification_threshold: float = 0.5,
                  weight:  Optional[float] = None,
                  verbose: bool = False):
@@ -61,6 +63,7 @@ class PetaleBinaryHANC(TorchBinaryClassifierWrapper):
             patience: number of consecutive epochs without improvement
             alpha: L1 penalty coefficient
             beta: L2 penalty coefficient
+            pre_encoder: torch module used to encode input before the HANLayer (can be pretrained)
             classification_threshold: threshold used to classify a sample in class 1
             weight: weight attributed to class 1
             verbose: True if we want to show the training progress
@@ -77,6 +80,7 @@ class PetaleBinaryHANC(TorchBinaryClassifierWrapper):
                                     eval_metric=eval_metric,
                                     alpha=alpha,
                                     beta=beta,
+                                    pre_encoder=pre_encoder,
                                     verbose=verbose)
 
         super().__init__(model=model,
@@ -121,6 +125,7 @@ class PetaleHANR(TorchRegressorWrapper):
                  eval_metric: Optional[BinaryClassificationMetric] = None,
                  alpha: float = 0,
                  beta: float = 0,
+                 pre_encoder: Optional[Module] = None,
                  verbose: bool = False):
         """
         Creates the regression model and sets protected attributes using parent's constructor
@@ -143,6 +148,7 @@ class PetaleHANR(TorchRegressorWrapper):
             patience: Number of consecutive epochs without improvement
             alpha: L1 penalty coefficient
             beta: L2 penalty coefficient
+            pre_encoder: torch module used to encode input before the HANLayer (can be pretrained)
             verbose: True if we want to show the training progress
         """
         # Creation of model
@@ -157,6 +163,7 @@ class PetaleHANR(TorchRegressorWrapper):
                              eval_metric=eval_metric,
                              alpha=alpha,
                              beta=beta,
+                             pre_encoder=pre_encoder,
                              verbose=verbose)
 
         super().__init__(model=model,

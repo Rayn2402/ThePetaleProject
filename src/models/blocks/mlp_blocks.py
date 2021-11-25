@@ -33,7 +33,7 @@ class EntityEmbeddingBlock(nn.Module):
         super().__init__()
 
         # We save the length of the output
-        self.__output_length = sum(cat_emb_sizes)
+        self.__output_size = sum(cat_emb_sizes)
 
         # We save the idx of categorical columns
         self.__cat_idx = cat_idx
@@ -42,11 +42,15 @@ class EntityEmbeddingBlock(nn.Module):
         self.__embedding_layers = nn.ModuleList([nn.Embedding(cat_size, emb_size) for
                                                  cat_size, emb_size in zip(cat_sizes, cat_emb_sizes)])
 
+    @property
+    def output_size(self):
+        return self.__output_size
+
     def __len__(self):
         """
         Returns the length of all embeddings concatenated
         """
-        return self.__output_length
+        return self.output_size
 
     def forward(self, x: tensor) -> tensor:
         """
@@ -86,6 +90,9 @@ class BaseBlock(nn.Module):
         # Call of parent's constructor
         super().__init__()
 
+        # We save the length of the output
+        self.__output_size = output_size
+
         # We create a list with the modules
         module_list = [nn.Linear(in_features=input_size, out_features=output_size),
                        getattr(nn, activation)(),
@@ -95,6 +102,10 @@ class BaseBlock(nn.Module):
 
         # We create a sequential from the list
         self.__layer = nn.Sequential(*module_list)
+
+    @property
+    def output_size(self):
+        return self.__output_size
 
     def forward(self, x: tensor) -> tensor:
         """

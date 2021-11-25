@@ -36,6 +36,7 @@ class TorchCustomModel(Module, ABC):
                  criterion: Callable,
                  criterion_name: str,
                  eval_metric: Metric,
+                 output_size: int,
                  alpha: float = 0,
                  beta: float = 0,
                  num_cont_col: Optional[int] = None,
@@ -74,6 +75,7 @@ class TorchCustomModel(Module, ABC):
                                  self._eval_metric.name: []} for i in [MaskType.TRAIN, MaskType.VALID]}
         self._input_size = num_cont_col if num_cont_col is not None else 0
         self._optimizer = None
+        self._output_size = output_size
         self._verbose = verbose
 
         # Settings of protected attributes related to entity embedding
@@ -95,6 +97,10 @@ class TorchCustomModel(Module, ABC):
 
             # We sum the length of all embeddings
             self._input_size += self._embedding_block.output_size
+
+    @property
+    def output_size(self):
+        return self.__output_size
 
     def _create_validation_objects(self,
                                    dataset: PetaleDataset,

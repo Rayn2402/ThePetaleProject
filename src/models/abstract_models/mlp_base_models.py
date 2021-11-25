@@ -70,6 +70,7 @@ class MLP(TorchCustomModel):
         super().__init__(criterion=criterion,
                          criterion_name=criterion_name,
                          eval_metric=eval_metric,
+                         output_size=output_size,
                          alpha=alpha,
                          beta=beta,
                          num_cont_col=num_cont_col,

@@ -99,8 +99,8 @@ class TorchCustomModel(Module, ABC):
             self._input_size += self._embedding_block.output_size
 
     @property
-    def output_size(self):
-        return self.__output_size
+    def output_size(self) -> int:
+        return self._output_size
 
     def _create_validation_objects(self,
                                    dataset: PetaleDataset,

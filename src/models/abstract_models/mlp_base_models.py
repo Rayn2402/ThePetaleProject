@@ -70,6 +70,7 @@ class MLP(TorchCustomModel):
         super().__init__(criterion=criterion,
                          criterion_name=criterion_name,
                          eval_metric=eval_metric,
+                         output_size=output_size,
                          alpha=alpha,
                          beta=beta,
                          num_cont_col=num_cont_col,
@@ -207,17 +208,6 @@ class MLP(TorchCustomModel):
         x = cat(new_x, 1)
 
         return self._layers(x).squeeze()
-
-    @staticmethod
-    def _disable_module_running_stats(module: Module) -> None:
-        if isinstance(module, BatchNorm1d):
-            module.backup_momentum = module.momentum
-            module.momentum = 0
-
-    @staticmethod
-    def _enable_module_running_stats(module: Module) -> None:
-        if isinstance(module, BatchNorm1d) and hasattr(module, "backup_momentum"):
-            module.momentum = module.backup_momentum
 
 
 class MLPBinaryClassifier(MLP):

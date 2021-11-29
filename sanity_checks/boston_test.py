@@ -23,11 +23,13 @@ if __name__ == '__main__':
     from src.data.extraction.constants import SEED, PARTICIPANT
     from src.data.processing.datasets import PetaleDataset, PetaleStaticGNNDataset
     from src.data.processing.sampling import RandomStratifiedSampler, push_valid_to_train
-    from src.models.han import PetaleHANR
+    from src.models.abstract_models.mlp_base_models import MLPRegressor
+    from src.models.han import PetaleHANR, HanHP
     from src.models.mlp import PetaleMLPR
     from src.models.random_forest import PetaleRFR
     from src.models.tabnet import PetaleTNR
     from src.models.xgboost_ import PetaleXGBR
+    from src.utils.hyperparameters import Range
     from src.utils.score_metrics import AbsoluteError, Pearson, RootMeanSquaredError, SquaredError
     from src.training.evaluation import Evaluator
 
@@ -92,7 +94,7 @@ if __name__ == '__main__':
                           seed=SEED)
 
     # Evaluation
-    evaluator.evaluate()
+    # evaluator.evaluate()
 
     """
     Test with RF
@@ -108,7 +110,7 @@ if __name__ == '__main__':
                           save_optimization_history=True,
                           seed=SEED)
 
-    evaluator.evaluate()
+    # evaluator.evaluate()
 
     """
     Test with XGBoost
@@ -124,7 +126,7 @@ if __name__ == '__main__':
                           save_optimization_history=True,
                           seed=SEED)
 
-    evaluator.evaluate()
+    # evaluator.evaluate()
 
     """
     Test with MLP
@@ -154,22 +156,24 @@ if __name__ == '__main__':
                           save_optimization_history=True,
                           seed=SEED)
 
-    evaluator.evaluate()
+    # evaluator.evaluate()
 
     """
     Test with HAN
     """
     dataset_gnn = PetaleStaticGNNDataset(df, target, cont_col, cat_col, classification=False)
 
-    # Saving of fixed params for TabNet
+    # Saving of fixed params for HAN
     def update_fixed_params(subset):
+
         return {'meta_paths': subset.get_metapaths(),
                 'num_cont_col': len(subset.cont_cols),
                 'cat_idx': subset.cat_idx,
                 'cat_sizes': subset.cat_sizes,
                 'cat_emb_sizes': subset.cat_sizes,
                 'max_epochs': 250,
-                'patience': 15}
+                'patience': 15,
+                }
 
     fixed_params = update_fixed_params(dataset_gnn)
 
@@ -181,6 +185,46 @@ if __name__ == '__main__':
                           evaluation_metrics=evaluation_metrics,
                           fixed_params=fixed_params,
                           evaluation_name='HAN_test',
+                          fixed_params_update_function=update_fixed_params,
+                          save_optimization_history=True,
+                          seed=SEED)
+
+    # evaluator.evaluate()
+
+    """
+    Test with simple HAN + encoding
+    """
+
+    # Saving of fixed params for HAN
+    def update_fixed_params(subset):
+        return {'meta_paths': subset.get_metapaths(),
+                'num_cont_col': len(subset.cont_cols),
+                'cat_idx': subset.cat_idx,
+                'cat_sizes': subset.cat_sizes,
+                'cat_emb_sizes': subset.cat_sizes,
+                'max_epochs': 250,
+                'patience': 15,
+                'pre_encoder': MLPRegressor([],
+                                            "PReLU",
+                                            num_cont_col=len(subset.cont_cols),
+                                            cat_idx=subset.cat_idx,
+                                            cat_sizes=subset.cat_sizes,
+                                            cat_emb_sizes=subset.cat_sizes)}
+
+
+    fixed_params = update_fixed_params(dataset_gnn)
+
+    # Update of hidden size for HAN hps
+    HAN_HPS[HanHP.HIDDEN_SIZE.name] = {Range.VALUE: 1}
+
+    evaluator = Evaluator(model_constructor=PetaleHANR,
+                          dataset=dataset_gnn,
+                          masks=masks,
+                          hps=HAN_HPS,
+                          n_trials=250,
+                          evaluation_metrics=evaluation_metrics,
+                          fixed_params=fixed_params,
+                          evaluation_name='HAN_test_with_encoding',
                           fixed_params_update_function=update_fixed_params,
                           save_optimization_history=True,
                           seed=SEED)

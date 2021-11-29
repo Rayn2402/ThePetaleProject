@@ -57,6 +57,10 @@ def argument_parser():
     parser.add_argument('-tab', '--tabnet', default=False, action='store_true',
                         help='True if we want to run TabNet experiments')
 
+    # Activation of sharpness-aware minimization
+    parser.add_argument('-sam', '--enable_sam', default=False, action='store_true',
+                        help='True if we want to use Sharpness-Aware Minimization Optimizer')
+
     # Seed
     parser.add_argument('-seed', '--seed', type=int, default=SEED, help='Seed to use during model evaluations')
 
@@ -80,14 +84,15 @@ if __name__ == '__main__':
     from src.data.processing.datasets import PetaleDataset, PetaleStaticGNNDataset
     from src.data.processing.feature_selection import FeatureSelector
     from src.data.processing.sampling import extract_masks, GeneChoice, get_warmup_data, push_valid_to_train
-    from src.models.han import PetaleHANR
-    from src.models.mlp import PetaleMLPR
+    from src.models.han import PetaleHANR, HanHP
+    from src.models.mlp import PetaleMLPR, MLPHP
     from src.models.tabnet import PetaleTNR
     from src.models.random_forest import PetaleRFR
     from src.models.xgboost_ import PetaleXGBR
     from src.training.evaluation import Evaluator
     from src.data.extraction.constants import *
     from src.data.extraction.data_management import PetaleDataManager
+    from src.utils.hyperparameters import Range
     from src.utils.score_metrics import AbsoluteError, Pearson, RootMeanSquaredError, SquaredError
 
     # Arguments parsing
@@ -130,6 +135,11 @@ if __name__ == '__main__':
         eval_id = f"{eval_id}_genes"
     if args.sex:
         eval_id = f"{eval_id}_sex"
+    if args.enable_sam:
+        eval_id = f"{eval_id}_sam"
+
+    # We save the Sharpness-Aware Minimization search space
+    sam_search_space = {Range.MIN: 0.05, Range.MAX: 2}
 
     # We start a timer for the whole experiment
     first_start = time.time()
@@ -148,12 +158,16 @@ if __name__ == '__main__':
         # Creation of function to update fixed params
         def update_fixed_params(dts):
             if len(dts.cat_idx) != 0:
-                return {'cat_idx': dts.cat_idx, 'cat_sizes': dts.cat_sizes,
-                        'cat_emb_sizes': dts.cat_sizes, 'max_epochs': 250,
+                return {'cat_idx': dts.cat_idx,
+                        'cat_sizes': dts.cat_sizes,
+                        'cat_emb_sizes': dts.cat_sizes,
+                        'max_epochs': 250,
                         'patience': 50}
             else:
-                return {'cat_idx': [], 'cat_sizes': [],
-                        'cat_emb_sizes': [], 'max_epochs': 250,
+                return {'cat_idx': [],
+                        'cat_sizes': [],
+                        'cat_emb_sizes': [],
+                        'max_epochs': 250,
                         'patience': 50}
 
         # Saving of original fixed params for TabNet
@@ -162,11 +176,14 @@ if __name__ == '__main__':
         # Creation of the evaluator
         evaluator = Evaluator(model_constructor=PetaleTNR, dataset=dataset,
                               evaluation_name=f"TabNet_warmup_{eval_id}",
-                              masks=masks, hps=TAB_HPS, n_trials=200, fixed_params=fixed_params,
+                              masks=masks, hps=TAB_HPS,
+                              n_trials=200,
+                              fixed_params=fixed_params,
                               fixed_params_update_function=update_fixed_params,
                               feature_selector=feature_selector,
                               evaluation_metrics=evaluation_metrics,
-                              save_hps_importance=True, save_optimization_history=True)
+                              save_hps_importance=True,
+                              save_optimization_history=True)
 
         # Evaluation
         evaluator.evaluate()
@@ -185,10 +202,15 @@ if __name__ == '__main__':
         dataset = PetaleDataset(df, target, cont_cols, cat_cols, classification=False)
 
         # Creation of the evaluator
-        evaluator = Evaluator(model_constructor=PetaleRFR, dataset=dataset, masks=masks_without_val,
+        evaluator = Evaluator(model_constructor=PetaleRFR,
+                              dataset=dataset,
+                              masks=masks_without_val,
                               evaluation_name=f"RandomForest_warmup_{eval_id}",
-                              hps=RF_HPS, n_trials=200, evaluation_metrics=evaluation_metrics,
-                              feature_selector=feature_selector, save_hps_importance=True,
+                              hps=RF_HPS,
+                              n_trials=200,
+                              evaluation_metrics=evaluation_metrics,
+                              feature_selector=feature_selector,
+                              save_hps_importance=True,
                               save_optimization_history=True)
 
         # Evaluation
@@ -208,10 +230,15 @@ if __name__ == '__main__':
         dataset = PetaleDataset(df, target, cont_cols, cat_cols, classification=False)
 
         # Creation of the evaluator
-        evaluator = Evaluator(model_constructor=PetaleXGBR, dataset=dataset, masks=masks_without_val,
+        evaluator = Evaluator(model_constructor=PetaleXGBR,
+                              dataset=dataset,
+                              masks=masks_without_val,
                               evaluation_name=f"XGBoost_warmup_{eval_id}",
-                              hps=XGBOOST_HPS, n_trials=200, evaluation_metrics=evaluation_metrics,
-                              feature_selector=feature_selector, save_hps_importance=True,
+                              hps=XGBOOST_HPS,
+                              n_trials=200,
+                              evaluation_metrics=evaluation_metrics,
+                              feature_selector=feature_selector,
+                              save_hps_importance=True,
                               save_optimization_history=True)
 
         # Evaluation
@@ -233,20 +260,33 @@ if __name__ == '__main__':
         # Creation of function to update fixed params
         def update_fixed_params(dts):
             nb_cont_col = len(dts.cont_cols) if dts.cont_cols is not None else 0
-            return {'max_epochs': 250, 'patience': 50, 'num_cont_col': nb_cont_col,
-                    'cat_idx': dts.cat_idx, 'cat_sizes': dts.cat_sizes,
+            return {'max_epochs': 250,
+                    'patience': 50,
+                    'num_cont_col': nb_cont_col,
+                    'cat_idx': dts.cat_idx,
+                    'cat_sizes': dts.cat_sizes,
                     'cat_emb_sizes': dts.cat_sizes}
 
         # Saving of fixed_params for MLP
         fixed_params = update_fixed_params(dataset)
 
+        # Update of hyperparameters
+        if args.enable_sam:
+            MLP_HPS[MLPHP.RHO] = sam_search_space
+
         # Creation of evaluator
-        evaluator = Evaluator(model_constructor=PetaleMLPR, dataset=dataset, masks=masks,
+        evaluator = Evaluator(model_constructor=PetaleMLPR,
+                              dataset=dataset,
+                              masks=masks,
                               evaluation_name=f"MLP_warmup_{eval_id}",
-                              hps=MLP_HPS, n_trials=200, evaluation_metrics=evaluation_metrics,
-                              feature_selector=feature_selector, fixed_params=fixed_params,
+                              hps=MLP_HPS,
+                              n_trials=200,
+                              evaluation_metrics=evaluation_metrics,
+                              feature_selector=feature_selector,
+                              fixed_params=fixed_params,
                               fixed_params_update_function=update_fixed_params,
-                              save_hps_importance=True, save_optimization_history=True)
+                              save_hps_importance=True,
+                              save_optimization_history=True)
 
         # Evaluation
         evaluator.evaluate()
@@ -267,20 +307,32 @@ if __name__ == '__main__':
         # Creation of function to update fixed params
         def update_fixed_params(dts):
             nb_cont_col = len(dts.cont_cols) if dts.cont_cols is not None else 0
-            return {'max_epochs': 50, 'patience': 25, 'num_cont_col': nb_cont_col,
-                    'cat_idx': dts.cat_idx, 'cat_sizes': dts.cat_sizes,
+            return {'max_epochs': 50,
+                    'patience': 25,
+                    'num_cont_col': nb_cont_col,
+                    'cat_idx': dts.cat_idx,
+                    'cat_sizes': dts.cat_sizes,
                     'cat_emb_sizes': dts.cat_sizes}
 
 
         # Saving of fixed_params for MLP
         fixed_params = update_fixed_params(dataset)
 
+        # Update of hyperparameters
+        if args.enable_sam:
+            ENET_HPS[MLPHP.RHO] = sam_search_space
+
         # Creation of evaluator
         m = masks_without_val if not args.genes else masks
-        evaluator = Evaluator(model_constructor=PetaleMLPR, dataset=dataset, masks=m,
+        evaluator = Evaluator(model_constructor=PetaleMLPR,
+                              dataset=dataset,
+                              masks=m,
                               evaluation_name=f"linear_reg_warmup_{eval_id}",
-                              hps=ENET_HPS, n_trials=200, evaluation_metrics=evaluation_metrics,
-                              feature_selector=feature_selector, fixed_params=fixed_params,
+                              hps=ENET_HPS,
+                              n_trials=200,
+                              evaluation_metrics=evaluation_metrics,
+                              feature_selector=feature_selector,
+                              fixed_params=fixed_params,
                               fixed_params_update_function=update_fixed_params,
                               save_hps_importance=True, save_optimization_history=True)
 
@@ -302,19 +354,33 @@ if __name__ == '__main__':
 
         # Creation of function to update fixed params
         def update_fixed_params(dts):
-            return {'meta_paths': dts.get_metapaths(), 'in_size': len(dts.cont_cols),
-                    'max_epochs': 250, 'patience': 15}
-
+            return {'meta_paths': dts.get_metapaths(),
+                    'num_cont_col': len(dts.cont_cols),
+                    'cat_idx': dts.cat_idx,
+                    'cat_sizes': dts.cat_sizes,
+                    'cat_emb_sizes': dts.cat_sizes,
+                    'max_epochs': 250,
+                    'patience': 15}
 
         # Saving of original fixed params for HAN
         fixed_params = update_fixed_params(dataset)
 
+        # Update of hyperparameters
+        if args.enable_sam:
+            HAN_HPS[HanHP.RHO] = sam_search_space
+
         # Creation of the evaluator
-        evaluator = Evaluator(model_constructor=PetaleHANR, dataset=dataset, masks=gnn_masks,
+        evaluator = Evaluator(model_constructor=PetaleHANR,
+                              dataset=dataset,
+                              masks=gnn_masks,
                               evaluation_name=f"HAN_warmup_{eval_id}",
-                              hps=HAN_HPS, n_trials=100, evaluation_metrics=evaluation_metrics,
-                              fixed_params=fixed_params, fixed_params_update_function=update_fixed_params,
-                              feature_selector=feature_selector, save_hps_importance=True,
+                              hps=HAN_HPS,
+                              n_trials=100,
+                              evaluation_metrics=evaluation_metrics,
+                              fixed_params=fixed_params,
+                              fixed_params_update_function=update_fixed_params,
+                              feature_selector=feature_selector,
+                              save_hps_importance=True,
                               save_optimization_history=True)
 
         # Evaluation

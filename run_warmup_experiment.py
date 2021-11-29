@@ -29,6 +29,10 @@ def argument_parser():
                         help='True if we want to remove six minutes walk test variables from baselines'
                              '(only applies if baselines are included')
 
+    # Activation of sharpness-aware minimization
+    parser.add_argument('-sam', '--enable_sam', default=False, action='store_true',
+                        help='True if we want to use Sharpness-Aware Minimization Optimizer')
+
     arguments = parser.parse_args()
 
     # Print arguments
@@ -60,6 +64,8 @@ if __name__ == '__main__':
         cmd.append('-f')
     if args.sex:
         cmd.append('-s')
+    if args.enable_sam:
+        cmd.append('-sam')
 
     # Run of experiments
     check_call(cmd)

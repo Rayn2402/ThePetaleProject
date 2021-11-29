@@ -9,7 +9,7 @@ Date of last modification: 2021/11/09
 """
 
 from dgl import DGLHeteroGraph, metapath_reachable_graph
-from dgl.nn.pytorch import GATConv
+from dgl.nn.pytorch import GATv2Conv
 from torch import stack, tensor
 from torch.nn import Linear, Module, ModuleList, Sequential, Tanh
 from torch.nn.functional import softmax, elu
@@ -48,13 +48,13 @@ class HANLayer(Module):
         # One GAT layer for each meta path based adjacency matrix
         self.gat_layers = ModuleList()
         for i in range(len(meta_paths)):
-            self.gat_layers.append(GATConv(in_feats=in_size,
-                                           out_feats=out_size,
-                                           num_heads=layer_num_heads,
-                                           feat_drop=dropout,
-                                           attn_drop=dropout,
-                                           activation=elu,
-                                           allow_zero_in_degree=True))
+            self.gat_layers.append(GATv2Conv(in_feats=in_size,
+                                             out_feats=out_size,
+                                             num_heads=layer_num_heads,
+                                             feat_drop=dropout,
+                                             attn_drop=dropout,
+                                             activation=elu,
+                                             allow_zero_in_degree=True))
 
         # Semantic attention layer
         self.semantic_attention = SemanticAttention(in_size=out_size * layer_num_heads)

@@ -38,7 +38,7 @@ class PetaleBinaryTNC(PetaleBinaryClassifier):
                  batch_size: int = 15,
                  max_epochs: int = 200,
                  patience: int = 15,
-                 device='cpu',
+                 device: str = 'cpu',
                  verbose: bool = False,
                  classification_threshold: float = 0.5,
                  weight: Optional[float] = None):
@@ -197,7 +197,7 @@ class PetaleTNR(PetaleRegressor):
                  batch_size: int = 15,
                  max_epochs: int = 200,
                  patience: int = 15,
-                 device='cpu',
+                 device: str = 'cpu',
                  verbose: bool = False):
         """
         Creates a TabNet regressor and sets protected attributes using parent's constructor

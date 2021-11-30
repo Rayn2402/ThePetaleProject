@@ -62,11 +62,16 @@ class RandomStratifiedSampler:
             alpha: IQR multiplier used to check numerical variable range validity of the masks created
             patience: number of tries that the sampler has to make a single valid split
         """
-        assert n_out_split > 0, 'Number of outer split must be greater than 0'
-        assert n_in_split >= 0, 'Number of inner split must be greater or equal to 0'
-        assert 0 <= valid_size < 1, 'Validation size must be in the range [0, 1)'
-        assert 0 < test_size < 1, 'Test size must be in the range (0, 1)'
-        assert valid_size + test_size < 1, 'Train size must be non null'
+        if n_out_split <= 0:
+            raise ValueError('Number of outer split must be greater than 0')
+        if n_in_split > 0:
+            raise ValueError('Number of inner split must be greater or equal to 0')
+        if not (0 <= valid_size < 1):
+            raise ValueError('Validation size must be in the range [0, 1)')
+        if not (0 < test_size < 1):
+            raise ValueError('Test size must be in the range (0, 1)')
+        if valid_size + test_size >= 1:
+            raise ValueError('Train size must be non null')
 
         # Private attributes
         self.__dataset = dataset

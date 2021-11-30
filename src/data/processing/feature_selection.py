@@ -12,7 +12,7 @@ from os.path import join
 from pandas import DataFrame
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from src.data.processing.datasets import PetaleDataset
-from typing import Optional
+from typing import List, Optional, Tuple
 
 
 class FeatureSelector:
@@ -34,7 +34,7 @@ class FeatureSelector:
 
     def __call__(self,
                  dataset: PetaleDataset,
-                 records_path: Optional[str] = None):
+                 records_path: Optional[str] = None) -> Tuple[List[str], List[str]]:
         """
         Extracts most important features using a random forest
 

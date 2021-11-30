@@ -1,8 +1,11 @@
 """
+Filename: constants.py
+
 Author : Nicolas Raymond
 
-This file is used to store helpful constants for table extracting
+Description: This file is used to store helpful constants for table extraction
 
+Date of last modification : 2021/11/30
 """
 from numpy import nan
 

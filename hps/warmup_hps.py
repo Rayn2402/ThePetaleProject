@@ -111,6 +111,9 @@ HAN_HPS = {
         Range.MIN: 0.001,
         Range.MAX: 0.5
     },
+    HanHP.RHO.name: {
+        Range.VALUE: 0
+    },
     HanHP.NUM_HEADS.name: {
         Range.MIN: 5,
         Range.MAX: 20
@@ -137,6 +140,9 @@ MLP_HPS = {
     MLPHP.LR.name: {
         Range.MIN: 0.001,
         Range.MAX: 0.5
+    },
+    MLPHP.RHO.name: {
+        Range.VALUE: 0
     },
     MLPHP.N_LAYER.name: {
         Range.MIN: 1,
@@ -168,6 +174,9 @@ ENET_HPS = {
     MLPHP.LR.name: {
         Range.MIN: 0.001,
         Range.MAX: 0.5
+    },
+    MLPHP.RHO.name: {
+        Range.VALUE: 0
     },
     MLPHP.N_LAYER.name: {
         Range.VALUE: 0

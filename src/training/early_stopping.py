@@ -11,7 +11,6 @@ Date of last modification : 2021/10/29
 
 import numpy as np
 
-
 from os import path, remove
 from settings.paths import Paths
 from src.utils.score_metrics import Direction

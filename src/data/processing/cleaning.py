@@ -41,8 +41,6 @@ class DataCleaner:
     # PRE-SAVED WARNING MESSAGES
     ROW_THRESHOLD_WARNING = "Row threshold condition not fulfilled."
     COL_THRESHOLD_WARNING = "Column threshold condition not fulfilled."
-    MIN_PER_CAT_WARNING = "Minimal number per category not satisfied."
-    MAX_PER_CAT_WARNING = "Maximal percentage allowed for one category not satisfied."
 
     # OUTLIER LVLS
     LOW = "LOW"

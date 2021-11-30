@@ -329,6 +329,9 @@ class DataCleaner:
         (over the qchi2 quantile of Chi-squared distribution with D degrees of freedom)
         where D is the number of numerical dimensions in our dataframe (after cleaning).
 
+        See the following that explains why squared mahalanobis distances follow a Chi-squared
+        distribution : https://markusthill.github.io/mahalanbis-chi-squared/
+
         Args:
             df: pandas dataframe
             numerical_columns: list with names of numerical columns

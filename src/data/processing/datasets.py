@@ -623,7 +623,7 @@ class PetaleStaticGNNDataset(PetaleDataset):
         """
         Builds the graph structure
 
-        Returns: None
+        Returns: Heterogeneous graph representing the datasets with categorical columns as links
         """
         # We extract imputed dataframe but reinsert nan values into categorical column that were imputed
         df = self.get_imputed_dataframe()

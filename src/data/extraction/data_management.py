@@ -229,7 +229,7 @@ class DataManager:
         # We get the columns on which we will calculate the stats
         cols = [col for col in df.columns if col != group]
 
-        # We initialize a dictionary that will store to totals of each group within the column "group"
+        # We initialize a dictionary that will store the totals of each group within the column "group"
         group_totals = {}
 
         # For each column we calculate the count and the percentage

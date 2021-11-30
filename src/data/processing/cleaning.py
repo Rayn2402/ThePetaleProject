@@ -68,10 +68,11 @@ class DataCleaner:
             records_path: json file path to save results of cleaning
             column_thresh: percentage threshold (0 <= thresh <= 1)
             row_thresh: percentage threshold (0 <= thresh <= 1)
-            outlier_alpha: constant multiplied by inter quartile range (IQR) to determine outliers
+            outlier_alpha: constant multiplied by inter quartile range (IQR) to determine univariate outliers
             min_n_per_cat: minimal number of items having a certain category value in a categorical column
             max_cat_percentage: maximal percentage that a category can occupied within a categorical column
             qchi2_mahalanobis_cutoff: chi-squared quantile probability used to determine Mahalanobis cutoff value
+                                      for multivariate outliers
             figure_format: format of figure saved by matplotlib
         """
         # We validate parameters choices

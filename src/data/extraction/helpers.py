@@ -79,9 +79,8 @@ def is_categorical(data: Series) -> bool:
     Returns: True if categorical
     """
     for item in data:
-        if item is not None:
-            if isinstance(item, str):
-                return True
+        if isinstance(item, str):
+            return True
 
     if len(data.unique()) > 10:
         return False

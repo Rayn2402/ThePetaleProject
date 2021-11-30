@@ -19,6 +19,9 @@ class FeatureSelector:
     """
     Object in charge of selecting the most important features of the dataset.
     Inspired from OpenAI feature selection code.
+
+    See the following source:
+    Deep Learning for Coders with fastai & PyTorch : AI Applications Without a PhD (p.486-489)
     """
     def __init__(self, importance_threshold: float):
         """

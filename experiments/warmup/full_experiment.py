@@ -272,7 +272,7 @@ if __name__ == '__main__':
 
         # Update of hyperparameters
         if args.enable_sam:
-            MLP_HPS[MLPHP.RHO] = sam_search_space
+            MLP_HPS[MLPHP.RHO.name] = sam_search_space
 
         # Creation of evaluator
         evaluator = Evaluator(model_constructor=PetaleMLPR,
@@ -320,7 +320,7 @@ if __name__ == '__main__':
 
         # Update of hyperparameters
         if args.enable_sam:
-            ENET_HPS[MLPHP.RHO] = sam_search_space
+            ENET_HPS[MLPHP.RHO.name] = sam_search_space
 
         # Creation of evaluator
         m = masks_without_val if not args.genes else masks
@@ -367,7 +367,7 @@ if __name__ == '__main__':
 
         # Update of hyperparameters
         if args.enable_sam:
-            HAN_HPS[HanHP.RHO] = sam_search_space
+            HAN_HPS[HanHP.RHO.name] = sam_search_space
 
         # Creation of the evaluator
         evaluator = Evaluator(model_constructor=PetaleHANR,
@@ -375,7 +375,7 @@ if __name__ == '__main__':
                               masks=gnn_masks,
                               evaluation_name=f"HAN_warmup_{eval_id}",
                               hps=HAN_HPS,
-                              n_trials=100,
+                              n_trials=200,
                               evaluation_metrics=evaluation_metrics,
                               fixed_params=fixed_params,
                               fixed_params_update_function=update_fixed_params,

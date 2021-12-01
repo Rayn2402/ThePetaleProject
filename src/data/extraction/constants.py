@@ -5,7 +5,7 @@ Author : Nicolas Raymond
 
 Description: This file is used to store helpful constants for table extraction
 
-Date of last modification : 2021/11/30
+Date of last modification : 2021/12/01
 """
 from numpy import nan
 
@@ -126,11 +126,9 @@ GENE_REF_GEN = "Generefgene"
 
 # SNPS COLUMNS
 SNPS_TYPE = "TYPE"
-SIGNIFICANT_CHROM_POS_WARMUP = ["2_179457147", "7_45932669", "2_179444939",
-                                "2_179406191", "14_96703484", "2_179397561",
-                                "1_161182208", "3_12393125", "7_20687604",
-                                "2_179436020", "17_4856580", "2_240923050",
-                                "2_179430997", "2_179458591"]
+SIGNIFICANT_CHROM_POS_WARMUP = ['7_45932669', '2_179444939', '2_179397561',
+                                '2_179406191', '2_179457147', '2_179436020',
+                                '2_179430997', '2_179458591', '17_4856580']
 
 SIGNIFICANT_CHROM_POS = ['1_115231254', '1_66036441', '17_4856580',
                          '2_179498042', '3_122003769', '4_2916762', '7_45932669']

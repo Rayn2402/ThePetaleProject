@@ -94,7 +94,7 @@ def preprocess_for_apriori(df: DataFrame,
     records = df.values.tolist()
 
     # Remove nans from lists
-    for i, record in enumerate(records):
+    for i, _ in enumerate(records):
         records[i] = remove_nan(records[i])
 
     return records
@@ -137,11 +137,11 @@ def create_groups(df: DataFrame,
         quantiles.append(round(quantile(data, p), 2))
 
     # We change row values
-    j = turn_to_range(df, cont_col, 0, quantiles[0], group=f"{group} <={quantiles[0]}")
+    j = turn_to_range(df, cont_col, 0, quantiles[0], group=f"{group} <= q1")
     for i in range(1, len(quantiles)):
-        j = turn_to_range(df, cont_col, j, quantiles[i], group=f"{group} >{quantiles[i-1]},<={quantiles[i]}")
+        j = turn_to_range(df, cont_col, j, quantiles[i], group=f"{group} >q{i-1},<=q{i}")
 
-    _ = turn_to_range(df, cont_col, j, max_+1, group=f"{group} >{quantiles[-1]}")
+    _ = turn_to_range(df, cont_col, j, max_+1, group=f"{group} >q{len(quantiles)}")
 
     return df
 

@@ -25,7 +25,7 @@ def argument_parser():
                                      description="Runs all the experiments associated to the warmup dataset")
 
     # Nb inner split and nb outer split selection
-    parser.add_argument('-k', '--nb_outer_splits', type=int, default=5,
+    parser.add_argument('-k', '--nb_outer_splits', type=int, default=10,
                         help='Number of outer splits during the models evaluations')
     parser.add_argument('-l', '--nb_inner_splits', type=int, default=10,
                         help='Number of inner splits during the models evaluations')
@@ -112,7 +112,7 @@ if __name__ == '__main__':
 
     # Extraction of masks
     masks = extract_masks(Paths.WARMUP_MASK, k=args.nb_outer_splits, l=args.nb_inner_splits)
-    gnn_masks = extract_masks(Paths.WARMUP_MASK, k=args.nb_outer_splits, l=min(args.nb_inner_splits, 2))
+    gnn_masks = extract_masks(Paths.WARMUP_MASK, k=args.nb_outer_splits, l=args.nb_inner_splits)
     masks_without_val = deepcopy(masks)
     push_valid_to_train(masks_without_val)
 

@@ -53,7 +53,8 @@ def get_apriori_statistics(path: str) -> None:
     # We compute the mean and std for each statistics of each rule
     for rule in rules_statistics:
         for k in APRIORI_KEYS:
-            rules_statistics[rule][k] = f"{mean(rules_statistics[rule][k])} +- {std(rules_statistics[rule][k])}"
+            rules_statistics[rule][k] = f"{round(mean(rules_statistics[rule][k]).item(), 2)} +-" \
+                                        f" {round(std(rules_statistics[rule][k]).item(), 2)}"
 
     # We save the summary in a json file
     with open(join(path, "summary.json"), "w") as file:

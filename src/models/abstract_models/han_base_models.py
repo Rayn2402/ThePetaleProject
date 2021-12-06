@@ -93,7 +93,7 @@ class HAN(TorchCustomModel):
 
         else:
             # We set the pre-encoder attribute to None
-            self._pre_encoder = Identity
+            self._pre_encoder = Identity()
 
         # We create the appropriate encoding function according to the output size
         if self._input_size > 1:

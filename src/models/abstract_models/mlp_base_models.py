@@ -86,7 +86,7 @@ class MLP(TorchCustomModel):
                                                     activation=activation,
                                                     dropout=dropout)
         else:
-            self._encoding_block = Identity
+            self._encoding_block = Identity()
             layers.append(self._input_size)
 
         # We add a linear layer to complete the layers

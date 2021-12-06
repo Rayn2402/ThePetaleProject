@@ -27,3 +27,7 @@ class Encoder(ABC):
         """
         self._input_size = input_size
         self._output_size = output_size
+
+    @property
+    def output_size(self):
+        return self._output_size

@@ -9,11 +9,13 @@ Date of last modification: 2021/11/08
 """
 
 import torch.nn as nn
+
+from src.models.abstract_models.encoder import Encoder
 from torch import cat, tensor
 from typing import List
 
 
-class MLPEncodingBlock(nn.Module):
+class MLPEncodingBlock(Encoder, nn.Module):
     """
     An MLP encoding block is basically an MLP without prediction function
     """
@@ -33,11 +35,9 @@ class MLPEncodingBlock(nn.Module):
             activation: activation function
             dropout: probability of dropout
         """
-        # Call of parent's constructor
-        super().__init__()
-
-        # We save the length of the output
-        self.__output_size = output_size
+        # Call of both parent constructors
+        Encoder.__init__(self, input_size=input_size, output_size=output_size)
+        nn.Module.__init__(self)
 
         # We create the layers
         layers.insert(0, input_size)
@@ -48,7 +48,7 @@ class MLPEncodingBlock(nn.Module):
 
     @property
     def output_size(self):
-        return self.__output_size
+        return self._output_size
 
     def forward(self, x: tensor) -> tensor:
         """

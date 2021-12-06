@@ -41,6 +41,7 @@ class MLPEncodingBlock(Encoder, nn.Module):
 
         # We create the layers
         layers.insert(0, input_size)
+        layers.append(output_size)
         self.__layers = nn.Sequential(*[BaseBlock(input_size=layers[i - 1],
                                         output_size=layers[i],
                                         activation=activation,

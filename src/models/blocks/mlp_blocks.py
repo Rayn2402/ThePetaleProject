@@ -46,10 +46,6 @@ class MLPEncodingBlock(Encoder, nn.Module):
                                         activation=activation,
                                         p=dropout) for i in range(1, len(layers))])
 
-    @property
-    def output_size(self):
-        return self._output_size
-
     def forward(self, x: tensor) -> tensor:
         """
         Executes the forward pass

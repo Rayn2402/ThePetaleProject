@@ -13,6 +13,55 @@ from torch import cat, tensor
 from typing import List
 
 
+class MLPEncodingBlock(nn.Module):
+    """
+    An MLP encoding block is basically an MLP without prediction function
+    """
+    def __init__(self,
+                 input_size: int,
+                 output_size: int,
+                 layers: List[int],
+                 activation: str,
+                 dropout: float):
+        """
+        Builds the layers of the encoding model
+
+        Args:
+            input_size: number of features in the input size
+            output_size: the number of nodes in the last layer of the neural network
+            layers: list with number of units in each hidden layer
+            activation: activation function
+            dropout: probability of dropout
+        """
+        # Call of parent's constructor
+        super().__init__()
+
+        # We save the length of the output
+        self.__output_size = output_size
+
+        # We create the layers
+        layers.insert(0, input_size)
+        self.__layers = nn.Sequential(*[BaseBlock(input_size=layers[i - 1],
+                                        output_size=layers[i],
+                                        activation=activation,
+                                        p=dropout) for i in range(1, len(layers))])
+
+    @property
+    def output_size(self):
+        return self.__output_size
+
+    def forward(self, x: tensor) -> tensor:
+        """
+        Executes the forward pass
+
+        Args:
+            x: (N,D) tensor with D-dimensional samples
+
+        Returns: (N, D') tensor with concatenated embedding
+        """
+        return self.__layers(x)
+
+
 class EntityEmbeddingBlock(nn.Module):
     """
     Contains a list of entity embedding layers associated to different categorical features

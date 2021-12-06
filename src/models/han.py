@@ -12,8 +12,7 @@ from src.models.abstract_models.han_base_models import HANBinaryClassifier, HANR
 from src.models.wrappers.torch_wrappers import TorchBinaryClassifierWrapper, TorchRegressorWrapper
 from src.utils.hyperparameters import HP, NumericalContinuousHP, NumericalIntHP
 from src.utils.score_metrics import BinaryClassificationMetric
-from torch.nn import Module
-from typing import List, Optional
+from typing import Callable, List, Optional
 
 
 class PetaleBinaryHANC(TorchBinaryClassifierWrapper):
@@ -38,7 +37,7 @@ class PetaleBinaryHANC(TorchBinaryClassifierWrapper):
                  eval_metric: Optional[BinaryClassificationMetric] = None,
                  alpha: float = 0,
                  beta: float = 0,
-                 pre_encoder: Optional[Module] = None,
+                 pre_encoder_constructor: Callable = None,
                  classification_threshold: float = 0.5,
                  weight:  Optional[float] = None,
                  verbose: bool = False):
@@ -63,7 +62,8 @@ class PetaleBinaryHANC(TorchBinaryClassifierWrapper):
             patience: number of consecutive epochs without improvement
             alpha: L1 penalty coefficient
             beta: L2 penalty coefficient
-            pre_encoder: torch module used to encode input before the HANLayer (can be pretrained)
+            pre_encoder_constructor: function that creates an encoder that goes after the entity embedding block
+                                     This function must have a parameter "input_size"
             classification_threshold: threshold used to classify a sample in class 1
             weight: weight attributed to class 1
             verbose: True if we want to show the training progress
@@ -80,7 +80,7 @@ class PetaleBinaryHANC(TorchBinaryClassifierWrapper):
                                     eval_metric=eval_metric,
                                     alpha=alpha,
                                     beta=beta,
-                                    pre_encoder=pre_encoder,
+                                    pre_encoder_constructor=pre_encoder_constructor,
                                     verbose=verbose)
 
         super().__init__(model=model,
@@ -125,7 +125,7 @@ class PetaleHANR(TorchRegressorWrapper):
                  eval_metric: Optional[BinaryClassificationMetric] = None,
                  alpha: float = 0,
                  beta: float = 0,
-                 pre_encoder: Optional[Module] = None,
+                 pre_encoder_constructor: Callable = None,
                  verbose: bool = False):
         """
         Creates the regression model and sets protected attributes using parent's constructor
@@ -148,7 +148,8 @@ class PetaleHANR(TorchRegressorWrapper):
             patience: Number of consecutive epochs without improvement
             alpha: L1 penalty coefficient
             beta: L2 penalty coefficient
-            pre_encoder: torch module used to encode input before the HANLayer (can be pretrained)
+            pre_encoder_constructor: function that creates an encoder that goes after the entity embedding block
+                                     This function must have a parameter "input_size"
             verbose: True if we want to show the training progress
         """
         # Creation of model
@@ -163,7 +164,7 @@ class PetaleHANR(TorchRegressorWrapper):
                              eval_metric=eval_metric,
                              alpha=alpha,
                              beta=beta,
-                             pre_encoder=pre_encoder,
+                             pre_encoder_constructor=pre_encoder_constructor,
                              verbose=verbose)
 
         super().__init__(model=model,

@@ -19,7 +19,7 @@ from src.training.early_stopping import EarlyStopper
 from src.utils.score_metrics import BinaryClassificationMetric, BinaryCrossEntropy, Metric, \
     RegressionMetric, RootMeanSquaredError
 from torch import cat, no_grad, ones, sigmoid, tensor, unsqueeze
-from torch.nn import BCEWithLogitsLoss, Module, Linear, MSELoss
+from torch.nn import BCEWithLogitsLoss, Identity, Linear, MSELoss
 from torch.utils.data import DataLoader
 from typing import Callable, List, Optional, Tuple
 
@@ -43,7 +43,7 @@ class HAN(TorchCustomModel):
                  num_cont_col: Optional[int] = None,
                  alpha: float = 0,
                  beta: float = 0,
-                 pre_encoder: Optional[Module] = None,
+                 pre_encoder_constructor: Callable = None,
                  verbose: bool = False
                  ):
         """
@@ -65,7 +65,8 @@ class HAN(TorchCustomModel):
             cat_emb_sizes: list of integer representing the size of each categorical embedding
             alpha: L1 penalty coefficient
             beta: L2 penalty coefficient
-            pre_encoder: torch module used to encode input before the HANLayer (can be pretrained)
+            pre_encoder_constructor: function that creates an encoder that goes after the entity embedding block
+                                     This function must have a parameter "input_size"
             verbose: True if we want trace of the training progress
         """
         # Call of parent's constructor
@@ -82,27 +83,23 @@ class HAN(TorchCustomModel):
                          verbose=verbose)
 
         # We check if a pre-encoder is given
-        if pre_encoder is not None:
+        if pre_encoder_constructor is not None:
 
-            # We remove the embedding block and set the pre-encoder
-            self._embedding_block = None
-            self._pre_encoder = pre_encoder
+            # We set the pre-encoder
+            self._pre_encoder = pre_encoder_constructor(input_size=self._input_size)
 
             # We modify the input size passed to the HANLayer
             self._input_size = self._pre_encoder.output_size
 
-            # We pick the right encoding method (custom encoding)
-            if self._input_size > 1:
-                self._encode_inputs = self._custom_encoding
-            else:
-                self._encode_inputs = self._custom_encoding_with_unsqueeze
-
         else:
             # We set the pre-encoder attribute to None
-            self._pre_encoder = None
+            self._pre_encoder = Identity
 
-            # We pick the right encoding method (basic encoding)
-            self._encode_inputs = self._basic_encoding
+        # We create the appropriate encoding function according to the output size
+        if self._input_size > 1:
+            self._encode = self._custom_encoding
+        else:
+            self._encode = self._custom_encoding_with_unsqueeze
 
         # Initialization of the main layer
         self._gnn_layer = HANLayer(meta_paths=meta_paths,
@@ -116,22 +113,6 @@ class HAN(TorchCustomModel):
 
         # Attribute dedicated to training
         self._optimizer = None
-
-    def _basic_encoding(self, x: tensor) -> tensor:
-        """
-        Passes the input features through the embedding block
-
-        Args:
-            x: (N,D) tensor with D-dimensional samples
-
-        Returns: (N, D') tensor with encodings
-        """
-        if len(self._cont_idx) != 0:
-            e = cat([x[:, self._cont_idx], self._embedding_block(x)], 1)
-        else:
-            e = self._embedding_block(x)
-
-        return e
 
     def _custom_encoding(self, x: tensor) -> tensor:
         """
@@ -285,11 +266,18 @@ class HAN(TorchCustomModel):
 
         Returns: (N, D') tensor with values of the node within the last layer
         """
-        # We encode the inputs
-        x = self._encode_inputs(x)
+
+        # We passe the input through the entity embedding block
+        if len(self._cont_idx) != 0:
+            e = cat([x[:, self._cont_idx], self._embedding_block(x)], 1)
+        else:
+            e = self._embedding_block(x)
+
+        # We create encodings with the pre-encoder
+        e = self._encode(e)
 
         # We make a forward pass through the han main layer to get the embeddings
-        h = self._gnn_layer(g, x)
+        h = self._gnn_layer(g, e)
 
         # We pass the final embedding through a linear layer
         return self._linear_layer(h).squeeze()
@@ -311,7 +299,7 @@ class HANBinaryClassifier(HAN):
                  num_cont_col: Optional[int] = None,
                  alpha: float = 0,
                  beta: float = 0,
-                 pre_encoder: Optional[Module] = None,
+                 pre_encoder_constructor: Callable = None,
                  verbose: bool = False
                  ):
         """
@@ -329,7 +317,8 @@ class HANBinaryClassifier(HAN):
             eval_metric: evaluation metric
             alpha: L1 penalty coefficient
             beta: L2 penalty coefficient
-            pre_encoder: torch module used to encode input before the HANLayer (can be pretrained)
+            pre_encoder_constructor: function that creates an encoder that goes after the entity embedding block
+                                     This function must have a parameter "input_size"
             verbose: true to print training progress when fit is called
         """
         # Call parent's constructor
@@ -348,7 +337,7 @@ class HANBinaryClassifier(HAN):
                          cat_emb_sizes=cat_emb_sizes,
                          alpha=alpha,
                          beta=beta,
-                         pre_encoder=pre_encoder,
+                         pre_encoder_constructor=pre_encoder_constructor,
                          verbose=verbose)
 
     def predict_proba(self,
@@ -401,7 +390,7 @@ class HANRegressor(HAN):
                  num_cont_col: Optional[int] = None,
                  alpha: float = 0,
                  beta: float = 0,
-                 pre_encoder: Optional[Module] = None,
+                 pre_encoder_constructor: Callable = None,
                  verbose: bool = False
                  ):
         """
@@ -419,7 +408,8 @@ class HANRegressor(HAN):
             eval_metric: evaluation metric
             alpha: L1 penalty coefficient
             beta: L2 penalty coefficient
-            pre_encoder: torch module used to encode input before the HANLayer (can be pretrained)
+            pre_encoder_constructor: function that creates an encoder that goes after the entity embedding block
+                                     This function must have a parameter "input_size"
             verbose: true to print training progress when fit is called
         """
         # Call parent's constructor
@@ -438,7 +428,7 @@ class HANRegressor(HAN):
                          cat_emb_sizes=cat_emb_sizes,
                          alpha=alpha,
                          beta=beta,
-                         pre_encoder=pre_encoder,
+                         pre_encoder_constructor=pre_encoder_constructor,
                          verbose=verbose)
 
     def predict(self,

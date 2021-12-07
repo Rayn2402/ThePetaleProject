@@ -53,7 +53,7 @@ if __name__ == '__main__':
     FILE = str(join(Paths.WARMUP_EXPERIMENTS_SCRIPTS, "full_experiment.py"))
 
     # Creation of commands
-    cmd = ['python', FILE, '-lin', '-han', '-mlp', '-rf', '-xg', '-tab']
+    cmd = ['python', FILE, '-lin', '-han', '-han_e', '-mlp', '-rf', '-xg', '-tab']
     if args.baselines:
         cmd.append('-b')
         if args.remove_walk_variables:

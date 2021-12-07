@@ -6,7 +6,7 @@ Authors: Nicolas Raymond
 Description: This file is used to execute all the model comparisons
              made on the warmup dataset
 
-Date of last modification : 2021/11/05
+Date of last modification : 2021/12/06
 """
 import sys
 import argparse
@@ -44,6 +44,8 @@ def argument_parser():
                         help='True if we want to include sex in features')
 
     # Models selection
+    parser.add_argument('-han_e', '--han_with_encoding', default=False, action='store_true',
+                        help='True if we want to run HAN experiment with single layered pre-encoder')
     parser.add_argument('-han', '--han', default=False, action='store_true',
                         help='True if we want to run heterogeneous graph attention network experiments')
     parser.add_argument('-lin', '--linear_regression', default=False, action='store_true',
@@ -84,6 +86,8 @@ if __name__ == '__main__':
     from src.data.processing.datasets import PetaleDataset, PetaleStaticGNNDataset
     from src.data.processing.feature_selection import FeatureSelector
     from src.data.processing.sampling import extract_masks, GeneChoice, get_warmup_data, push_valid_to_train
+    from src.models.abstract_models.mlp_base_models import MLPRegressor
+    from src.models.blocks.mlp_blocks import MLPEncodingBlock
     from src.models.han import PetaleHANR, HanHP
     from src.models.mlp import PetaleMLPR, MLPHP
     from src.models.tabnet import PetaleTNR
@@ -387,5 +391,66 @@ if __name__ == '__main__':
         evaluator.evaluate()
 
         print("Time Taken for HAN (minutes): ", round((time.time() - start) / 60, 2))
+
+    """
+    HAN with single layered pre-encoder
+    """
+    if args.han_with_encoding and (args.genes or args.sex) and args.baselines:
+
+        # Start timer
+        start = time.time()
+
+        # Creation of the dataset
+        dataset = PetaleStaticGNNDataset(df, target, cont_cols, cat_cols, classification=False)
+
+        # Creation of function that builds pre-encoder
+        def build_encoder(input_size: int) -> MLPEncodingBlock:
+            return MLPEncodingBlock(input_size=input_size,
+                                    output_size=3,
+                                    layers=[],
+                                    activation="PReLU",
+                                    dropout=0)
+
+        # Creation of function to update fixed params
+        def update_fixed_params(dts):
+            return {'meta_paths': dts.get_metapaths(),
+                    'num_cont_col': len(dts.cont_cols),
+                    'cat_idx': dts.cat_idx,
+                    'cat_sizes': dts.cat_sizes,
+                    'cat_emb_sizes': dts.cat_sizes,
+                    'max_epochs': 250,
+                    'patience': 15,
+                    'pre_encoder_constructor': build_encoder
+                    }
+
+
+        # Saving of original fixed params for HAN
+        fixed_params = update_fixed_params(dataset)
+
+        # Update of hyperparameters
+        if args.enable_sam:
+            HAN_HPS[HanHP.RHO.name] = sam_search_space
+
+        # We set the hidden size to 1
+        HAN_HPS[HanHP.HIDDEN_SIZE.name] = {Range.VALUE: 1}
+
+        # Creation of the evaluator
+        evaluator = Evaluator(model_constructor=PetaleHANR,
+                              dataset=dataset,
+                              masks=gnn_masks,
+                              evaluation_name=f"ENC_HAN_warmup_{eval_id}",
+                              hps=HAN_HPS,
+                              n_trials=200,
+                              evaluation_metrics=evaluation_metrics,
+                              fixed_params=fixed_params,
+                              fixed_params_update_function=update_fixed_params,
+                              feature_selector=feature_selector,
+                              save_hps_importance=True,
+                              save_optimization_history=True)
+
+        # Evaluation
+        evaluator.evaluate()
+
+        print("Time Taken for encoder + HAN (minutes): ", round((time.time() - start) / 60, 2))
 
     print("Overall time (minutes): ", round((time.time() - first_start) / 60, 2))

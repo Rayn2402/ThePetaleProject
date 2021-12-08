@@ -86,7 +86,6 @@ if __name__ == '__main__':
     from src.data.processing.datasets import PetaleDataset, PetaleStaticGNNDataset
     from src.data.processing.feature_selection import FeatureSelector
     from src.data.processing.sampling import extract_masks, GeneChoice, get_warmup_data, push_valid_to_train
-    from src.models.abstract_models.mlp_base_models import MLPRegressor
     from src.models.blocks.mlp_blocks import MLPEncodingBlock
     from src.models.han import PetaleHANR, HanHP
     from src.models.mlp import PetaleMLPR, MLPHP
@@ -406,7 +405,7 @@ if __name__ == '__main__':
         # Creation of function that builds pre-encoder
         def build_encoder(input_size: int) -> MLPEncodingBlock:
             return MLPEncodingBlock(input_size=input_size,
-                                    output_size=3,
+                                    output_size=5,
                                     layers=[],
                                     activation="PReLU",
                                     dropout=0)
@@ -432,7 +431,7 @@ if __name__ == '__main__':
             HAN_HPS[HanHP.RHO.name] = sam_search_space
 
         # We set the hidden size to 1
-        HAN_HPS[HanHP.HIDDEN_SIZE.name] = {Range.VALUE: 1}
+        HAN_HPS[HanHP.HIDDEN_SIZE.name] = {Range.VALUE: 3}
 
         # Creation of the evaluator
         evaluator = Evaluator(model_constructor=PetaleHANR,

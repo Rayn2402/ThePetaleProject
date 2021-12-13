@@ -757,3 +757,38 @@ class PetaleStaticGNNDataset(PetaleDataset):
                                       cont_cols=cont_cols,
                                       cat_cols=cat_cols,
                                       classification=self.classification)
+
+    def create_superset(self,
+                        data: DataFrame,
+                        categorical: bool = False) -> Any:
+        """
+        Returns a subset of the current dataset using the given cont_cols and cat_cols
+
+        Args:
+            data: pandas dataframe with 2 columns
+                  First column must be PARTICIPANT ids
+                  Second column must be the feature we want to add
+            categorical: True if the new feature is categorical
+
+        Returns: instance of the PetaleDataset class
+        """
+        # We retrieve the original dataframe
+        df = self._retrieve_subset_from_original(self.cont_cols, self.cat_cols)
+
+        # We add the new feature
+        df = merge(df, data, on=[PARTICIPANT], how=INNER)
+
+        # We update the columns list
+        feature_name = [f for f in data.columns if f != PARTICIPANT]
+        if categorical:
+            cat_cols = self.cat_cols + feature_name
+            cont_cols = self.cont_cols
+        else:
+            cont_cols = self.cont_cols + feature_name
+            cat_cols = self.cat_cols
+
+        return PetaleStaticGNNDataset(df=df,
+                                      target=self.target,
+                                      cont_cols=cont_cols,
+                                      cat_cols=cat_cols,
+                                      classification=self.classification)

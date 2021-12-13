@@ -15,7 +15,7 @@ from copy import deepcopy
 from numpy.random import seed as np_seed
 from os import makedirs, path
 from settings.paths import Paths
-from src.data.processing.datasets import PetaleDataset
+from src.data.processing.datasets import MaskType, PetaleDataset
 from src.data.processing.feature_selection import FeatureSelector
 from src.models.abstract_models.base_models import PetaleBinaryClassifier, PetaleRegressor
 from src.recording.recording import Recorder, compare_prediction_recordings, \
@@ -148,7 +148,8 @@ class Evaluator:
         for k, v in self._masks.items():
 
             # We extract the masks
-            train_mask, valid_mask, test_mask, in_masks = v["train"], v["valid"], v["test"], v["inner"]
+            train_mask, valid_mask = v[MaskType.TRAIN], v[MaskType.VALID]
+            test_mask, in_masks = v[MaskType.TEST], v[MaskType.INNER]
 
             # We update the dataset's masks
             self._dataset.update_masks(train_mask=train_mask, valid_mask=valid_mask, test_mask=test_mask)

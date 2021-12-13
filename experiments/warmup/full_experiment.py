@@ -63,6 +63,10 @@ def argument_parser():
     parser.add_argument('-sam', '--enable_sam', default=False, action='store_true',
                         help='True if we want to use Sharpness-Aware Minimization Optimizer')
 
+    # Usage of predictions from another experiment
+    parser.add_argument('-p', '--path', type=str, default=None,
+                        help='Path leading to predictions of another model, will only be used by HAN if specified')
+
     # Seed
     parser.add_argument('-seed', '--seed', type=int, default=SEED, help='Seed to use during model evaluations')
 
@@ -384,7 +388,8 @@ if __name__ == '__main__':
                               fixed_params_update_function=update_fixed_params,
                               feature_selector=feature_selector,
                               save_hps_importance=True,
-                              save_optimization_history=True)
+                              save_optimization_history=True,
+                              pred_path=args.path)
 
         # Evaluation
         evaluator.evaluate()
@@ -429,9 +434,6 @@ if __name__ == '__main__':
         # Update of hyperparameters
         if args.enable_sam:
             HAN_HPS[HanHP.RHO.name] = sam_search_space
-
-        # We set the hidden size to 1
-        HAN_HPS[HanHP.HIDDEN_SIZE.name] = {Range.VALUE: 3}
 
         # Creation of the evaluator
         evaluator = Evaluator(model_constructor=PetaleHANR,

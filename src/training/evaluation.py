@@ -12,12 +12,16 @@ Date of last modification : 2021/10/29
 import ray
 
 from copy import deepcopy
+from json import load
 from numpy.random import seed as np_seed
 from os import makedirs, path
+from pandas import DataFrame
 from settings.paths import Paths
+from src.data.extraction.constants import PARTICIPANT
 from src.data.processing.datasets import MaskType, PetaleDataset
 from src.data.processing.feature_selection import FeatureSelector
 from src.models.abstract_models.base_models import PetaleBinaryClassifier, PetaleRegressor
+from src.recording.constants import PREDICTION, RECORDS_FILE, TEST_RESULTS, TRAIN_RESULTS
 from src.recording.recording import Recorder, compare_prediction_recordings, \
     get_evaluation_recap, plot_hps_importance_chart
 from src.training.tuning import Objective, Tuner
@@ -46,7 +50,8 @@ class Evaluator:
                  fixed_params_update_function: Optional[Callable] = None,
                  save_hps_importance: Optional[bool] = False,
                  save_parallel_coordinates: Optional[bool] = False,
-                 save_optimization_history: Optional[bool] = False):
+                 save_optimization_history: Optional[bool] = False,
+                 pred_path: Optional[str] = None):
         """
         Set protected and public attributes
 
@@ -68,6 +73,8 @@ class Evaluator:
             save_hps_importance: true if we want to plot the hyperparameters importance graph after tuning
             save_parallel_coordinates: true if we want to plot the parallel coordinates graph after tuning
             save_optimization_history: true if we want to plot the optimization history graph after tuning
+            pred_path: if given, the path will be used to load predictions from another experiment and
+                       include them within actual features.
         """
 
         # We look if a file with the same evaluation name exists
@@ -86,6 +93,7 @@ class Evaluator:
         self._fixed_params = fixed_params if fixed_params is not None else {}
         self._hps = hps
         self._masks = masks
+        self._pred_path = pred_path
         self._hp_tuning = (n_trials > 0)
         self._tuner = Tuner(n_trials=n_trials,
                             save_hps_importance=save_hps_importance,
@@ -105,7 +113,7 @@ class Evaluator:
         else:
             self._update_fixed_params = lambda _: self._fixed_params
 
-    def extract_subset(self, records_path: str) -> PetaleDataset:
+    def _extract_subset(self, records_path: str) -> PetaleDataset:
         """
         Executes the feature selection process and save a record of
         the procedure at the "records_path".
@@ -163,7 +171,7 @@ class Evaluator:
             saving_path = path.join(Paths.EXPERIMENTS_RECORDS, self.evaluation_name, f"Split_{k}")
 
             # We proceed to feature selection
-            subset = self.extract_subset(records_path=saving_path)
+            subset = self._extract_subset(records_path=saving_path)
 
             # We update the fixed parameters according to the subset
             self._fixed_params = self._update_fixed_params(subset)
@@ -251,6 +259,34 @@ class Evaluator:
                          metric=self.evaluation_metrics[-1],
                          model_constructor=self.model_constructor,
                          gpu_device=self._gpu_device)
+
+    def _load_predictions(self,
+                          split_number: int,
+                          subset: PetaleDataset) -> PetaleDataset:
+        """
+        Loads prediction in a given path and includes them as a feature within the dataset
+
+        Args:
+            split_number: split for which we got to load predictions
+            subset: actual dataset
+
+        Returns: updated dataset
+        """
+
+        # Loading of records
+        with open(path.join(self._pred_path, f"Split_{split_number}", RECORDS_FILE), "r") as read_file:
+            data = load(read_file)
+
+        # Extraction of predictions
+        pred = {}
+        for section in TRAIN_RESULTS, TEST_RESULTS:
+            pred = {**pred, **{p_id: [p_id, round(float(v[PREDICTION]), 2)] for p_id, v in data[section].items()}}
+
+        # Creation of pandas dataframe
+        df = DataFrame.from_dict(pred, orient='index', columns=[PARTICIPANT, 'pred'])
+
+        # Creation of new augmented dataset
+        return subset.create_superset(data=df, categorical=False)
 
     def _record_scores_and_pred(self,
                                 model: Union[PetaleBinaryClassifier, PetaleRegressor],

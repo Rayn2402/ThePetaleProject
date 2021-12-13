@@ -173,6 +173,10 @@ class Evaluator:
             # We proceed to feature selection
             subset = self._extract_subset(records_path=saving_path)
 
+            # We include predictions from another experiment if needed
+            if self._pred_path is not None:
+                subset = self._load_predictions(split_number=k, subset=subset)
+
             # We update the fixed parameters according to the subset
             self._fixed_params = self._update_fixed_params(subset)
 

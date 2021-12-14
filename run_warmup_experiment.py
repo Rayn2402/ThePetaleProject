@@ -29,6 +29,10 @@ def argument_parser():
                         help='True if we want to remove six minutes walk test variables from baselines'
                              '(only applies if baselines are included')
 
+    # Usage of predictions from another experiment
+    parser.add_argument('-p', '--path', type=str, default=None,
+                        help='Path leading to predictions of another model, will only be used by HAN if specified')
+
     # Activation of sharpness-aware minimization
     parser.add_argument('-sam', '--enable_sam', default=False, action='store_true',
                         help='True if we want to use Sharpness-Aware Minimization Optimizer')
@@ -66,6 +70,8 @@ if __name__ == '__main__':
         cmd.append('-s')
     if args.enable_sam:
         cmd.append('-sam')
+    if args.path is not None:
+        cmd += ['-p', args.path]
 
     # Run of experiments
     check_call(cmd)

@@ -1,5 +1,11 @@
 """
-File use to run all warmup experiments
+Filename: run_warmup_experiment
+
+Author: Nicolas Raymond
+
+Description: Runs all the model comparisons on the warmup dataset using different set of features and parameters.
+
+Date of last modification: 2021/12/14
 """
 
 from os.path import join

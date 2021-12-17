@@ -102,6 +102,9 @@ HAN_HPS = {
         Range.MIN: 0,
         Range.MAX: 2
     },
+    HanHP.DROPOUT.name: {
+        Range.VALUE: 0,
+    },
     HanHP.HIDDEN_SIZE.name: {
         Range.MIN: 2,
         Range.MAX: 10,

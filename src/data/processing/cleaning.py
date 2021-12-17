@@ -41,8 +41,6 @@ class DataCleaner:
     # PRE-SAVED WARNING MESSAGES
     ROW_THRESHOLD_WARNING = "Row threshold condition not fulfilled."
     COL_THRESHOLD_WARNING = "Column threshold condition not fulfilled."
-    MIN_PER_CAT_WARNING = "Minimal number per category not satisfied."
-    MAX_PER_CAT_WARNING = "Maximal percentage allowed for one category not satisfied."
 
     # OUTLIER LVLS
     LOW = "LOW"
@@ -70,10 +68,11 @@ class DataCleaner:
             records_path: json file path to save results of cleaning
             column_thresh: percentage threshold (0 <= thresh <= 1)
             row_thresh: percentage threshold (0 <= thresh <= 1)
-            outlier_alpha: constant multiplied by inter quartile range (IQR) to determine outliers
+            outlier_alpha: constant multiplied by inter quartile range (IQR) to determine univariate outliers
             min_n_per_cat: minimal number of items having a certain category value in a categorical column
             max_cat_percentage: maximal percentage that a category can occupied within a categorical column
             qchi2_mahalanobis_cutoff: chi-squared quantile probability used to determine Mahalanobis cutoff value
+                                      for multivariate outliers
             figure_format: format of figure saved by matplotlib
         """
         # We validate parameters choices
@@ -330,6 +329,9 @@ class DataCleaner:
         Identifies patients with Mahalanobis distances abnormally high
         (over the qchi2 quantile of Chi-squared distribution with D degrees of freedom)
         where D is the number of numerical dimensions in our dataframe (after cleaning).
+
+        See the following that explains why squared mahalanobis distances follow a Chi-squared
+        distribution : https://markusthill.github.io/mahalanbis-chi-squared/
 
         Args:
             df: pandas dataframe

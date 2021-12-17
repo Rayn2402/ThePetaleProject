@@ -1,5 +1,11 @@
 """
-File use to run all warmup experiments
+Filename: run_warmup_experiment
+
+Author: Nicolas Raymond
+
+Description: Runs all the model comparisons on the warmup dataset using different set of features and parameters.
+
+Date of last modification: 2021/12/14
 """
 
 from os.path import join
@@ -29,6 +35,14 @@ def argument_parser():
                         help='True if we want to remove six minutes walk test variables from baselines'
                              '(only applies if baselines are included')
 
+    # Usage of predictions from another experiment
+    parser.add_argument('-p', '--path', type=str, default=None,
+                        help='Path leading to predictions of another model, will only be used by HAN if specified')
+
+    # Activation of sharpness-aware minimization
+    parser.add_argument('-sam', '--enable_sam', default=False, action='store_true',
+                        help='True if we want to use Sharpness-Aware Minimization Optimizer')
+
     arguments = parser.parse_args()
 
     # Print arguments
@@ -49,7 +63,7 @@ if __name__ == '__main__':
     FILE = str(join(Paths.WARMUP_EXPERIMENTS_SCRIPTS, "full_experiment.py"))
 
     # Creation of commands
-    cmd = ['python', FILE, '-lin', '-han', '-mlp', '-rf', '-xg', '-tab']
+    cmd = ['python', FILE, '-lin', '-han', '-han_e', '-mlp', '-rf', '-xg', '-tab']
     if args.baselines:
         cmd.append('-b')
         if args.remove_walk_variables:
@@ -60,6 +74,10 @@ if __name__ == '__main__':
         cmd.append('-f')
     if args.sex:
         cmd.append('-s')
+    if args.enable_sam:
+        cmd.append('-sam')
+    if args.path is not None:
+        cmd += ['-p', args.path]
 
     # Run of experiments
     check_call(cmd)

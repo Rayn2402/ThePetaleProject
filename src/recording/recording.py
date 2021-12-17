@@ -281,7 +281,8 @@ def set_info(data: Dict[str, Dict[str, Union[List[Union[str, float]], str]]]) ->
 
             if not isinstance(values[0], str):
                 mean_, std_ = round(mean(values), 4), round(std(values), 4)
-                data[section][key][INFO] = f"{mean_} +- {std_} [{median(values)}; {min(values)}-{max(values)}]"
+                med_, min_, max_ = round(median(values), 4), round(min(values), 4), round(max(values), 4)
+                data[section][key][INFO] = f"{mean_} +- {std_} [{med_}; {min_}-{max_}]"
                 data[section][key][MEAN] = mean_
                 data[section][key][STD] = std_
             else:

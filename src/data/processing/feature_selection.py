@@ -12,13 +12,16 @@ from os.path import join
 from pandas import DataFrame
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from src.data.processing.datasets import PetaleDataset
-from typing import Optional
+from typing import List, Optional, Tuple
 
 
 class FeatureSelector:
     """
     Object in charge of selecting the most important features of the dataset.
     Inspired from OpenAI feature selection code.
+
+    See the following source:
+    Deep Learning for Coders with fastai & PyTorch : AI Applications Without a PhD (p.486-489)
     """
     def __init__(self, importance_threshold: float):
         """
@@ -31,7 +34,7 @@ class FeatureSelector:
 
     def __call__(self,
                  dataset: PetaleDataset,
-                 records_path: Optional[str] = None):
+                 records_path: Optional[str] = None) -> Tuple[List[str], List[str]]:
         """
         Extracts most important features using a random forest
 

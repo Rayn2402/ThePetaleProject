@@ -14,12 +14,12 @@ Date of last modification : 2021/11/18
 """
 
 from src.models.abstract_models.custom_torch_base import TorchCustomModel
-from src.models.blocks.mlp_blocks import BaseBlock
+from src.models.blocks.mlp_blocks import MLPEncodingBlock
 from src.data.processing.datasets import MaskType, PetaleDataset
 from src.training.early_stopping import EarlyStopper
 from src.utils.score_metrics import BinaryCrossEntropy, Metric, RootMeanSquaredError
 from torch import cat, no_grad, tensor, ones, sigmoid
-from torch.nn import BatchNorm1d, BCEWithLogitsLoss, Module, Linear, MSELoss, Sequential
+from torch.nn import BatchNorm1d, BCEWithLogitsLoss, Identity, Module, Linear, MSELoss, Sequential
 from torch.utils.data import DataLoader
 from typing import Callable, List, Optional
 
@@ -79,17 +79,18 @@ class MLP(TorchCustomModel):
                          cat_emb_sizes=cat_emb_sizes,
                          verbose=verbose)
 
-        # We create the main layers of our model
-        layers.insert(0, self._input_size)
-        all_layers = []
-        if len(layers) > 1:
-            all_layers = [BaseBlock(input_size=layers[i-1],
-                                    output_size=layers[i],
-                                    activation=activation,
-                                    p=dropout) for i in range(1, len(layers))]
+        if len(layers) > 0:
+            self._encoding_block = MLPEncodingBlock(input_size=self._input_size,
+                                                    output_size=layers[-1],
+                                                    layers=layers[:-1],
+                                                    activation=activation,
+                                                    dropout=dropout)
+        else:
+            self._encoding_block = Identity()
+            layers.append(self._input_size)
 
         # We add a linear layer to complete the layers
-        self._layers = Sequential(*all_layers, Linear(layers[-1], output_size))
+        self._linear_layer = Linear(layers[-1], output_size)
 
     def _execute_train_step(self,
                             train_data: DataLoader,
@@ -207,7 +208,7 @@ class MLP(TorchCustomModel):
         # We concatenate all inputs
         x = cat(new_x, 1)
 
-        return self._layers(x).squeeze()
+        return self._linear_layer(self._encoding_block(x)).squeeze()
 
 
 class MLPBinaryClassifier(MLP):

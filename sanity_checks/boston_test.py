@@ -94,7 +94,7 @@ if __name__ == '__main__':
                           seed=SEED)
 
     # Evaluation
-    # evaluator.evaluate()
+    evaluator.evaluate()
 
     """
     Test with RF
@@ -126,7 +126,7 @@ if __name__ == '__main__':
                           save_optimization_history=True,
                           seed=SEED)
 
-    # evaluator.evaluate()
+    evaluator.evaluate()
 
     """
     Test with MLP
@@ -156,7 +156,7 @@ if __name__ == '__main__':
                           save_optimization_history=True,
                           seed=SEED)
 
-    # evaluator.evaluate()
+    evaluator.evaluate()
 
     """
     Test with HAN
@@ -189,7 +189,7 @@ if __name__ == '__main__':
                           save_optimization_history=True,
                           seed=SEED)
 
-    # evaluator.evaluate()
+    evaluator.evaluate()
 
     """
     Test with simple HAN + encoding

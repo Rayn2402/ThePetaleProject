@@ -406,12 +406,28 @@ class TorchCustomModel(Module, ABC):
 
     @staticmethod
     def _disable_module_running_stats(module: Module) -> None:
+        """
+        Sets momentum to 0 for all BatchNorm layer in the module after saving it in a cache
+
+        Args:
+            module: torch module
+
+        Returns: None
+        """
         if isinstance(module, BatchNorm1d):
             module.backup_momentum = module.momentum
             module.momentum = 0
 
     @staticmethod
     def _enable_module_running_stats(module: Module) -> None:
+        """
+        Restores momentum for all BatchNorm layer in the module using the value in the cache
+
+        Args:
+            module: torch module
+
+        Returns: None
+        """
         if isinstance(module, BatchNorm1d) and hasattr(module, "backup_momentum"):
             module.momentum = module.backup_momentum
 

@@ -10,7 +10,8 @@ Date of last modification : 2021/11/05
 """
 
 from apyori import apriori
-from os.path import dirname, realpath, join
+from os import mkdir
+from os.path import dirname, exists, realpath, join
 from time import time
 from typing import Dict, List, Union, Any
 
@@ -25,7 +26,8 @@ def argument_parser():
     """
     # Create a parser
     parser = argparse.ArgumentParser(usage='\n python apriori_experiment.py',
-                                     description="Runs the apriori algorithm on the warmup dataset")
+                                     description="Runs the apriori algorithm on the different split of the"
+                                                 "warmup dataset")
 
     # Nb inner split and nb outer split selection
     parser.add_argument('-min_sup', '--min_support', type=float, default=0.1,
@@ -52,6 +54,7 @@ def argument_parser():
 
 def print_and_save_rules(rules: List[Any],
                          settings: Dict[str, Union[float, int]],
+                         folder_path: str,
                          json_filename: str,
                          start_time: Any,
                          save_genes: bool = False) -> None:
@@ -61,13 +64,14 @@ def print_and_save_rules(rules: List[Any],
     Args:
         rules: list of rules found with apriori
         settings: dictionary of apriori settings
+        folder_path: path of the folder used to store json file with results
         json_filename: name of the json file used to store the results
         start_time: experiment start time
         save_genes: True if we want to save genes involved in rules
 
     Returns: None
     """
-    rules_dictionary = {'Settings': settings}
+    rules_dictionary = {'Settings': settings, 'Rules': {}}
 
     for item in rules:
 
@@ -86,7 +90,7 @@ def print_and_save_rules(rules: List[Any],
         print(f"Lift: {lift}")
 
         # We save statistics in the dictionary
-        rules_dictionary[rule] = {'Support': support, 'Lift': lift, 'Confidence': confidence}
+        rules_dictionary['Rules'][rule] = {'Support': support, 'Lift': lift, 'Confidence': confidence}
         print("="*40)
 
     if save_genes:
@@ -115,7 +119,7 @@ def print_and_save_rules(rules: List[Any],
     rules_dictionary['Settings']['nb_of_rules'] = len(rules)
 
     # We save the dictionary in a json file
-    filepath = join(Paths.EXPERIMENTS_RECORDS, f"{json_filename}.json")
+    filepath = join(folder_path, f"{json_filename}.json")
     with open(filepath, "w") as file:
         json.dump(rules_dictionary, file, indent=True)
 
@@ -126,8 +130,10 @@ if __name__ == '__main__':
     sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
     from settings.paths import Paths
     from src.data.extraction.data_management import PetaleDataManager
-    from src.data.processing.sampling import GeneChoice, get_warmup_data
+    from src.data.processing.datasets import MaskType
+    from src.data.processing.sampling import extract_masks, GeneChoice, get_warmup_data
     from src.data.processing.preprocessing import preprocess_for_apriori
+    from src.utils.results_analysis import get_apriori_statistics
 
     # Arguments parsing
     args = argument_parser()
@@ -139,47 +145,63 @@ if __name__ == '__main__':
     manager = PetaleDataManager()
     df, target, cont_cols, cat_cols = get_warmup_data(manager, genes=GeneChoice.ALL, sex=True)
 
+    # Extraction of masks
+    masks = extract_masks(Paths.WARMUP_MASK, k=10, l=0)
+
     # We only keep categorical columns and targets
     df = df[cat_cols + [target]]
 
-    # We preprocess data
-    records = preprocess_for_apriori(df, cont_cols={target: args.nb_groups}, cat_cols=cat_cols)
+    # We save folder names for different results
+    f1, f2 = join(Paths.EXPERIMENTS_RECORDS, "warmup_apriori"), join(Paths.EXPERIMENTS_RECORDS, "warmup_apriori_vo2")
+    for f in [f1, f2]:
+        if not exists(f):
+            mkdir(f)
 
-    # We print the number of itemsets
-    print(f"Number of records : {len(records)}")
+    for i in range(len(masks.keys())):
 
-    # We run apriori algorithm
-    association_rules = apriori(records, min_support=args.min_support, min_confidence=args.min_confidence,
-                                min_lift=args.min_lift, max_length=(args.max_length + 1))
-    association_results = list(association_rules)
+        df_subset = df.iloc[masks[i][MaskType.TRAIN]]
 
-    # We print the number of rules
-    print(f"Number of rules : {len(association_results)}")
+        # We preprocess data
+        records = preprocess_for_apriori(df_subset, cont_cols={target: args.nb_groups}, cat_cols=cat_cols)
 
-    # We clean results to only keep association rules of type (... -> VO2)
-    association_results = [rule for rule in association_results if len(list(rule.ordered_statistics[0].items_add)) < 2]
+        # We print the number of itemsets
+        print(f"Number of records : {len(records)}")
 
-    # We sort the rules by lift
-    association_results = sorted(association_results, key=lambda x: x[2][0][3], reverse=True)
+        # We run apriori algorithm
+        association_rules = apriori(records, min_support=args.min_support, min_confidence=args.min_confidence,
+                                    min_lift=args.min_lift, max_length=(args.max_length + 1))
+        association_results = list(association_rules)
 
-    # We save a dictionary with apriori settings
-    settings = {'min_support': args.min_support, 'min_confidence': args.min_confidence,
-                'min_lift': args.min_lift, 'max_length': args.max_length, 'nb_VO2_groups': args.nb_groups}
+        # We print the number of rules
+        print(f"Number of rules : {len(association_results)}")
 
-    # We print and save all the rules
-    print_and_save_rules(association_results, settings, 'warmup_apriori', start)
+        # We clean results to only keep association rules of type (... -> VO2)
+        association_results = [rule for rule in association_results if len(list(rule.ordered_statistics[0].items_add)) < 2]
 
-    # We print and save the rules only related to VO2
-    temp_list = []
-    for rule in association_results:
-        right_part = list(rule.ordered_statistics[0].items_add)
-        right_part = right_part[0]
-        if right_part.split(" <")[0] == target.upper():
-            temp_list.append(rule)
+        # We sort the rules by lift
+        association_results = sorted(association_results, key=lambda x: x[2][0][3], reverse=True)
 
-    association_results = temp_list
+        # We save a dictionary with apriori settings
+        settings = {'min_support': args.min_support, 'min_confidence': args.min_confidence,
+                    'min_lift': args.min_lift, 'max_length': args.max_length, 'nb_VO2_groups': args.nb_groups}
 
-    print_and_save_rules(association_results, settings, 'warmup_apriori_vo2', start, save_genes=True)
+        # We print and save all the rules
+        print_and_save_rules(association_results, settings, f1, f'warmup_apriori_{i}', start)
+
+        # We print and save the rules only related to VO2
+        temp_list = []
+        for rule in association_results:
+            right_part = list(rule.ordered_statistics[0].items_add)
+            right_part = right_part[0]
+            if right_part.split(" <")[0] == target.upper():
+                temp_list.append(rule)
+
+        association_results = temp_list
+
+        print_and_save_rules(association_results, settings, f2, f'warmup_apriori_vo2_{i}', start, save_genes=True)
+
+    # We compute summary of apriori results for rules associated to V02
+    get_apriori_statistics(f2)
 
 
 

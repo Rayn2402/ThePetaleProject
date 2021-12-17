@@ -102,6 +102,9 @@ HAN_HPS = {
         Range.MIN: 0,
         Range.MAX: 2
     },
+    HanHP.DROPOUT.name: {
+        Range.VALUE: 0,
+    },
     HanHP.HIDDEN_SIZE.name: {
         Range.MIN: 2,
         Range.MAX: 10,
@@ -110,6 +113,9 @@ HAN_HPS = {
     HanHP.LR.name: {
         Range.MIN: 0.001,
         Range.MAX: 0.5
+    },
+    HanHP.RHO.name: {
+        Range.VALUE: 0
     },
     HanHP.NUM_HEADS.name: {
         Range.MIN: 5,
@@ -137,6 +143,9 @@ MLP_HPS = {
     MLPHP.LR.name: {
         Range.MIN: 0.001,
         Range.MAX: 0.5
+    },
+    MLPHP.RHO.name: {
+        Range.VALUE: 0
     },
     MLPHP.N_LAYER.name: {
         Range.MIN: 1,

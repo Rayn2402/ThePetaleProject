@@ -431,7 +431,7 @@ class PetaleDataset(Dataset):
 
         return imputed_df
 
-    def build_homogeneous_graph(self, cat_cols: Optional[List[str]] = None) -> DGLGraph:
+    def build_homogeneous_population_graph(self, cat_cols: Optional[List[str]] = None) -> DGLGraph:
         """
         Builds an undirected homogeneous graph from the categorical columns mentioned
 
@@ -657,7 +657,7 @@ class PetaleStaticGNNDataset(PetaleDataset):
                          to_tensor=True)
 
         # We initialize the graph attribute proper to StaticGNNDataset class
-        self._graph = self._build_graph()
+        self._graph = self._build_heterogeneous_population_graph()
 
     @property
     def graph(self) -> DGLHeteroGraph:
@@ -675,7 +675,7 @@ class PetaleStaticGNNDataset(PetaleDataset):
     def valid_subgraph(self) -> Tuple[DGLHeteroGraph, List[int], Dict[int, int]]:
         return self._subgraphs[MaskType.VALID]
 
-    def _build_graph(self) -> DGLHeteroGraph:
+    def _build_heterogeneous_population_graph(self) -> DGLHeteroGraph:
         """
         Builds the graph structure
 

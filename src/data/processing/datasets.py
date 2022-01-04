@@ -344,6 +344,38 @@ class PetaleDataset(Dataset):
 
         return get_mu_and_std
 
+    def _get_augmented_dataframe(self,
+                                 data: DataFrame,
+                                 categorical: bool = False
+                                 ) -> Tuple[DataFrame, Optional[List[str]], Optional[List[str]]]:
+        """
+        Returns an augmented dataframe by concatenating original df and data
+
+        Args:
+            data: pandas dataframe with 2 columns
+                  First column must be PARTICIPANT ids
+                  Second column must be the feature we want to add
+            categorical: True if the new feature is categorical
+
+        Returns: pandas dataframe, list of cont cols, list of cat cols
+        """
+        # Extraction of the original dataframe
+        df = self._retrieve_subset_from_original(self.cont_cols, self.cat_cols)
+
+        # We add the new feature
+        df = merge(df, data, on=[PARTICIPANT], how=INNER)
+
+        # We update the columns list
+        feature_name = [f for f in data.columns if f != PARTICIPANT]
+        if categorical:
+            cat_cols = self.cat_cols + feature_name if self.cat_cols is not None else [feature_name]
+            cont_cols = self.cont_cols
+        else:
+            cont_cols = self.cont_cols + feature_name if self.cont_cols is not None else [feature_name]
+            cat_cols = self.cat_cols
+
+        return df, cont_cols, cat_cols
+
     def _numerical_setter(self,
                           mu: Series,
                           std: Series) -> None:
@@ -399,7 +431,7 @@ class PetaleDataset(Dataset):
 
         return imputed_df
 
-    def build_homogeneous_graph(self, cat_cols: Optional[List[str]] = None) -> DGLGraph:
+    def build_homogeneous_population_graph(self, cat_cols: Optional[List[str]] = None) -> DGLGraph:
         """
         Builds an undirected homogeneous graph from the categorical columns mentioned
 
@@ -458,7 +490,7 @@ class PetaleDataset(Dataset):
                         data: DataFrame,
                         categorical: bool = False) -> Any:
         """
-        Returns a subset of the current dataset using the given cont_cols and cat_cols
+        Returns a superset of the current dataset by including the given data
 
         Args:
             data: pandas dataframe with 2 columns
@@ -468,20 +500,8 @@ class PetaleDataset(Dataset):
 
         Returns: instance of the PetaleDataset class
         """
-        # We retrieve the original dataframe
-        df = self._retrieve_subset_from_original(self.cont_cols, self.cat_cols)
-
-        # We add the new feature
-        df = merge(df, data, on=[PARTICIPANT], how=INNER)
-
-        # We update the columns list
-        feature_name = [f for f in data.columns if f != PARTICIPANT]
-        if categorical:
-            cat_cols = self.cat_cols + feature_name
-            cont_cols = self.cont_cols
-        else:
-            cont_cols = self.cont_cols + feature_name
-            cat_cols = self.cat_cols
+        # We build the augmented dataframe
+        df, cont_cols, cat_cols = self._get_augmented_dataframe(data, categorical)
 
         return PetaleDataset(df=df,
                              target=self.target,
@@ -637,7 +657,7 @@ class PetaleStaticGNNDataset(PetaleDataset):
                          to_tensor=True)
 
         # We initialize the graph attribute proper to StaticGNNDataset class
-        self._graph = self._build_graph()
+        self._graph = self._build_heterogeneous_population_graph()
 
     @property
     def graph(self) -> DGLHeteroGraph:
@@ -655,7 +675,7 @@ class PetaleStaticGNNDataset(PetaleDataset):
     def valid_subgraph(self) -> Tuple[DGLHeteroGraph, List[int], Dict[int, int]]:
         return self._subgraphs[MaskType.VALID]
 
-    def _build_graph(self) -> DGLHeteroGraph:
+    def _build_heterogeneous_population_graph(self) -> DGLHeteroGraph:
         """
         Builds the graph structure
 
@@ -762,7 +782,7 @@ class PetaleStaticGNNDataset(PetaleDataset):
                         data: DataFrame,
                         categorical: bool = False) -> Any:
         """
-        Returns a subset of the current dataset using the given cont_cols and cat_cols
+        Returns a superset of the current dataset by including the given data
 
         Args:
             data: pandas dataframe with 2 columns
@@ -770,22 +790,10 @@ class PetaleStaticGNNDataset(PetaleDataset):
                   Second column must be the feature we want to add
             categorical: True if the new feature is categorical
 
-        Returns: instance of the PetaleDataset class
+        Returns: instance of the PetaleStaticGNNDataset class
         """
-        # We retrieve the original dataframe
-        df = self._retrieve_subset_from_original(self.cont_cols, self.cat_cols)
-
-        # We add the new feature
-        df = merge(df, data, on=[PARTICIPANT], how=INNER)
-
-        # We update the columns list
-        feature_name = [f for f in data.columns if f != PARTICIPANT]
-        if categorical:
-            cat_cols = self.cat_cols + feature_name
-            cont_cols = self.cont_cols
-        else:
-            cont_cols = self.cont_cols + feature_name
-            cat_cols = self.cat_cols
+        # We build the augmented dataframe
+        df, cont_cols, cat_cols = self._get_augmented_dataframe(data, categorical)
 
         return PetaleStaticGNNDataset(df=df,
                                       target=self.target,

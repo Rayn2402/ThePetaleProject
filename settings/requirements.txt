@@ -1,7 +1,5 @@
 matplotlib==3.3.4
-dgl==0.8a211115
-psycopg2==2.8.6
-torch==1.8.0
+psycopg2-binary==2.8.6
 numpy==1.19.2
 pandas==1.2.3
 ray==1.2.0

@@ -12,7 +12,7 @@ Date of last modification: 2022/01/04
 from src.models.abstract_models.encoder import Encoder
 from src.models.blocks.mlp_blocks import EntityEmbeddingBlock
 from torch import einsum, tensor, zeros
-from torch.nn import Conv1d, Linear, Module
+from torch.nn import BatchNorm1d, Conv1d, Linear, Module
 from torch.nn.functional import relu
 from typing import Dict, List
 
@@ -27,7 +27,7 @@ class GeneGraphEncoder(Encoder, Module):
                  signature_size: int = 10):
         """
         Builds the entity embedding block, the convolutional layer, the linear layer
-        and sets other protected attributes using the Encoder constructor
+        the batch norm and sets other protected attributes using the Encoder constructor
 
         Args:
             genes_idx_group: dictionary where keys are names of chromosomes and values
@@ -71,6 +71,9 @@ class GeneGraphEncoder(Encoder, Module):
 
         # Linear layer that gives the final signature
         self._linear_layer = Linear(self.__nb_chrom, signature_size)
+
+        # Batch norm layer that normalize final signatures
+        self._bn = BatchNorm1d(signature_size)
 
     def __set_chromosome_weight_mat(self, genes_idx_group: Dict[str, List[int]]) -> None:
         """
@@ -116,7 +119,7 @@ class GeneGraphEncoder(Encoder, Module):
         h = self._entity_emb_block(x)  # (N, D) -> (N, HIDDEN_SIZE*NB_GENES)
 
         # Resize embeddings
-        h.resize_(h.shape[0], self.__nb_genes, self.__hidden_size)  # (N, NB_GENES, HIDDEN_SIZE)
+        h = h.reshape(h.shape[0], self.__nb_genes, self.__hidden_size)  # (N, NB_GENES, HIDDEN_SIZE)
 
         # Compute entity embedding averages per chromosome subgraphs for each individual
         # (NB_CHROM, NB_GENES)x(N, NB_GENES, HIDDEN_SIZE) -> (N, NB_CHROM, HIDDEN_SIZE)
@@ -124,7 +127,7 @@ class GeneGraphEncoder(Encoder, Module):
 
         # Concatenate all chromosome averages side to side
         # (N, NB_CHROM, HIDDEN_SIZE) -> (N, NB_CHROM*HIDDEN_SIZE)
-        h.resize_(h.shape[1], self.__nb_chrom*self.__hidden_size)
+        h = h.reshape(h.shape[0], self.__nb_chrom*self.__hidden_size)
 
         # Add a dummy dimension
         h.unsqueeze_(dim=1)
@@ -132,8 +135,8 @@ class GeneGraphEncoder(Encoder, Module):
         # Apply convolutional layer and RELU then squeeze for the linear layer
         h = relu(self._conv_layer(h)).squeeze()  # (N, 1, NB_CHROM*HIDDEN_SIZE) -> (N, NB_CHROM)
 
-        # Apply linear layer
-        h = self._linear_layer(h)  # (N, NB_CHROM) -> (N, SIGNATURE_SIZE)
+        # Apply linear layer and batch norm
+        h = self._bn(self._linear_layer(h))  # (N, NB_CHROM) -> (N, SIGNATURE_SIZE)
 
         return h
 

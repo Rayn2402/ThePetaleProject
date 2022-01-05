@@ -1,6 +1,6 @@
 # ThePetaleProject
 
-# Installation
+## Installation
 In order to have all the requirements needed the user must do the following actions: 
 - Install Pip(Nightly Build) version of dgl (https://www.dgl.ai/pages/start.html)
 - Install torch 1.8.0 (https://pytorch.org/get-started/locally/)

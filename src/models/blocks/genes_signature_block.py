@@ -58,7 +58,7 @@ class GeneGraphEncoder(Encoder, Module):
                                                       cat_emb_sizes=[self.__hidden_size]*self.__nb_genes,
                                                       cat_idx=self.__genes_idx)
 
-        # Creation of the matrix used to calculate mean of entity embeddings
+        # Creation of the matrix used to calculate average of entity embeddings
         # within each chromosome. This matrix will not be updated
         self.__chrom_weight_mat = zeros(self.__nb_chrom, self.__nb_genes, requires_grad=False)
         self.__set_chromosome_weight_mat(genes_idx_group)
@@ -92,7 +92,7 @@ class GeneGraphEncoder(Encoder, Module):
             y_coords += range(y, y + nb_genes_in_chrom)
             y += nb_genes_in_chrom
 
-        # We set the sparse matrix with weights the calculate means
+        # We set the sparse matrix with weights to calculate averages
         # for each chromosome graph
         self.__chrom_weight_mat[x_coords, y_coords] = 1
         self.__chrom_weight_mat /= self.__chrom_weight_mat.sum(dim=1).reshape(-1, 1)
@@ -102,8 +102,8 @@ class GeneGraphEncoder(Encoder, Module):
         Executes the following actions on each element in the batch:
 
         - Applies entity embedding for each genes
-        - Computes the means of embedding for each chromosome
-        - Concatenates the means of each chromosome
+        - Computes the averages of embedding for each chromosome
+        - Concatenates the averages of each chromosome
         - Applies a 1D conv filter to the concatenated chromosome embeddings to have a single value per chromosome
         - Applies a linear layer to the results tensor of shape (N, NB_CHROM)
 
@@ -120,7 +120,7 @@ class GeneGraphEncoder(Encoder, Module):
 
         # Compute entity embedding averages per chromosome subgraphs for each individual
         # (NB_CHROM, NB_GENES)x(N, NB_GENES, HIDDEN_SIZE) -> (N, NB_CHROM, HIDDEN_SIZE)
-        h = einsum('ij,kjf->kjf', self.__chrom_weight_mat, h)
+        h = einsum('ij,kjf->kif', self.__chrom_weight_mat, h)
 
         # Concatenate all chromosome averages side to side
         # (N, NB_CHROM, HIDDEN_SIZE) -> (N, NB_CHROM*HIDDEN_SIZE)

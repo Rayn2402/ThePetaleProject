@@ -11,7 +11,7 @@ Date of last modification: 2022/01/04
 
 from src.models.abstract_models.encoder import Encoder
 from src.models.blocks.mlp_blocks import BaseBlock, EntityEmbeddingBlock
-from torch import einsum, tensor, zeros
+from torch import einsum, sigmoid, tensor, zeros
 from torch.nn import BatchNorm1d, Conv1d, Linear, Module
 from torch.nn.functional import relu
 from typing import Dict, List, Tuple
@@ -169,9 +169,9 @@ class GeneSignatureDecoder(Module):
         self.__nb_genes, self.__adj_mat = self.__set_adjacency_mat(genes_idx_group)
 
         # Creation of BaseBlock (first layer of the decoder)
-        self._linear_layer = BaseBlock(input_size=signature_size,
-                                       output_size=self.__nb_genes,
-                                       activation='ReLU')
+        self.__layer = BaseBlock(input_size=signature_size,
+                                 output_size=self.__nb_genes,
+                                 activation='ReLU')
 
     @staticmethod
     def __set_adjacency_mat(genes_idx_group: Dict[str, List[int]]) -> Tuple[int, tensor]:
@@ -200,3 +200,25 @@ class GeneSignatureDecoder(Module):
         adj_mat += adj_mat.t()
 
         return nb_genes, adj_mat
+
+    def forward(self, x: tensor) -> tensor:
+        """
+        Turns each element of a batch of genomic signature into soft adjacency matrices
+        in which each element i,j illustrates the probability of gene-i to be connected
+        to gene-j.
+
+        Args:
+            x: (N, D') tensor with D'-dimensional samples
+
+        Returns: (N, NB_GENES, NB_GENES) tensor with soft adjacency matrices
+        """
+        # Apply (linear layer -> activation -> batch norm) to signatures
+        h = self.__layer(x)  # (N, SIGNATURE_SIZE) -> (N, NB_GENES)
+
+        # Computes hh' for all elements vectors and then
+        # apply sigmoid to each resulting matrices in order to get
+        # a batch of soft adj matrices
+        h.unsqueeze_(dim=1)  # (N, NB_GENES) -> (N, 1, NB_GENES)
+        h = sigmoid(einsum('ikj,ijk->ijk', h, h))  # (N, 1, NB_GENES) -> (N, NB_GENES, NB_GENES)
+
+        return h

@@ -420,6 +420,7 @@ class TorchCustomModel(Module, ABC):
         for arg in input_args:
             if arg is not None:
                 valid = True
+                break
 
         if not valid:
             raise ValueError("There must be continuous columns or categorical columns")

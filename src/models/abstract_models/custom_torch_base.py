@@ -43,6 +43,7 @@ class TorchCustomModel(Module, ABC):
                  cat_idx: Optional[List[int]] = None,
                  cat_sizes: Optional[List[int]] = None,
                  cat_emb_sizes: Optional[List[int]] = None,
+                 additional_input_args: Optional[List[Any]] = None,
                  verbose: bool = False):
         """
         Sets the protected attributes and creates an embedding block if required
@@ -57,10 +58,13 @@ class TorchCustomModel(Module, ABC):
             cat_idx: idx of categorical columns in the dataset
             cat_sizes: list of integer representing the size of each categorical column
             cat_emb_sizes: list of integer representing the size of each categorical embedding
+            additional_input_args: list of arguments that must be also considered when validating
+                                   input arguments
             verbose: true if we want to print the training progress
         """
-        if num_cont_col is None and cat_sizes is None:
-            raise ValueError("There must be continuous columns or categorical columns")
+
+        # We validate input arguments (check if there are continuous or categorical inputs)
+        self._validate_input_args([num_cont_col, cat_sizes, *additional_input_args])
 
         # Call of parent's constructor
         Module.__init__(self)

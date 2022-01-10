@@ -10,7 +10,7 @@ Description: This file is used to define the MLP model with entity embeddings
              and PetaleBinaryClassifier classes. However, two wrapper classes for torch models
              are provided to enable the use of these mlp models with hyperparameter tuning functions.
 
-Date of last modification : 2022/01/06
+Date of last modification : 2022/01/10
 """
 
 from src.models.abstract_models.custom_torch_base import TorchCustomModel
@@ -44,9 +44,9 @@ class MLP(TorchCustomModel):
                  cat_idx: Optional[List[int]] = None,
                  cat_sizes: Optional[List[int]] = None,
                  cat_emb_sizes: Optional[List[int]] = None,
-                 genes_idx_group: Optional[Dict[str, List[int]]] = None,
+                 gene_idx_groups: Optional[Dict[str, List[int]]] = None,
                  genes_emb_size: int = 3,
-                 genes_signature_size: int = 10,
+                 genomic_signature_size: int = 10,
                  verbose: bool = False):
 
         """
@@ -66,12 +66,12 @@ class MLP(TorchCustomModel):
             cat_idx: idx of categorical columns in the dataset
             cat_sizes: list of integer representing the size of each categorical column
             cat_emb_sizes: list of integer representing the size of each categorical embedding
-            genes_idx_group: dictionary where keys are names of chromosomes and values
+            gene_idx_groups: dictionary where keys are names of chromosomes and values
                              are list of idx referring to columns of genes associated to
                              the chromosome
             genes_emb_size: size of genes embedding used to calculate genomic signature
-            genes_signature_size: size of the genomic signature
-                                  (only used if genes_idx_group is not None)
+            genomic_signature_size: size of the genomic signature
+                                  (only used if gene_idx_groups is not None)
             verbose: True if we want trace of the training progress
         """
 
@@ -86,15 +86,15 @@ class MLP(TorchCustomModel):
                          cat_idx=cat_idx,
                          cat_sizes=cat_sizes,
                          cat_emb_sizes=cat_emb_sizes,
-                         additional_input_args=[genes_idx_group],
+                         additional_input_args=[gene_idx_groups],
                          verbose=verbose)
 
-        if genes_idx_group is not None:
-            self._genes_encoding_block = GeneGraphEncoder(genes_idx_group=genes_idx_group,
+        if gene_idx_groups is not None:
+            self._genes_encoding_block = GeneGraphEncoder(gene_idx_groups=gene_idx_groups,
                                                           hidden_size=genes_emb_size,
-                                                          signature_size=genes_signature_size)
+                                                          signature_size=genomic_signature_size)
             self._genes_available = True
-            self._input_size += genes_signature_size
+            self._input_size += genomic_signature_size
         else:
             self._genes_encoding_block = None
             self._genes_available = False
@@ -250,9 +250,9 @@ class MLPBinaryClassifier(MLP):
                  cat_idx: Optional[List[int]] = None,
                  cat_sizes: Optional[List[int]] = None,
                  cat_emb_sizes: Optional[List[int]] = None,
-                 genes_idx_group: Optional[Dict[str, List[int]]] = None,
+                 gene_idx_groups: Optional[Dict[str, List[int]]] = None,
                  genes_emb_size: int = 3,
-                 genes_signature_size: int = 10,
+                 genomic_signature_size: int = 10,
                  verbose: bool = False):
         """
         Sets protected attributes using parent's constructor
@@ -268,12 +268,12 @@ class MLPBinaryClassifier(MLP):
             cat_idx: idx of categorical columns in the dataset
             cat_sizes: list of integer representing the size of each categorical column
             cat_emb_sizes: list of integer representing the size of each categorical embedding
-            genes_idx_group: dictionary where keys are names of chromosomes and values
+            gene_idx_groups: dictionary where keys are names of chromosomes and values
                              are list of idx referring to columns of genes associated to
                              the chromosome
             genes_emb_size: size of genes embedding used to calculate genomic signature
-            genes_signature_size: size of the genomic signature
-                                  (only used if genes_idx_group is not None)
+            genomic_signature_size: size of the genomic signature
+                                  (only used if gene_idx_groups is not None)
             verbose: true to print training progress when fit is called
         """
         eval_metric = eval_metric if eval_metric is not None else BinaryCrossEntropy()
@@ -290,9 +290,9 @@ class MLPBinaryClassifier(MLP):
                          cat_idx=cat_idx,
                          cat_sizes=cat_sizes,
                          cat_emb_sizes=cat_emb_sizes,
-                         genes_idx_group=genes_idx_group,
+                         gene_idx_groups=gene_idx_groups,
                          genes_emb_size=genes_emb_size,
-                         genes_signature_size=genes_signature_size,
+                         genomic_signature_size=genomic_signature_size,
                          verbose=verbose)
 
     def predict_proba(self,
@@ -340,9 +340,9 @@ class MLPRegressor(MLP):
                  cat_idx: Optional[List[int]] = None,
                  cat_sizes: Optional[List[int]] = None,
                  cat_emb_sizes: Optional[List[int]] = None,
-                 genes_idx_group: Optional[Dict[str, List[int]]] = None,
+                 gene_idx_groups: Optional[Dict[str, List[int]]] = None,
                  genes_emb_size: int = 3,
-                 genes_signature_size: int = 10,
+                 genomic_signature_size: int = 10,
                  verbose: bool = False):
         """
         Sets protected attributes using parent's constructor
@@ -358,12 +358,12 @@ class MLPRegressor(MLP):
             cat_idx: idx of categorical columns in the dataset
             cat_sizes: list of integer representing the size of each categorical column
             cat_emb_sizes: list of integer representing the size of each categorical embedding
-            genes_idx_group: dictionary where keys are names of chromosomes and values
+            gene_idx_groups: dictionary where keys are names of chromosomes and values
                              are list of idx referring to columns of genes associated to
                              the chromosome
             genes_emb_size: size of genes embedding used to calculate genomic signature
-            genes_signature_size: size of the genomic signature
-                                  (only used if genes_idx_group is not None)
+            genomic_signature_size: size of the genomic signature
+                                  (only used if gene_idx_groups is not None)
             verbose: true to print training progress when fit is called
         """
         eval_metric = eval_metric if eval_metric is not None else RootMeanSquaredError()
@@ -380,9 +380,9 @@ class MLPRegressor(MLP):
                          cat_idx=cat_idx,
                          cat_sizes=cat_sizes,
                          cat_emb_sizes=cat_emb_sizes,
-                         genes_idx_group=genes_idx_group,
+                         gene_idx_groups=gene_idx_groups,
                          genes_emb_size=genes_emb_size,
-                         genes_signature_size=genes_signature_size,
+                         genomic_signature_size=genomic_signature_size,
                          verbose=verbose)
 
     def predict(self,

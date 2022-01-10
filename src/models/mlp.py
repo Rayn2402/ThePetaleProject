@@ -38,9 +38,9 @@ class PetaleBinaryMLPC(TorchBinaryClassifierWrapper):
                  cat_idx: Optional[List[int]] = None,
                  cat_sizes: Optional[List[int]] = None,
                  cat_emb_sizes: Optional[List[int]] = None,
-                 genes_idx_group: Optional[Dict[str, List[int]]] = None,
+                 gene_idx_groups: Optional[Dict[str, List[int]]] = None,
                  genes_emb_size: int = 3,
-                 genes_signature_size: int = 10,
+                 genomic_signature_size: int = 10,
                  verbose: bool = False,
                  classification_threshold: float = 0.5,
                  weight:  Optional[float] = None):
@@ -66,12 +66,12 @@ class PetaleBinaryMLPC(TorchBinaryClassifierWrapper):
             cat_idx: idx of categorical columns in the dataset
             cat_sizes: list of integer representing the size of each categorical column
             cat_emb_sizes: list of integer representing the size of each categorical embedding
-            genes_idx_group: dictionary where keys are names of chromosomes and values
+            gene_idx_groups: dictionary where keys are names of chromosomes and values
                              are list of idx referring to columns of genes associated to
                              the chromosome
             genes_emb_size: size of genes embedding used to calculate genomic signature
-            genes_signature_size: size of the genomic signature
-                                  (only used if genes_idx_group is not None)
+            genomic_signature_size: size of the genomic signature
+                                  (only used if gene_idx_groups is not None)
             verbose: if True, training progress will be printed
             classification_threshold: threshold used to classify a sample in class 1
             weight: weight attributed to class 1
@@ -87,9 +87,9 @@ class PetaleBinaryMLPC(TorchBinaryClassifierWrapper):
                                     cat_idx=cat_idx,
                                     cat_sizes=cat_sizes,
                                     cat_emb_sizes=cat_emb_sizes,
-                                    genes_idx_group=genes_idx_group,
+                                    gene_idx_groups=gene_idx_groups,
                                     genes_emb_size=genes_emb_size,
-                                    genes_signature_size=genes_signature_size,
+                                    genomic_signature_size=genomic_signature_size,
                                     verbose=verbose)
 
         super().__init__(model=model,
@@ -134,9 +134,9 @@ class PetaleMLPR(TorchRegressorWrapper):
                  cat_idx: Optional[List[int]] = None,
                  cat_sizes: Optional[List[int]] = None,
                  cat_emb_sizes: Optional[List[int]] = None,
-                 genes_idx_group: Optional[Dict[str, List[int]]] = None,
+                 gene_idx_groups: Optional[Dict[str, List[int]]] = None,
                  genes_emb_size: int = 3,
-                 genes_signature_size: int = 10,
+                 genomic_signature_size: int = 10,
                  verbose: bool = False):
         """
         Builds and MLP regression model and sets the protected attributes using parent's constructor
@@ -160,12 +160,12 @@ class PetaleMLPR(TorchRegressorWrapper):
             cat_idx: idx of categorical columns in the dataset
             cat_sizes: list of integer representing the size of each categorical column
             cat_emb_sizes: list of integer representing the size of each categorical embedding
-            genes_idx_group: dictionary where keys are names of chromosomes and values
+            gene_idx_groups: dictionary where keys are names of chromosomes and values
                              are list of idx referring to columns of genes associated to
                              the chromosome
             genes_emb_size: size of genes embedding used to calculate genomic signature
-            genes_signature_size: size of the genomic signature
-                                  (only used if genes_idx_group is not None)
+            genomic_signature_size: size of the genomic signature
+                                  (only used if gene_idx_groups is not None)
             verbose: if True, training progress will be printed
         """
         # Creation of the model
@@ -179,9 +179,9 @@ class PetaleMLPR(TorchRegressorWrapper):
                              cat_idx=cat_idx,
                              cat_sizes=cat_sizes,
                              cat_emb_sizes=cat_emb_sizes,
-                             genes_idx_group=genes_idx_group,
+                             gene_idx_groups=gene_idx_groups,
                              genes_emb_size=genes_emb_size,
-                             genes_signature_size=genes_signature_size,
+                             genomic_signature_size=genomic_signature_size,
                              verbose=verbose)
 
         # Call of parent's constructor

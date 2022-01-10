@@ -94,11 +94,11 @@ class MLP(TorchCustomModel):
             self._genes_encoding_block = GeneGraphEncoder(genes_idx_group=genes_idx_group,
                                                           hidden_size=genes_emb_size,
                                                           signature_size=genes_signature_size)
-            self._genes = True
+            self._genes_available = True
             self._input_size += genes_signature_size
         else:
             self._genes_encoding_block = None
-            self._genes = False
+            self._genes_available = False
 
         if len(layers) > 0:
             self._main_encoding_block = MLPEncodingBlock(input_size=self._input_size,
@@ -222,9 +222,13 @@ class MLP(TorchCustomModel):
         if len(self._cont_idx) != 0:
             new_x.append(x[:, self._cont_idx])
 
-        # We perform entity embeddings
+        # We perform entity embeddings on categorical features not identified as genes
         if len(self._cat_idx) != 0:
             new_x.append(self._embedding_block(x))
+
+        # We compute a genomic signature for categorical features identified as genes
+        if self._genes_available:
+            new_x.append(self._genes_encoding_block(x))
 
         # We concatenate all inputs
         x = cat(new_x, 1)

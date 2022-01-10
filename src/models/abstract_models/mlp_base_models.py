@@ -74,8 +74,6 @@ class MLP(TorchCustomModel):
                                   (only used if genes_idx_group is not None)
             verbose: True if we want trace of the training progress
         """
-        if num_cont_col is None and cat_sizes is None and genes_idx_group is None:
-            raise ValueError("There must be continuous columns or categorical columns")
 
         # We call parent's constructor
         super().__init__(criterion=criterion,
@@ -88,6 +86,7 @@ class MLP(TorchCustomModel):
                          cat_idx=cat_idx,
                          cat_sizes=cat_sizes,
                          cat_emb_sizes=cat_emb_sizes,
+                         additional_input_args=[genes_idx_group],
                          verbose=verbose)
 
         if genes_idx_group is not None:

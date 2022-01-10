@@ -127,8 +127,8 @@ class PetaleDataset(Dataset):
 
     @property
     def cat_sizes(self) -> Optional[List[int]]:
-        if self.encodings is not None:
-            return [len(v.items()) for v in self.encodings.values()]
+        if self._encodings is not None:
+            return [len(self._encodings[c].items()) for c in self._cat_cols if c not in self._gene_cols]
         return None
 
     @property
@@ -482,7 +482,7 @@ class PetaleDataset(Dataset):
 
         # We look through categorical columns to generate graph structure
         u, v = [], []
-        for e_type, e_values in self.encodings.items():
+        for e_type, e_values in self._encodings.items():
             if e_type in cat_cols:
                 for value in e_values.values():
                     u, v = self._get_graphs_edges(u=u, v=v, df=df, e_type=e_type, value=value)
@@ -736,7 +736,7 @@ class PetaleStaticGNNDataset(PetaleDataset):
 
         # We look through categorical columns to generate graph structure
         graph_structure = {}
-        for e_type, e_values in self.encodings.items():
+        for e_type, e_values in self._encodings.items():
             u, v = [], []
             for value in e_values.values():
                 self._get_graphs_edges(u=u, v=v, df=df, e_type=e_type, value=value)
@@ -786,7 +786,7 @@ class PetaleStaticGNNDataset(PetaleDataset):
 
         Returns: list of list with edges types
         """
-        return [[key] for key in self.encodings.keys()]
+        return [[key] for key in self._encodings.keys()]
 
     def update_masks(self,
                      train_mask: List[int],

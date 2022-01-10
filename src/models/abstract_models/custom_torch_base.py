@@ -24,7 +24,7 @@ from torch.nn import BatchNorm1d, Module
 from torch.nn.functional import l1_loss, mse_loss
 from torch.optim import Adam
 from torch.utils.data import DataLoader, SubsetRandomSampler
-from typing import Callable, List, Optional, Tuple, Union
+from typing import Any, Callable, List, Optional, Tuple, Union
 
 
 class TorchCustomModel(Module, ABC):
@@ -379,32 +379,6 @@ class TorchCustomModel(Module, ABC):
         return train_data
 
     @staticmethod
-    def _validate_sample_weights(dataset: PetaleDataset,
-                                 sample_weights: Optional[tensor]) -> tensor:
-        """
-        Validates the provided sample weights and return them.
-        If None are provided, each sample as the same weights of 1/n in the training loss,
-        where n is the number of elements in the dataset.
-
-        Args:
-            dataset: PetaleDataset used to feed the dataloaders
-            sample_weights: (N,) tensor with weights of the samples in the training set
-
-        Returns:
-
-        """
-        # We check the validity of the samples' weights
-        dataset_size = len(dataset)
-        if sample_weights is not None:
-            if sample_weights.shape[0] != dataset_size:
-                raise ValueError(f"sample_weights as length {sample_weights.shape[0]}"
-                                 f" while dataset as length {dataset_size}")
-        else:
-            sample_weights = ones(dataset_size) / dataset_size
-
-        return sample_weights
-
-    @staticmethod
     def _disable_module_running_stats(module: Module) -> None:
         """
         Sets momentum to 0 for all BatchNorm layer in the module after saving it in a cache
@@ -430,6 +404,51 @@ class TorchCustomModel(Module, ABC):
         """
         if isinstance(module, BatchNorm1d) and hasattr(module, "backup_momentum"):
             module.momentum = module.backup_momentum
+
+    @staticmethod
+    def _validate_input_args(input_args: List[Any]) -> None:
+        """
+        Checks if all arguments related to inputs are None,
+        if not the inputs are valid
+
+        Args:
+            input_args: list of arguments related to inputs
+
+        Returns: None
+        """
+        valid = False
+        for arg in input_args:
+            if arg is not None:
+                valid = True
+
+        if not valid:
+            raise ValueError("There must be continuous columns or categorical columns")
+
+    @staticmethod
+    def _validate_sample_weights(dataset: PetaleDataset,
+                                 sample_weights: Optional[tensor]) -> tensor:
+        """
+        Validates the provided sample weights and return them.
+        If None are provided, each sample as the same weights of 1/n in the training loss,
+        where n is the number of elements in the dataset.
+
+        Args:
+            dataset: PetaleDataset used to feed the dataloaders
+            sample_weights: (N,) tensor with weights of the samples in the training set
+
+        Returns:
+
+        """
+        # We check the validity of the samples' weights
+        dataset_size = len(dataset)
+        if sample_weights is not None:
+            if sample_weights.shape[0] != dataset_size:
+                raise ValueError(f"sample_weights as length {sample_weights.shape[0]}"
+                                 f" while dataset as length {dataset_size}")
+        else:
+            sample_weights = ones(dataset_size) / dataset_size
+
+        return sample_weights
 
     @abstractmethod
     def _execute_train_step(self,

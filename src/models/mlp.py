@@ -6,7 +6,7 @@ Authors: Nicolas Raymond
 Description: This file is used to define the regression and classification
              wrappers for MLP models
 
-Date of last modification : 2021/10/25
+Date of last modification : 2022/01/10
 """
 
 from src.models.wrappers.torch_wrappers import TorchBinaryClassifierWrapper, TorchRegressorWrapper

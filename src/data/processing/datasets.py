@@ -40,6 +40,7 @@ class PetaleDataset(Dataset):
                  target: str,
                  cont_cols: Optional[List[str]] = None,
                  cat_cols: Optional[List[str]] = None,
+                 gene_cols: Optional[List[str]] = None,
                  classification: bool = True,
                  to_tensor: bool = False):
         """
@@ -50,6 +51,7 @@ class PetaleDataset(Dataset):
             target: name of the column with the targets
             cont_cols: list of column names associated with continuous data
             cat_cols: list of column names associated with categorical data
+            gene_cols: list of categorical column names that must be considered as genes
             classification: true for classification task, false for regression
             to_tensor: true if we want the features and targets in tensors, false for numpy arrays
 
@@ -59,10 +61,13 @@ class PetaleDataset(Dataset):
             raise ValueError("Patients' ids missing from the dataframe")
 
         if cont_cols is None and cat_cols is None:
-            raise ValueError("At least a list of continuous columns or a list of categorical columns must be given.")
+            raise ValueError("At least a list of continuous columns or a list of categorical columns must be provided.")
 
         for columns in [cont_cols, cat_cols]:
             self._check_columns_validity(df, columns)
+
+        if gene_cols is not None:
+            self._check_genes_validity(cat_cols, gene_cols)
 
         # Set default protected attributes
         self._classification = classification
@@ -581,12 +586,33 @@ class PetaleDataset(Dataset):
                                 columns: Optional[List[str]] = None) -> None:
         """
         Checks if the columns are all in the dataframe
+
+        Args:
+            df: pandas dataframe with original data
+            columns: list of column names
         """
         if columns is not None:
             dataframe_columns = list(df.columns.values)
             for c in columns:
                 if c not in dataframe_columns:
                     raise ValueError(f"Column {c} is not part of the given dataframe")
+
+    @staticmethod
+    def _check_genes_validity(cat_cols: Optional[List[str]],
+                              gene_cols: List[str]) -> None:
+        """
+        Checks if all column names related to genes are included in categorical columns
+
+        Args:
+            cat_cols: list of categorical column names
+            gene_cols: list of categorical columns related to genes
+
+        Returns: None
+        """
+        cat_cols = [] if cat_cols is None else cat_cols
+        for gene in gene_cols:
+            if gene not in cat_cols:
+                raise ValueError(f'Gene {gene} from gene_cols cannot be found in cat_cols')
 
     @staticmethod
     def _get_graphs_edges(u: List[int],

@@ -447,7 +447,7 @@ class PetaleDataset(Dataset):
 
         return self.original_data[[PARTICIPANT, self._target] + selected_cols].copy()
 
-    def _create_genes_idx_group(self) -> Dict[str, List[int]]:
+    def _create_genes_idx_group(self) -> Optional[Dict[str, List[int]]]:
         """
         Regroup genes idx column by chromosome
 
@@ -455,6 +455,8 @@ class PetaleDataset(Dataset):
                   are list of idx referring to columns of genes associated to
                   the chromosome
         """
+        if len(self._gene_cols) == 0:
+            return None
 
         gene_idx_groups = {}
         for chrom_pos in self._gene_cols:

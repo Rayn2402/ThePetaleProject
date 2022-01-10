@@ -70,6 +70,7 @@ class PetaleDataset(Dataset):
             self._check_genes_validity(cat_cols, gene_cols)
 
         # Set default protected attributes
+        self._cat_cols, self._cat_idx = cat_cols, []
         self._classification = classification
         self._ids = list(df[PARTICIPANT].values)
         self._ids_to_row_idx = {id_: i for i, id_ in enumerate(self._ids)}
@@ -83,7 +84,6 @@ class PetaleDataset(Dataset):
 
         # Set default public attributes
         self.cont_cols, self.cont_idx = cont_cols, []
-        self.cat_cols, self.cat_idx = cat_cols, []
 
         # Define protected feature "getter" method
         self._x = self._define_feature_getter(cont_cols, cat_cols, to_tensor)
@@ -111,6 +111,14 @@ class PetaleDataset(Dataset):
     @property
     def classification(self) -> bool:
         return self._classification
+
+    @property
+    def cat_cols(self) -> List[str]:
+        return self._cat_cols
+
+    @property
+    def cat_idx(self) -> List[int]:
+        return self._cat_idx
 
     @property
     def cat_sizes(self) -> Optional[List[int]]:
@@ -177,7 +185,7 @@ class PetaleDataset(Dataset):
         Returns: None
         """
         # We apply an ordinal encoding to categorical columns
-        x_cat, _ = preprocess_categoricals(self._original_data[self.cat_cols].copy(),
+        x_cat, _ = preprocess_categoricals(self._original_data[self._cat_cols].copy(),
                                            mode=modes, encodings=self._encodings)
 
         self._x_cat = x_cat.to_numpy(dtype=int)
@@ -261,7 +269,7 @@ class PetaleDataset(Dataset):
         if cont_cols is None:
 
             # Only categorical column idx
-            self.cat_idx = list(range(len(cat_cols)))
+            self._cat_idx = list(range(len(cat_cols)))
 
             # Only categorical feature extracted by the getter
             def x() -> Union[tensor, array]:
@@ -281,7 +289,7 @@ class PetaleDataset(Dataset):
             # Continuous and categorical column idx
             nb_cont_cols = len(cont_cols)
             self.cont_idx = list(range(nb_cont_cols))
-            self.cat_idx = list(range(nb_cont_cols, nb_cont_cols + len(cat_cols)))
+            self._cat_idx = list(range(nb_cont_cols, nb_cont_cols + len(cat_cols)))
 
             # Continuous and categorical features extracted by the getter
             if not to_tensor:
@@ -365,7 +373,7 @@ class PetaleDataset(Dataset):
         Returns: pandas dataframe, list of cont cols, list of cat cols
         """
         # Extraction of the original dataframe
-        df = self._retrieve_subset_from_original(self.cont_cols, self.cat_cols)
+        df = self._retrieve_subset_from_original(self.cont_cols, self._cat_cols)
 
         # We add the new feature
         df = merge(df, data, on=[PARTICIPANT], how=INNER)
@@ -373,11 +381,11 @@ class PetaleDataset(Dataset):
         # We update the columns list
         feature_name = [f for f in data.columns if f != PARTICIPANT]
         if categorical:
-            cat_cols = self.cat_cols + feature_name if self.cat_cols is not None else [feature_name]
+            cat_cols = self._cat_cols + feature_name if self._cat_cols is not None else [feature_name]
             cont_cols = self.cont_cols
         else:
             cont_cols = self.cont_cols + feature_name if self.cont_cols is not None else [feature_name]
-            cat_cols = self.cat_cols
+            cat_cols = self._cat_cols
 
         return df, cont_cols, cat_cols
 
@@ -431,8 +439,8 @@ class PetaleDataset(Dataset):
         imputed_df = self.original_data.drop([PARTICIPANT, self.target], axis=1).copy()
         if self.cont_cols is not None:
             imputed_df[self.cont_cols] = array(self._x_cont)
-        if self.cat_cols is not None:
-            imputed_df[self.cat_cols] = array(self._x_cat)
+        if self._cat_cols is not None:
+            imputed_df[self._cat_cols] = array(self._x_cat)
 
         return imputed_df
 
@@ -448,14 +456,14 @@ class PetaleDataset(Dataset):
         # We make sure that given categorical columns are ok
         if cat_cols is not None:
             for c in cat_cols:
-                if c not in self.cat_cols:
+                if c not in self._cat_cols:
                     raise ValueError(f"Unrecognized categorical column name : {c}")
         else:
-            cat_cols = self.cat_cols
+            cat_cols = self._cat_cols
 
         # We extract imputed dataframe but reinsert nan values into categorical column that were imputed
         df = self.get_imputed_dataframe()
-        na_row_idx, na_col_idx = where(self.original_data[self.cat_cols].isna().to_numpy())
+        na_row_idx, na_col_idx = where(self.original_data[self._cat_cols].isna().to_numpy())
         for i, j in zip(na_row_idx, na_col_idx):
             df.iloc[i, j] = nan
 
@@ -709,7 +717,7 @@ class PetaleStaticGNNDataset(PetaleDataset):
         """
         # We extract imputed dataframe but reinsert nan values into categorical column that were imputed
         df = self.get_imputed_dataframe()
-        na_row_idx, na_col_idx = where(self.original_data[self.cat_cols].isna().to_numpy())
+        na_row_idx, na_col_idx = where(self.original_data[self._cat_cols].isna().to_numpy())
         for i, j in zip(na_row_idx, na_col_idx):
             df.iloc[i, j] = nan
 

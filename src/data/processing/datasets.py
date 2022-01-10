@@ -91,6 +91,7 @@ class PetaleDataset(Dataset):
 
         # Set genes idx
         self._gene_idx = [self._cat_idx[self.cat_cols.index(c)] for c in self._gene_cols]
+        self._cat_idx_without_genes = [i for i in self._cat_idx if i not in self._gene_idx]
 
         # We set a "getter" method to get modes of categorical columns and we also extract encodings
         self._get_modes, self._encodings = self._define_categorical_stats_getter(cat_cols)
@@ -122,7 +123,7 @@ class PetaleDataset(Dataset):
 
     @property
     def cat_idx(self) -> List[int]:
-        return self._cat_idx
+        return self._cat_idx_without_genes
 
     @property
     def cat_sizes(self) -> Optional[List[int]]:

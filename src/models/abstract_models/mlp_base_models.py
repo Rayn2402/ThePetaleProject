@@ -10,23 +10,25 @@ Description: This file is used to define the MLP model with entity embeddings
              and PetaleBinaryClassifier classes. However, two wrapper classes for torch models
              are provided to enable the use of these mlp models with hyperparameter tuning functions.
 
-Date of last modification : 2021/11/18
+Date of last modification : 2022/01/06
 """
 
 from src.models.abstract_models.custom_torch_base import TorchCustomModel
 from src.models.blocks.mlp_blocks import MLPEncodingBlock
+from src.models.blocks.genes_signature_block import GeneGraphEncoder
 from src.data.processing.datasets import MaskType, PetaleDataset
 from src.training.early_stopping import EarlyStopper
 from src.utils.score_metrics import BinaryCrossEntropy, Metric, RootMeanSquaredError
 from torch import cat, no_grad, tensor, ones, sigmoid
-from torch.nn import BatchNorm1d, BCEWithLogitsLoss, Identity, Module, Linear, MSELoss, Sequential
+from torch.nn import BCEWithLogitsLoss, Identity, Linear, MSELoss
 from torch.utils.data import DataLoader
-from typing import Callable, List, Optional
+from typing import Callable, Dict, List, Optional
 
 
 class MLP(TorchCustomModel):
     """
-    Multilayer perceptron model with entity embedding
+    Multilayer perceptron model with entity embedding for categorical variables
+    and genomic signature embedding for variables identified as genes.
     """
     def __init__(self,
                  output_size: int,
@@ -42,6 +44,9 @@ class MLP(TorchCustomModel):
                  cat_idx: Optional[List[int]] = None,
                  cat_sizes: Optional[List[int]] = None,
                  cat_emb_sizes: Optional[List[int]] = None,
+                 genes_idx_group: Optional[Dict[str, List[int]]] = None,
+                 genes_emb_size: int = 3,
+                 genes_signature_size: int = 10,
                  verbose: bool = False):
 
         """
@@ -61,9 +66,15 @@ class MLP(TorchCustomModel):
             cat_idx: idx of categorical columns in the dataset
             cat_sizes: list of integer representing the size of each categorical column
             cat_emb_sizes: list of integer representing the size of each categorical embedding
+            genes_idx_group: dictionary where keys are names of chromosomes and values
+                             are list of idx referring to columns of genes associated to
+                             the chromosome
+            genes_emb_size: size of genes embedding used to calculate genomic signature
+            genes_signature_size: size of the genomic signature
+                                  (only used if genes_idx_group is not None)
             verbose: True if we want trace of the training progress
         """
-        if num_cont_col is None and cat_sizes is None:
+        if num_cont_col is None and cat_sizes is None and genes_idx_group is None:
             raise ValueError("There must be continuous columns or categorical columns")
 
         # We call parent's constructor
@@ -79,14 +90,24 @@ class MLP(TorchCustomModel):
                          cat_emb_sizes=cat_emb_sizes,
                          verbose=verbose)
 
-        if len(layers) > 0:
-            self._encoding_block = MLPEncodingBlock(input_size=self._input_size,
-                                                    output_size=layers[-1],
-                                                    layers=layers[:-1],
-                                                    activation=activation,
-                                                    dropout=dropout)
+        if genes_idx_group is not None:
+            self._genes_encoding_block = GeneGraphEncoder(genes_idx_group=genes_idx_group,
+                                                          hidden_size=genes_emb_size,
+                                                          signature_size=genes_signature_size)
+            self._genes = True
+            self._input_size += genes_signature_size
         else:
-            self._encoding_block = Identity()
+            self._genes_encoding_block = None
+            self._genes = False
+
+        if len(layers) > 0:
+            self._main_encoding_block = MLPEncodingBlock(input_size=self._input_size,
+                                                         output_size=layers[-1],
+                                                         layers=layers[:-1],
+                                                         activation=activation,
+                                                         dropout=dropout)
+        else:
+            self._main_encoding_block = Identity()
             layers.append(self._input_size)
 
         # We add a linear layer to complete the layers
@@ -208,7 +229,7 @@ class MLP(TorchCustomModel):
         # We concatenate all inputs
         x = cat(new_x, 1)
 
-        return self._linear_layer(self._encoding_block(x)).squeeze()
+        return self._linear_layer(self._main_encoding_block(x)).squeeze()
 
 
 class MLPBinaryClassifier(MLP):

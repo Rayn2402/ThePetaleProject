@@ -276,7 +276,7 @@ class PetaleDataset(Dataset):
             # Continuous and categorical column idx
             nb_cont_cols = len(cont_cols)
             self.cont_idx = list(range(nb_cont_cols))
-            self.cat_idx = [i + nb_cont_cols for i in range(len(cat_cols))]
+            self.cat_idx = list(range(nb_cont_cols, nb_cont_cols + len(cat_cols)))
 
             # Continuous and categorical features extracted by the getter
             if not to_tensor:

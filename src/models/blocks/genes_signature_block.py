@@ -6,7 +6,7 @@ Author: Nicolas Raymond
 Description: Defines the modules in charge of encoding
              and decoding the genomic signature associated to patients.
 
-Date of last modification: 2022/01/04
+Date of last modification: 2022/01/10
 """
 
 from src.models.abstract_models.encoder import Encoder
@@ -22,7 +22,7 @@ class GeneGraphEncoder(Encoder, Module):
     Generates a signature (embedding) associated to an individual genes graph
     """
     def __init__(self,
-                 genes_idx_group: Dict[str, List[int]],
+                 gene_idx_groups: Dict[str, List[int]],
                  hidden_size: int = 3,
                  signature_size: int = 10):
         """
@@ -30,7 +30,7 @@ class GeneGraphEncoder(Encoder, Module):
         the batch norm and sets other protected attributes using the Encoder constructor
 
         Args:
-            genes_idx_group: dictionary where keys are names of chromosomes and values
+            gene_idx_groups: dictionary where keys are names of chromosomes and values
                              are list of idx referring to columns of genes associated to
                              the chromosome
             hidden_size: embedding size of each genes during intermediate
@@ -39,13 +39,13 @@ class GeneGraphEncoder(Encoder, Module):
         """
         # We extract the genes idx
         self.__genes_idx = []
-        for idx in genes_idx_group.values():
+        for idx in gene_idx_groups.values():
             self.__genes_idx.extend(idx)
 
         # We save the nb of genes, the hidden size and the nb of chromosomes
         self.__hidden_size = hidden_size
         self.__nb_genes = len(self.__genes_idx)
-        self.__nb_chrom = len(genes_idx_group.keys())
+        self.__nb_chrom = len(gene_idx_groups.keys())
 
         # Setting of input and output sizes protected attributes
         Module.__init__(self)
@@ -61,7 +61,7 @@ class GeneGraphEncoder(Encoder, Module):
         # Creation of the matrix used to calculate average of entity embeddings
         # within each chromosome. This matrix will not be updated
         self.__chrom_weight_mat = zeros(self.__nb_chrom, self.__nb_genes, requires_grad=False)
-        self.__set_chromosome_weight_mat(genes_idx_group)
+        self.__set_chromosome_weight_mat(gene_idx_groups)
 
         # Convolutional layer that must be applied to each chromosome embedding
         self._conv_layer = Conv1d(in_channels=1,
@@ -75,12 +75,12 @@ class GeneGraphEncoder(Encoder, Module):
         # Batch norm layer that normalize final signatures
         self._bn = BatchNorm1d(signature_size)
 
-    def __set_chromosome_weight_mat(self, genes_idx_group: Dict[str, List[int]]) -> None:
+    def __set_chromosome_weight_mat(self, gene_idx_groups: Dict[str, List[int]]) -> None:
         """
         Sets the matrix used to calculate mean of entity embeddings within each chromosome
 
         Args:
-            genes_idx_group: dictionary where keys are names of chromosomes and values
+            gene_idx_groups: dictionary where keys are names of chromosomes and values
                              are list of idx referring to columns of genes associated to
                              the chromosome
 
@@ -89,7 +89,7 @@ class GeneGraphEncoder(Encoder, Module):
         # We save coordinates with values in the sparse matrix
         x_coords, y_coords = [], []
         y = 0
-        for x, idx in enumerate(genes_idx_group.values()):
+        for x, idx in enumerate(gene_idx_groups.values()):
             nb_genes_in_chrom = len(idx)
             x_coords += [x]*nb_genes_in_chrom
             y_coords += range(y, y + nb_genes_in_chrom)
@@ -147,7 +147,7 @@ class GeneSignatureDecoder(Module):
     the original graph adjacency matrix
     """
     def __init__(self,
-                 genes_idx_group: Dict[str, List[int]],
+                 gene_idx_groups: Dict[str, List[int]],
                  signature_size: int = 10):
 
         """
@@ -155,7 +155,7 @@ class GeneSignatureDecoder(Module):
         to the genome of patient
 
         Args:
-            genes_idx_group: dictionary where keys are names of chromosomes and values
+            gene_idx_groups: dictionary where keys are names of chromosomes and values
                              are list of idx referring to columns of genes associated to
                              the chromosome
 
@@ -166,7 +166,7 @@ class GeneSignatureDecoder(Module):
         super().__init__()
 
         # Count of the number of genes and creation of the adjacency matrix
-        self.__nb_genes, self.__adj_mat = self.__set_adjacency_mat(genes_idx_group)
+        self.__nb_genes, self.__adj_mat = self.__set_adjacency_mat(gene_idx_groups)
 
         # Creation of BaseBlock (first layer of the decoder)
         self.__layer = BaseBlock(input_size=signature_size,
@@ -174,13 +174,13 @@ class GeneSignatureDecoder(Module):
                                  activation='ReLU')
 
     @staticmethod
-    def __set_adjacency_mat(genes_idx_group: Dict[str, List[int]]) -> Tuple[int, tensor]:
+    def __set_adjacency_mat(gene_idx_groups: Dict[str, List[int]]) -> Tuple[int, tensor]:
         """
         Builds the adjacency matrix related to the genome graph identical
         to all patients
 
         Args:
-            genes_idx_group: dictionary where keys are names of chromosomes and values
+            gene_idx_groups: dictionary where keys are names of chromosomes and values
                              are list of idx referring to columns of genes associated to
                              the chromosome
 
@@ -188,7 +188,7 @@ class GeneSignatureDecoder(Module):
         """
         nb_genes = 0
         x_coords, y_coords = [], []
-        for idx in genes_idx_group.values():
+        for idx in gene_idx_groups.values():
             nb_genes_in_chrom = len(idx)
             for i, x in enumerate(range(nb_genes, (nb_genes + nb_genes_in_chrom - 1))):
                 x_coords += [x]*(nb_genes_in_chrom - i - 1)

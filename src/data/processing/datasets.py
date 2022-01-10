@@ -72,6 +72,7 @@ class PetaleDataset(Dataset):
         # Set default protected attributes
         self._cat_cols, self._cat_idx = cat_cols, []
         self._classification = classification
+        self._cont_cols, self._cont_idx = cont_cols, []
         self._ids = list(df[PARTICIPANT].values)
         self._ids_to_row_idx = {id_: i for i, id_ in enumerate(self._ids)}
         self._n = df.shape[0]
@@ -81,9 +82,6 @@ class PetaleDataset(Dataset):
         self._train_mask, self._valid_mask, self._test_mask = [], None, []
         self._x_cat, self._x_cont = None, None
         self._y = self._initialize_targets(df[target], classification, to_tensor)
-
-        # Set default public attributes
-        self.cont_cols, self.cont_idx = cont_cols, []
 
         # Define protected feature "getter" method
         self._x = self._define_feature_getter(cont_cols, cat_cols, to_tensor)
@@ -125,6 +123,14 @@ class PetaleDataset(Dataset):
         if self.encodings is not None:
             return [len(v.items()) for v in self.encodings.values()]
         return None
+
+    @property
+    def cont_cols(self) -> List[str]:
+        return self._cont_cols
+
+    @property
+    def cont_idx(self) -> List[int]:
+        return self._cont_idx
 
     @property
     def encodings(self) -> Dict[str, Dict[str, int]]:
@@ -278,7 +284,7 @@ class PetaleDataset(Dataset):
         elif cat_cols is None:
 
             # Only continuous column idx
-            self.cont_idx = list(range(len(cont_cols)))
+            self._cont_idx = list(range(len(cont_cols)))
 
             # Only continuous features extracted by the getter
             def x() -> Union[tensor, array]:
@@ -288,7 +294,7 @@ class PetaleDataset(Dataset):
 
             # Continuous and categorical column idx
             nb_cont_cols = len(cont_cols)
-            self.cont_idx = list(range(nb_cont_cols))
+            self._cont_idx = list(range(nb_cont_cols))
             self._cat_idx = list(range(nb_cont_cols, nb_cont_cols + len(cat_cols)))
 
             # Continuous and categorical features extracted by the getter
@@ -353,7 +359,7 @@ class PetaleDataset(Dataset):
             self._original_data[cont_cols] = self._original_data[cont_cols].astype(float)
 
             def get_mu_and_std(df: DataFrame) -> Tuple[Series, Series]:
-                return df[self.cont_cols].mean(), df[self.cont_cols].std()
+                return df[self._cont_cols].mean(), df[self._cont_cols].std()
 
         return get_mu_and_std
 
@@ -373,7 +379,7 @@ class PetaleDataset(Dataset):
         Returns: pandas dataframe, list of cont cols, list of cat cols
         """
         # Extraction of the original dataframe
-        df = self._retrieve_subset_from_original(self.cont_cols, self._cat_cols)
+        df = self._retrieve_subset_from_original(self._cont_cols, self._cat_cols)
 
         # We add the new feature
         df = merge(df, data, on=[PARTICIPANT], how=INNER)
@@ -382,9 +388,9 @@ class PetaleDataset(Dataset):
         feature_name = [f for f in data.columns if f != PARTICIPANT]
         if categorical:
             cat_cols = self._cat_cols + feature_name if self._cat_cols is not None else [feature_name]
-            cont_cols = self.cont_cols
+            cont_cols = self._cont_cols
         else:
-            cont_cols = self.cont_cols + feature_name if self.cont_cols is not None else [feature_name]
+            cont_cols = self._cont_cols + feature_name if self._cont_cols is not None else [feature_name]
             cat_cols = self._cat_cols
 
         return df, cont_cols, cat_cols
@@ -404,7 +410,7 @@ class PetaleDataset(Dataset):
         Returns: None
         """
         # We fill missing with means and normalize the data
-        x_cont = preprocess_continuous(self._original_data[self.cont_cols].copy(), mu, std)
+        x_cont = preprocess_continuous(self._original_data[self._cont_cols].copy(), mu, std)
 
         # We apply the basis function
         self._x_cont = x_cont.to_numpy(dtype=float)
@@ -437,8 +443,8 @@ class PetaleDataset(Dataset):
         Returns: pandas dataframe
         """
         imputed_df = self.original_data.drop([PARTICIPANT, self.target], axis=1).copy()
-        if self.cont_cols is not None:
-            imputed_df[self.cont_cols] = array(self._x_cont)
+        if self._cont_cols is not None:
+            imputed_df[self._cont_cols] = array(self._x_cont)
         if self._cat_cols is not None:
             imputed_df[self._cat_cols] = array(self._x_cat)
 

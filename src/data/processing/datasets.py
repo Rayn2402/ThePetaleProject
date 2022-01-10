@@ -67,7 +67,10 @@ class PetaleDataset(Dataset):
             self._check_columns_validity(df, columns)
 
         if gene_cols is not None:
+            self._gene_cols = gene_cols
             self._check_genes_validity(cat_cols, gene_cols)
+        else:
+            self._gene_cols = []
 
         # Set default protected attributes
         self._cat_cols, self._cat_idx = cat_cols, []
@@ -85,6 +88,9 @@ class PetaleDataset(Dataset):
 
         # Define protected feature "getter" method
         self._x = self._define_feature_getter(cont_cols, cat_cols, to_tensor)
+
+        # Set genes idx
+        self._gene_idx = [self._cat_idx[self.cat_cols.index(c)] for c in self._gene_cols]
 
         # We set a "getter" method to get modes of categorical columns and we also extract encodings
         self._get_modes, self._encodings = self._define_categorical_stats_getter(cat_cols)

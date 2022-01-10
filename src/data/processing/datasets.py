@@ -89,9 +89,10 @@ class PetaleDataset(Dataset):
         # Define protected feature "getter" method
         self._x = self._define_feature_getter(cont_cols, cat_cols, to_tensor)
 
-        # Set genes idx
-        self._gene_idx = [self._cat_idx[self.cat_cols.index(c)] for c in self._gene_cols]
-        self._cat_idx_without_genes = [i for i in self._cat_idx if i not in self._gene_idx]
+        # Set attribute associated to genes idx
+        self._gene_idx = {c: self._cat_idx[self.cat_cols.index(c)] for c in self._gene_cols}
+        self._cat_idx_without_genes = [i for i in self._cat_idx if i not in self._gene_idx.values()]
+        self._gene_idx_groups = self._create_genes_idx_group()
 
         # We set a "getter" method to get modes of categorical columns and we also extract encodings
         self._get_modes, self._encodings = self._define_categorical_stats_getter(cat_cols)
@@ -142,6 +143,10 @@ class PetaleDataset(Dataset):
     @property
     def encodings(self) -> Dict[str, Dict[str, int]]:
         return self._encodings
+
+    @property
+    def gene_idx_groups(self) -> Dict[str, List[int]]:
+        return self._gene_idx_groups
 
     @property
     def ids(self) -> List[str]:
@@ -441,6 +446,25 @@ class PetaleDataset(Dataset):
             selected_cols += cat_cols
 
         return self.original_data[[PARTICIPANT, self._target] + selected_cols].copy()
+
+    def _create_genes_idx_group(self) -> Dict[str, List[int]]:
+        """
+        Regroup genes idx column by chromosome
+
+        Returns:  dictionary where keys are names of chromosomes and values
+                  are list of idx referring to columns of genes associated to
+                  the chromosome
+        """
+
+        gene_idx_groups = {}
+        for chrom_pos in self._gene_cols:
+            chrom = chrom_pos.split('_')[0]
+            if chrom in gene_idx_groups:
+                gene_idx_groups[chrom].append(self._gene_idx[chrom_pos])
+            else:
+                gene_idx_groups[chrom] = [self._gene_idx[chrom_pos]]
+
+        return gene_idx_groups
 
     def get_imputed_dataframe(self) -> DataFrame:
         """

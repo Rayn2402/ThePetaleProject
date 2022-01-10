@@ -251,6 +251,9 @@ class MLPBinaryClassifier(MLP):
                  cat_idx: Optional[List[int]] = None,
                  cat_sizes: Optional[List[int]] = None,
                  cat_emb_sizes: Optional[List[int]] = None,
+                 genes_idx_group: Optional[Dict[str, List[int]]] = None,
+                 genes_emb_size: int = 3,
+                 genes_signature_size: int = 10,
                  verbose: bool = False):
         """
         Sets protected attributes using parent's constructor
@@ -266,6 +269,12 @@ class MLPBinaryClassifier(MLP):
             cat_idx: idx of categorical columns in the dataset
             cat_sizes: list of integer representing the size of each categorical column
             cat_emb_sizes: list of integer representing the size of each categorical embedding
+            genes_idx_group: dictionary where keys are names of chromosomes and values
+                             are list of idx referring to columns of genes associated to
+                             the chromosome
+            genes_emb_size: size of genes embedding used to calculate genomic signature
+            genes_signature_size: size of the genomic signature
+                                  (only used if genes_idx_group is not None)
             verbose: true to print training progress when fit is called
         """
         eval_metric = eval_metric if eval_metric is not None else BinaryCrossEntropy()
@@ -282,6 +291,9 @@ class MLPBinaryClassifier(MLP):
                          cat_idx=cat_idx,
                          cat_sizes=cat_sizes,
                          cat_emb_sizes=cat_emb_sizes,
+                         genes_idx_group=genes_idx_group,
+                         genes_emb_size=genes_emb_size,
+                         genes_signature_size=genes_signature_size,
                          verbose=verbose)
 
     def predict_proba(self,
@@ -329,6 +341,9 @@ class MLPRegressor(MLP):
                  cat_idx: Optional[List[int]] = None,
                  cat_sizes: Optional[List[int]] = None,
                  cat_emb_sizes: Optional[List[int]] = None,
+                 genes_idx_group: Optional[Dict[str, List[int]]] = None,
+                 genes_emb_size: int = 3,
+                 genes_signature_size: int = 10,
                  verbose: bool = False):
         """
         Sets protected attributes using parent's constructor
@@ -344,6 +359,12 @@ class MLPRegressor(MLP):
             cat_idx: idx of categorical columns in the dataset
             cat_sizes: list of integer representing the size of each categorical column
             cat_emb_sizes: list of integer representing the size of each categorical embedding
+            genes_idx_group: dictionary where keys are names of chromosomes and values
+                             are list of idx referring to columns of genes associated to
+                             the chromosome
+            genes_emb_size: size of genes embedding used to calculate genomic signature
+            genes_signature_size: size of the genomic signature
+                                  (only used if genes_idx_group is not None)
             verbose: true to print training progress when fit is called
         """
         eval_metric = eval_metric if eval_metric is not None else RootMeanSquaredError()
@@ -360,6 +381,9 @@ class MLPRegressor(MLP):
                          cat_idx=cat_idx,
                          cat_sizes=cat_sizes,
                          cat_emb_sizes=cat_emb_sizes,
+                         genes_idx_group=genes_idx_group,
+                         genes_emb_size=genes_emb_size,
+                         genes_signature_size=genes_signature_size,
                          verbose=verbose)
 
     def predict(self,

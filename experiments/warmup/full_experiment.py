@@ -43,6 +43,10 @@ def argument_parser():
     parser.add_argument('-s', '--sex', default=False, action='store_true',
                         help='True if we want to include sex in features')
 
+    # Genes encoding
+    parser.add_argument('-gen_emb', '--genomic_embedding', default=False, action='store_true',
+                        help='True if we want to use genomic signature generation for linear regression model')
+
     # Models selection
     parser.add_argument('-han_e', '--han_with_encoding', default=False, action='store_true',
                         help='True if we want to run HAN experiment with single layered pre-encoder')
@@ -308,8 +312,13 @@ if __name__ == '__main__':
         # Start timer
         start = time.time()
 
-        # Creation of the dataset
-        dataset = PetaleDataset(df, target, cont_cols, cat_cols, to_tensor=True, classification=False)
+        # Creation of the dataset and function to update fixed params
+        if not args.genomic_embedding:
+            dataset = PetaleDataset(df, target, cont_cols, cat_cols, to_tensor=True, classification=False)
+
+        else:
+            dataset = PetaleDataset(df, target, cont_cols, cat_cols, gene_cols=SIGNIFICANT_CHROM_POS_WARMUP,
+                                    to_tensor=True, classification=False)
 
         # Creation of function to update fixed params
         def update_fixed_params(dts):
@@ -319,7 +328,8 @@ if __name__ == '__main__':
                     'num_cont_col': nb_cont_col,
                     'cat_idx': dts.cat_idx,
                     'cat_sizes': dts.cat_sizes,
-                    'cat_emb_sizes': dts.cat_sizes}
+                    'cat_emb_sizes': dts.cat_sizes,
+                    'gene_idx_groups': dts.gene_idx_groups}
 
 
         # Saving of fixed_params for MLP

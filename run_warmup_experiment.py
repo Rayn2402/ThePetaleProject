@@ -26,7 +26,7 @@ def argument_parser():
     parser.add_argument('-b', '--baselines', default=False, action='store_true',
                         help='True if we want to include variables from original equation')
     parser.add_argument('-gen', '--genes', default=False, action='store_true',
-                        help='True if we want to include genes if features')
+                        help='True if we want to include genes in features')
     parser.add_argument('-f', '--feature_selection', default=False, action='store_true',
                         help='True if we want to apply automatic feature selection')
     parser.add_argument('-s', '--sex', default=False, action='store_true',
@@ -34,6 +34,10 @@ def argument_parser():
     parser.add_argument('-r_w', '--remove_walk_variables', default=False, action='store_true',
                         help='True if we want to remove six minutes walk test variables from baselines'
                              '(only applies if baselines are included')
+
+    # Genes encoding
+    parser.add_argument('-gen_emb', '--genomic_embedding', default=False, action='store_true',
+                        help='True if we want to use genomic signature generation for linear regression model')
 
     # Usage of predictions from another experiment
     parser.add_argument('-p', '--path', type=str, default=None,
@@ -76,6 +80,8 @@ if __name__ == '__main__':
         cmd.append('-s')
     if args.enable_sam:
         cmd.append('-sam')
+    if args.genomic_embedding:
+        cmd.append('-gen_emb')
     if args.path is not None:
         cmd += ['-p', args.path]
 

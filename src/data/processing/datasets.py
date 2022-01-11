@@ -377,8 +377,9 @@ class PetaleDataset(Dataset):
 
     def _get_augmented_dataframe(self,
                                  data: DataFrame,
-                                 categorical: bool = False
-                                 ) -> Tuple[DataFrame, Optional[List[str]], Optional[List[str]]]:
+                                 categorical: bool = False,
+                                 gene: bool = False
+                                 ) -> Tuple[DataFrame, Optional[List[str]], Optional[List[str]], List[str]]:
         """
         Returns an augmented dataframe by concatenating original df and data
 
@@ -387,6 +388,7 @@ class PetaleDataset(Dataset):
                   First column must be PARTICIPANT ids
                   Second column must be the feature we want to add
             categorical: True if the new feature is categorical
+            gene: True if the new feature is considered as a gene
 
         Returns: pandas dataframe, list of cont cols, list of cat cols
         """
@@ -401,11 +403,13 @@ class PetaleDataset(Dataset):
         if categorical:
             cat_cols = self._cat_cols + feature_name if self._cat_cols is not None else [feature_name]
             cont_cols = self._cont_cols
+            gene_cols = self._gene_cols + [feature_name] if gene else self._gene_cols
         else:
             cont_cols = self._cont_cols + feature_name if self._cont_cols is not None else [feature_name]
             cat_cols = self._cat_cols
+            gene_cols = self._gene_cols
 
-        return df, cont_cols, cat_cols
+        return df, cont_cols, cat_cols, gene_cols
 
     def _numerical_setter(self,
                           mu: Series,
@@ -542,7 +546,8 @@ class PetaleDataset(Dataset):
 
     def create_superset(self,
                         data: DataFrame,
-                        categorical: bool = False) -> Any:
+                        categorical: bool = False,
+                        gene: bool = False) -> Any:
         """
         Returns a superset of the current dataset by including the given data
 
@@ -551,16 +556,18 @@ class PetaleDataset(Dataset):
                   First column must be PARTICIPANT ids
                   Second column must be the feature we want to add
             categorical: True if the new feature is categorical
+            gene: True if the new feature is considered as a gene
 
         Returns: instance of the PetaleDataset class
         """
         # We build the augmented dataframe
-        df, cont_cols, cat_cols = self._get_augmented_dataframe(data, categorical)
+        df, cont_cols, cat_cols, gene_cols = self._get_augmented_dataframe(data, categorical)
 
         return PetaleDataset(df=df,
                              target=self.target,
                              cont_cols=cont_cols,
                              cat_cols=cat_cols,
+                             gene_cols=gene_cols,
                              classification=self.classification,
                              to_tensor=self._to_tensor)
 

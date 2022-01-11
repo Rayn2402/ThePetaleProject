@@ -531,10 +531,12 @@ class PetaleDataset(Dataset):
         Returns: instance of the PetaleDataset class
         """
         subset = self._retrieve_subset_from_original(cont_cols, cat_cols)
+        gene_cols = None if len(self._gene_cols) == 0 else [c for c in self._gene_cols if c in cat_cols]
         return PetaleDataset(df=subset,
                              target=self.target,
                              cont_cols=cont_cols,
                              cat_cols=cat_cols,
+                             gene_cols=gene_cols,
                              classification=self.classification,
                              to_tensor=self._to_tensor)
 

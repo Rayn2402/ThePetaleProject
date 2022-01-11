@@ -54,7 +54,8 @@ class TorchCustomModel(Module, ABC):
             eval_metric: evaluation metric of our model (Ex. accuracy, mean absolute error)
             alpha: L1 penalty coefficient
             beta: L2 penalty coefficient
-            num_cont_col: number of numerical continuous columns in the dataset
+            num_cont_col: number of numerical continuous columns in the dataset,
+                          cont idx are assumed to be range(num_cont_col)
             cat_idx: idx of categorical columns in the dataset
             cat_sizes: list of integer representing the size of each categorical column
             cat_emb_sizes: list of integer representing the size of each categorical embedding
@@ -84,7 +85,7 @@ class TorchCustomModel(Module, ABC):
 
         # Settings of protected attributes related to entity embedding
         self._cat_idx = cat_idx if cat_idx is not None else []
-        self._cont_idx = [i for i in range(len(self._cat_idx) + num_cont_col) if i not in self._cat_idx]
+        self._cont_idx = list(range(num_cont_col))
         self._embedding_block = None
 
         # Initialization of a protected method

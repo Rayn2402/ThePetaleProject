@@ -304,7 +304,7 @@ class TorchCustomModel(Module, ABC):
             # We calculate valid mean epoch loss and apply early stopping if needed
             if self._execute_valid_step(valid_data, early_stopper):
                 print(f"\nEarly stopping occurred at epoch {epoch} with best_epoch = {epoch - patience}"
-                      f" and best_val_{self._eval_metric.name} = {round(early_stopper.val_score_min, 4)}")
+                      f" and best_val_{self._eval_metric.name} = {round(early_stopper.best_val_score, 4)}")
                 break
 
         if early_stopper is not None:

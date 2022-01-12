@@ -151,7 +151,7 @@ class TorchCustomModel(Module, ABC):
 
         Returns: None
         """
-        self.apply(self._disable_module_running_stats)
+        self.apply(self.disable_module_running_stats)
 
     def _enable_running_stats(self) -> None:
         """
@@ -159,7 +159,7 @@ class TorchCustomModel(Module, ABC):
 
         Returns: None
         """
-        self.apply(self._enable_module_running_stats)
+        self.apply(self.enable_module_running_stats)
 
     def _sam_weight_update(self, sample_weights: tensor,
                            x: List[Union[DGLHeteroGraph, tensor]],
@@ -384,33 +384,6 @@ class TorchCustomModel(Module, ABC):
         return train_data
 
     @staticmethod
-    def _disable_module_running_stats(module: Module) -> None:
-        """
-        Sets momentum to 0 for all BatchNorm layer in the module after saving it in a cache
-
-        Args:
-            module: torch module
-
-        Returns: None
-        """
-        if isinstance(module, BatchNorm1d):
-            module.backup_momentum = module.momentum
-            module.momentum = 0
-
-    @staticmethod
-    def _enable_module_running_stats(module: Module) -> None:
-        """
-        Restores momentum for all BatchNorm layer in the module using the value in the cache
-
-        Args:
-            module: torch module
-
-        Returns: None
-        """
-        if isinstance(module, BatchNorm1d) and hasattr(module, "backup_momentum"):
-            module.momentum = module.backup_momentum
-
-    @staticmethod
     def _validate_input_args(input_args: List[Any]) -> None:
         """
         Checks if all arguments related to inputs are None,
@@ -485,3 +458,30 @@ class TorchCustomModel(Module, ABC):
         Returns: True if we need to early stop
         """
         raise NotImplementedError
+
+    @staticmethod
+    def disable_module_running_stats(module: Module) -> None:
+        """
+        Sets momentum to 0 for all BatchNorm layer in the module after saving it in a cache
+
+        Args:
+            module: torch module
+
+        Returns: None
+        """
+        if isinstance(module, BatchNorm1d):
+            module.backup_momentum = module.momentum
+            module.momentum = 0
+
+    @staticmethod
+    def enable_module_running_stats(module: Module) -> None:
+        """
+        Restores momentum for all BatchNorm layer in the module using the value in the cache
+
+        Args:
+            module: torch module
+
+        Returns: None
+        """
+        if isinstance(module, BatchNorm1d) and hasattr(module, "backup_momentum"):
+            module.momentum = module.backup_momentum

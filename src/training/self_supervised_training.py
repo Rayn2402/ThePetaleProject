@@ -8,9 +8,16 @@ Description: This file stores object built for self supervised training
 Date of last modification: 2022/01/12
 """
 
+from src.data.processing.datasets import PetaleDataset
+from src.models.abstract_models.custom_torch_base import TorchCustomModel
 from src.models.blocks.genes_signature_block import GeneGraphEncoder, GeneSignatureDecoder
+from src.training.early_stopping import EarlyStopper
+from src.training.sam import SAM
+from src.utils.score_metrics import Direction
 from torch import mean, Module, pow, sum, tensor, zeros
-from typing import Dict, List, Tuple
+from torch.optim import Adam
+from torch.utils.data import DataLoader, SubsetRandomSampler
+from typing import Dict, List, Optional, Tuple
 
 
 class SSGeneEncoderTrainer(Module):
@@ -25,6 +32,7 @@ class SSGeneEncoderTrainer(Module):
         Args:
             gene_graph_encoder: GeneGraphEncoder object
         """
+        Module.__init__(self)
 
         # We save the encoder
         self.__enc = gene_graph_encoder
@@ -35,6 +43,55 @@ class SSGeneEncoderTrainer(Module):
         # We create the decoder
         self.__dec = GeneSignatureDecoder(nb_genes=nb_genes,
                                           signature_size=self.__enc.output_size)
+
+        # We initialize the optimizer
+        self.__optimizer = None
+
+    def __disable_running_stats(self) -> None:
+        """
+        Disables batch norm momentum when executing SAM optimization step
+
+        Returns: None
+        """
+        self.apply(TorchCustomModel.disable_module_running_stats)
+
+    def __enable_running_stats(self) -> None:
+        """
+        Restores batch norm momentum when executing SAM optimization step
+
+        Returns: None
+        """
+        self.apply(TorchCustomModel.enable_module_running_stats)
+
+    def __update_weights(self, x: tensor) -> float:
+        """
+        Executes a weights update using Sharpness-Aware Minimization (SAM) optimizer
+
+        Note from https://github.com/davda54/sam :
+            The running statistics are computed in both forward passes, but they should
+            be computed only for the first one. A possible solution is to set BN momentum
+            to zero to bypass the running statistics during the second pass.
+
+        Args:
+            x: (N, D) tensor with D-dimensional samples
+
+        Returns: training loss
+        """
+
+        # First forward-backward pass
+        loss = self.loss(self(x))
+        loss.backward()
+        self.__optimizer.first_step()
+
+        # Second forward-backward pass
+        self.__disable_running_stats()
+        self.loss(self(x)).backward()
+        self.__optimizer.second_step()
+
+        # We enable running stats again
+        self.__enable_running_stats()
+
+        return loss.item()
 
     def loss(self, pred: tensor) -> tensor:
         """
@@ -48,6 +105,43 @@ class SSGeneEncoderTrainer(Module):
         Returns: (1,) tensor with the loss
         """
         return mean(sum(pow(pred - self.__adj_mat, 2), dim=(1, 2)))
+
+    def fit(self,
+            dataset: PetaleDataset,
+            lr: float,
+            rho: float = 0.5,
+            batch_size: int = 25,
+            max_epochs: int = 200,
+            patience: int = 15) -> None:
+        """
+        Trains the encoder and the decoder using self supervised learning.
+        Uses Sharpness-Aware Minimization by default.
+
+        Args:
+            dataset: PetaleDataset used to feed the training dataloader
+            lr: learning rate
+            rho: neighborhood size in Sharpness-Aware Minimization optimizer,
+                 otherwise, standard SGD optimizer with momentum will be used
+            batch_size: size of the batches in the training loader
+            max_epochs: Maximum number of epochs for training
+            patience: Number of consecutive epochs without training loss improvement allowed
+
+        Returns: None
+        """
+        # Creation of the dataloader
+        train_size = len(dataset.train_mask)
+        batch_size = min(train_size, batch_size)
+        dataloader = DataLoader(dataset,
+                                batch_size=batch_size,
+                                sampler=SubsetRandomSampler(dataset.train_mask),
+                                drop_last=(train_size % batch_size == 1))
+
+        # Creation of the early stopper
+        early_stopper = EarlyStopper(patience=patience,
+                                     direction=Direction.MINIMIZE)
+
+        # Creation of the optimizer
+        self.__optimizer = SAM(self.parameters(), Adam, rho=rho, lr=lr)
 
     def forward(self, x: tensor) -> tensor:
         """

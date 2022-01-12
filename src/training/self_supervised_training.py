@@ -48,6 +48,10 @@ class SSGeneEncoderTrainer(Module):
         # We initialize the optimizer
         self.__optimizer = None
 
+    @property
+    def encoder(self) -> GeneGraphEncoder:
+        return self.__enc
+
     def __disable_running_stats(self) -> None:
         """
         Disables batch norm momentum when executing SAM optimization step

@@ -164,7 +164,7 @@ class SSGeneEncoderTrainer(Module):
 
             if early_stopper.early_stop:
                 print(f"\nEarly stopping occurred at epoch {epoch} with best_epoch = {epoch - patience}"
-                      f" and best training loss = {round(early_stopper.val_score_min, 4)}")
+                      f" and best training loss = {round(early_stopper.best_val_score, 4)}")
                 break
 
     def forward(self, x: tensor) -> tensor:

@@ -64,6 +64,19 @@ class SSGeneEncoderTrainer(Module):
 
         return nb_genes, adj_mat
 
+    def forward(self, x: tensor) -> tensor:
+        """
+        Applies the encoder and then the decoder function
+
+        Args:
+            x: (N, D) tensor with D dimensional samples
+
+        Returns: (N, NB_GENES, NB_GENES) tensor with soft adjacency matrices
+        """
+        return self.__dec(self.__enc(x))
+
+
+
 
 
 

@@ -47,6 +47,7 @@ class MLP(TorchCustomModel):
                  gene_idx_groups: Optional[Dict[str, List[int]]] = None,
                  genes_emb_size: int = 3,
                  genomic_signature_size: int = 10,
+                 pre_training: bool = False,
                  verbose: bool = False):
 
         """
@@ -72,6 +73,8 @@ class MLP(TorchCustomModel):
             genes_emb_size: size of genes embedding used to calculate genomic signature
             genomic_signature_size: size of the genomic signature
                                   (only used if gene_idx_groups is not None)
+            pre_training: If True and gene_idx_groups is not None, GeneGraphEncoder will
+                          be pretrained with self supervised learning
             verbose: True if we want trace of the training progress
         """
 
@@ -94,10 +97,12 @@ class MLP(TorchCustomModel):
                                                           hidden_size=genes_emb_size,
                                                           signature_size=genomic_signature_size)
             self._genes_available = True
+            self._pre_training = pre_training
             self._input_size += genomic_signature_size
         else:
             self._genes_encoding_block = None
             self._genes_available = False
+            self._pre_training = False
 
         if len(layers) > 0:
             self._main_encoding_block = MLPEncodingBlock(input_size=self._input_size,
@@ -253,6 +258,7 @@ class MLPBinaryClassifier(MLP):
                  gene_idx_groups: Optional[Dict[str, List[int]]] = None,
                  genes_emb_size: int = 3,
                  genomic_signature_size: int = 10,
+                 pre_training: bool = False,
                  verbose: bool = False):
         """
         Sets protected attributes using parent's constructor
@@ -274,6 +280,8 @@ class MLPBinaryClassifier(MLP):
             genes_emb_size: size of genes embedding used to calculate genomic signature
             genomic_signature_size: size of the genomic signature
                                   (only used if gene_idx_groups is not None)
+            pre_training: If True and gene_idx_groups is not None, GeneGraphEncoder will
+                          be pretrained with self supervised learning
             verbose: true to print training progress when fit is called
         """
         eval_metric = eval_metric if eval_metric is not None else BinaryCrossEntropy()
@@ -293,6 +301,7 @@ class MLPBinaryClassifier(MLP):
                          gene_idx_groups=gene_idx_groups,
                          genes_emb_size=genes_emb_size,
                          genomic_signature_size=genomic_signature_size,
+                         pre_training=pre_training,
                          verbose=verbose)
 
     def predict_proba(self,
@@ -343,6 +352,7 @@ class MLPRegressor(MLP):
                  gene_idx_groups: Optional[Dict[str, List[int]]] = None,
                  genes_emb_size: int = 3,
                  genomic_signature_size: int = 10,
+                 pre_training: bool = False,
                  verbose: bool = False):
         """
         Sets protected attributes using parent's constructor
@@ -364,6 +374,8 @@ class MLPRegressor(MLP):
             genes_emb_size: size of genes embedding used to calculate genomic signature
             genomic_signature_size: size of the genomic signature
                                   (only used if gene_idx_groups is not None)
+            pre_training: If True and gene_idx_groups is not None, GeneGraphEncoder will
+                          be pretrained with self supervised learning
             verbose: true to print training progress when fit is called
         """
         eval_metric = eval_metric if eval_metric is not None else RootMeanSquaredError()
@@ -383,6 +395,7 @@ class MLPRegressor(MLP):
                          gene_idx_groups=gene_idx_groups,
                          genes_emb_size=genes_emb_size,
                          genomic_signature_size=genomic_signature_size,
+                         pre_training=pre_training,
                          verbose=verbose)
 
     def predict(self,

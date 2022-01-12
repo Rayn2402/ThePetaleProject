@@ -9,7 +9,7 @@ Date of last modification: 2022/01/12
 """
 
 from src.models.blocks.genes_signature_block import GeneGraphEncoder, GeneSignatureDecoder
-from torch import Module, tensor, zeros
+from torch import mean, Module, pow, sum, tensor, zeros
 from typing import Dict, List, Tuple
 
 
@@ -35,6 +35,30 @@ class SSGeneEncoderTrainer(Module):
         # We create the decoder
         self.__dec = GeneSignatureDecoder(nb_genes=nb_genes,
                                           signature_size=self.__enc.output_size)
+
+    def loss(self, pred: tensor) -> tensor:
+        """
+        First calculates the differences between the predicted soft adjacency matrices
+        and the real matrices, then take the average of the squared Frobenius norms of
+        each of these matrices
+
+        Args:
+            pred: (N, NB_GENES, NB_GENES) tensor with soft adjacency matrices predicted
+
+        Returns: (1,) tensor with the loss
+        """
+        return mean(sum(pow(pred - self.__adj_mat, 2), dim=(1, 2)))
+
+    def forward(self, x: tensor) -> tensor:
+        """
+        Applies the encoder and then the decoder function
+
+        Args:
+            x: (N, D) tensor with D dimensional samples
+
+        Returns: (N, NB_GENES, NB_GENES) tensor with soft adjacency matrices
+        """
+        return self.__dec(self.__enc(x))
 
     @staticmethod
     def __set_adjacency_mat(gene_idx_groups: Dict[str, List[int]]) -> Tuple[int, tensor]:
@@ -63,17 +87,6 @@ class SSGeneEncoderTrainer(Module):
         adj_mat += adj_mat.t()
 
         return nb_genes, adj_mat
-
-    def forward(self, x: tensor) -> tensor:
-        """
-        Applies the encoder and then the decoder function
-
-        Args:
-            x: (N, D) tensor with D dimensional samples
-
-        Returns: (N, NB_GENES, NB_GENES) tensor with soft adjacency matrices
-        """
-        return self.__dec(self.__enc(x))
 
 
 

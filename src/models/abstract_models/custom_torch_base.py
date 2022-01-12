@@ -277,6 +277,12 @@ class TorchCustomModel(Module, ABC):
         # We check the validity of the samples' weights
         sample_weights = self._validate_sample_weights(dataset, sample_weights)
 
+        # We apply self supervised learning (if applicable)
+        if hasattr(self, '_run_self_supervised_learning') and hasattr(self, '_pre_training'):
+            if self._pre_training:
+                self._run_self_supervised_learning(dataset=dataset, lr=lr, batch_size=batch_size,
+                                                   max_epochs=max_epochs, patience=patience)
+
         # We create the training objects
         train_data = self._create_train_objects(dataset, batch_size)
 

@@ -14,7 +14,8 @@ from src.models.blocks.genes_signature_block import GeneGraphEncoder, GeneSignat
 from src.training.early_stopping import EarlyStopper
 from src.training.sam import SAM
 from src.utils.score_metrics import Direction
-from torch import mean, Module, pow, sum, tensor, zeros
+from torch import mean, pow, sum, tensor, zeros
+from torch.nn import Module
 from torch.optim import Adam
 from torch.utils.data import DataLoader, SubsetRandomSampler
 from typing import Dict, List, Optional, Tuple
@@ -32,7 +33,7 @@ class SSGeneEncoderTrainer(Module):
         Args:
             gene_graph_encoder: GeneGraphEncoder object
         """
-        Module.__init__(self)
+        super().__init__()
 
         # We save the encoder
         self.__enc = gene_graph_encoder
@@ -135,6 +136,7 @@ class SSGeneEncoderTrainer(Module):
                                 batch_size=batch_size,
                                 sampler=SubsetRandomSampler(dataset.train_mask),
                                 drop_last=(train_size % batch_size == 1))
+        nb_batch = len(DataLoader)
 
         # Creation of the early stopper
         early_stopper = EarlyStopper(patience=patience,
@@ -142,6 +144,28 @@ class SSGeneEncoderTrainer(Module):
 
         # Creation of the optimizer
         self.__optimizer = SAM(self.parameters(), Adam, rho=rho, lr=lr)
+
+        # Self supervised train
+        for epoch in range(max_epochs):
+            mean_epoch_loss = 0
+            for batch in dataloader:
+
+                # Data extraction
+                x, _, _ = batch
+
+                # Weight update
+                mean_epoch_loss += self.__update_weights(x)
+
+            # Mean epoch loss calculation
+            mean_epoch_loss /= nb_batch
+
+            # Early stopping check
+            early_stopper(mean_epoch_loss, self)
+
+            if early_stopper.early_stop:
+                print(f"\nEarly stopping occurred at epoch {epoch} with best_epoch = {epoch - patience}"
+                      f" and best training loss = {round(early_stopper.val_score_min, 4)}")
+                break
 
     def forward(self, x: tensor) -> tensor:
         """

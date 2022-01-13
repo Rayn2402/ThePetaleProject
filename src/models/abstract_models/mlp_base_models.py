@@ -10,7 +10,7 @@ Description: This file is used to define the MLP model with entity embeddings
              and PetaleBinaryClassifier classes. However, two wrapper classes for torch models
              are provided to enable the use of these mlp models with hyperparameter tuning functions.
 
-Date of last modification : 2022/01/10
+Date of last modification : 2022/01/12
 """
 
 from src.models.abstract_models.custom_torch_base import TorchCustomModel
@@ -18,6 +18,7 @@ from src.models.blocks.mlp_blocks import MLPEncodingBlock
 from src.models.blocks.genes_signature_block import GeneGraphEncoder
 from src.data.processing.datasets import MaskType, PetaleDataset
 from src.training.early_stopping import EarlyStopper
+from src.training.self_supervised_training import SSGeneEncoderTrainer
 from src.utils.score_metrics import BinaryCrossEntropy, Metric, RootMeanSquaredError
 from torch import cat, no_grad, tensor, ones, sigmoid
 from torch.nn import BCEWithLogitsLoss, Identity, Linear, MSELoss
@@ -47,6 +48,7 @@ class MLP(TorchCustomModel):
                  gene_idx_groups: Optional[Dict[str, List[int]]] = None,
                  genes_emb_size: int = 3,
                  genomic_signature_size: int = 10,
+                 pre_training: bool = False,
                  verbose: bool = False):
 
         """
@@ -72,6 +74,8 @@ class MLP(TorchCustomModel):
             genes_emb_size: size of genes embedding used to calculate genomic signature
             genomic_signature_size: size of the genomic signature
                                   (only used if gene_idx_groups is not None)
+            pre_training: If True and gene_idx_groups is not None, GeneGraphEncoder will
+                          be pretrained with self supervised learning
             verbose: True if we want trace of the training progress
         """
 
@@ -94,10 +98,12 @@ class MLP(TorchCustomModel):
                                                           hidden_size=genes_emb_size,
                                                           signature_size=genomic_signature_size)
             self._genes_available = True
+            self._pre_training = pre_training
             self._input_size += genomic_signature_size
         else:
             self._genes_encoding_block = None
             self._genes_available = False
+            self._pre_training = False
 
         if len(layers) > 0:
             self._main_encoding_block = MLPEncodingBlock(input_size=self._input_size,
@@ -204,6 +210,34 @@ class MLP(TorchCustomModel):
 
         return False
 
+    def _run_self_supervised_learning(self,
+                                      dataset: PetaleDataset,
+                                      lr: float,
+                                      batch_size: int = 25,
+                                      max_epochs: int = 200,
+                                      patience: int = 15) -> None:
+        """
+        Trains the encoder and a decoder using self supervised learning.
+        Uses Sharpness-Aware Minimization by default.
+
+        Args:
+            dataset: PetaleDataset used to feed the training dataloader
+            lr: learning rate
+            batch_size: size of the batches in the training loader
+            max_epochs: Maximum number of epochs for training
+            patience: Number of consecutive epochs without training loss improvement allowed
+
+        Returns: None
+        """
+        # Creation of a SSGeneEncoderTrainer
+        trainer = SSGeneEncoderTrainer(gene_graph_encoder=self._genes_encoding_block)
+
+        # Self supervised training
+        trainer.fit(dataset=dataset, lr=lr, batch_size=batch_size, max_epochs=max_epochs, patience=patience)
+
+        # Pre trained encoder extraction
+        self._genes_encoding_block = trainer.encoder
+
     def forward(self, x: tensor) -> tensor:
         """
         Executes the forward pass
@@ -253,6 +287,7 @@ class MLPBinaryClassifier(MLP):
                  gene_idx_groups: Optional[Dict[str, List[int]]] = None,
                  genes_emb_size: int = 3,
                  genomic_signature_size: int = 10,
+                 pre_training: bool = False,
                  verbose: bool = False):
         """
         Sets protected attributes using parent's constructor
@@ -274,6 +309,8 @@ class MLPBinaryClassifier(MLP):
             genes_emb_size: size of genes embedding used to calculate genomic signature
             genomic_signature_size: size of the genomic signature
                                   (only used if gene_idx_groups is not None)
+            pre_training: If True and gene_idx_groups is not None, GeneGraphEncoder will
+                          be pretrained with self supervised learning
             verbose: true to print training progress when fit is called
         """
         eval_metric = eval_metric if eval_metric is not None else BinaryCrossEntropy()
@@ -293,6 +330,7 @@ class MLPBinaryClassifier(MLP):
                          gene_idx_groups=gene_idx_groups,
                          genes_emb_size=genes_emb_size,
                          genomic_signature_size=genomic_signature_size,
+                         pre_training=pre_training,
                          verbose=verbose)
 
     def predict_proba(self,
@@ -343,6 +381,7 @@ class MLPRegressor(MLP):
                  gene_idx_groups: Optional[Dict[str, List[int]]] = None,
                  genes_emb_size: int = 3,
                  genomic_signature_size: int = 10,
+                 pre_training: bool = False,
                  verbose: bool = False):
         """
         Sets protected attributes using parent's constructor
@@ -364,6 +403,8 @@ class MLPRegressor(MLP):
             genes_emb_size: size of genes embedding used to calculate genomic signature
             genomic_signature_size: size of the genomic signature
                                   (only used if gene_idx_groups is not None)
+            pre_training: If True and gene_idx_groups is not None, GeneGraphEncoder will
+                          be pretrained with self supervised learning
             verbose: true to print training progress when fit is called
         """
         eval_metric = eval_metric if eval_metric is not None else RootMeanSquaredError()
@@ -383,6 +424,7 @@ class MLPRegressor(MLP):
                          gene_idx_groups=gene_idx_groups,
                          genes_emb_size=genes_emb_size,
                          genomic_signature_size=genomic_signature_size,
+                         pre_training=pre_training,
                          verbose=verbose)
 
     def predict(self,

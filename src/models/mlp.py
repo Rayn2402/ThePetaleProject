@@ -41,6 +41,7 @@ class PetaleBinaryMLPC(TorchBinaryClassifierWrapper):
                  gene_idx_groups: Optional[Dict[str, List[int]]] = None,
                  genes_emb_size: int = 3,
                  genomic_signature_size: int = 10,
+                 pre_training: bool = False,
                  verbose: bool = False,
                  classification_threshold: float = 0.5,
                  weight:  Optional[float] = None):
@@ -72,6 +73,8 @@ class PetaleBinaryMLPC(TorchBinaryClassifierWrapper):
             genes_emb_size: size of genes embedding used to calculate genomic signature
             genomic_signature_size: size of the genomic signature
                                   (only used if gene_idx_groups is not None)
+            pre_training: If True and gene_idx_groups is not None, GeneGraphEncoder will
+                          be pretrained with self supervised learning
             verbose: if True, training progress will be printed
             classification_threshold: threshold used to classify a sample in class 1
             weight: weight attributed to class 1
@@ -90,6 +93,7 @@ class PetaleBinaryMLPC(TorchBinaryClassifierWrapper):
                                     gene_idx_groups=gene_idx_groups,
                                     genes_emb_size=genes_emb_size,
                                     genomic_signature_size=genomic_signature_size,
+                                    pre_training=pre_training,
                                     verbose=verbose)
 
         super().__init__(model=model,
@@ -137,6 +141,7 @@ class PetaleMLPR(TorchRegressorWrapper):
                  gene_idx_groups: Optional[Dict[str, List[int]]] = None,
                  genes_emb_size: int = 3,
                  genomic_signature_size: int = 10,
+                 pre_training: bool = False,
                  verbose: bool = False):
         """
         Builds and MLP regression model and sets the protected attributes using parent's constructor
@@ -166,6 +171,8 @@ class PetaleMLPR(TorchRegressorWrapper):
             genes_emb_size: size of genes embedding used to calculate genomic signature
             genomic_signature_size: size of the genomic signature
                                   (only used if gene_idx_groups is not None)
+            pre_training: If True and gene_idx_groups is not None, GeneGraphEncoder will
+                          be pretrained with self supervised learning
             verbose: if True, training progress will be printed
         """
         # Creation of the model
@@ -182,6 +189,7 @@ class PetaleMLPR(TorchRegressorWrapper):
                              gene_idx_groups=gene_idx_groups,
                              genes_emb_size=genes_emb_size,
                              genomic_signature_size=genomic_signature_size,
+                             pre_training=pre_training,
                              verbose=verbose)
 
         # Call of parent's constructor

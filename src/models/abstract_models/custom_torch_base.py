@@ -151,7 +151,7 @@ class TorchCustomModel(Module, ABC):
 
         Returns: None
         """
-        self.apply(self._disable_module_running_stats)
+        self.apply(self.disable_module_running_stats)
 
     def _enable_running_stats(self) -> None:
         """
@@ -159,7 +159,7 @@ class TorchCustomModel(Module, ABC):
 
         Returns: None
         """
-        self.apply(self._enable_module_running_stats)
+        self.apply(self.enable_module_running_stats)
 
     def _sam_weight_update(self, sample_weights: tensor,
                            x: List[Union[DGLHeteroGraph, tensor]],
@@ -277,6 +277,12 @@ class TorchCustomModel(Module, ABC):
         # We check the validity of the samples' weights
         sample_weights = self._validate_sample_weights(dataset, sample_weights)
 
+        # We apply self supervised learning (if applicable)
+        if hasattr(self, '_run_self_supervised_learning') and hasattr(self, '_pre_training'):
+            if self._pre_training:
+                self._run_self_supervised_learning(dataset=dataset, lr=lr, batch_size=batch_size,
+                                                   max_epochs=max_epochs, patience=patience)
+
         # We create the training objects
         train_data = self._create_train_objects(dataset, batch_size)
 
@@ -304,7 +310,7 @@ class TorchCustomModel(Module, ABC):
             # We calculate valid mean epoch loss and apply early stopping if needed
             if self._execute_valid_step(valid_data, early_stopper):
                 print(f"\nEarly stopping occurred at epoch {epoch} with best_epoch = {epoch - patience}"
-                      f" and best_val_{self._eval_metric.name} = {round(early_stopper.val_score_min, 4)}")
+                      f" and best_val_{self._eval_metric.name} = {round(early_stopper.best_val_score, 4)}")
                 break
 
         if early_stopper is not None:
@@ -384,33 +390,6 @@ class TorchCustomModel(Module, ABC):
         return train_data
 
     @staticmethod
-    def _disable_module_running_stats(module: Module) -> None:
-        """
-        Sets momentum to 0 for all BatchNorm layer in the module after saving it in a cache
-
-        Args:
-            module: torch module
-
-        Returns: None
-        """
-        if isinstance(module, BatchNorm1d):
-            module.backup_momentum = module.momentum
-            module.momentum = 0
-
-    @staticmethod
-    def _enable_module_running_stats(module: Module) -> None:
-        """
-        Restores momentum for all BatchNorm layer in the module using the value in the cache
-
-        Args:
-            module: torch module
-
-        Returns: None
-        """
-        if isinstance(module, BatchNorm1d) and hasattr(module, "backup_momentum"):
-            module.momentum = module.backup_momentum
-
-    @staticmethod
     def _validate_input_args(input_args: List[Any]) -> None:
         """
         Checks if all arguments related to inputs are None,
@@ -485,3 +464,30 @@ class TorchCustomModel(Module, ABC):
         Returns: True if we need to early stop
         """
         raise NotImplementedError
+
+    @staticmethod
+    def disable_module_running_stats(module: Module) -> None:
+        """
+        Sets momentum to 0 for all BatchNorm layer in the module after saving it in a cache
+
+        Args:
+            module: torch module
+
+        Returns: None
+        """
+        if isinstance(module, BatchNorm1d):
+            module.backup_momentum = module.momentum
+            module.momentum = 0
+
+    @staticmethod
+    def enable_module_running_stats(module: Module) -> None:
+        """
+        Restores momentum for all BatchNorm layer in the module using the value in the cache
+
+        Args:
+            module: torch module
+
+        Returns: None
+        """
+        if isinstance(module, BatchNorm1d) and hasattr(module, "backup_momentum"):
+            module.momentum = module.backup_momentum

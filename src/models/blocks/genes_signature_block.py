@@ -6,7 +6,7 @@ Author: Nicolas Raymond
 Description: Defines the modules in charge of encoding
              and decoding the genomic signature associated to patients.
 
-Date of last modification: 2022/01/10
+Date of last modification: 2022/01/13
 """
 
 from src.models.abstract_models.encoder import Encoder
@@ -38,14 +38,15 @@ class GeneGraphEncoder(Encoder, Module):
             signature_size: final genomic signature size (output size)
         """
         # We extract the genes idx
+        self.__gene_idx_groups = gene_idx_groups
         self.__genes_idx = []
-        for idx in gene_idx_groups.values():
+        for idx in self.__gene_idx_groups.values():
             self.__genes_idx.extend(idx)
 
         # We save the nb of genes, the hidden size and the nb of chromosomes
         self.__hidden_size = hidden_size
         self.__nb_genes = len(self.__genes_idx)
-        self.__nb_chrom = len(gene_idx_groups.keys())
+        self.__nb_chrom = len(self.__gene_idx_groups.keys())
 
         # Setting of input and output sizes protected attributes
         Module.__init__(self)
@@ -61,7 +62,7 @@ class GeneGraphEncoder(Encoder, Module):
         # Creation of the matrix used to calculate average of entity embeddings
         # within each chromosome. This matrix will not be updated
         self.__chrom_weight_mat = zeros(self.__nb_chrom, self.__nb_genes, requires_grad=False)
-        self.__set_chromosome_weight_mat(gene_idx_groups)
+        self.__set_chromosome_weight_mat(self.__gene_idx_groups)
 
         # Convolutional layer that must be applied to each chromosome embedding
         self._conv_layer = Conv1d(in_channels=1,
@@ -74,6 +75,10 @@ class GeneGraphEncoder(Encoder, Module):
 
         # Batch norm layer that normalize final signatures
         self._bn = BatchNorm1d(signature_size)
+
+    @property
+    def gene_idx_groups(self) -> Dict[str, List[int]]:
+        return self.__gene_idx_groups
 
     def __set_chromosome_weight_mat(self, gene_idx_groups: Dict[str, List[int]]) -> None:
         """
@@ -147,7 +152,7 @@ class GeneSignatureDecoder(Module):
     the original graph adjacency matrix
     """
     def __init__(self,
-                 gene_idx_groups: Dict[str, List[int]],
+                 nb_genes: int,
                  signature_size: int = 10):
 
         """
@@ -155,51 +160,17 @@ class GeneSignatureDecoder(Module):
         to the genome of patient
 
         Args:
-            gene_idx_groups: dictionary where keys are names of chromosomes and values
-                             are list of idx referring to columns of genes associated to
-                             the chromosome
-
+            nb_genes: nb of genes in the genomic graph
             signature_size: genomic signature size (input size)
         """
 
         # Call of parent's constructor
         super().__init__()
 
-        # Count of the number of genes and creation of the adjacency matrix
-        self.__nb_genes, self.__adj_mat = self.__set_adjacency_mat(gene_idx_groups)
-
         # Creation of BaseBlock (first layer of the decoder)
         self.__layer = BaseBlock(input_size=signature_size,
-                                 output_size=self.__nb_genes,
+                                 output_size=nb_genes,
                                  activation='ReLU')
-
-    @staticmethod
-    def __set_adjacency_mat(gene_idx_groups: Dict[str, List[int]]) -> Tuple[int, tensor]:
-        """
-        Builds the adjacency matrix related to the genome graph identical
-        to all patients
-
-        Args:
-            gene_idx_groups: dictionary where keys are names of chromosomes and values
-                             are list of idx referring to columns of genes associated to
-                             the chromosome
-
-        Returns: nb of genes, adjacency matrix
-        """
-        nb_genes = 0
-        x_coords, y_coords = [], []
-        for idx in gene_idx_groups.values():
-            nb_genes_in_chrom = len(idx)
-            for i, x in enumerate(range(nb_genes, (nb_genes + nb_genes_in_chrom - 1))):
-                x_coords += [x]*(nb_genes_in_chrom - i - 1)
-                y_coords += range(x + 1, nb_genes + nb_genes_in_chrom)
-            nb_genes += nb_genes_in_chrom
-
-        adj_mat = zeros(nb_genes, nb_genes)
-        adj_mat[x_coords, y_coords] = 1
-        adj_mat += adj_mat.t()
-
-        return nb_genes, adj_mat
 
     def forward(self, x: tensor) -> tensor:
         """

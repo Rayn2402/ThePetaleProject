@@ -321,15 +321,18 @@ if __name__ == '__main__':
                                     to_tensor=True, classification=False)
 
         # Creation of function to update fixed params
+        max_e = 200 if args.genes else 50
+
         def update_fixed_params(dts):
             nb_cont_col = len(dts.cont_cols) if dts.cont_cols is not None else 0
-            return {'max_epochs': 50,
-                    'patience': 25,
+            return {'max_epochs': max_e,
+                    'patience': 50,
                     'num_cont_col': nb_cont_col,
                     'cat_idx': dts.cat_idx,
                     'cat_sizes': dts.cat_sizes,
                     'cat_emb_sizes': dts.cat_sizes,
-                    'gene_idx_groups': dts.gene_idx_groups}
+                    'gene_idx_groups': dts.gene_idx_groups,
+                    'genomic_signature_size': 10}
 
 
         # Saving of fixed_params for MLP

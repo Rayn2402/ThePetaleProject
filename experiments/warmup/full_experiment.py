@@ -67,6 +67,11 @@ def argument_parser():
     parser.add_argument('-sam', '--enable_sam', default=False, action='store_true',
                         help='True if we want to use Sharpness-Aware Minimization Optimizer')
 
+    # Activation of self supervised learning
+    parser.add_argument('-pre_training', '--pre_training', default=False, action='store_true',
+                        help='True if we want to apply pre self supervised training to model'
+                             'where it is enabled. Currently available for ENET with genes encoding')
+
     # Usage of predictions from another experiment
     parser.add_argument('-p', '--path', type=str, default=None,
                         help='Path leading to predictions of another model, will only be used by HAN if specified')
@@ -332,7 +337,8 @@ if __name__ == '__main__':
                     'cat_sizes': dts.cat_sizes,
                     'cat_emb_sizes': dts.cat_sizes,
                     'gene_idx_groups': dts.gene_idx_groups,
-                    'genomic_signature_size': 10}
+                    'genomic_signature_size': 10,
+                    'pre_training': args.pre_training}
 
 
         # Saving of fixed_params for MLP

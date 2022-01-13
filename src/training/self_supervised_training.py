@@ -140,7 +140,7 @@ class SSGeneEncoderTrainer(Module):
                                 batch_size=batch_size,
                                 sampler=SubsetRandomSampler(dataset.train_mask),
                                 drop_last=(train_size % batch_size == 1))
-        nb_batch = len(DataLoader)
+        nb_batch = len(dataloader)
 
         # Creation of the early stopper
         early_stopper = EarlyStopper(patience=patience,

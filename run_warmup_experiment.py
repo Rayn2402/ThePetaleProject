@@ -47,6 +47,11 @@ def argument_parser():
     parser.add_argument('-sam', '--enable_sam', default=False, action='store_true',
                         help='True if we want to use Sharpness-Aware Minimization Optimizer')
 
+    # Activation of self supervised learning
+    parser.add_argument('-pre_training', '--pre_training', default=False, action='store_true',
+                        help='True if we want to apply pre self supervised training to model'
+                             'where it is enabled. Currently available for ENET with genes encoding')
+
     arguments = parser.parse_args()
 
     # Print arguments
@@ -82,6 +87,8 @@ if __name__ == '__main__':
         cmd.append('-sam')
     if args.genomic_embedding:
         cmd.append('-gen_emb')
+    if args.pre_training:
+        cmd.append('-pre_training')
     if args.path is not None:
         cmd += ['-p', args.path]
 

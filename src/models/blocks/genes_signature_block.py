@@ -14,7 +14,7 @@ from src.models.blocks.mlp_blocks import BaseBlock, EntityEmbeddingBlock
 from torch import einsum, sigmoid, tensor, zeros
 from torch.nn import BatchNorm1d, Conv1d, Linear, Module
 from torch.nn.functional import relu
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 
 class GeneGraphEncoder(Encoder, Module):
@@ -26,7 +26,7 @@ class GeneGraphEncoder(Encoder, Module):
                  hidden_size: int = 3,
                  signature_size: int = 10):
         """
-        Builds the entity embedding block, the convolutional layer, the linear layer
+        Builds the entity embedding block, the convolutional layer, the linear layer,
         the batch norm and sets other protected attributes using the Encoder constructor
 
         Args:
@@ -59,7 +59,7 @@ class GeneGraphEncoder(Encoder, Module):
                                                       cat_emb_sizes=[self.__hidden_size]*self.__nb_genes,
                                                       cat_idx=self.__genes_idx)
 
-        # Creation of the matrix used to calculate average of entity embeddings
+        # Creation of the matrix used to calculate the average of entity embeddings
         # within each chromosome. This matrix will not be updated
         self.__chrom_weight_mat = zeros(self.__nb_chrom, self.__nb_genes, requires_grad=False)
         self.__set_chromosome_weight_mat(self.__gene_idx_groups)

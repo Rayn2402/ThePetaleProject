@@ -5,7 +5,7 @@ Author: Nicolas Raymond
 
 Description: This file stores object built for self supervised training
 
-Date of last modification: 2022/01/12
+Date of last modification: 2022/01/13
 """
 
 from src.data.processing.datasets import PetaleDataset
@@ -18,7 +18,7 @@ from torch import mean, pow, sum, tensor, zeros
 from torch.nn import Module
 from torch.optim import Adam
 from torch.utils.data import DataLoader, SubsetRandomSampler
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 
 class SSGeneEncoderTrainer(Module):

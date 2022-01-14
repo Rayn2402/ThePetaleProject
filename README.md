@@ -1,4 +1,11 @@
 # ThePetaleProject
+
+## Installation
+In order to have all the requirements needed the user must do the following actions: 
+- Install Pip(Nightly Build) version of dgl (https://www.dgl.ai/pages/start.html)
+- Install torch 1.8.0 (https://pytorch.org/get-started/locally/)
+- Install the remaining packages by running the following command:  
+  `pip install -r settings/requirements.txt`
 ## Project Tree
 ```bash
 ├── create_experiments_recap.py      <- script that retrieves all models results from an experiment and creates

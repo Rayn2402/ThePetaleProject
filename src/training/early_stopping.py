@@ -42,11 +42,11 @@ class EarlyStopper:
 
         # Set comparison method
         if direction == Direction.MINIMIZE:
-            self.val_score_min = np.inf
+            self.best_val_score = np.inf
             self.is_better = lambda x, y: x < y
 
         elif direction == Direction.MAXIMIZE:
-            self.val_score_min = -np.inf
+            self.best_val_score = -np.inf
             self.is_better = lambda x, y: x > y
         else:
             raise ValueError(f'direction must be in {list(Direction())}')
@@ -65,7 +65,7 @@ class EarlyStopper:
         Returns: None
         """
         # if the score is worst than the best score we increment the counter
-        if not self.is_better(val_score, self.val_score_min):
+        if not self.is_better(val_score, self.best_val_score):
             self.counter += 1
 
             # if the counter reach the patience we early stop
@@ -74,7 +74,7 @@ class EarlyStopper:
 
         # if the score is better than the best score saved we update the best model
         else:
-            self.val_score_min = val_score
+            self.best_val_score = val_score
             save(model.state_dict(), self.file_path)
             self.counter = 0
 

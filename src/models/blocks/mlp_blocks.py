@@ -5,7 +5,7 @@ Author: Nicolas Raymond
 
 Description: Defines neural network architecture blocks mostly related to MLPs
 
-Date of last modification: 2021/11/08
+Date of last modification: 2022/01/04
 """
 
 import torch.nn as nn
@@ -29,7 +29,7 @@ class MLPEncodingBlock(Encoder, nn.Module):
         Builds the layers of the encoding model
 
         Args:
-            input_size: number of features in the input size
+            input_size: number of features in the input
             output_size: the number of nodes in the last layer of the neural network
             layers: list with number of units in each hidden layer
             activation: activation function

@@ -10,23 +10,26 @@ Description: This file is used to define the MLP model with entity embeddings
              and PetaleBinaryClassifier classes. However, two wrapper classes for torch models
              are provided to enable the use of these mlp models with hyperparameter tuning functions.
 
-Date of last modification : 2021/11/18
+Date of last modification : 2022/01/12
 """
 
 from src.models.abstract_models.custom_torch_base import TorchCustomModel
 from src.models.blocks.mlp_blocks import MLPEncodingBlock
+from src.models.blocks.genes_signature_block import GeneGraphEncoder
 from src.data.processing.datasets import MaskType, PetaleDataset
 from src.training.early_stopping import EarlyStopper
+from src.training.self_supervised_training import SSGeneEncoderTrainer
 from src.utils.score_metrics import BinaryCrossEntropy, Metric, RootMeanSquaredError
 from torch import cat, no_grad, tensor, ones, sigmoid
-from torch.nn import BatchNorm1d, BCEWithLogitsLoss, Identity, Module, Linear, MSELoss, Sequential
+from torch.nn import BCEWithLogitsLoss, Identity, Linear, MSELoss
 from torch.utils.data import DataLoader
-from typing import Callable, List, Optional
+from typing import Callable, Dict, List, Optional
 
 
 class MLP(TorchCustomModel):
     """
-    Multilayer perceptron model with entity embedding
+    Multilayer perceptron model with entity embedding for categorical variables
+    and genomic signature embedding for variables identified as genes.
     """
     def __init__(self,
                  output_size: int,
@@ -42,6 +45,10 @@ class MLP(TorchCustomModel):
                  cat_idx: Optional[List[int]] = None,
                  cat_sizes: Optional[List[int]] = None,
                  cat_emb_sizes: Optional[List[int]] = None,
+                 gene_idx_groups: Optional[Dict[str, List[int]]] = None,
+                 genes_emb_size: int = 3,
+                 genomic_signature_size: int = 10,
+                 pre_training: bool = False,
                  verbose: bool = False):
 
         """
@@ -61,10 +68,16 @@ class MLP(TorchCustomModel):
             cat_idx: idx of categorical columns in the dataset
             cat_sizes: list of integer representing the size of each categorical column
             cat_emb_sizes: list of integer representing the size of each categorical embedding
+            gene_idx_groups: dictionary where keys are names of chromosomes and values
+                             are list of idx referring to columns of genes associated to
+                             the chromosome
+            genes_emb_size: size of genes embedding used to calculate genomic signature
+            genomic_signature_size: size of the genomic signature
+                                  (only used if gene_idx_groups is not None)
+            pre_training: If True and gene_idx_groups is not None, GeneGraphEncoder will
+                          be pretrained with self supervised learning
             verbose: True if we want trace of the training progress
         """
-        if num_cont_col is None and cat_sizes is None:
-            raise ValueError("There must be continuous columns or categorical columns")
 
         # We call parent's constructor
         super().__init__(criterion=criterion,
@@ -77,16 +90,29 @@ class MLP(TorchCustomModel):
                          cat_idx=cat_idx,
                          cat_sizes=cat_sizes,
                          cat_emb_sizes=cat_emb_sizes,
+                         additional_input_args=[gene_idx_groups],
                          verbose=verbose)
 
-        if len(layers) > 0:
-            self._encoding_block = MLPEncodingBlock(input_size=self._input_size,
-                                                    output_size=layers[-1],
-                                                    layers=layers[:-1],
-                                                    activation=activation,
-                                                    dropout=dropout)
+        if gene_idx_groups is not None:
+            self._genes_encoding_block = GeneGraphEncoder(gene_idx_groups=gene_idx_groups,
+                                                          hidden_size=genes_emb_size,
+                                                          signature_size=genomic_signature_size)
+            self._genes_available = True
+            self._pre_training = pre_training
+            self._input_size += genomic_signature_size
         else:
-            self._encoding_block = Identity()
+            self._genes_encoding_block = None
+            self._genes_available = False
+            self._pre_training = False
+
+        if len(layers) > 0:
+            self._main_encoding_block = MLPEncodingBlock(input_size=self._input_size,
+                                                         output_size=layers[-1],
+                                                         layers=layers[:-1],
+                                                         activation=activation,
+                                                         dropout=dropout)
+        else:
+            self._main_encoding_block = Identity()
             layers.append(self._input_size)
 
         # We add a linear layer to complete the layers
@@ -184,6 +210,34 @@ class MLP(TorchCustomModel):
 
         return False
 
+    def _run_self_supervised_learning(self,
+                                      dataset: PetaleDataset,
+                                      lr: float,
+                                      batch_size: int = 25,
+                                      max_epochs: int = 200,
+                                      patience: int = 15) -> None:
+        """
+        Trains the encoder and a decoder using self supervised learning.
+        Uses Sharpness-Aware Minimization by default.
+
+        Args:
+            dataset: PetaleDataset used to feed the training dataloader
+            lr: learning rate
+            batch_size: size of the batches in the training loader
+            max_epochs: Maximum number of epochs for training
+            patience: Number of consecutive epochs without training loss improvement allowed
+
+        Returns: None
+        """
+        # Creation of a SSGeneEncoderTrainer
+        trainer = SSGeneEncoderTrainer(gene_graph_encoder=self._genes_encoding_block)
+
+        # Self supervised training
+        trainer.fit(dataset=dataset, lr=lr, batch_size=batch_size, max_epochs=max_epochs, patience=patience)
+
+        # Pre trained encoder extraction
+        self._genes_encoding_block = trainer.encoder
+
     def forward(self, x: tensor) -> tensor:
         """
         Executes the forward pass
@@ -201,14 +255,18 @@ class MLP(TorchCustomModel):
         if len(self._cont_idx) != 0:
             new_x.append(x[:, self._cont_idx])
 
-        # We perform entity embeddings
+        # We perform entity embeddings on categorical features not identified as genes
         if len(self._cat_idx) != 0:
             new_x.append(self._embedding_block(x))
+
+        # We compute a genomic signature for categorical features identified as genes
+        if self._genes_available:
+            new_x.append(self._genes_encoding_block(x))
 
         # We concatenate all inputs
         x = cat(new_x, 1)
 
-        return self._linear_layer(self._encoding_block(x)).squeeze()
+        return self._linear_layer(self._main_encoding_block(x)).squeeze()
 
 
 class MLPBinaryClassifier(MLP):
@@ -226,6 +284,10 @@ class MLPBinaryClassifier(MLP):
                  cat_idx: Optional[List[int]] = None,
                  cat_sizes: Optional[List[int]] = None,
                  cat_emb_sizes: Optional[List[int]] = None,
+                 gene_idx_groups: Optional[Dict[str, List[int]]] = None,
+                 genes_emb_size: int = 3,
+                 genomic_signature_size: int = 10,
+                 pre_training: bool = False,
                  verbose: bool = False):
         """
         Sets protected attributes using parent's constructor
@@ -241,6 +303,14 @@ class MLPBinaryClassifier(MLP):
             cat_idx: idx of categorical columns in the dataset
             cat_sizes: list of integer representing the size of each categorical column
             cat_emb_sizes: list of integer representing the size of each categorical embedding
+            gene_idx_groups: dictionary where keys are names of chromosomes and values
+                             are list of idx referring to columns of genes associated to
+                             the chromosome
+            genes_emb_size: size of genes embedding used to calculate genomic signature
+            genomic_signature_size: size of the genomic signature
+                                  (only used if gene_idx_groups is not None)
+            pre_training: If True and gene_idx_groups is not None, GeneGraphEncoder will
+                          be pretrained with self supervised learning
             verbose: true to print training progress when fit is called
         """
         eval_metric = eval_metric if eval_metric is not None else BinaryCrossEntropy()
@@ -257,6 +327,10 @@ class MLPBinaryClassifier(MLP):
                          cat_idx=cat_idx,
                          cat_sizes=cat_sizes,
                          cat_emb_sizes=cat_emb_sizes,
+                         gene_idx_groups=gene_idx_groups,
+                         genes_emb_size=genes_emb_size,
+                         genomic_signature_size=genomic_signature_size,
+                         pre_training=pre_training,
                          verbose=verbose)
 
     def predict_proba(self,
@@ -304,6 +378,10 @@ class MLPRegressor(MLP):
                  cat_idx: Optional[List[int]] = None,
                  cat_sizes: Optional[List[int]] = None,
                  cat_emb_sizes: Optional[List[int]] = None,
+                 gene_idx_groups: Optional[Dict[str, List[int]]] = None,
+                 genes_emb_size: int = 3,
+                 genomic_signature_size: int = 10,
+                 pre_training: bool = False,
                  verbose: bool = False):
         """
         Sets protected attributes using parent's constructor
@@ -319,6 +397,14 @@ class MLPRegressor(MLP):
             cat_idx: idx of categorical columns in the dataset
             cat_sizes: list of integer representing the size of each categorical column
             cat_emb_sizes: list of integer representing the size of each categorical embedding
+            gene_idx_groups: dictionary where keys are names of chromosomes and values
+                             are list of idx referring to columns of genes associated to
+                             the chromosome
+            genes_emb_size: size of genes embedding used to calculate genomic signature
+            genomic_signature_size: size of the genomic signature
+                                  (only used if gene_idx_groups is not None)
+            pre_training: If True and gene_idx_groups is not None, GeneGraphEncoder will
+                          be pretrained with self supervised learning
             verbose: true to print training progress when fit is called
         """
         eval_metric = eval_metric if eval_metric is not None else RootMeanSquaredError()
@@ -335,6 +421,10 @@ class MLPRegressor(MLP):
                          cat_idx=cat_idx,
                          cat_sizes=cat_sizes,
                          cat_emb_sizes=cat_emb_sizes,
+                         gene_idx_groups=gene_idx_groups,
+                         genes_emb_size=genes_emb_size,
+                         genomic_signature_size=genomic_signature_size,
+                         pre_training=pre_training,
                          verbose=verbose)
 
     def predict(self,

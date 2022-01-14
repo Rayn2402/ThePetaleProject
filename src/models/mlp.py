@@ -6,14 +6,14 @@ Authors: Nicolas Raymond
 Description: This file is used to define the regression and classification
              wrappers for MLP models
 
-Date of last modification : 2021/10/25
+Date of last modification : 2022/01/10
 """
 
 from src.models.wrappers.torch_wrappers import TorchBinaryClassifierWrapper, TorchRegressorWrapper
 from src.models.abstract_models.mlp_base_models import MLPBinaryClassifier, MLPRegressor
 from src.utils.hyperparameters import CategoricalHP, HP, NumericalContinuousHP, NumericalIntHP
 from src.utils.score_metrics import Metric, BinaryClassificationMetric
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 
 class PetaleBinaryMLPC(TorchBinaryClassifierWrapper):
@@ -38,6 +38,10 @@ class PetaleBinaryMLPC(TorchBinaryClassifierWrapper):
                  cat_idx: Optional[List[int]] = None,
                  cat_sizes: Optional[List[int]] = None,
                  cat_emb_sizes: Optional[List[int]] = None,
+                 gene_idx_groups: Optional[Dict[str, List[int]]] = None,
+                 genes_emb_size: int = 3,
+                 genomic_signature_size: int = 10,
+                 pre_training: bool = False,
                  verbose: bool = False,
                  classification_threshold: float = 0.5,
                  weight:  Optional[float] = None):
@@ -63,6 +67,15 @@ class PetaleBinaryMLPC(TorchBinaryClassifierWrapper):
             cat_idx: idx of categorical columns in the dataset
             cat_sizes: list of integer representing the size of each categorical column
             cat_emb_sizes: list of integer representing the size of each categorical embedding
+            gene_idx_groups: dictionary where keys are names of chromosomes and values
+                             are list of idx referring to columns of genes associated to
+                             the chromosome
+            genes_emb_size: size of genes embedding used to calculate genomic signature
+            genomic_signature_size: size of the genomic signature
+                                  (only used if gene_idx_groups is not None)
+            pre_training: If True and gene_idx_groups is not None, GeneGraphEncoder will
+                          be pretrained with self supervised learning
+            verbose: if True, training progress will be printed
             classification_threshold: threshold used to classify a sample in class 1
             weight: weight attributed to class 1
         """
@@ -77,6 +90,10 @@ class PetaleBinaryMLPC(TorchBinaryClassifierWrapper):
                                     cat_idx=cat_idx,
                                     cat_sizes=cat_sizes,
                                     cat_emb_sizes=cat_emb_sizes,
+                                    gene_idx_groups=gene_idx_groups,
+                                    genes_emb_size=genes_emb_size,
+                                    genomic_signature_size=genomic_signature_size,
+                                    pre_training=pre_training,
                                     verbose=verbose)
 
         super().__init__(model=model,
@@ -121,6 +138,10 @@ class PetaleMLPR(TorchRegressorWrapper):
                  cat_idx: Optional[List[int]] = None,
                  cat_sizes: Optional[List[int]] = None,
                  cat_emb_sizes: Optional[List[int]] = None,
+                 gene_idx_groups: Optional[Dict[str, List[int]]] = None,
+                 genes_emb_size: int = 3,
+                 genomic_signature_size: int = 10,
+                 pre_training: bool = False,
                  verbose: bool = False):
         """
         Builds and MLP regression model and sets the protected attributes using parent's constructor
@@ -144,6 +165,15 @@ class PetaleMLPR(TorchRegressorWrapper):
             cat_idx: idx of categorical columns in the dataset
             cat_sizes: list of integer representing the size of each categorical column
             cat_emb_sizes: list of integer representing the size of each categorical embedding
+            gene_idx_groups: dictionary where keys are names of chromosomes and values
+                             are list of idx referring to columns of genes associated to
+                             the chromosome
+            genes_emb_size: size of genes embedding used to calculate genomic signature
+            genomic_signature_size: size of the genomic signature
+                                  (only used if gene_idx_groups is not None)
+            pre_training: If True and gene_idx_groups is not None, GeneGraphEncoder will
+                          be pretrained with self supervised learning
+            verbose: if True, training progress will be printed
         """
         # Creation of the model
         model = MLPRegressor(layers=[n_unit]*n_layer,
@@ -156,6 +186,10 @@ class PetaleMLPR(TorchRegressorWrapper):
                              cat_idx=cat_idx,
                              cat_sizes=cat_sizes,
                              cat_emb_sizes=cat_emb_sizes,
+                             gene_idx_groups=gene_idx_groups,
+                             genes_emb_size=genes_emb_size,
+                             genomic_signature_size=genomic_signature_size,
+                             pre_training=pre_training,
                              verbose=verbose)
 
         # Call of parent's constructor

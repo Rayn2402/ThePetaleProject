@@ -24,7 +24,7 @@ from torch.nn import BatchNorm1d, Module
 from torch.nn.functional import l1_loss, mse_loss
 from torch.optim import Adam
 from torch.utils.data import DataLoader, SubsetRandomSampler
-from typing import Callable, List, Optional, Tuple, Union
+from typing import Any, Callable, List, Optional, Tuple, Union
 
 
 class TorchCustomModel(Module, ABC):
@@ -43,6 +43,7 @@ class TorchCustomModel(Module, ABC):
                  cat_idx: Optional[List[int]] = None,
                  cat_sizes: Optional[List[int]] = None,
                  cat_emb_sizes: Optional[List[int]] = None,
+                 additional_input_args: Optional[List[Any]] = None,
                  verbose: bool = False):
         """
         Sets the protected attributes and creates an embedding block if required
@@ -53,14 +54,18 @@ class TorchCustomModel(Module, ABC):
             eval_metric: evaluation metric of our model (Ex. accuracy, mean absolute error)
             alpha: L1 penalty coefficient
             beta: L2 penalty coefficient
-            num_cont_col: number of numerical continuous columns in the dataset
+            num_cont_col: number of numerical continuous columns in the dataset,
+                          cont idx are assumed to be range(num_cont_col)
             cat_idx: idx of categorical columns in the dataset
             cat_sizes: list of integer representing the size of each categorical column
             cat_emb_sizes: list of integer representing the size of each categorical embedding
+            additional_input_args: list of arguments that must be also considered when validating
+                                   input arguments
             verbose: true if we want to print the training progress
         """
-        if num_cont_col is None and cat_sizes is None:
-            raise ValueError("There must be continuous columns or categorical columns")
+
+        # We validate input arguments (check if there are continuous or categorical inputs)
+        self._validate_input_args([num_cont_col, cat_sizes, *additional_input_args])
 
         # Call of parent's constructor
         Module.__init__(self)
@@ -80,7 +85,7 @@ class TorchCustomModel(Module, ABC):
 
         # Settings of protected attributes related to entity embedding
         self._cat_idx = cat_idx if cat_idx is not None else []
-        self._cont_idx = [i for i in range(len(self._cat_idx) + num_cont_col) if i not in self._cat_idx]
+        self._cont_idx = list(range(num_cont_col))
         self._embedding_block = None
 
         # Initialization of a protected method
@@ -146,7 +151,7 @@ class TorchCustomModel(Module, ABC):
 
         Returns: None
         """
-        self.apply(self._disable_module_running_stats)
+        self.apply(self.disable_module_running_stats)
 
     def _enable_running_stats(self) -> None:
         """
@@ -154,7 +159,7 @@ class TorchCustomModel(Module, ABC):
 
         Returns: None
         """
-        self.apply(self._enable_module_running_stats)
+        self.apply(self.enable_module_running_stats)
 
     def _sam_weight_update(self, sample_weights: tensor,
                            x: List[Union[DGLHeteroGraph, tensor]],
@@ -272,6 +277,12 @@ class TorchCustomModel(Module, ABC):
         # We check the validity of the samples' weights
         sample_weights = self._validate_sample_weights(dataset, sample_weights)
 
+        # We apply self supervised learning (if applicable)
+        if hasattr(self, '_run_self_supervised_learning') and hasattr(self, '_pre_training'):
+            if self._pre_training:
+                self._run_self_supervised_learning(dataset=dataset, lr=lr, batch_size=batch_size,
+                                                   max_epochs=max_epochs, patience=patience)
+
         # We create the training objects
         train_data = self._create_train_objects(dataset, batch_size)
 
@@ -299,7 +310,7 @@ class TorchCustomModel(Module, ABC):
             # We calculate valid mean epoch loss and apply early stopping if needed
             if self._execute_valid_step(valid_data, early_stopper):
                 print(f"\nEarly stopping occurred at epoch {epoch} with best_epoch = {epoch - patience}"
-                      f" and best_val_{self._eval_metric.name} = {round(early_stopper.val_score_min, 4)}")
+                      f" and best_val_{self._eval_metric.name} = {round(early_stopper.best_val_score, 4)}")
                 break
 
         if early_stopper is not None:
@@ -379,6 +390,26 @@ class TorchCustomModel(Module, ABC):
         return train_data
 
     @staticmethod
+    def _validate_input_args(input_args: List[Any]) -> None:
+        """
+        Checks if all arguments related to inputs are None,
+        if not the inputs are valid
+
+        Args:
+            input_args: list of arguments related to inputs
+
+        Returns: None
+        """
+        valid = False
+        for arg in input_args:
+            if arg is not None:
+                valid = True
+                break
+
+        if not valid:
+            raise ValueError("There must be continuous columns or categorical columns")
+
+    @staticmethod
     def _validate_sample_weights(dataset: PetaleDataset,
                                  sample_weights: Optional[tensor]) -> tensor:
         """
@@ -403,33 +434,6 @@ class TorchCustomModel(Module, ABC):
             sample_weights = ones(dataset_size) / dataset_size
 
         return sample_weights
-
-    @staticmethod
-    def _disable_module_running_stats(module: Module) -> None:
-        """
-        Sets momentum to 0 for all BatchNorm layer in the module after saving it in a cache
-
-        Args:
-            module: torch module
-
-        Returns: None
-        """
-        if isinstance(module, BatchNorm1d):
-            module.backup_momentum = module.momentum
-            module.momentum = 0
-
-    @staticmethod
-    def _enable_module_running_stats(module: Module) -> None:
-        """
-        Restores momentum for all BatchNorm layer in the module using the value in the cache
-
-        Args:
-            module: torch module
-
-        Returns: None
-        """
-        if isinstance(module, BatchNorm1d) and hasattr(module, "backup_momentum"):
-            module.momentum = module.backup_momentum
 
     @abstractmethod
     def _execute_train_step(self,
@@ -460,3 +464,30 @@ class TorchCustomModel(Module, ABC):
         Returns: True if we need to early stop
         """
         raise NotImplementedError
+
+    @staticmethod
+    def disable_module_running_stats(module: Module) -> None:
+        """
+        Sets momentum to 0 for all BatchNorm layer in the module after saving it in a cache
+
+        Args:
+            module: torch module
+
+        Returns: None
+        """
+        if isinstance(module, BatchNorm1d):
+            module.backup_momentum = module.momentum
+            module.momentum = 0
+
+    @staticmethod
+    def enable_module_running_stats(module: Module) -> None:
+        """
+        Restores momentum for all BatchNorm layer in the module using the value in the cache
+
+        Args:
+            module: torch module
+
+        Returns: None
+        """
+        if isinstance(module, BatchNorm1d) and hasattr(module, "backup_momentum"):
+            module.momentum = module.backup_momentum

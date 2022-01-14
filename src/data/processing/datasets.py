@@ -40,6 +40,7 @@ class PetaleDataset(Dataset):
                  target: str,
                  cont_cols: Optional[List[str]] = None,
                  cat_cols: Optional[List[str]] = None,
+                 gene_cols: Optional[List[str]] = None,
                  classification: bool = True,
                  to_tensor: bool = False):
         """
@@ -50,6 +51,7 @@ class PetaleDataset(Dataset):
             target: name of the column with the targets
             cont_cols: list of column names associated with continuous data
             cat_cols: list of column names associated with categorical data
+            gene_cols: list of categorical column names that must be considered as genes
             classification: true for classification task, false for regression
             to_tensor: true if we want the features and targets in tensors, false for numpy arrays
 
@@ -59,13 +61,21 @@ class PetaleDataset(Dataset):
             raise ValueError("Patients' ids missing from the dataframe")
 
         if cont_cols is None and cat_cols is None:
-            raise ValueError("At least a list of continuous columns or a list of categorical columns must be given.")
+            raise ValueError("At least a list of continuous columns or a list of categorical columns must be provided.")
 
         for columns in [cont_cols, cat_cols]:
             self._check_columns_validity(df, columns)
 
+        if gene_cols is not None:
+            self._gene_cols = gene_cols
+            self._check_genes_validity(cat_cols, gene_cols)
+        else:
+            self._gene_cols = []
+
         # Set default protected attributes
+        self._cat_cols, self._cat_idx = cat_cols, []
         self._classification = classification
+        self._cont_cols, self._cont_idx = cont_cols, []
         self._ids = list(df[PARTICIPANT].values)
         self._ids_to_row_idx = {id_: i for i, id_ in enumerate(self._ids)}
         self._n = df.shape[0]
@@ -76,12 +86,13 @@ class PetaleDataset(Dataset):
         self._x_cat, self._x_cont = None, None
         self._y = self._initialize_targets(df[target], classification, to_tensor)
 
-        # Set default public attributes
-        self.cont_cols, self.cont_idx = cont_cols, []
-        self.cat_cols, self.cat_idx = cat_cols, []
-
         # Define protected feature "getter" method
         self._x = self._define_feature_getter(cont_cols, cat_cols, to_tensor)
+
+        # Set attribute associated to genes idx
+        self._gene_idx = {c: self._cat_idx[self.cat_cols.index(c)] for c in self._gene_cols}
+        self._cat_idx_without_genes = [i for i in self._cat_idx if i not in self._gene_idx.values()]
+        self._gene_idx_groups = self._create_genes_idx_group()
 
         # We set a "getter" method to get modes of categorical columns and we also extract encodings
         self._get_modes, self._encodings = self._define_categorical_stats_getter(cat_cols)
@@ -108,14 +119,34 @@ class PetaleDataset(Dataset):
         return self._classification
 
     @property
+    def cat_cols(self) -> List[str]:
+        return self._cat_cols
+
+    @property
+    def cat_idx(self) -> List[int]:
+        return self._cat_idx_without_genes
+
+    @property
     def cat_sizes(self) -> Optional[List[int]]:
-        if self.encodings is not None:
-            return [len(v.items()) for v in self.encodings.values()]
+        if self._encodings is not None:
+            return [len(self._encodings[c].items()) for c in self._cat_cols if c not in self._gene_cols]
         return None
+
+    @property
+    def cont_cols(self) -> List[str]:
+        return self._cont_cols
+
+    @property
+    def cont_idx(self) -> List[int]:
+        return self._cont_idx
 
     @property
     def encodings(self) -> Dict[str, Dict[str, int]]:
         return self._encodings
+
+    @property
+    def gene_idx_groups(self) -> Dict[str, List[int]]:
+        return self._gene_idx_groups
 
     @property
     def ids(self) -> List[str]:
@@ -172,7 +203,7 @@ class PetaleDataset(Dataset):
         Returns: None
         """
         # We apply an ordinal encoding to categorical columns
-        x_cat, _ = preprocess_categoricals(self._original_data[self.cat_cols].copy(),
+        x_cat, _ = preprocess_categoricals(self._original_data[self._cat_cols].copy(),
                                            mode=modes, encodings=self._encodings)
 
         self._x_cat = x_cat.to_numpy(dtype=int)
@@ -256,7 +287,7 @@ class PetaleDataset(Dataset):
         if cont_cols is None:
 
             # Only categorical column idx
-            self.cat_idx = list(range(len(cat_cols)))
+            self._cat_idx = list(range(len(cat_cols)))
 
             # Only categorical feature extracted by the getter
             def x() -> Union[tensor, array]:
@@ -265,7 +296,7 @@ class PetaleDataset(Dataset):
         elif cat_cols is None:
 
             # Only continuous column idx
-            self.cont_idx = list(range(len(cont_cols)))
+            self._cont_idx = list(range(len(cont_cols)))
 
             # Only continuous features extracted by the getter
             def x() -> Union[tensor, array]:
@@ -275,8 +306,8 @@ class PetaleDataset(Dataset):
 
             # Continuous and categorical column idx
             nb_cont_cols = len(cont_cols)
-            self.cont_idx = list(range(nb_cont_cols))
-            self.cat_idx = [i + nb_cont_cols for i in range(len(cat_cols))]
+            self._cont_idx = list(range(nb_cont_cols))
+            self._cat_idx = list(range(nb_cont_cols, nb_cont_cols + len(cat_cols)))
 
             # Continuous and categorical features extracted by the getter
             if not to_tensor:
@@ -340,14 +371,15 @@ class PetaleDataset(Dataset):
             self._original_data[cont_cols] = self._original_data[cont_cols].astype(float)
 
             def get_mu_and_std(df: DataFrame) -> Tuple[Series, Series]:
-                return df[self.cont_cols].mean(), df[self.cont_cols].std()
+                return df[self._cont_cols].mean(), df[self._cont_cols].std()
 
         return get_mu_and_std
 
     def _get_augmented_dataframe(self,
                                  data: DataFrame,
-                                 categorical: bool = False
-                                 ) -> Tuple[DataFrame, Optional[List[str]], Optional[List[str]]]:
+                                 categorical: bool = False,
+                                 gene: bool = False
+                                 ) -> Tuple[DataFrame, Optional[List[str]], Optional[List[str]], List[str]]:
         """
         Returns an augmented dataframe by concatenating original df and data
 
@@ -356,11 +388,12 @@ class PetaleDataset(Dataset):
                   First column must be PARTICIPANT ids
                   Second column must be the feature we want to add
             categorical: True if the new feature is categorical
+            gene: True if the new feature is considered as a gene
 
         Returns: pandas dataframe, list of cont cols, list of cat cols
         """
         # Extraction of the original dataframe
-        df = self._retrieve_subset_from_original(self.cont_cols, self.cat_cols)
+        df = self._retrieve_subset_from_original(self._cont_cols, self._cat_cols)
 
         # We add the new feature
         df = merge(df, data, on=[PARTICIPANT], how=INNER)
@@ -368,13 +401,15 @@ class PetaleDataset(Dataset):
         # We update the columns list
         feature_name = [f for f in data.columns if f != PARTICIPANT]
         if categorical:
-            cat_cols = self.cat_cols + feature_name if self.cat_cols is not None else [feature_name]
-            cont_cols = self.cont_cols
+            cat_cols = self._cat_cols + feature_name if self._cat_cols is not None else [feature_name]
+            cont_cols = self._cont_cols
+            gene_cols = self._gene_cols + [feature_name] if gene else self._gene_cols
         else:
-            cont_cols = self.cont_cols + feature_name if self.cont_cols is not None else [feature_name]
-            cat_cols = self.cat_cols
+            cont_cols = self._cont_cols + feature_name if self._cont_cols is not None else [feature_name]
+            cat_cols = self._cat_cols
+            gene_cols = self._gene_cols
 
-        return df, cont_cols, cat_cols
+        return df, cont_cols, cat_cols, gene_cols
 
     def _numerical_setter(self,
                           mu: Series,
@@ -391,7 +426,7 @@ class PetaleDataset(Dataset):
         Returns: None
         """
         # We fill missing with means and normalize the data
-        x_cont = preprocess_continuous(self._original_data[self.cont_cols].copy(), mu, std)
+        x_cont = preprocess_continuous(self._original_data[self._cont_cols].copy(), mu, std)
 
         # We apply the basis function
         self._x_cont = x_cont.to_numpy(dtype=float)
@@ -416,6 +451,27 @@ class PetaleDataset(Dataset):
 
         return self.original_data[[PARTICIPANT, self._target] + selected_cols].copy()
 
+    def _create_genes_idx_group(self) -> Optional[Dict[str, List[int]]]:
+        """
+        Regroup genes idx column by chromosome
+
+        Returns:  dictionary where keys are names of chromosomes and values
+                  are list of idx referring to columns of genes associated to
+                  the chromosome
+        """
+        if len(self._gene_cols) == 0:
+            return None
+
+        gene_idx_groups = {}
+        for chrom_pos in self._gene_cols:
+            chrom = chrom_pos.split('_')[0]
+            if chrom in gene_idx_groups:
+                gene_idx_groups[chrom].append(self._gene_idx[chrom_pos])
+            else:
+                gene_idx_groups[chrom] = [self._gene_idx[chrom_pos]]
+
+        return gene_idx_groups
+
     def get_imputed_dataframe(self) -> DataFrame:
         """
         Returns a copy of the original pandas dataframe where missing values
@@ -424,10 +480,10 @@ class PetaleDataset(Dataset):
         Returns: pandas dataframe
         """
         imputed_df = self.original_data.drop([PARTICIPANT, self.target], axis=1).copy()
-        if self.cont_cols is not None:
-            imputed_df[self.cont_cols] = array(self._x_cont)
-        if self.cat_cols is not None:
-            imputed_df[self.cat_cols] = array(self._x_cat)
+        if self._cont_cols is not None:
+            imputed_df[self._cont_cols] = array(self._x_cont)
+        if self._cat_cols is not None:
+            imputed_df[self._cat_cols] = array(self._x_cat)
 
         return imputed_df
 
@@ -443,20 +499,20 @@ class PetaleDataset(Dataset):
         # We make sure that given categorical columns are ok
         if cat_cols is not None:
             for c in cat_cols:
-                if c not in self.cat_cols:
+                if c not in self._cat_cols:
                     raise ValueError(f"Unrecognized categorical column name : {c}")
         else:
-            cat_cols = self.cat_cols
+            cat_cols = self._cat_cols
 
         # We extract imputed dataframe but reinsert nan values into categorical column that were imputed
         df = self.get_imputed_dataframe()
-        na_row_idx, na_col_idx = where(self.original_data[self.cat_cols].isna().to_numpy())
+        na_row_idx, na_col_idx = where(self.original_data[self._cat_cols].isna().to_numpy())
         for i, j in zip(na_row_idx, na_col_idx):
             df.iloc[i, j] = nan
 
         # We look through categorical columns to generate graph structure
         u, v = [], []
-        for e_type, e_values in self.encodings.items():
+        for e_type, e_values in self._encodings.items():
             if e_type in cat_cols:
                 for value in e_values.values():
                     u, v = self._get_graphs_edges(u=u, v=v, df=df, e_type=e_type, value=value)
@@ -479,16 +535,19 @@ class PetaleDataset(Dataset):
         Returns: instance of the PetaleDataset class
         """
         subset = self._retrieve_subset_from_original(cont_cols, cat_cols)
+        gene_cols = None if len(self._gene_cols) == 0 else [c for c in self._gene_cols if c in cat_cols]
         return PetaleDataset(df=subset,
                              target=self.target,
                              cont_cols=cont_cols,
                              cat_cols=cat_cols,
+                             gene_cols=gene_cols,
                              classification=self.classification,
                              to_tensor=self._to_tensor)
 
     def create_superset(self,
                         data: DataFrame,
-                        categorical: bool = False) -> Any:
+                        categorical: bool = False,
+                        gene: bool = False) -> Any:
         """
         Returns a superset of the current dataset by including the given data
 
@@ -497,16 +556,18 @@ class PetaleDataset(Dataset):
                   First column must be PARTICIPANT ids
                   Second column must be the feature we want to add
             categorical: True if the new feature is categorical
+            gene: True if the new feature is considered as a gene
 
         Returns: instance of the PetaleDataset class
         """
         # We build the augmented dataframe
-        df, cont_cols, cat_cols = self._get_augmented_dataframe(data, categorical)
+        df, cont_cols, cat_cols, gene_cols = self._get_augmented_dataframe(data, categorical)
 
         return PetaleDataset(df=df,
                              target=self.target,
                              cont_cols=cont_cols,
                              cat_cols=cat_cols,
+                             gene_cols=gene_cols,
                              classification=self.classification,
                              to_tensor=self._to_tensor)
 
@@ -581,12 +642,33 @@ class PetaleDataset(Dataset):
                                 columns: Optional[List[str]] = None) -> None:
         """
         Checks if the columns are all in the dataframe
+
+        Args:
+            df: pandas dataframe with original data
+            columns: list of column names
         """
         if columns is not None:
             dataframe_columns = list(df.columns.values)
             for c in columns:
                 if c not in dataframe_columns:
                     raise ValueError(f"Column {c} is not part of the given dataframe")
+
+    @staticmethod
+    def _check_genes_validity(cat_cols: Optional[List[str]],
+                              gene_cols: List[str]) -> None:
+        """
+        Checks if all column names related to genes are included in categorical columns
+
+        Args:
+            cat_cols: list of categorical column names
+            gene_cols: list of categorical columns related to genes
+
+        Returns: None
+        """
+        cat_cols = [] if cat_cols is None else cat_cols
+        for gene in gene_cols:
+            if gene not in cat_cols:
+                raise ValueError(f'Gene {gene} from gene_cols cannot be found in cat_cols')
 
     @staticmethod
     def _get_graphs_edges(u: List[int],
@@ -683,13 +765,13 @@ class PetaleStaticGNNDataset(PetaleDataset):
         """
         # We extract imputed dataframe but reinsert nan values into categorical column that were imputed
         df = self.get_imputed_dataframe()
-        na_row_idx, na_col_idx = where(self.original_data[self.cat_cols].isna().to_numpy())
+        na_row_idx, na_col_idx = where(self.original_data[self._cat_cols].isna().to_numpy())
         for i, j in zip(na_row_idx, na_col_idx):
             df.iloc[i, j] = nan
 
         # We look through categorical columns to generate graph structure
         graph_structure = {}
-        for e_type, e_values in self.encodings.items():
+        for e_type, e_values in self._encodings.items():
             u, v = [], []
             for value in e_values.values():
                 self._get_graphs_edges(u=u, v=v, df=df, e_type=e_type, value=value)
@@ -739,7 +821,7 @@ class PetaleStaticGNNDataset(PetaleDataset):
 
         Returns: list of list with edges types
         """
-        return [[key] for key in self.encodings.keys()]
+        return [[key] for key in self._encodings.keys()]
 
     def update_masks(self,
                      train_mask: List[int],

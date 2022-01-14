@@ -26,7 +26,7 @@ def argument_parser():
     parser.add_argument('-b', '--baselines', default=False, action='store_true',
                         help='True if we want to include variables from original equation')
     parser.add_argument('-gen', '--genes', default=False, action='store_true',
-                        help='True if we want to include genes if features')
+                        help='True if we want to include genes in features')
     parser.add_argument('-f', '--feature_selection', default=False, action='store_true',
                         help='True if we want to apply automatic feature selection')
     parser.add_argument('-s', '--sex', default=False, action='store_true',
@@ -35,6 +35,10 @@ def argument_parser():
                         help='True if we want to remove six minutes walk test variables from baselines'
                              '(only applies if baselines are included')
 
+    # Genes encoding
+    parser.add_argument('-gen_emb', '--genomic_embedding', default=False, action='store_true',
+                        help='True if we want to use genomic signature generation for linear regression model')
+
     # Usage of predictions from another experiment
     parser.add_argument('-p', '--path', type=str, default=None,
                         help='Path leading to predictions of another model, will only be used by HAN if specified')
@@ -42,6 +46,11 @@ def argument_parser():
     # Activation of sharpness-aware minimization
     parser.add_argument('-sam', '--enable_sam', default=False, action='store_true',
                         help='True if we want to use Sharpness-Aware Minimization Optimizer')
+
+    # Activation of self supervised learning
+    parser.add_argument('-pre_training', '--pre_training', default=False, action='store_true',
+                        help='True if we want to apply pre self supervised training to model'
+                             'where it is enabled. Currently available for ENET with genes encoding')
 
     arguments = parser.parse_args()
 
@@ -76,6 +85,10 @@ if __name__ == '__main__':
         cmd.append('-s')
     if args.enable_sam:
         cmd.append('-sam')
+    if args.genomic_embedding:
+        cmd.append('-gen_emb')
+    if args.pre_training:
+        cmd.append('-pre_training')
     if args.path is not None:
         cmd += ['-p', args.path]
 

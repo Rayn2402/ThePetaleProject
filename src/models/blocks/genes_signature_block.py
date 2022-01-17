@@ -6,12 +6,12 @@ Author: Nicolas Raymond
 Description: Defines the modules in charge of encoding
              and decoding the genomic signature associated to patients.
 
-Date of last modification: 2022/01/13
+Date of last modification: 2022/01/17
 """
 
 from src.models.abstract_models.encoder import Encoder
 from src.models.blocks.mlp_blocks import BaseBlock, EntityEmbeddingBlock
-from torch import einsum, sigmoid, tensor, zeros
+from torch import einsum, tensor, zeros
 from torch.nn import BatchNorm1d, Conv1d, Linear, Module
 from torch.nn.functional import relu
 from typing import Dict, List
@@ -76,9 +76,24 @@ class GeneGraphEncoder(Encoder, Module):
         # Batch norm layer that normalize final signatures
         self._bn = BatchNorm1d(signature_size)
 
+        # Creation of a cache needed to calculate loss
+        self.__embedding_cache = None
+
+    @property
+    def cache(self) -> tensor:
+        return self.__embedding_cache
+
+    @property
+    def chrom_weight_mat(self) -> tensor:
+        return self.__chrom_weight_mat
+
     @property
     def gene_idx_groups(self) -> Dict[str, List[int]]:
         return self.__gene_idx_groups
+
+    @property
+    def hidden_size(self) -> int:
+        return self.__hidden_size
 
     def __set_chromosome_weight_mat(self, gene_idx_groups: Dict[str, List[int]]) -> None:
         """
@@ -124,11 +139,11 @@ class GeneGraphEncoder(Encoder, Module):
         h = self._entity_emb_block(x)  # (N, D) -> (N, HIDDEN_SIZE*NB_GENES)
 
         # Resize embeddings
-        h = h.reshape(h.shape[0], self.__nb_genes, self.__hidden_size)  # (N, NB_GENES, HIDDEN_SIZE)
+        self.__embedding_cache = h.reshape(h.shape[0], self.__nb_genes, self.__hidden_size)  # (N, NB_GENES, HIDDEN_SIZE)
 
         # Compute entity embedding averages per chromosome subgraphs for each individual
         # (NB_CHROM, NB_GENES)x(N, NB_GENES, HIDDEN_SIZE) -> (N, NB_CHROM, HIDDEN_SIZE)
-        h = einsum('ij,kjf->kif', self.__chrom_weight_mat, h)
+        h = einsum('ij,kjf->kif', self.__chrom_weight_mat, self.__embedding_cache)
 
         # Concatenate all chromosome averages side to side
         # (N, NB_CHROM, HIDDEN_SIZE) -> (N, NB_CHROM*HIDDEN_SIZE)
@@ -149,10 +164,11 @@ class GeneGraphEncoder(Encoder, Module):
 class GeneSignatureDecoder(Module):
     """
     From a signature given by the GeneGraphEncoder, this module tries to recover
-    the original graph adjacency matrix
+    the original gene embeddings
     """
     def __init__(self,
-                 nb_genes: int,
+                 chrom_weight_mat: tensor,
+                 hidden_size: int,
                  signature_size: int = 10):
 
         """
@@ -160,36 +176,74 @@ class GeneSignatureDecoder(Module):
         to the genome of patient
 
         Args:
-            nb_genes: nb of genes in the genomic graph
+            chrom_weight_mat: (NB_CHROM, NB_GENES) matrix used to calculate average of embeddings within a chromosome
+            hidden_size: embedding size of each genes during intermediate
+                         signature creation procedure
             signature_size: genomic signature size (input size)
         """
 
         # Call of parent's constructor
         super().__init__()
 
+        # Saving of nb of chromosomes and number of genes
+        self.__nb_genes = chrom_weight_mat.shape[1]
+        self.__nb_chrom = chrom_weight_mat.shape[0]
+
+        # Setting of matrix used to recover genes embedding for chromosome embedding
+        self.__gene_weight_mat = self.__build_gene_weight_mat(chrom_weight_mat=chrom_weight_mat)
+
         # Creation of BaseBlock (first layer of the decoder)
-        self.__layer = BaseBlock(input_size=signature_size,
-                                 output_size=nb_genes,
-                                 activation='ReLU')
+        self.__linear_layer = BaseBlock(input_size=signature_size,
+                                        output_size=self.__nb_chrom,
+                                        activation='ReLU')
+
+        # Creation of convolutional layer
+        self.__conv_layer = Conv1d(in_channels=1,
+                                   out_channels=hidden_size,
+                                   kernel_size=(1,),
+                                   stride=(1,))
 
     def forward(self, x: tensor) -> tensor:
         """
-        Turns each element of a batch of genomic signature into soft adjacency matrices
-        in which each element i,j illustrates the probability of gene-i to be connected
-        to gene-j.
+        Executes the following actions on each element in the batch:
+
+        - Applies linear layer -> relu -> batch norm to have a single value per chromosome
+        - Applies a 1D conv filter to each chromosome value in order to get "hidden size" feature map
+        - Applies the inverse operation of the average that was done in the encoder
+          to recover gene embeddings.
 
         Args:
             x: (N, D') tensor with D'-dimensional samples
 
-        Returns: (N, NB_GENES, NB_GENES) tensor with soft adjacency matrices
+        Returns: (N, NB_GENES, HIDDEN_SIZE) tensor with genes' embeddings
         """
         # Apply (linear layer -> activation -> batch norm) to signatures
-        h = self.__layer(x)  # (N, SIGNATURE_SIZE) -> (N, NB_GENES)
+        h = self.__linear_layer(x)  # (N, SIGNATURE_SIZE) -> (N, NB_CHROM)
 
-        # Computes hh' for all elements vectors and then
-        # apply sigmoid to each resulting matrices in order to get
-        # a batch of soft adj matrices
-        h.unsqueeze_(dim=1)  # (N, NB_GENES) -> (N, 1, NB_GENES)
-        h = sigmoid(einsum('ikj,ijk->ijk', h, h))  # (N, 1, NB_GENES) -> (N, NB_GENES, NB_GENES)
+        # Addition of a dummy dimension for convolutional layer
+        h.unsqueeze_(dim=1)  # (N, NB_CHROM) -> (N, 1, NB_CHROM)
+
+        # Apply convolutional layer
+        h = self.__conv_layer(h)  # (N, 1, NB_CHROM) -> (N, NB_CHROM, HIDDEN_SIZE)
+
+        # Multiplication by gene_weight_mat to recover gene embeddings
+        # (NB_GENES, NB_CHROM)x(N, NB_CHROM, HIDDEN_SIZE) -> (N, NB_GENES, HIDDEN_SIZE)
+        h = einsum('ij,kjf->kif', self.__gene_weight_mat, h)
 
         return h
+
+    @staticmethod
+    def __build_gene_weight_mat(chrom_weight_mat: tensor) -> tensor:
+        """
+        Builds the matrix used to recover genes' embeddings from the chromosomes' embeddings
+
+        Args:
+            chrom_weight_mat: (NB_CHROM, NB_GENES) tensor used to calculate average of embeddings within a chromosome
+
+        Returns: (NB_GENES, NB_CHROM) tensor
+
+        """
+        gene_mat = (chrom_weight_mat.clone().detach()).t()
+        gene_mat /= pow(gene_mat.sum(dim=1).reshape(-1, 1), 2)
+
+        return gene_mat

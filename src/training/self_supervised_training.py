@@ -27,7 +27,7 @@ class SSGeneEncoderTrainer(Module):
     """
     def __init__(self,
                  gene_graph_encoder: GeneGraphEncoder,
-                 fuzzyness: float = 0.01):
+                 fuzzyness: float = 0.05):
         """
         Saves the encoder, builds the adjacency matrix
         needed in the loss calculation and then creates a decoder
@@ -50,7 +50,7 @@ class SSGeneEncoderTrainer(Module):
 
         # We create the decoder
         self.__dec = GeneSignatureDecoder(chrom_weight_mat=self.__enc.chrom_weight_mat,
-                                          hidden_size=self.__enc.chrom_weight_mat,
+                                          hidden_size=self.__enc.hidden_size,
                                           signature_size=self.__enc.output_size)
 
         # We initialize the optimizer

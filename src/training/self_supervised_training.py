@@ -5,7 +5,7 @@ Author: Nicolas Raymond
 
 Description: This file stores object built for self supervised training
 
-Date of last modification: 2022/01/13
+Date of last modification: 2022/01/17
 """
 
 from src.data.processing.datasets import PetaleDataset
@@ -14,7 +14,7 @@ from src.models.blocks.genes_signature_block import GeneGraphEncoder, GeneSignat
 from src.training.early_stopping import EarlyStopper
 from src.training.sam import SAM
 from src.utils.score_metrics import Direction
-from torch import mean, pow, sum, tensor, zeros
+from torch import mean, normal, sum, tensor, zeros
 from torch.nn import Module
 from torch.optim import Adam
 from torch.utils.data import DataLoader, SubsetRandomSampler
@@ -25,24 +25,32 @@ class SSGeneEncoderTrainer(Module):
     """
     Trains a gene graph encoder using self supervised training
     """
-    def __init__(self, gene_graph_encoder: GeneGraphEncoder):
+    def __init__(self,
+                 gene_graph_encoder: GeneGraphEncoder,
+                 fuzzyness: float = 0.01):
         """
         Saves the encoder, builds the adjacency matrix
         needed in the loss calculation and then creates a decoder
 
         Args:
             gene_graph_encoder: GeneGraphEncoder object
+            fuzzyness: standard deviation of the multivariate normal distribution
+                       from which noise will be sampled in order to add fuzzyness
+                       to the signature coming out of the encoder
         """
         super().__init__()
+
+        # We validate and save the fuzzyness parameter
+        if fuzzyness < 0:
+            raise ValueError('fuzzyness must be >= 0')
+        self.__fuzzyness = fuzzyness
 
         # We save the encoder
         self.__enc = gene_graph_encoder
 
-        # We count of the number of genes and create the adjacency matrix
-        nb_genes, self.__adj_mat = self.__set_adjacency_mat(self.__enc.gene_idx_groups)
-
         # We create the decoder
-        self.__dec = GeneSignatureDecoder(nb_genes=nb_genes,
+        self.__dec = GeneSignatureDecoder(chrom_weight_mat=self.__enc.chrom_weight_mat,
+                                          hidden_size=self.__enc.chrom_weight_mat,
                                           signature_size=self.__enc.output_size)
 
         # We initialize the optimizer
@@ -100,16 +108,15 @@ class SSGeneEncoderTrainer(Module):
 
     def loss(self, pred: tensor) -> tensor:
         """
-        First calculates the differences between the predicted soft adjacency matrices
-        and the real matrices, then take the average of the squared Frobenius norms of
-        each of these matrices
+        Computes the mean squared differences between the genes' embeddings
+        decoded from the signatures and the real embeddings
 
         Args:
-            pred: (N, NB_GENES, NB_GENES) tensor with soft adjacency matrices predicted
+            pred: (N, NB_GENES, HIDDEN_SIZE) tensor with genes' embeddings
 
         Returns: (1,) tensor with the loss
         """
-        return mean(sum(pow(pred - self.__adj_mat, 2), dim=(1, 2)))
+        return mean(sum(pow(pred - self.__enc.cache, 2), dim=(1, 2)))
 
     def fit(self,
             dataset: PetaleDataset,
@@ -173,14 +180,18 @@ class SSGeneEncoderTrainer(Module):
 
     def forward(self, x: tensor) -> tensor:
         """
-        Applies the encoder and then the decoder function
+        Applies the encoder, add fuzzyness and then applies the decoder function
 
         Args:
             x: (N, D) tensor with D dimensional samples
 
-        Returns: (N, NB_GENES, NB_GENES) tensor with soft adjacency matrices
+        Returns: (N, NB_GENES, HIDDEN_SIZE) tensor with genes' embeddings
         """
-        return self.__dec(self.__enc(x))
+        # Signature computation
+        signature = self.__enc(x)
+
+        # Return embeddings decoded from signature
+        return self.__dec(signature + normal(mean=zeros(signature.shape, requires_grad=False), std=self.__fuzzyness))
 
     @staticmethod
     def __set_adjacency_mat(gene_idx_groups: Dict[str, List[int]]) -> Tuple[int, tensor]:

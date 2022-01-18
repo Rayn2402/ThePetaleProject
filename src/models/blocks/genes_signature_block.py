@@ -191,7 +191,7 @@ class GeneSignatureDecoder(Module):
 
         # Setting of matrix used to recover genes embedding for chromosome embedding
         self.__gene_weight_mat = Parameter(self.__build_gene_weight_mat(chrom_weight_mat=chrom_weight_mat))
-        self.__mask = self.__gene_weight_mat.clone().detach().bool().byte()
+        self.__mask = self.__gene_weight_mat.clone().detach().bool().byte().requires_grad_(False)
 
         # Creation of BaseBlock (first layer of the decoder)
         self.__linear_layer = BaseBlock(input_size=signature_size,

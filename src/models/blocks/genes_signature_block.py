@@ -12,7 +12,7 @@ Date of last modification: 2022/01/17
 from src.models.abstract_models.encoder import Encoder
 from src.models.blocks.mlp_blocks import BaseBlock, EntityEmbeddingBlock
 from torch import einsum, tensor, zeros
-from torch.nn import BatchNorm1d, Conv1d, Linear, Module
+from torch.nn import BatchNorm1d, Conv1d, Linear, Module, Parameter
 from torch.nn.functional import relu
 from typing import Dict, List
 
@@ -190,7 +190,8 @@ class GeneSignatureDecoder(Module):
         self.__nb_chrom = chrom_weight_mat.shape[0]
 
         # Setting of matrix used to recover genes embedding for chromosome embedding
-        self.__gene_weight_mat = self.__build_gene_weight_mat(chrom_weight_mat=chrom_weight_mat)
+        self.__gene_weight_mat = Parameter(self.__build_gene_weight_mat(chrom_weight_mat=chrom_weight_mat))
+        self.__mask = self.__gene_weight_mat.clone().detach().bool().byte()
 
         # Creation of BaseBlock (first layer of the decoder)
         self.__linear_layer = BaseBlock(input_size=signature_size,
@@ -224,11 +225,12 @@ class GeneSignatureDecoder(Module):
         h.unsqueeze_(dim=1)  # (N, NB_CHROM) -> (N, 1, NB_CHROM)
 
         # Apply convolutional layer
-        h = self.__conv_layer(h)  # (N, 1, NB_CHROM) -> (N, NB_CHROM, HIDDEN_SIZE)
+        h = self.__conv_layer(h).transpose(1, 2)  # (N, 1, NB_CHROM) -> (N, NB_CHROM, HIDDEN_SIZE)
 
         # Multiplication by gene_weight_mat to recover gene embeddings
+        # the mask ensure that 0's are not updated in the gene_weight_mat
         # (NB_GENES, NB_CHROM)x(N, NB_CHROM, HIDDEN_SIZE) -> (N, NB_GENES, HIDDEN_SIZE)
-        h = einsum('ij,kjf->kif', self.__gene_weight_mat, h)
+        h = einsum('ij,kjf->kif', (self.__gene_weight_mat*self.__mask), h)
 
         return h
 
@@ -246,4 +248,4 @@ class GeneSignatureDecoder(Module):
         gene_mat = (chrom_weight_mat.clone().detach()).t()
         gene_mat /= pow(gene_mat.sum(dim=1).reshape(-1, 1), 2)
 
-        return gene_mat
+        return gene_mat.requires_grad_(True)

@@ -24,7 +24,8 @@ class GeneGraphEncoder(Encoder, Module):
     def __init__(self,
                  gene_idx_groups: Dict[str, List[int]],
                  hidden_size: int = 3,
-                 signature_size: int = 10):
+                 signature_size: int = 10,
+                 genes_emb_sharing: bool = False):
         """
         Builds the entity embedding block, the convolutional layer, the linear layer,
         the batch norm and sets other protected attributes using the Encoder constructor
@@ -36,6 +37,7 @@ class GeneGraphEncoder(Encoder, Module):
             hidden_size: embedding size of each genes during intermediate
                          signature creation procedure
             signature_size: final genomic signature size (output size)
+            genes_emb_sharing: If True, genes will share the same entity embedding layer
         """
         # We extract the genes idx
         self.__gene_idx_groups = gene_idx_groups
@@ -57,7 +59,8 @@ class GeneGraphEncoder(Encoder, Module):
         # Creation of entity embedding block
         self._entity_emb_block = EntityEmbeddingBlock(cat_sizes=[3]*self.__nb_genes,
                                                       cat_emb_sizes=[self.__hidden_size]*self.__nb_genes,
-                                                      cat_idx=self.__genes_idx)
+                                                      cat_idx=self.__genes_idx,
+                                                      embedding_sharing=genes_emb_sharing)
 
         # Creation of the matrix used to calculate the average of entity embeddings
         # within each chromosome. This matrix will not be updated

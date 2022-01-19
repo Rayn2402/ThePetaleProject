@@ -5,7 +5,7 @@ Author: Nicolas Raymond
 
 Description: Defines neural network architecture blocks mostly related to MLPs
 
-Date of last modification: 2022/01/04
+Date of last modification: 2022/01/19
 """
 
 import torch.nn as nn

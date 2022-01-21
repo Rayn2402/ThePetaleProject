@@ -46,6 +46,9 @@ def argument_parser():
     # Genes encoding
     parser.add_argument('-gen_emb', '--genomic_embedding', default=False, action='store_true',
                         help='True if we want to use genomic signature generation for linear regression model')
+    parser.add_argument('-share', '--embedding_sharing', default=False, action='store_true',
+                        help='True if we want to use a single entity embedding layer for all genes'
+                             ' (currently only applies with genomic signature creation')
 
     # Models selection
     parser.add_argument('-han_e', '--han_with_encoding', default=False, action='store_true',
@@ -331,14 +334,15 @@ if __name__ == '__main__':
         def update_fixed_params(dts):
             nb_cont_col = len(dts.cont_cols) if dts.cont_cols is not None else 0
             return {'max_epochs': max_e,
-                    'patience': 50,
+                    'patience': 25,
                     'num_cont_col': nb_cont_col,
                     'cat_idx': dts.cat_idx,
                     'cat_sizes': dts.cat_sizes,
                     'cat_emb_sizes': dts.cat_sizes,
                     'gene_idx_groups': dts.gene_idx_groups,
                     'genomic_signature_size': 10,
-                    'pre_training': args.pre_training}
+                    'pre_training': args.pre_training,
+                    'genes_emb_sharing': args.embedding_sharing}
 
 
         # Saving of fixed_params for MLP

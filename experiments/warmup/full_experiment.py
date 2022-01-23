@@ -36,7 +36,9 @@ def argument_parser():
     parser.add_argument('-r_w', '--remove_walk_variables', default=False, action='store_true',
                         help='True if we want to remove six minutes walk test variables from baselines'
                              '(only applies if baselines are included')
-    parser.add_argument('-gen', '--genes', default=False, action='store_true',
+    parser.add_argument('-gen1', '--genes_subgroup', default=False, action='store_true',
+                        help='True if we want to include genes if features')
+    parser.add_argument('-gen2', '--all_genes', default=False, action='store_true',
                         help='True if we want to include genes if features')
     parser.add_argument('-f', '--feature_selection', default=False, action='store_true',
                         help='True if we want to apply automatic feature selection')
@@ -121,7 +123,9 @@ if __name__ == '__main__':
     manager = PetaleDataManager()
 
     # We extract needed data
-    genes_selection = GeneChoice.SIGNIFICANT if args.genes else None
+    genes_selection = GeneChoice.SIGNIFICANT if args.genes_subgroup else None
+    genes_selection = GeneChoice.ALL if args.all_genes else None
+    genes = True if genes_selection is not None else False
     df, target, cont_cols, cat_cols = get_warmup_data(manager, baselines=args.baselines, genes=genes_selection,
                                                       sex=args.sex)
     # We filter variables if needed
@@ -150,8 +154,11 @@ if __name__ == '__main__':
         eval_id = f"{eval_id}_baselines"
         if args.remove_walk_variables:
             eval_id = f"{eval_id}_nw"
-    if args.genes:
-        eval_id = f"{eval_id}_genes"
+    if genes:
+        if args.args.all_genes:
+            eval_id = f"{eval_id}_gen2"
+        else:
+            eval_id = f"{eval_id}_gen1"
     if args.sex:
         eval_id = f"{eval_id}_sex"
     if args.enable_sam:
@@ -329,7 +336,7 @@ if __name__ == '__main__':
                                     to_tensor=True, classification=False)
 
         # Creation of function to update fixed params
-        max_e = 200 if args.genes else 50
+        max_e = 200 if genes else 50
 
         def update_fixed_params(dts):
             nb_cont_col = len(dts.cont_cols) if dts.cont_cols is not None else 0
@@ -353,7 +360,7 @@ if __name__ == '__main__':
             ENET_HPS[MLPHP.RHO.name] = sam_search_space
 
         # Creation of evaluator
-        m = masks_without_val if not args.genes else masks
+        m = masks_without_val if not genes else masks
         evaluator = Evaluator(model_constructor=PetaleMLPR,
                               dataset=dataset,
                               masks=m,
@@ -374,7 +381,7 @@ if __name__ == '__main__':
     """
     HAN experiment
     """
-    if args.han and (args.genes or args.sex) and args.baselines:
+    if args.han and (genes or args.sex) and args.baselines:
 
         # Start timer
         start = time.time()
@@ -422,7 +429,7 @@ if __name__ == '__main__':
     """
     HAN with single layered pre-encoder
     """
-    if args.han_with_encoding and (args.genes or args.sex) and args.baselines:
+    if args.han_with_encoding and (genes or args.sex) and args.baselines:
 
         # Start timer
         start = time.time()

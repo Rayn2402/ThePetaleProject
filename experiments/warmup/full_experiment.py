@@ -6,7 +6,7 @@ Authors: Nicolas Raymond
 Description: This file is used to execute all the model comparisons
              made on the warmup dataset
 
-Date of last modification : 2021/12/06
+Date of last modification : 2022/01/24
 """
 import sys
 import argparse
@@ -126,7 +126,9 @@ if __name__ == '__main__':
     genes_selection = GeneChoice.SIGNIFICANT if args.genes_subgroup else None
     genes_selection = GeneChoice.ALL if args.all_genes else None
     genes = True if genes_selection is not None else False
-    df, target, cont_cols, cat_cols = get_warmup_data(manager, baselines=args.baselines, genes=genes_selection,
+    df, target, cont_cols, cat_cols = get_warmup_data(manager,
+                                                      baselines=args.baselines,
+                                                      genes=genes_selection,
                                                       sex=args.sex)
     # We filter variables if needed
     if args.baselines and args.remove_walk_variables:
@@ -151,18 +153,18 @@ if __name__ == '__main__':
     # We save the string that will help identify evaluations
     eval_id = ""
     if args.baselines:
-        eval_id = f"{eval_id}_baselines"
+        eval_id += "_baselines"
         if args.remove_walk_variables:
-            eval_id = f"{eval_id}_nw"
+            eval_id += "_nw"
     if genes:
         if args.args.all_genes:
-            eval_id = f"{eval_id}_gen2"
+            eval_id += "_gen2"
         else:
-            eval_id = f"{eval_id}_gen1"
+            eval_id += "_gen1"
     if args.sex:
-        eval_id = f"{eval_id}_sex"
+        eval_id += "_sex"
     if args.enable_sam:
-        eval_id = f"{eval_id}_sam"
+        eval_id += "_sam"
 
     # We save the Sharpness-Aware Minimization search space
     sam_search_space = {Range.MIN: 0.05, Range.MAX: 2}
@@ -201,7 +203,7 @@ if __name__ == '__main__':
 
         # Creation of the evaluator
         evaluator = Evaluator(model_constructor=PetaleTNR, dataset=dataset,
-                              evaluation_name=f"TabNet_warmup_{eval_id}",
+                              evaluation_name=f"TabNet_warmup{eval_id}",
                               masks=masks, hps=TAB_HPS,
                               n_trials=200,
                               fixed_params=fixed_params,
@@ -231,7 +233,7 @@ if __name__ == '__main__':
         evaluator = Evaluator(model_constructor=PetaleRFR,
                               dataset=dataset,
                               masks=masks_without_val,
-                              evaluation_name=f"RandomForest_warmup_{eval_id}",
+                              evaluation_name=f"RandomForest_warmup{eval_id}",
                               hps=RF_HPS,
                               n_trials=200,
                               evaluation_metrics=evaluation_metrics,
@@ -259,7 +261,7 @@ if __name__ == '__main__':
         evaluator = Evaluator(model_constructor=PetaleXGBR,
                               dataset=dataset,
                               masks=masks_without_val,
-                              evaluation_name=f"XGBoost_warmup_{eval_id}",
+                              evaluation_name=f"XGBoost_warmup{eval_id}",
                               hps=XGBOOST_HPS,
                               n_trials=200,
                               evaluation_metrics=evaluation_metrics,
@@ -304,7 +306,7 @@ if __name__ == '__main__':
         evaluator = Evaluator(model_constructor=PetaleMLPR,
                               dataset=dataset,
                               masks=masks,
-                              evaluation_name=f"MLP_warmup_{eval_id}",
+                              evaluation_name=f"MLP_warmup{eval_id}",
                               hps=MLP_HPS,
                               n_trials=200,
                               evaluation_metrics=evaluation_metrics,
@@ -327,7 +329,7 @@ if __name__ == '__main__':
         # Start timer
         start = time.time()
 
-        # Creation of the dataset and function to update fixed params
+        # Creation of the dataset
         if not args.genomic_embedding:
             dataset = PetaleDataset(df, target, cont_cols, cat_cols, to_tensor=True, classification=False)
 
@@ -364,7 +366,7 @@ if __name__ == '__main__':
         evaluator = Evaluator(model_constructor=PetaleMLPR,
                               dataset=dataset,
                               masks=m,
-                              evaluation_name=f"linear_reg_warmup_{eval_id}",
+                              evaluation_name=f"linear_reg_warmup{eval_id}",
                               hps=ENET_HPS,
                               n_trials=200,
                               evaluation_metrics=evaluation_metrics,
@@ -376,7 +378,7 @@ if __name__ == '__main__':
         # Evaluation
         evaluator.evaluate()
 
-        print("Time Taken for Logistic Regression (minutes): ", round((time.time() - start) / 60, 2))
+        print("Time Taken for ENET (minutes): ", round((time.time() - start) / 60, 2))
 
     """
     HAN experiment
@@ -410,7 +412,7 @@ if __name__ == '__main__':
         evaluator = Evaluator(model_constructor=PetaleHANR,
                               dataset=dataset,
                               masks=gnn_masks,
-                              evaluation_name=f"HAN_warmup_{eval_id}",
+                              evaluation_name=f"HAN_warmup{eval_id}",
                               hps=HAN_HPS,
                               n_trials=200,
                               evaluation_metrics=evaluation_metrics,
@@ -454,8 +456,7 @@ if __name__ == '__main__':
                     'cat_emb_sizes': dts.cat_sizes,
                     'max_epochs': 250,
                     'patience': 15,
-                    'pre_encoder_constructor': build_encoder
-                    }
+                    'pre_encoder_constructor': build_encoder}
 
 
         # Saving of original fixed params for HAN
@@ -469,7 +470,7 @@ if __name__ == '__main__':
         evaluator = Evaluator(model_constructor=PetaleHANR,
                               dataset=dataset,
                               masks=gnn_masks,
-                              evaluation_name=f"ENC_HAN_warmup_{eval_id}",
+                              evaluation_name=f"ENC_HAN_warmup{eval_id}",
                               hps=HAN_HPS,
                               n_trials=200,
                               evaluation_metrics=evaluation_metrics,

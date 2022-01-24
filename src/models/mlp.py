@@ -6,7 +6,7 @@ Authors: Nicolas Raymond
 Description: This file is used to define the regression and classification
              wrappers for MLP models
 
-Date of last modification : 2022/01/10
+Date of last modification : 2022/01/19
 """
 
 from src.models.wrappers.torch_wrappers import TorchBinaryClassifierWrapper, TorchRegressorWrapper
@@ -41,6 +41,7 @@ class PetaleBinaryMLPC(TorchBinaryClassifierWrapper):
                  gene_idx_groups: Optional[Dict[str, List[int]]] = None,
                  genes_emb_size: int = 3,
                  genomic_signature_size: int = 10,
+                 genes_emb_sharing: bool = False,
                  pre_training: bool = False,
                  verbose: bool = False,
                  classification_threshold: float = 0.5,
@@ -72,7 +73,9 @@ class PetaleBinaryMLPC(TorchBinaryClassifierWrapper):
                              the chromosome
             genes_emb_size: size of genes embedding used to calculate genomic signature
             genomic_signature_size: size of the genomic signature
-                                  (only used if gene_idx_groups is not None)
+                                    (only used if gene_idx_groups is not None)
+            genes_emb_sharing: If True and gene_idx_groups is not None,
+                               genes will share the same entity embedding layer
             pre_training: If True and gene_idx_groups is not None, GeneGraphEncoder will
                           be pretrained with self supervised learning
             verbose: if True, training progress will be printed
@@ -93,6 +96,7 @@ class PetaleBinaryMLPC(TorchBinaryClassifierWrapper):
                                     gene_idx_groups=gene_idx_groups,
                                     genes_emb_size=genes_emb_size,
                                     genomic_signature_size=genomic_signature_size,
+                                    genes_emb_sharing=genes_emb_sharing,
                                     pre_training=pre_training,
                                     verbose=verbose)
 
@@ -141,6 +145,7 @@ class PetaleMLPR(TorchRegressorWrapper):
                  gene_idx_groups: Optional[Dict[str, List[int]]] = None,
                  genes_emb_size: int = 3,
                  genomic_signature_size: int = 10,
+                 genes_emb_sharing: bool = False,
                  pre_training: bool = False,
                  verbose: bool = False):
         """
@@ -170,7 +175,9 @@ class PetaleMLPR(TorchRegressorWrapper):
                              the chromosome
             genes_emb_size: size of genes embedding used to calculate genomic signature
             genomic_signature_size: size of the genomic signature
-                                  (only used if gene_idx_groups is not None)
+                                    (only used if gene_idx_groups is not None)
+            genes_emb_sharing: If True and gene_idx_groups is not None,
+                               genes will share the same entity embedding layer
             pre_training: If True and gene_idx_groups is not None, GeneGraphEncoder will
                           be pretrained with self supervised learning
             verbose: if True, training progress will be printed
@@ -189,6 +196,7 @@ class PetaleMLPR(TorchRegressorWrapper):
                              gene_idx_groups=gene_idx_groups,
                              genes_emb_size=genes_emb_size,
                              genomic_signature_size=genomic_signature_size,
+                             genes_emb_sharing=genes_emb_sharing,
                              pre_training=pre_training,
                              verbose=verbose)
 

@@ -10,7 +10,7 @@ Description: This file is used to define the MLP model with entity embeddings
              and PetaleBinaryClassifier classes. However, two wrapper classes for torch models
              are provided to enable the use of these mlp models with hyperparameter tuning functions.
 
-Date of last modification : 2022/01/12
+Date of last modification : 2022/01/19
 """
 
 from src.models.abstract_models.custom_torch_base import TorchCustomModel
@@ -48,6 +48,7 @@ class MLP(TorchCustomModel):
                  gene_idx_groups: Optional[Dict[str, List[int]]] = None,
                  genes_emb_size: int = 3,
                  genomic_signature_size: int = 10,
+                 genes_emb_sharing: bool = False,
                  pre_training: bool = False,
                  verbose: bool = False):
 
@@ -73,7 +74,9 @@ class MLP(TorchCustomModel):
                              the chromosome
             genes_emb_size: size of genes embedding used to calculate genomic signature
             genomic_signature_size: size of the genomic signature
-                                  (only used if gene_idx_groups is not None)
+                                    (only used if gene_idx_groups is not None)
+            genes_emb_sharing: If True and gene_idx_groups is not None,
+                               genes will share the same entity embedding layer
             pre_training: If True and gene_idx_groups is not None, GeneGraphEncoder will
                           be pretrained with self supervised learning
             verbose: True if we want trace of the training progress
@@ -96,7 +99,8 @@ class MLP(TorchCustomModel):
         if gene_idx_groups is not None:
             self._genes_encoding_block = GeneGraphEncoder(gene_idx_groups=gene_idx_groups,
                                                           hidden_size=genes_emb_size,
-                                                          signature_size=genomic_signature_size)
+                                                          signature_size=genomic_signature_size,
+                                                          genes_emb_sharing=genes_emb_sharing)
             self._genes_available = True
             self._pre_training = pre_training
             self._input_size += genomic_signature_size
@@ -287,6 +291,7 @@ class MLPBinaryClassifier(MLP):
                  gene_idx_groups: Optional[Dict[str, List[int]]] = None,
                  genes_emb_size: int = 3,
                  genomic_signature_size: int = 10,
+                 genes_emb_sharing: bool = False,
                  pre_training: bool = False,
                  verbose: bool = False):
         """
@@ -308,7 +313,9 @@ class MLPBinaryClassifier(MLP):
                              the chromosome
             genes_emb_size: size of genes embedding used to calculate genomic signature
             genomic_signature_size: size of the genomic signature
-                                  (only used if gene_idx_groups is not None)
+                                    (only used if gene_idx_groups is not None)
+            genes_emb_sharing: If True and gene_idx_groups is not None,
+                               genes will share the same entity embedding layer
             pre_training: If True and gene_idx_groups is not None, GeneGraphEncoder will
                           be pretrained with self supervised learning
             verbose: true to print training progress when fit is called
@@ -330,6 +337,7 @@ class MLPBinaryClassifier(MLP):
                          gene_idx_groups=gene_idx_groups,
                          genes_emb_size=genes_emb_size,
                          genomic_signature_size=genomic_signature_size,
+                         genes_emb_sharing=genes_emb_sharing,
                          pre_training=pre_training,
                          verbose=verbose)
 
@@ -381,6 +389,7 @@ class MLPRegressor(MLP):
                  gene_idx_groups: Optional[Dict[str, List[int]]] = None,
                  genes_emb_size: int = 3,
                  genomic_signature_size: int = 10,
+                 genes_emb_sharing: bool = False,
                  pre_training: bool = False,
                  verbose: bool = False):
         """
@@ -402,7 +411,9 @@ class MLPRegressor(MLP):
                              the chromosome
             genes_emb_size: size of genes embedding used to calculate genomic signature
             genomic_signature_size: size of the genomic signature
-                                  (only used if gene_idx_groups is not None)
+                                    (only used if gene_idx_groups is not None)
+            genes_emb_sharing: If True and gene_idx_groups is not None,
+                               genes will share the same entity embedding layer
             pre_training: If True and gene_idx_groups is not None, GeneGraphEncoder will
                           be pretrained with self supervised learning
             verbose: true to print training progress when fit is called
@@ -424,6 +435,7 @@ class MLPRegressor(MLP):
                          gene_idx_groups=gene_idx_groups,
                          genes_emb_size=genes_emb_size,
                          genomic_signature_size=genomic_signature_size,
+                         genes_emb_sharing=genes_emb_sharing,
                          pre_training=pre_training,
                          verbose=verbose)
 

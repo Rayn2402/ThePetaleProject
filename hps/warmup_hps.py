@@ -1,5 +1,11 @@
 """
- File used to store hyperparameters used for evaluations
+Filename: warmup_hps.py
+
+Author: Nicolas Raymond
+
+Description: File used to store hps search spaces for warmup experiments
+
+Date of last modification: 2022/01/20
 """
 
 from src.models.mlp import MLPHP

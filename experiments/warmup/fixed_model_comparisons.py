@@ -1,13 +1,15 @@
 """
-Filename: full_experiment.py
+Filename: fixed_model_comparisons.py
 
-Authors: Nicolas Raymond
+Author: Nicolas Raymond
 
-Description: This file is used to execute all the model comparisons
-             made on the warmup dataset
+Description: This file is a script used to run warmup experiments using fixed
+             hyperparameters.
 
-Date of last modification : 2022/01/24
+Date of last modification: 2022/01/20
 """
+
+
 import sys
 import argparse
 import time
@@ -22,7 +24,8 @@ def argument_parser():
     """
     # Create a parser
     parser = argparse.ArgumentParser(usage='\n python full_experiment.py',
-                                     description="Runs all the experiments associated to the warmup dataset")
+                                     description="Runs all the experiments associated to the warmup dataset"
+                                                 "with fixed hyperparameters")
 
     # Nb inner split and nb outer split selection
     parser.add_argument('-k', '--nb_outer_splits', type=int, default=10,
@@ -33,28 +36,14 @@ def argument_parser():
     # Features selection
     parser.add_argument('-b', '--baselines', default=False, action='store_true',
                         help='True if we want to include variables from the original equation')
-    parser.add_argument('-r_w', '--remove_walk_variables', default=False, action='store_true',
-                        help='True if we want to remove six minutes walk test variables from baselines'
-                             '(only applies if baselines are included')
-    parser.add_argument('-gen1', '--genes_subgroup', default=False, action='store_true',
-                        help='True if we want to include genes if features')
-    parser.add_argument('-gen2', '--all_genes', default=False, action='store_true',
+    parser.add_argument('-gen', '--genes', default=False, action='store_true',
                         help='True if we want to include genes if features')
     parser.add_argument('-f', '--feature_selection', default=False, action='store_true',
                         help='True if we want to apply automatic feature selection')
     parser.add_argument('-s', '--sex', default=False, action='store_true',
                         help='True if we want to include sex in features')
 
-    # Genes encoding
-    parser.add_argument('-gen_emb', '--genomic_embedding', default=False, action='store_true',
-                        help='True if we want to use genomic signature generation for linear regression model')
-    parser.add_argument('-share', '--embedding_sharing', default=False, action='store_true',
-                        help='True if we want to use a single entity embedding layer for all genes'
-                             ' (currently only applies with genomic signature creation')
-
     # Models selection
-    parser.add_argument('-han_e', '--han_with_encoding', default=False, action='store_true',
-                        help='True if we want to run HAN experiment with single layered pre-encoder')
     parser.add_argument('-han', '--han', default=False, action='store_true',
                         help='True if we want to run heterogeneous graph attention network experiments')
     parser.add_argument('-lin', '--linear_regression', default=False, action='store_true',
@@ -67,19 +56,6 @@ def argument_parser():
                         help='True if we want to run xgboost experiments')
     parser.add_argument('-tab', '--tabnet', default=False, action='store_true',
                         help='True if we want to run TabNet experiments')
-
-    # Activation of sharpness-aware minimization
-    parser.add_argument('-sam', '--enable_sam', default=False, action='store_true',
-                        help='True if we want to use Sharpness-Aware Minimization Optimizer')
-
-    # Activation of self supervised learning
-    parser.add_argument('-pre_training', '--pre_training', default=False, action='store_true',
-                        help='True if we want to apply pre self supervised training to model'
-                             'where it is enabled. Currently available for ENET with genes encoding')
-
-    # Usage of predictions from another experiment
-    parser.add_argument('-p', '--path', type=str, default=None,
-                        help='Path leading to predictions of another model, will only be used by HAN if specified')
 
     # Seed
     parser.add_argument('-seed', '--seed', type=int, default=SEED, help='Seed to use during model evaluations')
@@ -99,12 +75,11 @@ if __name__ == '__main__':
 
     # Imports specific to project
     sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
-    from hps.warmup_hps import TAB_HPS, RF_HPS, HAN_HPS, MLP_HPS, ENET_HPS, XGBOOST_HPS
+    from hps.warmup_fixed_hps import *
     from settings.paths import Paths
     from src.data.processing.datasets import PetaleDataset, PetaleStaticGNNDataset
     from src.data.processing.feature_selection import FeatureSelector
     from src.data.processing.sampling import extract_masks, GeneChoice, get_warmup_data, push_valid_to_train
-    from src.models.blocks.mlp_blocks import MLPEncodingBlock
     from src.models.han import PetaleHANR, HanHP
     from src.models.mlp import PetaleMLPR, MLPHP
     from src.models.tabnet import PetaleTNR
@@ -113,7 +88,6 @@ if __name__ == '__main__':
     from src.training.evaluation import Evaluator
     from src.data.extraction.constants import *
     from src.data.extraction.data_management import PetaleDataManager
-    from src.utils.hyperparameters import Range
     from src.utils.score_metrics import AbsoluteError, Pearson, RootMeanSquaredError, SquaredError
 
     # Arguments parsing
@@ -123,13 +97,9 @@ if __name__ == '__main__':
     manager = PetaleDataManager()
 
     # We extract needed data
-    genes_selection = GeneChoice.SIGNIFICANT if args.genes_subgroup else None
-    genes_selection = GeneChoice.ALL if args.all_genes else None
-    genes = True if genes_selection is not None else False
-    df, target, cont_cols, cat_cols = get_warmup_data(manager,
-                                                      baselines=args.baselines,
-                                                      genes=genes_selection,
-                                                      sex=args.sex)
+    genes_selection = GeneChoice.SIGNIFICANT if args.genes else None
+    df, target, cont_cols, cat_cols = get_warmup_data(manager, baselines=args.baselines,
+                                                      genes=genes_selection, sex=args.sex)
     # We filter variables if needed
     if args.baselines and args.remove_walk_variables:
         df.drop([TDM6_HR_END, TDM6_DIST], axis=1, inplace=True)
@@ -151,23 +121,25 @@ if __name__ == '__main__':
         feature_selector = None
 
     # We save the string that will help identify evaluations
+    # and the key to extract the fixed hps
+    fixed_hps_key = tuple()
     eval_id = ""
     if args.baselines:
+        fixed_hps_key += (B,)
         eval_id += "_baselines"
-        if args.remove_walk_variables:
-            eval_id += "_nw"
-    if genes:
-        if args.args.all_genes:
-            eval_id += "_gen2"
-        else:
-            eval_id += "_gen1"
-    if args.sex:
-        eval_id += "_sex"
-    if args.enable_sam:
-        eval_id += "_sam"
 
-    # We save the Sharpness-Aware Minimization search space
-    sam_search_space = {Range.MIN: 0.05, Range.MAX: 2}
+    if args.sex:
+        fixed_hps_key += (S,)
+        eval_id += "_sex"
+
+    if args.genes:
+        fixed_hps_key += (G,)
+        eval_id += "_genes"
+
+    eval_id += "_sam"
+
+    # Fixed hps extraction
+    hps = FIXED_HPS[fixed_hps_key]
 
     # We start a timer for the whole experiment
     first_start = time.time()
@@ -190,22 +162,24 @@ if __name__ == '__main__':
                         'cat_sizes': dts.cat_sizes,
                         'cat_emb_sizes': dts.cat_sizes,
                         'max_epochs': 250,
-                        'patience': 50}
+                        'patience': 50,
+                        **hps[T]}
             else:
                 return {'cat_idx': [],
                         'cat_sizes': [],
                         'cat_emb_sizes': [],
                         'max_epochs': 250,
-                        'patience': 50}
+                        'patience': 50,
+                        **hps[T]}
 
         # Saving of original fixed params for TabNet
         fixed_params = update_fixed_params(dataset)
 
         # Creation of the evaluator
         evaluator = Evaluator(model_constructor=PetaleTNR, dataset=dataset,
-                              evaluation_name=f"TabNet_warmup{eval_id}",
-                              masks=masks, hps=TAB_HPS,
-                              n_trials=200,
+                              evaluation_name=f"TabNet_warmup_{eval_id}",
+                              masks=masks, hps={},
+                              n_trials=0,
                               fixed_params=fixed_params,
                               fixed_params_update_function=update_fixed_params,
                               feature_selector=feature_selector,
@@ -233,9 +207,10 @@ if __name__ == '__main__':
         evaluator = Evaluator(model_constructor=PetaleRFR,
                               dataset=dataset,
                               masks=masks_without_val,
-                              evaluation_name=f"RandomForest_warmup{eval_id}",
-                              hps=RF_HPS,
-                              n_trials=200,
+                              evaluation_name=f"RandomForest_warmup_{eval_id}",
+                              hps={},
+                              n_trials=0,
+                              fixed_params=hps[RF],
                               evaluation_metrics=evaluation_metrics,
                               feature_selector=feature_selector,
                               save_hps_importance=True,
@@ -261,9 +236,10 @@ if __name__ == '__main__':
         evaluator = Evaluator(model_constructor=PetaleXGBR,
                               dataset=dataset,
                               masks=masks_without_val,
-                              evaluation_name=f"XGBoost_warmup{eval_id}",
-                              hps=XGBOOST_HPS,
-                              n_trials=200,
+                              evaluation_name=f"XGBoost_warmup_{eval_id}",
+                              hps={},
+                              n_trials=0,
+                              fixed_params=hps[XG],
                               evaluation_metrics=evaluation_metrics,
                               feature_selector=feature_selector,
                               save_hps_importance=True,
@@ -293,22 +269,19 @@ if __name__ == '__main__':
                     'num_cont_col': nb_cont_col,
                     'cat_idx': dts.cat_idx,
                     'cat_sizes': dts.cat_sizes,
-                    'cat_emb_sizes': dts.cat_sizes}
+                    'cat_emb_sizes': dts.cat_sizes,
+                    **hps[MLP]}
 
         # Saving of fixed_params for MLP
         fixed_params = update_fixed_params(dataset)
-
-        # Update of hyperparameters
-        if args.enable_sam:
-            MLP_HPS[MLPHP.RHO.name] = sam_search_space
 
         # Creation of evaluator
         evaluator = Evaluator(model_constructor=PetaleMLPR,
                               dataset=dataset,
                               masks=masks,
-                              evaluation_name=f"MLP_warmup{eval_id}",
-                              hps=MLP_HPS,
-                              n_trials=200,
+                              evaluation_name=f"MLP_warmup_{eval_id}",
+                              hps={},
+                              n_trials=0,
                               evaluation_metrics=evaluation_metrics,
                               feature_selector=feature_selector,
                               fixed_params=fixed_params,
@@ -329,46 +302,32 @@ if __name__ == '__main__':
         # Start timer
         start = time.time()
 
-        # Creation of the dataset
-        if not args.genomic_embedding:
-            dataset = PetaleDataset(df, target, cont_cols, cat_cols, to_tensor=True, classification=False)
-
-        else:
-            dataset = PetaleDataset(df, target, cont_cols, cat_cols, gene_cols=SIGNIFICANT_CHROM_POS_WARMUP,
-                                    to_tensor=True, classification=False)
-
         # Creation of function to update fixed params
-        max_e = 200 if genes else 50
+        max_e = 200 if args.genes else 50
 
         def update_fixed_params(dts):
             nb_cont_col = len(dts.cont_cols) if dts.cont_cols is not None else 0
             return {'max_epochs': max_e,
-                    'patience': 25,
+                    'patience': 50,
                     'num_cont_col': nb_cont_col,
                     'cat_idx': dts.cat_idx,
                     'cat_sizes': dts.cat_sizes,
                     'cat_emb_sizes': dts.cat_sizes,
                     'gene_idx_groups': dts.gene_idx_groups,
                     'genomic_signature_size': 10,
-                    'pre_training': args.pre_training,
-                    'genes_emb_sharing': args.embedding_sharing}
-
+                    **hps[E]}
 
         # Saving of fixed_params for MLP
         fixed_params = update_fixed_params(dataset)
 
-        # Update of hyperparameters
-        if args.enable_sam:
-            ENET_HPS[MLPHP.RHO.name] = sam_search_space
-
         # Creation of evaluator
-        m = masks_without_val if not genes else masks
+        m = masks_without_val if not args.genes else masks
         evaluator = Evaluator(model_constructor=PetaleMLPR,
                               dataset=dataset,
                               masks=m,
-                              evaluation_name=f"linear_reg_warmup{eval_id}",
-                              hps=ENET_HPS,
-                              n_trials=200,
+                              evaluation_name=f"linear_reg_warmup_{eval_id}",
+                              hps={},
+                              n_trials=0,
                               evaluation_metrics=evaluation_metrics,
                               feature_selector=feature_selector,
                               fixed_params=fixed_params,
@@ -378,12 +337,12 @@ if __name__ == '__main__':
         # Evaluation
         evaluator.evaluate()
 
-        print("Time Taken for ENET (minutes): ", round((time.time() - start) / 60, 2))
+        print("Time Taken for Enet (minutes): ", round((time.time() - start) / 60, 2))
 
     """
     HAN experiment
     """
-    if args.han and (genes or args.sex) and args.baselines:
+    if args.han and (args.genes or args.sex) and args.baselines:
 
         # Start timer
         start = time.time()
@@ -399,22 +358,19 @@ if __name__ == '__main__':
                     'cat_sizes': dts.cat_sizes,
                     'cat_emb_sizes': dts.cat_sizes,
                     'max_epochs': 250,
-                    'patience': 15}
+                    'patience': 15,
+                    **hps[HAN]}
 
         # Saving of original fixed params for HAN
         fixed_params = update_fixed_params(dataset)
-
-        # Update of hyperparameters
-        if args.enable_sam:
-            HAN_HPS[HanHP.RHO.name] = sam_search_space
 
         # Creation of the evaluator
         evaluator = Evaluator(model_constructor=PetaleHANR,
                               dataset=dataset,
                               masks=gnn_masks,
-                              evaluation_name=f"HAN_warmup{eval_id}",
-                              hps=HAN_HPS,
-                              n_trials=200,
+                              evaluation_name=f"HAN_warmup_{eval_id}",
+                              hps={},
+                              n_trials=0,
                               evaluation_metrics=evaluation_metrics,
                               fixed_params=fixed_params,
                               fixed_params_update_function=update_fixed_params,
@@ -427,62 +383,5 @@ if __name__ == '__main__':
         evaluator.evaluate()
 
         print("Time Taken for HAN (minutes): ", round((time.time() - start) / 60, 2))
-
-    """
-    HAN with single layered pre-encoder
-    """
-    if args.han_with_encoding and (genes or args.sex) and args.baselines:
-
-        # Start timer
-        start = time.time()
-
-        # Creation of the dataset
-        dataset = PetaleStaticGNNDataset(df, target, cont_cols, cat_cols, classification=False)
-
-        # Creation of function that builds pre-encoder
-        def build_encoder(input_size: int) -> MLPEncodingBlock:
-            return MLPEncodingBlock(input_size=input_size,
-                                    output_size=5,
-                                    layers=[],
-                                    activation="PReLU",
-                                    dropout=0)
-
-        # Creation of function to update fixed params
-        def update_fixed_params(dts):
-            return {'meta_paths': dts.get_metapaths(),
-                    'num_cont_col': len(dts.cont_cols),
-                    'cat_idx': dts.cat_idx,
-                    'cat_sizes': dts.cat_sizes,
-                    'cat_emb_sizes': dts.cat_sizes,
-                    'max_epochs': 250,
-                    'patience': 15,
-                    'pre_encoder_constructor': build_encoder}
-
-
-        # Saving of original fixed params for HAN
-        fixed_params = update_fixed_params(dataset)
-
-        # Update of hyperparameters
-        if args.enable_sam:
-            HAN_HPS[HanHP.RHO.name] = sam_search_space
-
-        # Creation of the evaluator
-        evaluator = Evaluator(model_constructor=PetaleHANR,
-                              dataset=dataset,
-                              masks=gnn_masks,
-                              evaluation_name=f"ENC_HAN_warmup{eval_id}",
-                              hps=HAN_HPS,
-                              n_trials=200,
-                              evaluation_metrics=evaluation_metrics,
-                              fixed_params=fixed_params,
-                              fixed_params_update_function=update_fixed_params,
-                              feature_selector=feature_selector,
-                              save_hps_importance=True,
-                              save_optimization_history=True)
-
-        # Evaluation
-        evaluator.evaluate()
-
-        print("Time Taken for encoder + HAN (minutes): ", round((time.time() - start) / 60, 2))
 
     print("Overall time (minutes): ", round((time.time() - first_start) / 60, 2))

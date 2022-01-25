@@ -6,7 +6,7 @@ Author: Nicolas Raymond
 Description: Defines the modules in charge of encoding
              and decoding the genomic signature associated to patients.
 
-Date of last modification: 2022/01/19
+Date of last modification: 2022/01/25
 """
 
 from abc import ABC

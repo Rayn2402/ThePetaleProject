@@ -13,7 +13,7 @@ from src.models.wrappers.torch_wrappers import TorchBinaryClassifierWrapper, Tor
 from src.models.abstract_models.mlp_base_models import MLPBinaryClassifier, MLPRegressor
 from src.utils.hyperparameters import CategoricalHP, HP, NumericalContinuousHP, NumericalIntHP
 from src.utils.score_metrics import Metric, BinaryClassificationMetric
-from typing import Dict, List, Optional
+from typing import Callable, Dict, List, Optional
 
 
 class PetaleBinaryMLPC(TorchBinaryClassifierWrapper):
@@ -39,9 +39,7 @@ class PetaleBinaryMLPC(TorchBinaryClassifierWrapper):
                  cat_sizes: Optional[List[int]] = None,
                  cat_emb_sizes: Optional[List[int]] = None,
                  gene_idx_groups: Optional[Dict[str, List[int]]] = None,
-                 genes_emb_size: int = 3,
-                 genomic_signature_size: int = 10,
-                 genes_emb_sharing: bool = False,
+                 gene_encoder_constructor: Optional[Callable] = None,
                  pre_training: bool = False,
                  verbose: bool = False,
                  classification_threshold: float = 0.5,
@@ -71,12 +69,8 @@ class PetaleBinaryMLPC(TorchBinaryClassifierWrapper):
             gene_idx_groups: dictionary where keys are names of chromosomes and values
                              are list of idx referring to columns of genes associated to
                              the chromosome
-            genes_emb_size: size of genes embedding used to calculate genomic signature
-            genomic_signature_size: size of the genomic signature
-                                    (only used if gene_idx_groups is not None)
-            genes_emb_sharing: If True and gene_idx_groups is not None,
-                               genes will share the same entity embedding layer
-            pre_training: If True and gene_idx_groups is not None, GeneGraphEncoder will
+            gene_encoder_constructor: function that generates a GeneEncoder from gene_idx_groups
+            pre_training: if True and gene_idx_groups is not None, GeneGraphEncoder will
                           be pretrained with self supervised learning
             verbose: if True, training progress will be printed
             classification_threshold: threshold used to classify a sample in class 1
@@ -94,9 +88,7 @@ class PetaleBinaryMLPC(TorchBinaryClassifierWrapper):
                                     cat_sizes=cat_sizes,
                                     cat_emb_sizes=cat_emb_sizes,
                                     gene_idx_groups=gene_idx_groups,
-                                    genes_emb_size=genes_emb_size,
-                                    genomic_signature_size=genomic_signature_size,
-                                    genes_emb_sharing=genes_emb_sharing,
+                                    gene_encoder_constructor=gene_encoder_constructor,
                                     pre_training=pre_training,
                                     verbose=verbose)
 
@@ -143,9 +135,7 @@ class PetaleMLPR(TorchRegressorWrapper):
                  cat_sizes: Optional[List[int]] = None,
                  cat_emb_sizes: Optional[List[int]] = None,
                  gene_idx_groups: Optional[Dict[str, List[int]]] = None,
-                 genes_emb_size: int = 3,
-                 genomic_signature_size: int = 10,
-                 genes_emb_sharing: bool = False,
+                 gene_encoder_constructor: Optional[Callable] = None,
                  pre_training: bool = False,
                  verbose: bool = False):
         """
@@ -173,12 +163,8 @@ class PetaleMLPR(TorchRegressorWrapper):
             gene_idx_groups: dictionary where keys are names of chromosomes and values
                              are list of idx referring to columns of genes associated to
                              the chromosome
-            genes_emb_size: size of genes embedding used to calculate genomic signature
-            genomic_signature_size: size of the genomic signature
-                                    (only used if gene_idx_groups is not None)
-            genes_emb_sharing: If True and gene_idx_groups is not None,
-                               genes will share the same entity embedding layer
-            pre_training: If True and gene_idx_groups is not None, GeneGraphEncoder will
+            gene_encoder_constructor: function that generates a GeneEncoder from gene_idx_groups
+            pre_training: if True and gene_idx_groups is not None, GeneGraphEncoder will
                           be pretrained with self supervised learning
             verbose: if True, training progress will be printed
         """
@@ -194,9 +180,7 @@ class PetaleMLPR(TorchRegressorWrapper):
                              cat_sizes=cat_sizes,
                              cat_emb_sizes=cat_emb_sizes,
                              gene_idx_groups=gene_idx_groups,
-                             genes_emb_size=genes_emb_size,
-                             genomic_signature_size=genomic_signature_size,
-                             genes_emb_sharing=genes_emb_sharing,
+                             gene_encoder_constructor=gene_encoder_constructor,
                              pre_training=pre_training,
                              verbose=verbose)
 

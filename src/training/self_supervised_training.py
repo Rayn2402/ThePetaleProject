@@ -10,7 +10,7 @@ Date of last modification: 2022/01/17
 
 from src.data.processing.datasets import PetaleDataset
 from src.models.abstract_models.custom_torch_base import TorchCustomModel
-from src.models.blocks.genes_signature_block import GeneGraphEncoder, GeneSignatureDecoder
+from src.models.blocks.genes_signature_block import GeneSignatureDecoder, GeneEncoder
 from src.training.early_stopping import EarlyStopper
 from src.training.sam import SAM
 from src.utils.score_metrics import Direction
@@ -26,14 +26,14 @@ class SSGeneEncoderTrainer(Module):
     Trains a gene graph encoder using self supervised training
     """
     def __init__(self,
-                 gene_graph_encoder: GeneGraphEncoder,
+                 gene_encoder: GeneEncoder,
                  fuzzyness: float = 0.05):
         """
         Saves the encoder, builds the adjacency matrix
         needed in the loss calculation and then creates a decoder
 
         Args:
-            gene_graph_encoder: GeneGraphEncoder object
+            gene_encoder: GeneEncoder object
             fuzzyness: standard deviation of the multivariate normal distribution
                        from which noise will be sampled in order to add fuzzyness
                        to the signature coming out of the encoder
@@ -46,10 +46,10 @@ class SSGeneEncoderTrainer(Module):
         self.__fuzzyness = fuzzyness
 
         # We save the encoder
-        self.__enc = gene_graph_encoder
+        self.__enc = gene_encoder
 
         # We create the decoder
-        self.__dec = GeneSignatureDecoder(chrom_weight_mat=self.__enc.chrom_weight_mat,
+        self.__dec = GeneSignatureDecoder(chrom_composition_mat=self.__enc.build_chrom_composition_mat(),
                                           hidden_size=self.__enc.hidden_size,
                                           signature_size=self.__enc.output_size)
 
@@ -57,7 +57,7 @@ class SSGeneEncoderTrainer(Module):
         self.__optimizer = None
 
     @property
-    def encoder(self) -> GeneGraphEncoder:
+    def encoder(self) -> GeneEncoder:
         return self.__enc
 
     def __disable_running_stats(self) -> None:

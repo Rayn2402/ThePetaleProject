@@ -11,9 +11,9 @@ Date of last modification: 2022/01/19
 
 from src.models.abstract_models.encoder import Encoder
 from src.models.blocks.mlp_blocks import BaseBlock, EntityEmbeddingBlock
-from torch import einsum, tensor, zeros
+from torch import einsum, exp, normal, tensor, zeros
 from torch.nn import BatchNorm1d, Conv1d, Linear, Module, Parameter
-from torch.nn.functional import relu
+from torch.nn.functional import leaky_relu, relu
 from typing import Dict, List
 
 
@@ -252,3 +252,60 @@ class GeneSignatureDecoder(Module):
         gene_mat /= pow(gene_mat.sum(dim=1).reshape(-1, 1), 2)
 
         return gene_mat.requires_grad_(True)
+
+
+class GeneAttentionLayer(Module):
+    """
+    Module that calculates attention coefficient for each genes in each chromosomes
+    graph and then use them to calculate chromosomes embedding.
+    """
+    def __init__(self,
+                 chrom_composition_mat: tensor,
+                 hidden_size: int):
+
+        """
+        Saves the chrom_composition_mat and initializes the attention matrix
+        Args:
+            chrom_composition_mat: (NB_CHROM, NB_GENES) tensor where each element at the position
+                                   i,j is a 1 if gene-j is part of chromosome-i  and 0 otherwise
+            hidden_size: size of gene embeddings
+        """
+        super().__init__()
+        self.__chrom_composition_mat = chrom_composition_mat
+        self.__attention = Parameter(normal(mean=zeros(chrom_composition_mat.shape[0], hidden_size),
+                                            std=1,
+                                            requires_grad=True))
+
+    def forward(self, x: tensor) -> tensor:
+        """
+        Does the following step for each element in the batch:
+        - Calculates attention coefficients for each gene in each chromosome
+        - Calculates chromosome embeddings using a weighted average of gene
+          embeddings within each chromosome. The weights are the attention coefficients.
+
+        Args:
+            x: (N, NB_GENES, NB_GENES, HIDDEN_SIZE) tensor
+
+        Returns: (N, NB_CHROM, HIDDEN_SIZE) tensor with chromosome embeddings
+        """
+
+        # We calculate a special Haddamard product to separate gene embeddings of each subgraph
+        # (NB_CHROM, NB_GENES)(N, NB_GENES, HIDDEN_SIZE) -> (N, NB_CHROM, NB_GENES, HIDDEN_SIZE)
+        h = einsum('ij,njk->nijk', self.__chrom_composition_mat, x)
+
+        # We transpose last two dimensions
+        h = h.transpose(2, 3)  # (N, NB_CHROM, NB_GENES, HIDDEN_SIZE) -> (N, NB_CHROM, HIDDEN_SIZE, NB_GENES)
+
+        # We calculate attention coefficients for each gene within each chromosome
+        # (NB_CHROM, HIDDEN_SIZE)(N, NB_CHROM, HIDDEN_SIZE, NB_GENES) -> (N, NB_CHROM, NB_GENES)
+        att = einsum('ij,kijm->kim', self.__attention, h)
+        mask = att.clone().detach().bool().byte()
+        att = exp(leaky_relu(att))*mask
+        att /= att.sum(dim=2, keepdim=True)
+
+        # We calculate the chromosome embeddings
+        # (N, NB_CHROM, NB_GENES)(N, NB_GENES, HIDDEN_SIZE) -> (N, NB_CHROM, HIDDEN_SIZE)
+        return einsum('nij,njk->nik', att, x)
+
+
+

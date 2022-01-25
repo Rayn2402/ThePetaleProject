@@ -11,7 +11,7 @@ Date of last modification: 2022/01/19
 
 from src.models.abstract_models.encoder import Encoder
 from src.models.blocks.mlp_blocks import BaseBlock, EntityEmbeddingBlock
-from torch import einsum, exp, normal, tensor, zeros
+from torch import bmm, einsum, exp, normal, tensor, zeros
 from torch.nn import BatchNorm1d, Conv1d, Linear, Module, Parameter
 from torch.nn.functional import leaky_relu, relu
 from typing import Dict, List
@@ -269,6 +269,8 @@ class GeneAttentionLayer(Module):
             chrom_composition_mat: (NB_CHROM, NB_GENES) tensor where each element at the position
                                    i,j is a 1 if gene-j is part of chromosome-i  and 0 otherwise
             hidden_size: size of gene embeddings
+
+        Returns: None
         """
         super().__init__()
         self.__chrom_composition_mat = chrom_composition_mat
@@ -305,7 +307,47 @@ class GeneAttentionLayer(Module):
 
         # We calculate the chromosome embeddings
         # (N, NB_CHROM, NB_GENES)(N, NB_GENES, HIDDEN_SIZE) -> (N, NB_CHROM, HIDDEN_SIZE)
-        return einsum('nij,njk->nik', att, x)
+        return bmm(att, x)
 
+
+class ChromAttentionLayer(Module):
+    """
+    Module that calculates attention coefficient for each chromosome and
+    then use them to calculate a weighted average of chromosome embeddings
+    """
+    def __init__(self, hidden_size: int):
+        """
+        Sets the attention vector
+
+        Args:
+            hidden_size: size of chromosome embeddings
+
+        Returns: None
+        """
+        super().__init__()
+        self.__attention = Parameter(normal(mean=zeros(1, hidden_size), std=1, requires_grad=True))
+
+    def forward(self, x: tensor) -> tensor:
+        """
+        Does the following step for each element in the batch:
+        - Calculates attention coefficient for each chromosome
+        - Calculates a weighted average of chromosome embeddings.
+          The weights are the attention coefficients.
+
+        Args:
+            x: (N, NB_CHROM, HIDDEN_SIZE) tensor
+
+        Returns: (N, HIDDEN_SIZE) tensor with weighted average chromosome embeddings
+        """
+
+        # We calculate the attention coefficients
+        # (1, HIDDEN_SIZE)(N, HIDDEN_SIZE, NB_CHROM) -> (N, NB_CHROM)
+        att = einsum('ij,njk->nk', self.__attention, x.transpose(1, 2))
+        att = exp(leaky_relu(att))
+        att /= att.sum(dim=1, keepdim=True)
+
+        # We calculate the weighted average of the chromosome embeddings
+        # (N, 1, NB_CHROM)(N, NB_CHROM, HIDDEN_SIZE) -> (N, HIDDEN_SIZE)
+        return bmm(att.unsqueeze(dim=1), x).squeeze()
 
 

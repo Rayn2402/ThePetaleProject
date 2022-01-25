@@ -37,7 +37,7 @@ class GeneEncoder(ABC, Encoder, Module):
             hidden_size: embedding size of each genes during intermediate
                          signature creation procedure
             signature_size: final genomic signature size (output size)
-            genes_emb_sharing: If True, genes will share the same entity embedding layer
+            genes_emb_sharing: if True, genes will share the same entity embedding layer
 
         Returns: None
         """
@@ -79,7 +79,7 @@ class GeneEncoder(ABC, Encoder, Module):
     def hidden_size(self) -> int:
         return self._hidden_size
 
-    def _builds_chrom_composition_mat(self) -> tensor:
+    def _build_chrom_composition_mat(self) -> tensor:
         """
         Builds a (NB_CHROM, NB_GENES) tensor where each element at the position
         i,j is a 1 if gene-j is part of chromosome-i and 0 otherwise
@@ -142,7 +142,7 @@ class GeneGraphEncoder(GeneEncoder):
             hidden_size: embedding size of each genes during intermediate
                          signature creation procedure
             signature_size: final genomic signature size (output size)
-            genes_emb_sharing: If True, genes will share the same entity embedding layer
+            genes_emb_sharing: if True, genes will share the same entity embedding layer
         """
         # Call of parent's constructor
         super().__init__(gene_idx_groups=gene_idx_groups,
@@ -152,7 +152,7 @@ class GeneGraphEncoder(GeneEncoder):
 
         # Creation of the matrix used to calculate the average of entity embeddings
         # within each chromosome. This matrix will not be updated
-        self.__chrom_weight_mat = self._builds_chrom_composition_mat()
+        self.__chrom_weight_mat = self._build_chrom_composition_mat()
         self.__chrom_weight_mat /= self.__chrom_weight_mat.sum(dim=1).reshape(-1, 1)
 
         # Convolutional layer that must be applied to each chromosome embedding
@@ -180,6 +180,7 @@ class GeneGraphEncoder(GeneEncoder):
         - Concatenates the averages of each chromosome
         - Applies a 1D conv filter to the concatenated chromosome embeddings to have a single value per chromosome
         - Applies a linear layer to the results tensor of shape (N, NB_CHROM)
+        - Applies batch norm
 
         Args:
             x: (N, D) tensor with D-dimensional samples
@@ -297,6 +298,78 @@ class GeneSignatureDecoder(Module):
         gene_mat /= pow(gene_mat.sum(dim=1).reshape(-1, 1), 2)
 
         return gene_mat.requires_grad_(True)
+
+
+class GeneGraphAttentionEncoder(GeneEncoder):
+    """
+    Generates a signature (embedding) associated to an individual genes graph
+    using a gene attention layer and a chromosome attention layer
+    """
+    def __init__(self,
+                 gene_idx_groups: Dict[str, List[int]],
+                 hidden_size: int = 3,
+                 signature_size: int = 10,
+                 genes_emb_sharing: bool = False):
+        """
+        Sets protected attributes with parent's constructor, the gene attention layer,
+        the chromosome attention layer, the linear layer and the batch norm
+
+        Args:
+            gene_idx_groups: dictionary where keys are names of chromosomes and values
+                             are list of idx referring to columns of genes associated to
+                             the chromosome
+            hidden_size: embedding size of each genes during intermediate
+                         signature creation procedure
+            signature_size: final genomic signature size (output size)
+            genes_emb_sharing: If True, genes will share the same entity embedding layer
+        """
+        # Call of parent's constructor
+        super().__init__(gene_idx_groups=gene_idx_groups,
+                         hidden_size=hidden_size,
+                         signature_size=signature_size,
+                         genes_emb_sharing=genes_emb_sharing)
+
+        # Initialization of the gene attention layer
+        self._gene_attention_layer = GeneAttentionLayer(chrom_composition_mat=self._build_chrom_composition_mat(),
+                                                        hidden_size=self._hidden_size)
+
+        # Initialization of the chromosome attention layer
+        self._chrom_attention_layer = ChromAttentionLayer(hidden_size=self._hidden_size)
+
+        # Initialization of the linear layer
+        self._linear_layer = Linear(in_features=self._hidden_size,
+                                    out_features=self._output_size)
+
+        # Initialization of the batch norm
+        self._bn = BatchNorm1d(num_features=self._output_size)
+
+    def forward(self, x: tensor) -> tensor:
+        """
+        Executes the following actions on each element in the batch:
+
+        - Applies entity embedding for each genes
+        - Computes a weighted average of embeddings within each chromosome (using attention)
+        - Computes a weighted average of chromosome embeddings (using attention)
+        - Applies a linear layer to the results tensor of shape (N, NB_CHROM)
+        - Applies batch norm
+
+        Args:
+            x: (N, D) tensor with D-dimensional samples
+
+        Returns: (N, D') tensor where D' is the signature size
+        """
+
+        # Entity embedding on genes
+        h = self._compute_genes_emb(x)  # (N, D) -> (N, NB_GENES, HIDDEN_SIZE)
+
+        # Gene attention layer
+        h = relu(self._gene_attention_layer(x))  # (N, NB_GENES, HIDDEN_SIZE) -> (N, NB_CHROM, HIDDEN_SIZE)
+
+        # Chromosome attention layer
+        h = relu(self._chrom_attention_layer(x))  # (N, NB_CHROM, HIDDEN_SIZE) -> (N, HIDDEN_SIZE)
+
+        # Signature calculation
+        return relu(self._linear_layer(h))
 
 
 class GeneAttentionLayer(Module):

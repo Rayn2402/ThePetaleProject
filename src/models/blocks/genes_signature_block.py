@@ -9,7 +9,6 @@ Description: Defines the modules in charge of encoding
 Date of last modification: 2022/01/25
 """
 
-from abc import ABC
 from src.models.abstract_models.encoder import Encoder
 from src.models.blocks.mlp_blocks import BaseBlock, EntityEmbeddingBlock
 from torch import bmm, einsum, exp, normal, tensor, zeros
@@ -79,7 +78,7 @@ class GeneEncoder(Encoder, Module):
     def hidden_size(self) -> int:
         return self._hidden_size
 
-    def _build_chrom_composition_mat(self) -> tensor:
+    def build_chrom_composition_mat(self) -> tensor:
         """
         Builds a (NB_CHROM, NB_GENES) tensor where each element at the position
         i,j is a 1 if gene-j is part of chromosome-i and 0 otherwise
@@ -152,7 +151,7 @@ class GeneGraphEncoder(GeneEncoder):
 
         # Creation of the matrix used to calculate the average of entity embeddings
         # within each chromosome. This matrix will not be updated
-        self.__chrom_weight_mat = self._build_chrom_composition_mat()
+        self.__chrom_weight_mat = self.build_chrom_composition_mat()
         self.__chrom_weight_mat /= self.__chrom_weight_mat.sum(dim=1).reshape(-1, 1)
 
         # Convolutional layer that must be applied to each chromosome embedding
@@ -316,7 +315,7 @@ class GeneGraphAttentionEncoder(GeneEncoder):
                          genes_emb_sharing=genes_emb_sharing)
 
         # Initialization of the gene attention layer
-        self._gene_attention_layer = GeneAttentionLayer(chrom_composition_mat=self._build_chrom_composition_mat(),
+        self._gene_attention_layer = GeneAttentionLayer(chrom_composition_mat=self.build_chrom_composition_mat(),
                                                         hidden_size=self._hidden_size)
 
         # Initialization of the chromosome attention layer

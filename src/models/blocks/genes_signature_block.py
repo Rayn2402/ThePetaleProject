@@ -216,7 +216,7 @@ class GeneSignatureDecoder(Module):
     the original gene embeddings
     """
     def __init__(self,
-                 chrom_weight_mat: tensor,
+                 chrom_composition_mat: tensor,
                  hidden_size: int,
                  signature_size: int = 10):
 
@@ -225,7 +225,8 @@ class GeneSignatureDecoder(Module):
         to the genome of patient
 
         Args:
-            chrom_weight_mat: (NB_CHROM, NB_GENES) matrix used to calculate average of embeddings within a chromosome
+            chrom_composition_mat: (NB_CHROM, NB_GENES) tensor where each element at the position
+                                    i,j is a 1 if gene-j is part of chromosome-i and 0 otherwise
             hidden_size: embedding size of each genes during intermediate
                          signature creation procedure
             signature_size: genomic signature size (input size)
@@ -235,12 +236,13 @@ class GeneSignatureDecoder(Module):
         super().__init__()
 
         # Saving of nb of chromosomes and number of genes
-        self.__nb_genes = chrom_weight_mat.shape[1]
-        self.__nb_chrom = chrom_weight_mat.shape[0]
+        self.__nb_genes = chrom_composition_mat.shape[1]
+        self.__nb_chrom = chrom_composition_mat.shape[0]
 
         # Setting of matrix used to recover genes embedding for chromosome embedding
-        self.__gene_weight_mat = Parameter(self.__build_gene_weight_mat(chrom_weight_mat=chrom_weight_mat))
-        self.__mask = self.__gene_weight_mat.clone().detach().bool().byte().requires_grad_(False)
+        self.__gene_weight_mat = Parameter(normal(mean=zeros(self.__nb_genes, self.__nb_chrom),
+                                                  std=1.0).requires_grad_(True))
+        self.__mask = chrom_composition_mat.clone().detach().bool().byte().t().requires_grad_(False)
 
         # Creation of BaseBlock (first layer of the decoder)
         self.__linear_layer = BaseBlock(input_size=signature_size,
@@ -282,22 +284,6 @@ class GeneSignatureDecoder(Module):
         h = einsum('ij,kjf->kif', (self.__gene_weight_mat*self.__mask), h)
 
         return h
-
-    @staticmethod
-    def __build_gene_weight_mat(chrom_weight_mat: tensor) -> tensor:
-        """
-        Builds the matrix used to recover genes' embeddings from the chromosomes' embeddings
-
-        Args:
-            chrom_weight_mat: (NB_CHROM, NB_GENES) tensor used to calculate average of embeddings within a chromosome
-
-        Returns: (NB_GENES, NB_CHROM) tensor
-
-        """
-        gene_mat = (chrom_weight_mat.clone().detach()).t()
-        gene_mat /= pow(gene_mat.sum(dim=1).reshape(-1, 1), 2)
-
-        return gene_mat.requires_grad_(True)
 
 
 class GeneGraphAttentionEncoder(GeneEncoder):

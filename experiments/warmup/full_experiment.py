@@ -6,7 +6,7 @@ Authors: Nicolas Raymond
 Description: This file is used to execute all the model comparisons
              made on the warmup dataset
 
-Date of last modification : 2022/01/24
+Date of last modification : 2022/01/25
 """
 import sys
 import argparse
@@ -49,6 +49,8 @@ def argument_parser():
     # Genes encoding
     parser.add_argument('-gen_emb', '--genomic_embedding', default=False, action='store_true',
                         help='True if we want to use genomic signature generation for linear regression model')
+    parser.add_argument('-att', '--attention', default=False, action='store_true',
+                        help='True if we want to use GeneGraphAttentionEncoder instead of GeneGraphEncoder')
     parser.add_argument('-share', '--embedding_sharing', default=False, action='store_true',
                         help='True if we want to use a single entity embedding layer for all genes'
                              ' (currently only applies with genomic signature creation')
@@ -344,6 +346,7 @@ if __name__ == '__main__':
             def gene_encoder_constructor(gene_idx_groups: Optional[Dict[str, List[int]]]) -> GeneEncoder:
                 """
                 Builds a GeneEncoder
+
                 Args:
                     gene_idx_groups: dictionary where keys are names of chromosomes and values
                                      are list of idx referring to columns of genes associated to

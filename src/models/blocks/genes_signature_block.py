@@ -18,7 +18,7 @@ from torch.nn.functional import leaky_relu, relu
 from typing import Dict, List
 
 
-class GeneEncoder(ABC, Encoder, Module):
+class GeneEncoder(Encoder, Module):
     """
     Generates a signature (embedding) associated to an individual genes graph
     """
@@ -363,10 +363,10 @@ class GeneGraphAttentionEncoder(GeneEncoder):
         h = self._compute_genes_emb(x)  # (N, D) -> (N, NB_GENES, HIDDEN_SIZE)
 
         # Gene attention layer
-        h = relu(self._gene_attention_layer(x))  # (N, NB_GENES, HIDDEN_SIZE) -> (N, NB_CHROM, HIDDEN_SIZE)
+        h = relu(self._gene_attention_layer(h))  # (N, NB_GENES, HIDDEN_SIZE) -> (N, NB_CHROM, HIDDEN_SIZE)
 
         # Chromosome attention layer
-        h = relu(self._chrom_attention_layer(x))  # (N, NB_CHROM, HIDDEN_SIZE) -> (N, HIDDEN_SIZE)
+        h = relu(self._chrom_attention_layer(h))  # (N, NB_CHROM, HIDDEN_SIZE) -> (N, HIDDEN_SIZE)
 
         # Signature calculation
         return relu(self._linear_layer(h))
@@ -393,8 +393,7 @@ class GeneAttentionLayer(Module):
         super().__init__()
         self.__chrom_composition_mat = chrom_composition_mat
         self.__attention = Parameter(normal(mean=zeros(chrom_composition_mat.shape[0], hidden_size),
-                                            std=1,
-                                            requires_grad=True))
+                                            std=1.0).requires_grad_(True))
 
     def forward(self, x: tensor) -> tensor:
         """
@@ -443,7 +442,7 @@ class ChromAttentionLayer(Module):
         Returns: None
         """
         super().__init__()
-        self.__attention = Parameter(normal(mean=zeros(1, hidden_size), std=1, requires_grad=True))
+        self.__attention = Parameter(normal(mean=zeros(1, hidden_size), std=1.0).requires_grad_(True))
 
     def forward(self, x: tensor) -> tensor:
         """

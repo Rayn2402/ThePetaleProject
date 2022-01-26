@@ -51,7 +51,7 @@ TAB_HPS = {
 RF_HPS = {
     RandomForestHP.MAX_LEAF_NODES.name: {
         Range.MIN: 5,
-        Range.MAX: 25,
+        Range.MAX: 50,
         Range.STEP: 5,
     },
     RandomForestHP.MAX_FEATURES.name: {

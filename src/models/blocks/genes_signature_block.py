@@ -405,7 +405,7 @@ class GeneAttentionLayer(Module):
         att = einsum('ij,kijm->kim', self.__attention, h)
         mask = att.clone().detach().bool().byte()
         att = exp(leaky_relu(att))*mask
-        att /= att.sum(dim=2, keepdim=True)
+        att = att/att.sum(dim=2, keepdim=True)
 
         # We calculate the chromosome embeddings
         # (N, NB_CHROM, NB_GENES)(N, NB_GENES, HIDDEN_SIZE) -> (N, NB_CHROM, HIDDEN_SIZE)
@@ -446,7 +446,7 @@ class ChromAttentionLayer(Module):
         # (1, HIDDEN_SIZE)(N, HIDDEN_SIZE, NB_CHROM) -> (N, NB_CHROM)
         att = einsum('ij,njk->nk', self.__attention, x.transpose(1, 2))
         att = exp(leaky_relu(att))
-        att /= att.sum(dim=1, keepdim=True)
+        att = att/att.sum(dim=1, keepdim=True)
 
         # We calculate the weighted average of the chromosome embeddings
         # (N, 1, NB_CHROM)(N, NB_CHROM, HIDDEN_SIZE) -> (N, HIDDEN_SIZE)

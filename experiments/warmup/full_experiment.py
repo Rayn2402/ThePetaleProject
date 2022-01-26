@@ -135,6 +135,7 @@ if __name__ == '__main__':
         gene_cols = ALL_CHROM_POS_WARMUP
     else:
         genes_selection = None
+        gene_cols = None
 
     genes = True if genes_selection is not None else False
     df, target, cont_cols, cat_cols = get_warmup_data(manager,

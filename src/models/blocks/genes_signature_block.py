@@ -95,7 +95,7 @@ class GeneEncoder(Encoder, Module):
             y += nb_genes_in_chrom
 
         # We set the sparse matrix
-        mat = zeros(self.__nb_chrom, self.__nb_genes, requires_grad=False)
+        mat = zeros(self._nb_chrom, self._nb_genes, requires_grad=False)
         mat[x_coords, y_coords] = 1
 
         return mat

@@ -161,7 +161,7 @@ if __name__ == '__main__':
         if args.remove_walk_variables:
             eval_id += "_nw"
     if genes:
-        if args.args.all_genes:
+        if args.all_genes:
             eval_id += "_gen2"
         else:
             eval_id += "_gen1"

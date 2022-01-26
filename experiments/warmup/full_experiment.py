@@ -127,8 +127,15 @@ if __name__ == '__main__':
     manager = PetaleDataManager()
 
     # We extract needed data
-    genes_selection = GeneChoice.SIGNIFICANT if args.genes_subgroup else None
-    genes_selection = GeneChoice.ALL if args.all_genes else None
+    if args.genes_subgroup:
+        genes_selection = GeneChoice.SIGNIFICANT
+        gene_cols = SIGNIFICANT_CHROM_POS_WARMUP
+    elif args.all_genes:
+        genes_selection = GeneChoice.ALL
+        gene_cols = ALL_CHROM_POS_WARMUP
+    else:
+        genes_selection = None
+
     genes = True if genes_selection is not None else False
     df, target, cont_cols, cat_cols = get_warmup_data(manager,
                                                       baselines=args.baselines,
@@ -340,7 +347,7 @@ if __name__ == '__main__':
             gene_encoder_constructor = None
         else:
             dataset = PetaleDataset(df, target, cont_cols, cat_cols,
-                                    gene_cols=SIGNIFICANT_CHROM_POS_WARMUP,
+                                    gene_cols=gene_cols,
                                     to_tensor=True, classification=False)
 
             def gene_encoder_constructor(gene_idx_groups: Optional[Dict[str, List[int]]]) -> GeneEncoder:

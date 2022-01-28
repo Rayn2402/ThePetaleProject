@@ -6,7 +6,7 @@ Authors: Nicolas Raymond
 Description: This file is used to execute all the model comparisons
              made on the warmup dataset
 
-Date of last modification : 2022/01/24
+Date of last modification : 2022/01/25
 """
 import sys
 import argparse
@@ -14,6 +14,7 @@ import time
 
 from os.path import dirname, realpath
 from copy import deepcopy
+from typing import Dict, List, Optional
 
 
 def argument_parser():
@@ -48,6 +49,8 @@ def argument_parser():
     # Genes encoding
     parser.add_argument('-gen_emb', '--genomic_embedding', default=False, action='store_true',
                         help='True if we want to use genomic signature generation for linear regression model')
+    parser.add_argument('-att', '--attention', default=False, action='store_true',
+                        help='True if we want to use GeneGraphAttentionEncoder instead of GeneGraphEncoder')
     parser.add_argument('-share', '--embedding_sharing', default=False, action='store_true',
                         help='True if we want to use a single entity embedding layer for all genes'
                              ' (currently only applies with genomic signature creation')
@@ -104,6 +107,7 @@ if __name__ == '__main__':
     from src.data.processing.datasets import PetaleDataset, PetaleStaticGNNDataset
     from src.data.processing.feature_selection import FeatureSelector
     from src.data.processing.sampling import extract_masks, GeneChoice, get_warmup_data, push_valid_to_train
+    from src.models.blocks.genes_signature_block import GeneEncoder, GeneGraphEncoder, GeneGraphAttentionEncoder
     from src.models.blocks.mlp_blocks import MLPEncodingBlock
     from src.models.han import PetaleHANR, HanHP
     from src.models.mlp import PetaleMLPR, MLPHP
@@ -123,8 +127,16 @@ if __name__ == '__main__':
     manager = PetaleDataManager()
 
     # We extract needed data
-    genes_selection = GeneChoice.SIGNIFICANT if args.genes_subgroup else None
-    genes_selection = GeneChoice.ALL if args.all_genes else None
+    if args.genes_subgroup:
+        genes_selection = GeneChoice.SIGNIFICANT
+        gene_cols = SIGNIFICANT_CHROM_POS_WARMUP
+    elif args.all_genes:
+        genes_selection = GeneChoice.ALL
+        gene_cols = ALL_CHROM_POS_WARMUP
+    else:
+        genes_selection = None
+        gene_cols = None
+
     genes = True if genes_selection is not None else False
     df, target, cont_cols, cat_cols = get_warmup_data(manager,
                                                       baselines=args.baselines,
@@ -157,7 +169,7 @@ if __name__ == '__main__':
         if args.remove_walk_variables:
             eval_id += "_nw"
     if genes:
-        if args.args.all_genes:
+        if args.all_genes:
             eval_id += "_gen2"
         else:
             eval_id += "_gen1"
@@ -331,11 +343,31 @@ if __name__ == '__main__':
 
         # Creation of the dataset
         if not args.genomic_embedding:
-            dataset = PetaleDataset(df, target, cont_cols, cat_cols, to_tensor=True, classification=False)
-
-        else:
-            dataset = PetaleDataset(df, target, cont_cols, cat_cols, gene_cols=SIGNIFICANT_CHROM_POS_WARMUP,
+            dataset = PetaleDataset(df, target, cont_cols, cat_cols,
                                     to_tensor=True, classification=False)
+            gene_encoder_constructor = None
+        else:
+            dataset = PetaleDataset(df, target, cont_cols, cat_cols,
+                                    gene_cols=gene_cols,
+                                    to_tensor=True, classification=False)
+
+            def gene_encoder_constructor(gene_idx_groups: Optional[Dict[str, List[int]]]) -> GeneEncoder:
+                """
+                Builds a GeneEncoder
+
+                Args:
+                    gene_idx_groups: dictionary where keys are names of chromosomes and values
+                                     are list of idx referring to columns of genes associated to
+                                     the chromosome
+
+                Returns: GeneEncoder
+                """
+                if args.attention:
+                    return GeneGraphAttentionEncoder(gene_idx_groups=gene_idx_groups,
+                                                     genes_emb_sharing=args.genomic_embedding)
+                else:
+                    return GeneGraphEncoder(gene_idx_groups=gene_idx_groups,
+                                            genes_emb_sharing=args.genomic_embedding)
 
         # Creation of function to update fixed params
         max_e = 200 if genes else 50
@@ -349,9 +381,8 @@ if __name__ == '__main__':
                     'cat_sizes': dts.cat_sizes,
                     'cat_emb_sizes': dts.cat_sizes,
                     'gene_idx_groups': dts.gene_idx_groups,
-                    'genomic_signature_size': 10,
-                    'pre_training': args.pre_training,
-                    'genes_emb_sharing': args.embedding_sharing}
+                    'gene_encoder_constructor': gene_encoder_constructor,
+                    'pre_training': args.pre_training}
 
 
         # Saving of fixed_params for MLP

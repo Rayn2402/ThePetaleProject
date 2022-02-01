@@ -29,9 +29,6 @@ def argument_parser():
                                      description="This program enables to remove participants from raw"
                                                  " learning table and extract an holdout set.")
 
-    parser.add_argument('-u', '--user', type=str,
-                        help="Valid username to access petale database")
-
     parser.add_argument('-rt', '--raw_table', type=str,
                         help="Name of the raw learning table (ex. 'L0_WARMUP_RAW')")
 

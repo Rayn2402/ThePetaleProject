@@ -65,6 +65,7 @@ class TorchCustomModel(Module, ABC):
         """
 
         # We validate input arguments (check if there are continuous or categorical inputs)
+        additional_input_args = additional_input_args if additional_input_args is not None else []
         self._validate_input_args([num_cont_col, cat_sizes, *additional_input_args])
 
         # Call of parent's constructor

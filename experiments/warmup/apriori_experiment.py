@@ -87,7 +87,7 @@ if __name__ == '__main__':
         for rule in association_results:
             right_part = list(rule.ordered_statistics[0].items_add)
             right_part = right_part[0]
-            if right_part.split(" <")[0] == target.upper():
+            if right_part.split(" <")[0] == target.upper() or right_part.split(" >")[0] == target.upper():
                 temp_list.append(rule)
 
         association_results = temp_list

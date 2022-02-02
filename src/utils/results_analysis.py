@@ -15,7 +15,9 @@ from os.path import join, isdir
 from pandas import DataFrame
 from settings.paths import Paths
 from src.recording.constants import MEAN, STD, SUMMARY_FILE, TEST_METRICS
-from typing import List
+from time import time
+from typing import Any, Dict, List, Union
+
 
 APRIORI_KEYS = ['Support', 'Lift', 'Confidence']
 
@@ -112,6 +114,78 @@ def get_experiment_summaries(path: str, csv_filename: str, nb_digits: int = 2) -
     # We store the data in a dataframe and save it into a csv
     df = DataFrame(data=test_metrics).T
     df.to_csv(path_or_buf=join(Paths.CSV_FILES, f"{csv_filename}.csv"))
+
+
+def print_and_save_apriori_rules(rules: List[Any],
+                                 settings: Dict[str, Union[float, int]],
+                                 folder_path: str,
+                                 json_filename: str,
+                                 start_time: Any,
+                                 save_genes: bool = False) -> None:
+    """
+    Prints and saves the rules found in a json file
+
+    Args:
+        rules: list of rules found with apriori
+        settings: dictionary of apriori settings
+        folder_path: path of the folder used to store json file with results
+        json_filename: name of the json file used to store the results
+        start_time: experiment start time
+        save_genes: True if we want to save genes involved in rules
+
+    Returns: None
+    """
+    rules_dictionary = {'Settings': settings, 'Rules': {}}
+
+    for item in rules:
+
+        # We print rule
+        rule = f"{list(item.ordered_statistics[0].items_base)} -> {list(item.ordered_statistics[0].items_add)}"
+        print(f"Rule : {rule}")
+
+        # We print support
+        support = item[1]
+        print(f"Support: {support}")
+
+        # We print confidence and lift
+        confidence = item[2][0][2]
+        lift = item[2][0][3]
+        print(f"Confidence: {confidence}")
+        print(f"Lift: {lift}")
+
+        # We save statistics in the dictionary
+        rules_dictionary['Rules'][rule] = {'Support': support, 'Lift': lift, 'Confidence': confidence}
+        print("="*40)
+
+    if save_genes:
+
+        # We initialize a genes counter
+        genes_list = []
+
+        for item in rules:
+            for chrom_pos_expression in list(item.ordered_statistics[0].items_base):
+
+                # We extract chrom pos and save it
+                chrom_pos_splits = chrom_pos_expression.split("_")
+                chrom_pos = f"{chrom_pos_splits[0]}_{chrom_pos_splits[1]}"
+
+                if chrom_pos_splits[-1] in ['0/0', '1/1', '0/1']:
+                    genes_list.append(chrom_pos)
+
+        rules_dictionary['Genes'] = list(set(genes_list))
+
+    # We save and print the time taken
+    time_taken = round((time() - start_time) / 60, 2)
+    rules_dictionary['Settings']['time'] = time_taken
+    print("Time Taken (minutes): ", time_taken)
+
+    # We save the number of rules
+    rules_dictionary['Settings']['nb_of_rules'] = len(rules)
+
+    # We save the dictionary in a json file
+    filepath = join(folder_path, f"{json_filename}.json")
+    with open(filepath, "w") as file:
+        dump(rules_dictionary, file, indent=True)
 
 
 

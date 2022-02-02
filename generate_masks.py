@@ -26,9 +26,6 @@ def argument_parser():
                                      description="This program enables to generate stratified masks"
                                                  " associated to a learning table.")
 
-    parser.add_argument('-u', '--user', type=str,
-                        help="Valid username to access petale database")
-
     parser.add_argument('-tab', '--table', type=str, help="Name of the learning table")
 
     parser.add_argument('-tc', '--target_column', type=str, help="Name of the column to use as target")

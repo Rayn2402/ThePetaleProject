@@ -23,8 +23,6 @@ from torch import tensor
 from tqdm import tqdm
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
-COMPLICATIONS_CHOICES = [CARDIOMETABOLIC_COMPLICATIONS, BONE_COMPLICATIONS, NEUROCOGNITIVE_COMPLICATIONS, COMPLICATIONS]
-
 
 class GeneChoice:
     """
@@ -64,7 +62,7 @@ class RandomStratifiedSampler:
         """
         if n_out_split <= 0:
             raise ValueError('Number of outer split must be greater than 0')
-        if n_in_split > 0:
+        if n_in_split <= 0:
             raise ValueError('Number of inner split must be greater or equal to 0')
         if not (0 <= valid_size < 1):
             raise ValueError('Validation size must be in the range [0, 1)')
@@ -367,35 +365,25 @@ def push_valid_to_train(masks: Dict[int, Dict[str, Union[List[int], Dict[str, Li
 
 
 def get_learning_one_data(data_manager: PetaleDataManager,
-                          baselines: bool,
-                          complications: List[str],
-                          genes: Optional[str] = None
-                          ) -> Tuple[DataFrame, Optional[List[str]], Optional[List[str]]]:
+                          genes: Optional[str],
+                          dummy: bool = False) -> Tuple[DataFrame, str, List[str], List[str]]:
     """
     Extracts dataframe needed to proceed to learning one experiments and turn it into a dataset
 
     Args:
         data_manager: data manager to communicate with the database
-        baselines: True if we want to include baselines variables
-        complications: one complication choice among :
-         - CARDIOMETABOLIC_COMPLICATIONS
-         - BONE_COMPLICATIONS
-         - NEUROCOGNITIVE_COMPLICATIONS
-         - COMPLICATIONS
-        genes: one choice among (None, "significant", "all")
+        genes: One choice among ("None", "significant", "all")
+        dummy: true if we want to include dummy variable combining sex and VO2 quantile
 
-    Returns: dataframe, continuous columns, categorical columns
+    Returns: dataframe, target, continuous columns, categorical columns
     """
-    for c in complications:
-        assert c in COMPLICATIONS_CHOICES, f"complications values must be in {COMPLICATIONS_CHOICES}"
 
     # We initialize empty lists for continuous and categorical columns
     cont_cols, cat_cols = [], []
 
-    # We check for baselines
-    if baselines:
-        cont_cols += [AGE_AT_DIAGNOSIS, DT, DOX]
-        cat_cols += [SEX, RADIOTHERAPY_DOSE, DEX, BIRTH_AGE, BIRTH_WEIGHT]
+    # We add baselines
+    cont_cols += [AGE_AT_DIAGNOSIS, DT, DOX]
+    cat_cols += [SEX, RADIOTHERAPY_DOSE, DEX, BIRTH_AGE]
 
     # We check for genes
     if genes is not None:
@@ -407,16 +395,15 @@ def get_learning_one_data(data_manager: PetaleDataManager,
             cat_cols += SIGNIFICANT_CHROM_POS
 
         else:
-            cat_cols += ALL_CHROM_POS
+            cat_cols += ALL_CHROM_POS_BMI
+
+    if dummy:
+        cat_cols.append(WARMUP_DUMMY)
 
     # We extract the dataframe
-    df = data_manager.get_table(LEARNING_1, columns=[PARTICIPANT] + complications + cont_cols + cat_cols)
+    df = data_manager.get_table(LEARNING_1, columns=[PARTICIPANT] + BMI + cont_cols + cat_cols)
 
-    # We change format of columns list if they are empty
-    cont_cols = cont_cols if len(cont_cols) > 0 else None
-    cat_cols = cat_cols if len(cat_cols) > 0 else None
-
-    return df, cont_cols, cat_cols
+    return df, BMI, cont_cols, cat_cols
 
 
 def generate_multitask_labels(df: DataFrame,

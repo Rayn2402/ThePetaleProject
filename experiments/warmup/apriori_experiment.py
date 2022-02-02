@@ -6,7 +6,7 @@ Authors: Nicolas Raymond
 Description: This file is used to identify meaningful association
              rules between categorical values and VO2 max quantiles.
 
-Date of last modification : 2021/11/05
+Date of last modification : 2022/02/02
 """
 
 from apyori import apriori

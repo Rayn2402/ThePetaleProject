@@ -85,7 +85,7 @@ def argument_parser():
                         help='Path leading to predictions of another model, will only be used by HAN if specified')
 
     # Seed
-    parser.add_argument('-seed', '--seed', type=int, default=SEED, help='Seed to use during model evaluations')
+    parser.add_argument('-seed', '--seed', type=int, default=1010710, help='Seed used during model evaluations')
 
     arguments = parser.parse_args()
 
@@ -158,7 +158,7 @@ if __name__ == '__main__':
 
     # Initialization of feature selector
     if args.feature_selection:
-        feature_selector = FeatureSelector(0.95)
+        feature_selector = FeatureSelector(importance_threshold=0.95, seed=args.seed)
     else:
         feature_selector = None
 
@@ -223,7 +223,8 @@ if __name__ == '__main__':
                               feature_selector=feature_selector,
                               evaluation_metrics=evaluation_metrics,
                               save_hps_importance=True,
-                              save_optimization_history=True)
+                              save_optimization_history=True,
+                              seed=args.seed)
 
         # Evaluation
         evaluator.evaluate()
@@ -251,7 +252,8 @@ if __name__ == '__main__':
                               evaluation_metrics=evaluation_metrics,
                               feature_selector=feature_selector,
                               save_hps_importance=True,
-                              save_optimization_history=True)
+                              save_optimization_history=True,
+                              seed=args.seed)
 
         # Evaluation
         evaluator.evaluate()
@@ -279,7 +281,8 @@ if __name__ == '__main__':
                               evaluation_metrics=evaluation_metrics,
                               feature_selector=feature_selector,
                               save_hps_importance=True,
-                              save_optimization_history=True)
+                              save_optimization_history=True,
+                              seed=args.seed)
 
         # Evaluation
         evaluator.evaluate()
@@ -326,7 +329,8 @@ if __name__ == '__main__':
                               fixed_params=fixed_params,
                               fixed_params_update_function=update_fixed_params,
                               save_hps_importance=True,
-                              save_optimization_history=True)
+                              save_optimization_history=True,
+                              seed=args.seed)
 
         # Evaluation
         evaluator.evaluate()
@@ -404,7 +408,9 @@ if __name__ == '__main__':
                               feature_selector=feature_selector,
                               fixed_params=fixed_params,
                               fixed_params_update_function=update_fixed_params,
-                              save_hps_importance=True, save_optimization_history=True)
+                              save_hps_importance=True,
+                              save_optimization_history=True,
+                              seed=args.seed)
 
         # Evaluation
         evaluator.evaluate()
@@ -452,6 +458,7 @@ if __name__ == '__main__':
                               feature_selector=feature_selector,
                               save_hps_importance=True,
                               save_optimization_history=True,
+                              seed=args.seed,
                               pred_path=args.path)
 
         # Evaluation
@@ -509,7 +516,8 @@ if __name__ == '__main__':
                               fixed_params_update_function=update_fixed_params,
                               feature_selector=feature_selector,
                               save_hps_importance=True,
-                              save_optimization_history=True)
+                              save_optimization_history=True,
+                              seed=args.seed)
 
         # Evaluation
         evaluator.evaluate()

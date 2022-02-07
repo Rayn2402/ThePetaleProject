@@ -158,7 +158,7 @@ if __name__ == '__main__':
 
     # Initialization of feature selector
     if args.feature_selection:
-        feature_selector = FeatureSelector(importance_threshold=0.95, seed=args.seed)
+        feature_selector = FeatureSelector(importance_threshold=0.90, seed=args.seed)
     else:
         feature_selector = None
 

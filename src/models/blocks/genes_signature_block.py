@@ -208,7 +208,7 @@ class GeneGraphEncoder(GeneEncoder):
         h.unsqueeze_(dim=1)
 
         # Apply convolutional layer and RELU then squeeze for the linear layer
-        h = relu(self._bn1(self._conv_layer(h))).squeeze()  # (N, 1, NB_CHROM*HIDDEN_SIZE) -> (N, NB_CHROM)
+        h = relu(self._bn1(self._conv_layer(h).squeeze()))  # (N, 1, NB_CHROM*HIDDEN_SIZE) -> (N, NB_CHROM)
 
         # Apply linear layer and batch norm
         h = self._bn2(self._linear_layer(h))  # (N, NB_CHROM) -> (N, SIGNATURE_SIZE)

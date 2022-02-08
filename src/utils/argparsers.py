@@ -17,8 +17,8 @@ def apriori_argparser():
     """
     # Create a parser
     parser = argparse.ArgumentParser(usage='\n python apriori_experiment.py',
-                                     description="Runs the apriori algorithm on the different split of the"
-                                                 "warmup dataset")
+                                     description="Runs the apriori algorithm on the different"
+                                                 " split of a dataset")
 
     parser.add_argument('-min_sup', '--min_support', type=float, default=0.1,
                         help='Minimal support value (default = 0.1)')
@@ -29,7 +29,8 @@ def apriori_argparser():
     parser.add_argument('-max_length', '--max_length', type=int, default=1,
                         help='Max cardinality of item sets at the left side of rules (default = 1)')
     parser.add_argument('-nb_groups', '--nb_groups', type=int, default=2,
-                        help='Number quantiles considered to create V02 groups (default = 2)')
+                        help='Number of quantiles considered to create the target groups if'
+                             ' the target is continuous (default = 2)')
 
     arguments = parser.parse_args()
 

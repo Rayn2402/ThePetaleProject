@@ -10,11 +10,11 @@ Date of last modification: 2022/01/17
 
 from src.data.processing.datasets import PetaleDataset
 from src.models.abstract_models.custom_torch_base import TorchCustomModel
-from src.models.blocks.genes_signature_block import GeneSignatureDecoder, GeneEncoder
+from src.models.blocks.genes_signature_block import GeneSignatureDecoder, GeneGraphEncoder
 from src.training.early_stopping import EarlyStopper
 from src.training.sam import SAM
 from src.utils.score_metrics import Direction
-from torch import mean, normal, sum, tensor, zeros
+from torch import mean,sum, tensor, zeros
 from torch.nn import Module
 from torch.optim import Adam
 from torch.utils.data import DataLoader, SubsetRandomSampler
@@ -26,14 +26,14 @@ class SSGeneEncoderTrainer(Module):
     Trains a gene graph encoder using self supervised training
     """
     def __init__(self,
-                 gene_encoder: GeneEncoder,
+                 gene_encoder: GeneGraphEncoder,
                  fuzzyness: float = 0.05):
         """
         Saves the encoder, builds the adjacency matrix
         needed in the loss calculation and then creates a decoder
 
         Args:
-            gene_encoder: GeneEncoder object
+            gene_encoder: GeneGraphEncoder object
             fuzzyness: standard deviation of the multivariate normal distribution
                        from which noise will be sampled in order to add fuzzyness
                        to the signature coming out of the encoder
@@ -57,7 +57,7 @@ class SSGeneEncoderTrainer(Module):
         self.__optimizer = None
 
     @property
-    def encoder(self) -> GeneEncoder:
+    def encoder(self) -> GeneGraphEncoder:
         return self.__enc
 
     def __disable_running_stats(self) -> None:
@@ -187,11 +187,9 @@ class SSGeneEncoderTrainer(Module):
 
         Returns: (N, NB_GENES, HIDDEN_SIZE) tensor with genes' embeddings
         """
-        # Signature computation
-        signature = self.__enc(x)
 
-        # Return embeddings decoded from signature
-        return self.__dec(signature + normal(mean=zeros(signature.shape, requires_grad=False), std=self.__fuzzyness))
+        # Return embeddings decoded from noisy signature
+        return self.__dec(self.__enc(x, fuzzyness=self.__fuzzyness))
 
     @staticmethod
     def __set_adjacency_mat(gene_idx_groups: Dict[str, List[int]]) -> Tuple[int, tensor]:

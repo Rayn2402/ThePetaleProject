@@ -5,7 +5,7 @@ Author: Nicolas Raymond
 
 Description: This file stores common argparser functions
 
-Date of last modification: 2022/02/02
+Date of last modification: 2022/02/08
 """
 
 import argparse

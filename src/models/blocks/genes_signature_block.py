@@ -12,7 +12,7 @@ Date of last modification: 2022/02/08
 from src.models.abstract_models.encoder import Encoder
 from src.models.blocks.mlp_blocks import BaseBlock, EntityEmbeddingBlock
 from torch import bmm, einsum, exp, normal, tensor, zeros
-from torch.nn import BatchNorm1d, BatchNorm2d, Conv1d, Linear, Module, Parameter
+from torch.nn import BatchNorm1d, Conv1d, Linear, Module, Parameter
 from torch.nn.functional import leaky_relu, relu
 from typing import Dict, List
 

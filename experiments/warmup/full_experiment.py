@@ -415,7 +415,8 @@ if __name__ == '__main__':
             """
 
             return GeneGraphEncoder(gene_idx_groups=gene_idx_groups,
-                                    genes_emb_sharing=args.embedding_sharing)
+                                    genes_emb_sharing=args.embedding_sharing,
+                                    signature_size=3)
 
         def update_fixed_params(dts):
             nb_cont_col = len(dts.cont_cols) if dts.cont_cols is not None else 0
@@ -482,7 +483,8 @@ if __name__ == '__main__':
             """
 
             return GeneGraphAttentionEncoder(gene_idx_groups=gene_idx_groups,
-                                             genes_emb_sharing=args.embedding_sharing)
+                                             genes_emb_sharing=args.embedding_sharing,
+                                             signature_size=3)
 
         def update_fixed_params(dts):
             nb_cont_col = len(dts.cont_cols) if dts.cont_cols is not None else 0

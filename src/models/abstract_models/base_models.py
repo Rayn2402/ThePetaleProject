@@ -257,9 +257,9 @@ class PetaleRegressor(ABC):
         raise NotImplementedError
 
 
-class PetaleEncoderDecoder(ABC):
+class PetaleEncoder(ABC):
     """
-    Skeleton of all Encoder-Decoder models trained with self supervised learning
+    Skeleton of all Encoder models trained with self supervised learning
     """
     def __init__(self, train_params: Optional[Dict[str, Any]] = None):
         """
@@ -292,9 +292,9 @@ class PetaleEncoderDecoder(ABC):
 
         Args:
             dataset: PetaleDataset which its items are tuples (x, y, idx) where
-                     - x : (N,D) tensor with D-dimensional samples
-                     - y : (N,) tensor with classification labels
-                     - idx : (N,) tensor with idx of samples according to the whole dataset
+                     - x : (N,D) tensor or array with D-dimensional samples
+                     - y : (N,) tensor or array with classification labels
+                     - idx : (N,) tensor or array with idx of samples according to the whole dataset
 
         Returns: None
         """
@@ -310,19 +310,19 @@ class PetaleEncoderDecoder(ABC):
 
         Args:
             dataset: PetaleDataset which its items are tuples (x, y, idx) where
-                     - x : (N,D) tensor with D-dimensional samples
-                     - y : (N,) tensor with classification labels
-                     - idx : (N,) tensor with idx of samples according to the whole dataset
+                     - x : (N,D) tensor or array with D-dimensional samples
+                     - y : (N,) tensor or array with classification labels
+                     - idx : (N,) tensor or array with idx of samples according to the whole dataset
             mask: List of dataset idx for which we want to make predictions
 
-        Returns: (N, C) where C is the size of the encodings
+        Returns: (N, C) tensor or array where C is the size of the encodings
         """
         raise NotImplementedError
 
     @abstractmethod
     def save_model(self, path: str) -> None:
         """
-        Saves the encoding part of the model to the given path
+        Saves the encoder parameters at the given path
 
         Args:
             path: save path

@@ -13,6 +13,7 @@ from numpy import array, concatenate, where
 from pandas import DataFrame, merge, Series
 from src.data.extraction.constants import *
 from src.data.processing.preprocessing import preprocess_categoricals, preprocess_continuous
+from src.data.processing.transforms import CategoricalTransform as CaT
 from torch.utils.data import Dataset
 from torch import cat, from_numpy, tensor
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
@@ -584,6 +585,21 @@ class PetaleDataset(Dataset):
         modes = self._get_modes(train_data)
 
         return mu, std, modes
+
+    def get_one_hot_encodings(self, cat_cols: List[str]) -> Union[array, tensor]:
+        """
+        Returns one hot encodings associated to the specified categorical columns
+
+        Args:
+            cat_cols: list of categorical columns
+
+        Returns: array or tensor with one hot encodings
+        """
+        # We check if the column names specified are categorical
+        self._valid_columns_type(cat_cols, categorical=True)
+
+        # We extract one hot encodings
+        return CaT.one_hot_encode(self.get_imputed_dataframe()[cat_cols])
 
     def update_masks(self,
                      train_mask: List[int],

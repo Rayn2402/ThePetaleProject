@@ -66,12 +66,6 @@ class PetaleDataset(Dataset):
         for columns in [cont_cols, cat_cols]:
             self._check_columns_validity(df, columns)
 
-        if gene_cols is not None:
-            self._gene_cols = gene_cols
-            self._check_genes_validity(cat_cols, gene_cols)
-        else:
-            self._gene_cols = []
-
         # Set default protected attributes
         self._cat_cols, self._cat_idx = cat_cols, []
         self._classification = classification
@@ -85,6 +79,13 @@ class PetaleDataset(Dataset):
         self._train_mask, self._valid_mask, self._test_mask = [], None, []
         self._x_cat, self._x_cont = None, None
         self._y = self._initialize_targets(df[target], classification, to_tensor)
+
+        # We check if genes are among categorical columns
+        if gene_cols is not None:
+            self._gene_cols = gene_cols
+            self._valid_columns_type(gene_cols, categorical=True)
+        else:
+            self._gene_cols = []
 
         # Define protected feature "getter" method
         self._x = self._define_feature_getter(cont_cols, cat_cols, to_tensor)
@@ -611,6 +612,30 @@ class PetaleDataset(Dataset):
         self._set_numerical(mu, std)
         self._set_categorical(modes)
 
+    def _valid_columns_type(self,
+                            col_list: List[str],
+                            categorical: bool) -> None:
+        """
+        Checks if all element in the column names list are either in
+        the cat_cols list or the cont_cols list
+
+        Args:
+            col_list: list of column names
+            categorical: if True,
+
+        Returns: None
+        """
+        if categorical:
+            cols = self._cat_cols if self._cat_cols is not None else []
+            col_type = 'categorical'
+        else:
+            cols = self._cont_cols if self._cont_cols is not None else []
+            col_type = 'continuous'
+
+        for c in col_list:
+            if c not in cols:
+                raise ValueError(f'Column name {c} is not part of the {col_type} columns')
+
     @staticmethod
     def _initialize_targets(targets_column: Series,
                             classification: bool,
@@ -646,29 +671,14 @@ class PetaleDataset(Dataset):
         Args:
             df: pandas dataframe with original data
             columns: list of column names
+
+        Returns: None
         """
         if columns is not None:
             dataframe_columns = list(df.columns.values)
             for c in columns:
                 if c not in dataframe_columns:
                     raise ValueError(f"Column {c} is not part of the given dataframe")
-
-    @staticmethod
-    def _check_genes_validity(cat_cols: Optional[List[str]],
-                              gene_cols: List[str]) -> None:
-        """
-        Checks if all column names related to genes are included in categorical columns
-
-        Args:
-            cat_cols: list of categorical column names
-            gene_cols: list of categorical columns related to genes
-
-        Returns: None
-        """
-        cat_cols = [] if cat_cols is None else cat_cols
-        for gene in gene_cols:
-            if gene not in cat_cols:
-                raise ValueError(f'Gene {gene} from gene_cols cannot be found in cat_cols')
 
     @staticmethod
     def _get_graphs_edges(u: List[int],

@@ -255,3 +255,79 @@ class PetaleRegressor(ABC):
         Returns: None
         """
         raise NotImplementedError
+
+
+class PetaleEncoderDecoder(ABC):
+    """
+    Skeleton of all Encoder-Decoder models trained with self supervised learning
+    """
+    def __init__(self, train_params: Optional[Dict[str, Any]] = None):
+        """
+                Sets the only protected attribute
+
+                Args:
+                    train_params: keyword arguments that are proper to the child model inheriting
+                                  from this class and that will be using when calling fit method
+                """
+        self._train_params = train_params if train_params is not None else {}
+
+    @property
+    def train_params(self) -> Dict[str, Any]:
+        return self._train_params
+
+    @staticmethod
+    @abstractmethod
+    def get_hps() -> List[HP]:
+        """
+        Returns a list with the hyperparameters associated to the model
+
+        Returns: list of hyperparameters
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def fit(self, dataset: PetaleDataset) -> None:
+        """
+        Fits the model to the training data using self supervised learning
+
+        Args:
+            dataset: PetaleDataset which its items are tuples (x, y, idx) where
+                     - x : (N,D) tensor with D-dimensional samples
+                     - y : (N,) tensor with classification labels
+                     - idx : (N,) tensor with idx of samples according to the whole dataset
+
+        Returns: None
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def predict(self,
+                dataset: PetaleDataset,
+                mask: Optional[List[int]] = None) -> Union[tensor, array]:
+        """
+        Returns the predicted encodings for all samples in a
+        particular set (default = train)
+
+        Args:
+            dataset: PetaleDataset which its items are tuples (x, y, idx) where
+                     - x : (N,D) tensor with D-dimensional samples
+                     - y : (N,) tensor with classification labels
+                     - idx : (N,) tensor with idx of samples according to the whole dataset
+            mask: List of dataset idx for which we want to make predictions
+
+        Returns: (N, C) where C is the size of the encodings
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def save_model(self, path: str) -> None:
+        """
+        Saves the encoding part of the model to the given path
+
+        Args:
+            path: save path
+
+        Returns: None
+        """
+        raise NotImplementedError
+

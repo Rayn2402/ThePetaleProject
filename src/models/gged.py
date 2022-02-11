@@ -171,21 +171,30 @@ class PetaleGGE(PetaleEncoder, Module):
         m00 = mm(e, e.t()) - eye(len(dts))
 
         # We save the Jaccard similarities
-        self.__jaccard = m11/(e.shape[1] - m00)
+        self.__jaccard = (m11/(e.shape[1] - m00)).requires_grad_(False)
 
-
-
-    def loss(self, pred: tensor) -> tensor:
+    def loss(self, x: tensor, idx: List[int]) -> tensor:
         """
         Computes the mean squared differences between the genes' embeddings
         decoded from the signatures and the real embeddings
 
         Args:
-            pred: (N, NB_GENES, HIDDEN_SIZE) tensor with genes' embeddings
+            x: (N, SIGNATURE_SIZE) tensor with genes' embeddings
+            idx: list of idx associated to patients for which the encodings
+                 were calculated
 
         Returns: (1,) tensor with the loss
         """
-        return mean(sum(pow(pred - self.__enc.cache, 2), dim=(1, 2)))
+        # We calculate the squared differences between the encodings of all patients
+        squared_diff = pow(x.unsqueeze(dim=1) - x, 2).sum(dim=2)
+
+        # We take a subset of the jaccard similarities matrix and make
+        # the coefficients sum to 1
+        jaccard_sim = self.__jaccard[idx, idx]
+        jaccard_sim /= jaccard_sim.sum()
+
+        # We return the loss
+        return (jaccard_sim * squared_diff).sum()
 
     def fit(self, dataset: PetaleDataset) -> None:
         """

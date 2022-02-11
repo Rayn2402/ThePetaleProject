@@ -16,7 +16,7 @@ from src.models.blocks.genes_signature_block import GeneGraphAttentionEncoder, G
 from src.training.early_stopping import EarlyStopper
 from src.training.sam import SAM
 from src.utils.score_metrics import Direction
-from torch import mean, no_grad, pow, save, sum, tensor, zeros
+from torch import abs, eye, mean, mm, no_grad, pow, save, sum, tensor, zeros
 from torch.nn import Module
 from torch.optim import Adam
 from torch.utils.data import DataLoader, SubsetRandomSampler
@@ -32,7 +32,6 @@ class PetaleGGE(PetaleEncoder, Module):
     AGGREGATION_METHODS = [AVG, ATT]
 
     def __init__(self,
-                 gene_cols: List[str],
                  gene_idx_groups: Dict[str, List[int]],
                  lr: float,
                  rho: float = 0.5,
@@ -47,7 +46,6 @@ class PetaleGGE(PetaleEncoder, Module):
         Builds a GeneGraphEncoder that trains with self supervised learning
 
         Args:
-            gene_cols: list with names of columns related to genes
             gene_idx_groups: dictionary where keys are names of chromosomes and values
                              are list of idx referring to columns of genes associated to
                              the chromosome
@@ -79,9 +77,6 @@ class PetaleGGE(PetaleEncoder, Module):
         if rho <= 0:
             raise ValueError('rho must be > 0')
 
-        # We save the list of gene columns
-        self.__gene_cols = gene_cols
-
         # We create the encoder
         if aggregation_method == PetaleGGE.AVG:
             self.__enc = GeneGraphEncoder(gene_idx_groups=gene_idx_groups,
@@ -97,7 +92,7 @@ class PetaleGGE(PetaleEncoder, Module):
         # We initialize the optimizer
         self.__optimizer = None
 
-        # We initialize the one hot Jaccard similarities tensor
+        # We initialize the Jaccard similarities tensor
         self.__jaccard = None
 
     def __disable_running_stats(self) -> None:
@@ -145,6 +140,40 @@ class PetaleGGE(PetaleEncoder, Module):
         self.__enable_running_stats()
 
         return loss.item()
+
+    def __set_jaccard_similarities(self, dts: PetaleDataset) -> None:
+        """
+        Sets the jaccard similarities matrix using one hot encodings of genes
+
+        The Jaccard similarity of two binary vectors is : M11/(n - M00)
+
+        where M11 is the number of times that the two vectors share a 1 at
+        the same index, M00 is the number of times that the two vectors share
+        a 0 at the same index and n is the length of both vectors.
+
+        Args:
+            dts: PetaleDataset which its items are tuples (x, y, idx) where
+                     - x : (N,D) tensor with D-dimensional samples
+                     - y : (N,) tensor with classification labels
+                     - idx : (N,) tensor with idx of samples according to the whole dataset
+
+
+        Returns: None
+        """
+        # We get one hot encodings related to genes
+        e = dts.get_genes_one_hot_encodings()
+
+        # We calculate M11 for all patients pairs
+        m11 = mm(e, e.t()) - eye(len(dts))
+
+        # We calculate M00 for all patients pairs
+        e = abs(e - 1)
+        m00 = mm(e, e.t()) - eye(len(dts))
+
+        # We save the Jaccard similarities
+        self.__jaccard = m11/(e.shape[1] - m00)
+
+
 
     def loss(self, pred: tensor) -> tensor:
         """

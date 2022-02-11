@@ -599,7 +599,13 @@ class PetaleDataset(Dataset):
         self._valid_columns_type(cat_cols, categorical=True)
 
         # We extract one hot encodings
-        return CaT.one_hot_encode(self.get_imputed_dataframe()[cat_cols])
+        e = CaT.one_hot_encode(self.get_imputed_dataframe()[cat_cols])
+
+        # We return the good type of data
+        if self._to_tensor:
+            return CaT.to_tensor(e)
+        else:
+            return e.to_numpy(dtype=int)
 
     def update_masks(self,
                      train_mask: List[int],

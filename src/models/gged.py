@@ -3,16 +3,16 @@ Filename: gged.py
 
 Author: Nicolas Raymond
 
-Description: This file defines the Gene Graph Encoder Decoder (GGED) model used for self supervised learning.
+Description: This file defines the Petale Gene Graph Encoder (GGE) model used for self supervised learning.
 
 Date of last modification: 2022/02/04
 """
 import os
 
 from src.data.processing.datasets import PetaleDataset
-from src.models.abstract_models.base_models import PetaleEncoderDecoder
+from src.models.abstract_models.base_models import PetaleEncoder
 from src.models.abstract_models.custom_torch_base import TorchCustomModel
-from src.models.blocks.genes_signature_block import GeneGraphEncoder, GeneSignatureDecoder
+from src.models.blocks.genes_signature_block import GeneGraphAttentionEncoder, GeneGraphEncoder
 from src.training.early_stopping import EarlyStopper
 from src.training.sam import SAM
 from src.utils.score_metrics import Direction
@@ -23,12 +23,16 @@ from torch.utils.data import DataLoader, SubsetRandomSampler
 from typing import Dict, List, Optional, Tuple
 
 
-class PetaleGGED(PetaleEncoderDecoder, Module):
+class PetaleGGE(PetaleEncoder, Module):
     """
-    Gene Graph Encoder Decoder model used to train GeneGraphEncoder with self supervised training
+    Gene Graph Encoder model used to trained with self supervised learning
     """
+    AVG = 'avg'
+    ATT = 'att'
+    AGGREGATION_METHODS = [AVG, ATT]
 
     def __init__(self,
+                 gene_cols: List[str],
                  gene_idx_groups: Dict[str, List[int]],
                  lr: float,
                  rho: float = 0.5,
@@ -38,11 +42,12 @@ class PetaleGGED(PetaleEncoderDecoder, Module):
                  hidden_size: int = 3,
                  signature_size: int = 10,
                  genes_emb_sharing: bool = False,
-                 fuzzyness: float = 0.05):
+                 aggregation_method: str = 'att'):
         """
-        Builds a GeneGraphEncoder and a GeneSignatureDecoder
+        Builds a GeneGraphEncoder that trains with self supervised learning
 
         Args:
+            gene_cols: list with names of columns related to genes
             gene_idx_groups: dictionary where keys are names of chromosomes and values
                              are list of idx referring to columns of genes associated to
                              the chromosome
@@ -56,40 +61,44 @@ class PetaleGGED(PetaleEncoderDecoder, Module):
                          signature creation procedure
             signature_size: final genomic signature size (output size)
             genes_emb_sharing: if True, genes will share the same entity embedding layer
-            fuzzyness: if fuzzyness > 0, noise sampled from a multivariate normal of
-                       mean = 0 and sigma = fuzzyness will be added to gene embeddings
+            aggregation_method: gene embeddings aggregation method
         """
         # We call parents' constructor
         Module.__init__(self)
-        PetaleEncoderDecoder.__init__(self, train_params={'lr': lr,
-                                                          'rho': rho,
-                                                          'batch_size': batch_size,
-                                                          'patience': patience,
-                                                          'max_epochs': max_epochs})
+        PetaleEncoder.__init__(self, train_params={'lr': lr,
+                                                   'rho': rho,
+                                                   'batch_size': batch_size,
+                                                   'patience': patience,
+                                                   'max_epochs': max_epochs})
 
         # We validate and save the fuzzyness parameter
-        if fuzzyness < 0:
-            raise ValueError('fuzzyness must be >= 0')
-
-        self.__fuzzyness = fuzzyness
+        if aggregation_method not in PetaleGGE.AGGREGATION_METHODS:
+            raise ValueError(f'Aggregation method must be in {PetaleGGE.AGGREGATION_METHODS}')
 
         # We validate the rho parameter
         if rho <= 0:
             raise ValueError('rho must be > 0')
 
-        # We create the encoder
-        self.__enc = GeneGraphEncoder(gene_idx_groups=gene_idx_groups,
-                                      hidden_size=hidden_size,
-                                      signature_size=signature_size,
-                                      genes_emb_sharing=genes_emb_sharing)
+        # We save the list of gene columns
+        self.__gene_cols = gene_cols
 
-        # We create the decoder
-        self.__dec = GeneSignatureDecoder(chrom_composition_mat=self.__enc.build_chrom_composition_mat(),
+        # We create the encoder
+        if aggregation_method == PetaleGGE.AVG:
+            self.__enc = GeneGraphEncoder(gene_idx_groups=gene_idx_groups,
                                           hidden_size=hidden_size,
-                                          signature_size=signature_size)
+                                          signature_size=signature_size,
+                                          genes_emb_sharing=genes_emb_sharing)
+        else:
+            self.__enc = GeneGraphAttentionEncoder(gene_idx_groups=gene_idx_groups,
+                                                   hidden_size=hidden_size,
+                                                   signature_size=signature_size,
+                                                   genes_emb_sharing=genes_emb_sharing)
 
         # We initialize the optimizer
         self.__optimizer = None
+
+        # We initialize the one hot Jaccard similarities tensor
+        self.__jaccard = None
 
     def __disable_running_stats(self) -> None:
         """
@@ -207,16 +216,14 @@ class PetaleGGED(PetaleEncoderDecoder, Module):
 
     def forward(self, x: tensor) -> tensor:
         """
-        Applies the encoder, add fuzzyness and then applies the decoder function
+        Execute a forward pass with the encoder to create genomic signature
 
         Args:
             x: (N, D) tensor with D dimensional samples
 
         Returns: (N, NB_GENES, HIDDEN_SIZE) tensor with genes' embeddings
         """
-
-        # Return embeddings decoded from noisy signature
-        return self.__dec(self.__enc(x, fuzzyness=self.__fuzzyness))
+        return self.__enc(x)
 
     def predict(self,
                 dataset: PetaleDataset,
@@ -256,7 +263,7 @@ class PetaleGGED(PetaleEncoderDecoder, Module):
         Returns: None
 
         """
-        save(self.__enc, os.path.join(path, "gene_graph_encoder.pt"))
+        save(self.__enc, os.path.join(path, "gge.pt"))
 
     @staticmethod
     def __set_adjacency_mat(gene_idx_groups: Dict[str, List[int]]) -> Tuple[int, tensor]:

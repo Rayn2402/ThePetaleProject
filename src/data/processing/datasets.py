@@ -607,6 +607,18 @@ class PetaleDataset(Dataset):
         else:
             return e.to_numpy(dtype=int)
 
+    def get_genes_one_hot_encodings(self) -> Union[array, tensor]:
+        """
+        Returns one hot encodings associate to genes columns
+
+        Returns: array or tensor with one hot encodings
+        """
+        if len(self._gene_cols) == 0:
+            raise Exception('No gene columns were provided at dataset initialization')
+
+        else:
+            return self.get_one_hot_encodings(self._gene_cols)
+
     def update_masks(self,
                      train_mask: List[int],
                      test_mask: List[int],

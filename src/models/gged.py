@@ -345,7 +345,7 @@ class PetaleGGE(PetaleEncoder, Module):
                 dataset: PetaleDataset,
                 mask: Optional[List[int]] = None) -> tensor:
         """
-        Predict the embeddings for idx of a given mask (default = train)
+        Predict the embeddings for idx of a given mask (default = test)
 
         Args:
             dataset: PetaleDataset which its items are tuples (x, y, idx) where
@@ -357,7 +357,7 @@ class PetaleGGE(PetaleEncoder, Module):
         Returns:
         """
         # We set the mask
-        mask = mask if mask is not None else dataset.train_mask
+        mask = mask if mask is not None else dataset.test_mask
 
         # We extract the appropriate set
         x, _, _ = dataset[mask]

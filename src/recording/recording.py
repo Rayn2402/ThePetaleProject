@@ -48,6 +48,7 @@ class Recorder:
                       HYPERPARAMETER_IMPORTANCE: {},
                       TRAIN_METRICS: {},
                       TEST_METRICS: {},
+                      VALID_METRICS: {},
                       COEFFICIENT: {},
                       TRAIN_RESULTS: {},
                       TEST_RESULTS: {},
@@ -147,21 +148,20 @@ class Recorder:
     def record_scores(self,
                       score: float,
                       metric: str,
-                      test: bool = True) -> None:
+                      metrics_section: str = TRAIN_METRICS) -> None:
         """
         Saves the score associated to a metric
 
         Args:
             score: float
             metric: name of the metric
-            test: true if the scores are recorded for the test set
+            metrics_section: true if the scores are recorded for the test set
 
         Returns: None
 
         """
         # We save the score of the given metric
-        section = TEST_METRICS if test else TRAIN_METRICS
-        self._data[section][metric] = round(score, 6)
+        self._data[metrics_section][metric] = round(score, 6)
 
     def record_predictions(self,
                            ids: List[str],

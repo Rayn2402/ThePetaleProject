@@ -16,7 +16,7 @@ from src.models.blocks.genes_signature_block import GeneGraphAttentionEncoder, G
 from src.training.early_stopping import EarlyStopper
 from src.training.sam import SAM
 from src.utils.score_metrics import Direction
-from torch import abs, eye, mean, mm, no_grad, pow, save, sum, tensor, zeros
+from torch import abs, eye, mm, no_grad, pow, save, tensor, zeros
 from torch.nn import Module
 from torch.optim import Adam
 from torch.utils.data import DataLoader, SubsetRandomSampler
@@ -36,6 +36,7 @@ class PetaleGGE(PetaleEncoder, Module):
                  lr: float,
                  rho: float = 0.5,
                  batch_size: int = 25,
+                 valid_batch_size: Optional[int] = None,
                  max_epochs: int = 200,
                  patience: int = 15,
                  hidden_size: int = 3,
@@ -53,6 +54,7 @@ class PetaleGGE(PetaleEncoder, Module):
             rho: if >=0 will be used as neighborhood size in Sharpness-Aware Minimization optimizer,
                  otherwise, standard SGD optimizer with momentum will be used
             batch_size: size of the batches in the training loader
+            valid_batch_size: size of the batches in the valid loader
             max_epochs: Maximum number of epochs for training
             patience: Number of consecutive epochs without improvement
             hidden_size: embedding size of each genes during intermediate
@@ -66,6 +68,7 @@ class PetaleGGE(PetaleEncoder, Module):
         PetaleEncoder.__init__(self, train_params={'lr': lr,
                                                    'rho': rho,
                                                    'batch_size': batch_size,
+                                                   'valid_batch_size': valid_batch_size,
                                                    'patience': patience,
                                                    'max_epochs': max_epochs})
 
@@ -95,6 +98,35 @@ class PetaleGGE(PetaleEncoder, Module):
         # We initialize the Jaccard similarities tensor
         self.__jaccard = None
 
+    @staticmethod
+    def __create_dataloader(dataset: PetaleDataset,
+                            mask: List[int],
+                            batch_size: Optional[int] = None) -> DataLoader:
+        """
+        Creates a dataloader
+
+        Args:
+            dataset: PetaleDataset which its items are tuples (x, y, idx) where
+                     - x : (N,D) tensor with D-dimensional samples
+                     - y : (N,) tensor with classification labels
+                     - idx : (N,) tensor with idx of samples according to the whole dataset
+            mask: list of idx to use for sampling
+            batch_size: size of batches in the dataloader
+
+        Returns: Dataloader
+        """
+        # We save the number of idx in the mask
+        n = len(mask)
+
+        # We adjust the batch size if needed
+        batch_size = n if batch_size is None else min(n, batch_size)
+
+        # If there is a single element in the last batch we drop it
+        drop_last = (n % batch_size == 1)
+
+        # We create the dataloader
+        return DataLoader(dataset, batch_size=batch_size, sampler=SubsetRandomSampler(mask), drop_last=drop_last)
+
     def __disable_running_stats(self) -> None:
         """
         Disables batch norm momentum when executing SAM optimization step
@@ -111,7 +143,63 @@ class PetaleGGE(PetaleEncoder, Module):
         """
         self.apply(TorchCustomModel.enable_module_running_stats)
 
-    def __update_weights(self, x: tensor) -> float:
+    def __execute_train_step(self, train_data: DataLoader) -> None:
+        """
+        Executes one training epoch
+
+        Args:
+            train_data: training dataloader
+
+        Returns: None
+        """
+
+        # We put the model in training mode
+        self.train()
+
+        # We clear the gradients
+        self.__optimizer.zero_grad()
+
+        # We execute a training step for each mini batch
+        for item in train_data:
+
+            # We extract the data
+            x, _, idx = item
+
+            # We update the weights (the gradient is cleared within this function)
+            _ = self.__update_weights(x, idx)
+
+    def __execute_valid_step(self, valid_data: DataLoader) -> float:
+        """
+        Executes an inference step on the validation data
+
+        Args:
+            valid_data: valid dataloader
+
+        Returns: None
+        """
+        # We put the model in eval mode
+        self.eval()
+
+        # We initialize the epoch loss
+        epoch_loss = 0
+
+        # We execute an inference step on the valid set
+        with no_grad():
+            for item in valid_data:
+
+                # We extract the data
+                x, _, idx = item
+
+                # We execute a forward pass
+                h = self(x)
+
+                # We compute the loss
+                epoch_loss += self.loss(h, idx).item()
+
+        # We return the mean epoch loss
+        return epoch_loss/len(valid_data)
+
+    def __update_weights(self, x: tensor, idx: List[int]) -> float:
         """
         Executes a weights update using Sharpness-Aware Minimization (SAM) optimizer
 
@@ -122,18 +210,20 @@ class PetaleGGE(PetaleEncoder, Module):
 
         Args:
             x: (N, D) tensor with D-dimensional samples
+            idx: list of idx associated to patients for which the encodings
+                 were calculated
 
         Returns: training loss
         """
 
         # First forward-backward pass
-        loss = self.loss(self(x))
+        loss = self.loss(self(x), idx)
         loss.backward()
         self.__optimizer.first_step()
 
         # Second forward-backward pass
         self.__disable_running_stats()
-        self.loss(self(x)).backward()
+        self.loss(self(x), idx).backward()
         self.__optimizer.second_step()
 
         # We enable running stats again
@@ -210,41 +300,29 @@ class PetaleGGE(PetaleEncoder, Module):
 
         Returns: None
         """
-        # We put the model in training mode
-        self.train()
+        # Creation of the training dataloader
+        train_dataloader = self.__create_dataloader(dataset, dataset.train_mask, self._train_param['batch_size'])
 
-        # Creation of the dataloader
-        train_size = len(dataset.train_mask)
-        batch_size = min(train_size, self._train_param['batch_size'])
-        dataloader = DataLoader(dataset,
-                                batch_size=batch_size,
-                                sampler=SubsetRandomSampler(dataset.train_mask),
-                                drop_last=(train_size % batch_size == 1))
-        nb_batch = len(dataloader)
+        # Creation of the valid dataloader
+        valid_dataloader = self.__create_dataloader(dataset, dataset.valid_mask, self._train_params['valid_batch_size'])
 
         # Creation of the early stopper
-        early_stopper = EarlyStopper(patience=self._train_param['patience'],
-                                     direction=Direction.MINIMIZE)
+        early_stopper = EarlyStopper(patience=self._train_param['patience'], direction=Direction.MINIMIZE)
 
         # Creation of the optimizer
         self.__optimizer = SAM(self.parameters(), Adam, rho=self._train_param['rho'], lr=self._train_param['lr'])
 
         # Self supervised train
         for epoch in range(self._train_param['max_epochs']):
-            mean_epoch_loss = 0
-            for batch in dataloader:
 
-                # Data extraction
-                x, _, _ = batch
+            # We execute a training step
+            self.__execute_train_step(train_data=train_dataloader)
 
-                # Weight update
-                mean_epoch_loss += self.__update_weights(x)
-
-            # Mean epoch loss calculation
-            mean_epoch_loss /= nb_batch
+            # We execute a valid step
+            valid_loss = self.__execute_valid_step(valid_data=valid_dataloader)
 
             # Early stopping check
-            early_stopper(mean_epoch_loss, self)
+            early_stopper(valid_loss, self)
 
             if early_stopper.early_stop:
                 print(f"\nEarly stopping occurred at epoch {epoch} with"

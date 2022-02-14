@@ -229,7 +229,7 @@ class Objective:
             # Otherwise, if its an encoder, we calculate the loss
             else:
                 pred = model.predict(dataset=dts)
-                score = self.loss(pred, dts.test_mask)
+                score = model.loss(pred, dts.test_mask)
 
             return score
 

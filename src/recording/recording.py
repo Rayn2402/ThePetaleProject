@@ -18,9 +18,9 @@ from collections import Counter
 from numpy import arange, max, mean, median, min, std
 from src.models.abstract_models.base_models import PetaleBinaryClassifier, PetaleRegressor
 from src.recording.constants import *
-from torch import tensor, save
+from torch import tensor, save, zeros
 from torch.nn import Module
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 
 
 class Recorder:
@@ -50,7 +50,8 @@ class Recorder:
                       TEST_METRICS: {},
                       COEFFICIENT: {},
                       TRAIN_RESULTS: {},
-                      TEST_RESULTS: {}}
+                      TEST_RESULTS: {},
+                      VALID_RESULTS: {}}
 
         self._path = os.path.join(recordings_path, evaluation_name, f"Split_{index}")
 
@@ -165,31 +166,79 @@ class Recorder:
     def record_predictions(self,
                            ids: List[str],
                            predictions: tensor,
-                           target: tensor,
-                           test: bool = True) -> None:
+                           targets: Optional[tensor],
+                           results_section: str = TRAIN_RESULTS) -> None:
         """
         Save the predictions of a given model for each patient ids
 
         Args:
             ids: patient/participant ids
             predictions: predicted class or regression value
-            target: target value
-            test: true if the predictions are recorded for the test set
+            targets: target value
+            results_section: section of the data dictionary where the predictions are saved
 
         Returns: None
         """
         # We save the predictions
-        section = TEST_RESULTS if test else TRAIN_RESULTS
+        targets = targets if targets is not None else zeros(predictions.shape[0])
         if len(predictions.shape) == 0:
             for j, id_ in enumerate(ids):
-                self._data[section][str(id_)] = {
+                self._data[results_section][str(id_)] = {
                     PREDICTION: str(predictions[j].item()),
-                    TARGET: str(target[j].item())}
+                    TARGET: str(targets[j].item())}
         else:
             for j, id_ in enumerate(ids):
-                self._data[section][str(id_)] = {
+                self._data[results_section][str(id_)] = {
                     PREDICTION: str(predictions[j].tolist()),
-                    TARGET: str(target[j].item())}
+                    TARGET: str(targets[j].item())}
+
+    def record_test_predictions(self,
+                                ids: List[str],
+                                predictions: tensor,
+                                targets: tensor) -> None:
+        """
+        Records the test set's predictions
+
+        Args:
+            ids: list of patient/participant ids
+            predictions: tensor with predicted targets
+            targets: tensor with ground truth
+
+        Returns: None
+        """
+        return self.record_predictions(ids, predictions, targets, results_section=TEST_RESULTS)
+
+    def record_train_predictions(self,
+                                 ids: List[str],
+                                 predictions: tensor,
+                                 targets: tensor) -> None:
+        """
+        Records the training set's predictions
+
+        Args:
+            ids: list of patient/participant ids
+            predictions: tensor with predicted targets
+            targets: tensor with ground truth
+
+        Returns: None
+        """
+        return self.record_predictions(ids, predictions, targets)
+
+    def record_valid_predictions(self,
+                                 ids: List[str],
+                                 predictions: tensor,
+                                 targets: tensor) -> None:
+        """
+        Records the validation set's predictions
+
+        Args:
+            ids: list of patient/participant ids
+            predictions: tensor with predicted targets
+            targets: tensor with ground truth
+
+        Returns: None
+        """
+        return self.record_predictions(ids, predictions, targets, results_section=VALID_RESULTS)
 
 
 def get_evaluation_recap(evaluation_name: str,

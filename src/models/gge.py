@@ -378,7 +378,7 @@ class PetaleGGE(PetaleEncoder, Module):
 
     @staticmethod
     def get_hps() -> List[HP]:
-        return list(GGEHP)
+        return list(GGEHP())
 
     @staticmethod
     def __set_adjacency_mat(gene_idx_groups: Dict[str, List[int]]) -> Tuple[int, tensor]:

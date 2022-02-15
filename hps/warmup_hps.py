@@ -202,11 +202,11 @@ GGEHPS = {
         Range.MAX: 55,
         Range.STEP: 10
     },
-    GGEHP.LR: {
+    GGEHP.LR.name: {
         Range.MIN: 0.001,
         Range.MAX: 0.5
     },
-    GGEHP.RHO: {
+    GGEHP.RHO.name: {
         Range.MIN: 0.05,
         Range.MAX: 2
     }

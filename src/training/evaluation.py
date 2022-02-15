@@ -104,7 +104,7 @@ class Evaluator:
         # We set the public attributes
         self.evaluation_name = evaluation_name
         self.model_constructor = model_constructor
-        self.evaluation_metrics = evaluation_metrics if len(evaluation_metrics) > 0 else [None]
+        self.evaluation_metrics = evaluation_metrics
         self.seed = seed
 
         # We set the fixed params update method
@@ -256,12 +256,12 @@ class Evaluator:
 
         Returns: objective function
         """
-
+        metric = self.evaluation_metrics[-1] if len(self.evaluation_metrics) > 0 else None
         return Objective(dataset=subset,
                          masks=masks,
                          hps=self._hps,
                          fixed_params=self._fixed_params,
-                         metric=self.evaluation_metrics[-1],
+                         metric=metric,
                          model_constructor=self.model_constructor,
                          gpu_device=self._gpu_device)
 

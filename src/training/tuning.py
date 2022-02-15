@@ -41,7 +41,7 @@ class Objective:
                  masks: Dict[int, Dict[str, List[int]]],
                  hps: Dict[str, Dict[str, Any]],
                  fixed_params: Optional[Dict[str, Any]],
-                 metric: Metric,
+                 metric: Optional[Metric],
                  model_constructor: Callable,
                  gpu_device: bool = False):
         """
@@ -59,6 +59,10 @@ class Objective:
         for hp in model_constructor.get_hps():
             if not (hp.name in list(hps.keys())):
                 raise ValueError(f"'{hp}' is missing from hps dictionary")
+
+        # We validate the given metric
+        if metric is None and not model_constructor.is_encoder():
+            raise ValueError('A metric must be specified for this type of model constructor')
 
         # We set protected attributes
         self._dataset = dataset

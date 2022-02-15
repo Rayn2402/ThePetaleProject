@@ -6,7 +6,7 @@ Authors: Nicolas Raymond
 
 Description: This file is used to define the Recorder class
 
-Date of last modification : 2021/10/28
+Date of last modification : 2022/02/15
 """
 
 import json

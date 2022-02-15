@@ -72,7 +72,7 @@ def argument_parser():
                         help='True if we want to run GeneGraphAttentionEncoder with enet experiment')
 
     # Self supervised learning experiment with GeneGraphAttentionEncoder
-    parser.add_argument('-ssl_ggae', 'ssl_ggae', default=False, action='store_true',
+    parser.add_argument('-ssl_ggae', '-ssl_ggae', default=False, action='store_true',
                         help='True if we want to run self supervised learning with the GeneGraphAttentionEncoder')
 
     # Activation of sharpness-aware minimization

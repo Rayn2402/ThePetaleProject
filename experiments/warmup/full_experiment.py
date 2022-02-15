@@ -649,7 +649,7 @@ if __name__ == '__main__':
 
         # Creation of the dataset
         dataset = PetaleDataset(df, target, cont_cols, cat_cols,
-                                to_tensor=True, classification=False)
+                                gene_cols=gene_cols, to_tensor=True, classification=False)
 
         # Creation of a function to update fixed params
         def update_fixed_params(dts):

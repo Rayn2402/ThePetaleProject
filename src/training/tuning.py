@@ -25,7 +25,7 @@ from os.path import join
 from settings.paths import Paths
 from src.data.processing.datasets import MaskType, PetaleDataset
 from src.models.abstract_models.base_models import PetaleBinaryClassifier, PetaleRegressor
-from src.utils.score_metrics import Metric
+from src.utils.score_metrics import Direction, Metric
 from src.utils.hyperparameters import CategoricalHP, Distribution, HP, NumericalContinuousHP, NumericalIntHP, Range
 from time import strftime
 from torch import mean, tensor
@@ -310,7 +310,13 @@ class Tuner:
 
         Returns: study object
         """
-        return create_study(direction=self._objective.metric.direction,
+        # The metric can be None if the objective is associated to a PetaleEncoder
+        if self._objective.metric is None:
+            direction = Direction.MINIMIZE
+        else:
+            direction = self._objective.metric.direction
+
+        return create_study(direction=direction,
                             study_name=study_name,
                             sampler=TPESampler(n_startup_trials=20,
                                                n_ei_candidates=20,

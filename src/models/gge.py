@@ -296,19 +296,22 @@ class PetaleGGE(PetaleEncoder, Module):
         Returns: None
         """
         # Creation of the training dataloader
-        train_dataloader = self.__create_dataloader(dataset, dataset.train_mask, self._train_param['batch_size'])
+        train_dataloader = self.__create_dataloader(dataset, dataset.train_mask, self._train_params['batch_size'])
 
         # Creation of the valid dataloader
         valid_dataloader = self.__create_dataloader(dataset, dataset.valid_mask, self._train_params['valid_batch_size'])
 
         # Creation of the early stopper
-        early_stopper = EarlyStopper(patience=self._train_param['patience'], direction=Direction.MINIMIZE)
+        early_stopper = EarlyStopper(patience=self._train_params['patience'], direction=Direction.MINIMIZE)
 
         # Creation of the optimizer
-        self.__optimizer = SAM(self.parameters(), Adam, rho=self._train_param['rho'], lr=self._train_param['lr'])
+        self.__optimizer = SAM(self.parameters(), Adam, rho=self._train_params['rho'], lr=self._train_params['lr'])
+
+        # We set the jaccard similarities matrix
+        self.__set_jaccard_similarities(dataset)
 
         # Self supervised train
-        for epoch in range(self._train_param['max_epochs']):
+        for epoch in range(self._train_params['max_epochs']):
 
             # We execute a training step
             self.__execute_train_step(train_data=train_dataloader)
@@ -321,7 +324,7 @@ class PetaleGGE(PetaleEncoder, Module):
 
             if early_stopper.early_stop:
                 print(f"\nEarly stopping occurred at epoch {epoch} with"
-                      f" best_epoch = {epoch - self._train_param['patience']}"
+                      f" best_epoch = {epoch - self._train_params['patience']}"
                       f" and best self supervised training loss = {round(early_stopper.best_val_score, 4)}")
                 break
 

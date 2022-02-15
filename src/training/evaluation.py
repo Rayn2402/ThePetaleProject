@@ -229,7 +229,7 @@ class Evaluator:
             recorder.generate_file()
 
             # We generate a plot that compares predictions to ground_truth
-            if not isinstance(model, PetaleEncoder):
+            if not model.is_encoder():
                 compare_prediction_recordings(evaluations=[self.evaluation_name],
                                               split_index=k,
                                               recording_path=Paths.EXPERIMENTS_RECORDS)

@@ -15,6 +15,7 @@ from src.models.abstract_models.custom_torch_base import TorchCustomModel
 from src.models.blocks.genes_signature_block import GeneGraphAttentionEncoder, GeneGraphEncoder
 from src.training.early_stopping import EarlyStopper
 from src.training.sam import SAM
+from src.utils.hyperparameters import HP, NumericalContinuousHP, NumericalIntHP
 from src.utils.score_metrics import Direction
 from torch import abs, eye, mm, no_grad, pow, save, tensor, zeros
 from torch.nn import Module
@@ -375,6 +376,10 @@ class PetaleGGE(PetaleEncoder, Module):
         save(self.__enc, os.path.join(path, "gge.pt"))
 
     @staticmethod
+    def get_hps() -> List[HP]:
+        return list(GGEHP)
+
+    @staticmethod
     def __set_adjacency_mat(gene_idx_groups: Dict[str, List[int]]) -> Tuple[int, tensor]:
         """
         Builds the adjacency matrix related to the genome graph identical
@@ -402,3 +407,14 @@ class PetaleGGE(PetaleEncoder, Module):
 
         return nb_genes, adj_mat
 
+
+class GGEHP:
+    """
+    GeneGraphEncoder's hyperparameters
+    """
+    BATCH_SIZE = NumericalIntHP("batch_size")
+    LR = NumericalContinuousHP("lr")
+    RHO = NumericalContinuousHP("rho")
+
+    def __iter__(self):
+        return iter([self.BATCH_SIZE, self.LR, self.RHO])

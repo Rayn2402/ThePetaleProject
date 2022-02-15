@@ -126,6 +126,15 @@ class PetaleBinaryClassifier(ABC):
         return sample_weights
 
     @staticmethod
+    def is_encoder() -> bool:
+        """
+        Return True if the class is used to create an Encoder
+
+        Returns: bool
+        """
+        return False
+
+    @staticmethod
     @abstractmethod
     def get_hps() -> List[HP]:
         """
@@ -201,6 +210,15 @@ class PetaleRegressor(ABC):
         return self._train_params
 
     @staticmethod
+    def is_encoder() -> bool:
+        """
+        Return True if the class is used to create an Encoder
+
+        Returns: bool
+        """
+        return False
+
+    @staticmethod
     @abstractmethod
     def get_hps() -> List[HP]:
         """
@@ -274,6 +292,15 @@ class PetaleEncoder(ABC):
     @property
     def train_params(self) -> Dict[str, Any]:
         return self._train_params
+
+    @staticmethod
+    def is_encoder() -> bool:
+        """
+        Return True if the class is used to create an Encoder
+
+        Returns: bool
+        """
+        return True
 
     @staticmethod
     @abstractmethod

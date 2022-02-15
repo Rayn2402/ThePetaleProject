@@ -7,7 +7,7 @@ Authors: Nicolas Raymond
 Description: This file is used to define the Evaluator class in charge
              of comparing models against each other
 
-Date of last modification : 2021/10/29
+Date of last modification : 2022/02/15
 """
 import ray
 
@@ -20,7 +20,7 @@ from settings.paths import Paths
 from src.data.extraction.constants import PARTICIPANT
 from src.data.processing.datasets import MaskType, PetaleDataset
 from src.data.processing.feature_selection import FeatureSelector
-from src.models.abstract_models.base_models import PetaleBinaryClassifier, PetaleRegressor
+from src.models.abstract_models.base_models import PetaleBinaryClassifier, PetaleEncoder, PetaleRegressor
 from src.recording.constants import PREDICTION, RECORDS_FILE, TEST_RESULTS, TRAIN_RESULTS
 from src.recording.recording import Recorder, compare_prediction_recordings, \
     get_evaluation_recap, plot_hps_importance_chart
@@ -104,7 +104,7 @@ class Evaluator:
         # We set the public attributes
         self.evaluation_name = evaluation_name
         self.model_constructor = model_constructor
-        self.evaluation_metrics = evaluation_metrics
+        self.evaluation_metrics = evaluation_metrics if len(evaluation_metrics) > 0 else [None]
         self.seed = seed
 
         # We set the fixed params update method
@@ -229,9 +229,10 @@ class Evaluator:
             recorder.generate_file()
 
             # We generate a plot that compares predictions to ground_truth
-            compare_prediction_recordings(evaluations=[self.evaluation_name],
-                                          split_index=k,
-                                          recording_path=Paths.EXPERIMENTS_RECORDS)
+            if not isinstance(model, PetaleEncoder):
+                compare_prediction_recordings(evaluations=[self.evaluation_name],
+                                              split_index=k,
+                                              recording_path=Paths.EXPERIMENTS_RECORDS)
 
         # We save the evaluation recap
         get_evaluation_recap(evaluation_name=self.evaluation_name, recordings_path=Paths.EXPERIMENTS_RECORDS)
@@ -314,7 +315,9 @@ class Evaluator:
             model.find_optimal_threshold(dataset=subset, metric=self.evaluation_metrics[-1])
             recorder.record_data_info('thresh', str(model.thresh))
 
-            for mask, test_bool in [(subset.train_mask, False), (subset.test_mask, True)]:
+            for mask, mask_type in [(subset.train_mask, MaskType.TRAIN),
+                                    (subset.test_mask, MaskType.TEST),
+                                    (subset.valid_mask, MaskType.VALID)]:
 
                 # We compute prediction
                 pred = model.predict_proba(subset, mask)
@@ -325,7 +328,8 @@ class Evaluator:
 
                 # We record all metric scores
                 for metric in self.evaluation_metrics:
-                    recorder.record_scores(score=metric(pred, y, thresh=model.thresh), metric=metric.name, test=test_bool)
+                    recorder.record_scores(score=metric(pred, y, thresh=model.thresh),
+                                           metric=metric.name, mask_type=mask_type)
 
                 if not is_tensor(pred):
                     pred = from_numpy(pred)
@@ -334,10 +338,12 @@ class Evaluator:
                 pred = (pred >= model.thresh).long()
 
                 # We save the predictions
-                recorder.record_predictions(predictions=pred, ids=ids, target=y, test=test_bool)
+                recorder.record_predictions(predictions=pred, ids=ids, targets=y, mask_type=mask_type)
 
         else:   # If instead the model is for regression
-            for mask, test_bool in [(subset.train_mask, False), (subset.test_mask, True)]:
+            for mask, mask_type in [(subset.train_mask, MaskType.TRAIN),
+                                    (subset.test_mask, MaskType.TEST),
+                                    (subset.valid_mask, MaskType.VALID)]:
 
                 # We extract ids and targets
                 ids = [subset.ids[i] for i in mask]
@@ -348,7 +354,7 @@ class Evaluator:
 
                 # We record all metric scores
                 for metric in self.evaluation_metrics:
-                    recorder.record_scores(score=metric(pred, y), metric=metric.name, test=test_bool)
+                    recorder.record_scores(score=metric(pred, y), metric=metric.name, mask_type=mask_type)
 
-                    # We save the predictions
-                    recorder.record_predictions(predictions=pred, ids=ids, target=y, test=test_bool)
+                # We save the predictions
+                recorder.record_predictions(predictions=pred, ids=ids, targets=y, mask_type=mask_type)

@@ -106,7 +106,7 @@ if __name__ == '__main__':
 
     # Imports specific to project
     sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
-    from hps.warmup_hps import TAB_HPS, RF_HPS, HAN_HPS, MLP_HPS, ENET_HPS, XGBOOST_HPS
+    from hps.warmup_hps import TAB_HPS, RF_HPS, HAN_HPS, MLP_HPS, ENET_HPS, XGBOOST_HPS, GGEHPS
     from settings.paths import Paths
     from src.data.processing.datasets import PetaleDataset, PetaleStaticGNNDataset
     from src.data.processing.feature_selection import FeatureSelector
@@ -669,7 +669,7 @@ if __name__ == '__main__':
                               dataset=dataset,
                               masks=masks,
                               evaluation_name=f"ggae_warmup{eval_id}",
-                              hps=HAN_HPS,
+                              hps=GGEHPS,
                               n_trials=200,
                               evaluation_metrics=[],
                               fixed_params=fixed_params,

@@ -166,7 +166,7 @@ class PetaleGGE(PetaleEncoder, Module):
             x, _, idx = item
 
             # We update the weights (the gradient is cleared within this function)
-            _ = self.__update_weights(x, idx)
+            self.__update_weights(x, idx)
 
     def __execute_valid_step(self, valid_data: DataLoader) -> float:
         """
@@ -190,16 +190,13 @@ class PetaleGGE(PetaleEncoder, Module):
                 # We extract the data
                 x, _, idx = item
 
-                # We execute a forward pass
-                h = self(x)
-
                 # We compute the loss
-                epoch_loss += self.loss(h, idx).item()
+                epoch_loss += self.loss(self(x), idx).item()
 
         # We return the mean epoch loss
         return epoch_loss/len(valid_data)
 
-    def __update_weights(self, x: tensor, idx: List[int]) -> float:
+    def __update_weights(self, x: tensor, idx: List[int]) -> None:
         """
         Executes a weights update using Sharpness-Aware Minimization (SAM) optimizer
 
@@ -213,12 +210,11 @@ class PetaleGGE(PetaleEncoder, Module):
             idx: list of idx associated to patients for which the encodings
                  were calculated
 
-        Returns: training loss
+        Returns: None
         """
 
         # First forward-backward pass
-        loss = self.loss(self(x), idx)
-        loss.backward()
+        self.loss(self(x), idx).backward()
         self.__optimizer.first_step()
 
         # Second forward-backward pass
@@ -228,8 +224,6 @@ class PetaleGGE(PetaleEncoder, Module):
 
         # We enable running stats again
         self.__enable_running_stats()
-
-        return loss.item()
 
     def __set_jaccard_similarities(self, dts: PetaleDataset) -> None:
         """
@@ -246,7 +240,6 @@ class PetaleGGE(PetaleEncoder, Module):
                      - x : (N,D) tensor with D-dimensional samples
                      - y : (N,) tensor with classification labels
                      - idx : (N,) tensor with idx of samples according to the whole dataset
-
 
         Returns: None
         """
@@ -332,7 +325,7 @@ class PetaleGGE(PetaleEncoder, Module):
 
     def forward(self, x: tensor) -> tensor:
         """
-        Execute a forward pass with the encoder to create genomic signature
+        Executes a forward pass with the encoder to create genomic signature
 
         Args:
             x: (N, D) tensor with D dimensional samples
@@ -345,7 +338,7 @@ class PetaleGGE(PetaleEncoder, Module):
                 dataset: PetaleDataset,
                 mask: Optional[List[int]] = None) -> tensor:
         """
-        Predict the embeddings for idx of a given mask (default = test)
+        Predicts the embeddings for idx of a given mask (default = test)
 
         Args:
             dataset: PetaleDataset which its items are tuples (x, y, idx) where
@@ -367,7 +360,7 @@ class PetaleGGE(PetaleEncoder, Module):
 
         # Execute a forward pass and apply a sigmoid
         with no_grad():
-            return self.__enc(x)
+            return self(x)
 
     def save_model(self, path: str) -> None:
         """

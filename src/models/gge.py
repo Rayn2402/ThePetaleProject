@@ -274,7 +274,8 @@ class PetaleGGE(PetaleEncoder, Module):
 
         # We take a subset of the jaccard similarities matrix and make
         # the coefficients sum to 1
-        jaccard_sim = self.__jaccard[idx, idx]
+        jaccard_sim = self.__jaccard[idx, :]
+        jaccard_sim = jaccard_sim[:, idx]
         jaccard_sim /= jaccard_sim.sum()
 
         # We return the loss

@@ -242,13 +242,7 @@ class GeneSignatureDecoder(Module):
         super().__init__()
 
         # Saving of nb of chromosomes and number of genes
-        self.__nb_genes = chrom_composition_mat.shape[1]
         self.__nb_chrom = chrom_composition_mat.shape[0]
-
-        # Setting of matrix used to recover genes embedding for chromosome embedding
-        self.__gene_weight_mat = Parameter(normal(mean=zeros(self.__nb_genes, self.__nb_chrom),
-                                                  std=1.0).requires_grad_(True))
-        self.__mask = chrom_composition_mat.clone().detach().bool().byte().t().requires_grad_(False)
 
         # Creation of BaseBlock (first layer of the decoder)
         self.__linear_layer = BaseBlock(input_size=signature_size,
@@ -289,11 +283,6 @@ class GeneSignatureDecoder(Module):
 
         # Transposition of last dimensions
         h = h.transpose(1, 2)  # (N, HIDDEN_SIZE, NB_CHROM) -> (N, NB_CHROM, HIDDEN_SIZE)
-
-        # Multiplication by gene_weight_mat to recover gene embeddings
-        # the mask ensure that 0's are not updated in the gene_weight_mat
-        # (NB_GENES, NB_CHROM)(N, NB_CHROM, HIDDEN_SIZE) -> (N, NB_GENES, HIDDEN_SIZE)
-        h = einsum('ij,kjf->kif', (self.__gene_weight_mat*self.__mask), h)
 
         return h
 

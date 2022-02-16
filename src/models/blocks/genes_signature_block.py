@@ -64,11 +64,18 @@ class GeneEncoder(Encoder, Module):
                                                       embedding_sharing=genes_emb_sharing)
 
         # Creation of a cache to store gene embeddings
-        self._embedding_cache = None
+        self._gene_embedding_cache = None
+
+        # Creation of a cache to store chromosome embeddings
+        self._chrom_embedding_cache = None
 
     @property
-    def cache(self) -> tensor:
-        return self._embedding_cache
+    def chrom_embedding_cache(self) -> tensor:
+        return self._chrom_embedding_cache
+
+    @property
+    def gene_embedding_cache(self) -> tensor:
+        return self._gene_embedding_cache
 
     @property
     def gene_idx_groups(self) -> Dict[str, List[int]]:
@@ -115,7 +122,7 @@ class GeneEncoder(Encoder, Module):
 
         # Resize embeddings
         h = h.reshape(h.shape[0], self._nb_genes, self._hidden_size)  # (N, NB_GENES, HIDDEN_SIZE)
-        self._embedding_cache = h
+        self._gene_embedding_cache = h
 
         return h
 

@@ -222,7 +222,7 @@ class GeneSignatureDecoder(Module):
     the original gene embeddings
     """
     def __init__(self,
-                 chrom_composition_mat: tensor,
+                 nb_chrom: int,
                  hidden_size: int,
                  signature_size: int = 10):
 
@@ -231,8 +231,7 @@ class GeneSignatureDecoder(Module):
         to the genome of patient
 
         Args:
-            chrom_composition_mat: (NB_CHROM, NB_GENES) tensor where each element at the position
-                                    i,j is a 1 if gene-j is part of chromosome-i and 0 otherwise
+            nb_chrom: number of chromosomes in patient genes data
             hidden_size: embedding size of each genes during intermediate
                          signature creation procedure
             signature_size: genomic signature size (input size)
@@ -241,12 +240,9 @@ class GeneSignatureDecoder(Module):
         # Call of parent's constructor
         super().__init__()
 
-        # Saving of nb of chromosomes and number of genes
-        self.__nb_chrom = chrom_composition_mat.shape[0]
-
         # Creation of BaseBlock (first layer of the decoder)
         self.__linear_layer = BaseBlock(input_size=signature_size,
-                                        output_size=self.__nb_chrom,
+                                        output_size=nb_chrom,
                                         activation='ReLU')
 
         # Creation of convolutional layer

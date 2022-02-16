@@ -85,6 +85,10 @@ class GeneEncoder(Encoder, Module):
     def hidden_size(self) -> int:
         return self._hidden_size
 
+    @property
+    def nb_chrom(self) -> int:
+        return self._nb_chrom
+
     def build_chrom_composition_mat(self) -> tensor:
         """
         Builds a (NB_CHROM, NB_GENES) tensor where each element at the position

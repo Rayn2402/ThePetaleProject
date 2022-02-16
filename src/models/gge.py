@@ -12,12 +12,12 @@ import os
 from src.data.processing.datasets import PetaleDataset
 from src.models.abstract_models.base_models import PetaleEncoder
 from src.models.abstract_models.custom_torch_base import TorchCustomModel
-from src.models.blocks.genes_signature_block import GeneGraphAttentionEncoder, GeneGraphEncoder
+from src.models.blocks.genes_signature_block import GeneGraphAttentionEncoder, GeneGraphEncoder, GeneSignatureDecoder
 from src.training.early_stopping import EarlyStopper
 from src.training.sam import SAM
 from src.utils.hyperparameters import HP, NumericalContinuousHP, NumericalIntHP
 from src.utils.score_metrics import Direction
-from torch import abs, eye, mm, no_grad, pow, save, tensor, zeros
+from torch import abs, eye, mean, mm, no_grad, pow, save, sum, tensor, zeros
 from torch.nn import Module
 from torch.optim import Adam
 from torch.utils.data import DataLoader, SubsetRandomSampler
@@ -92,6 +92,11 @@ class PetaleGGE(PetaleEncoder, Module):
                                                    hidden_size=hidden_size,
                                                    signature_size=signature_size,
                                                    genes_emb_sharing=genes_emb_sharing)
+
+        # We create the decoder
+        self.__dec = GeneSignatureDecoder(chrom_composition_mat=self.__enc.build_chrom_composition_mat(),
+                                          hidden_size=hidden_size,
+                                          signature_size=signature_size)
 
         # We initialize the optimizer
         self.__optimizer = None
@@ -259,8 +264,9 @@ class PetaleGGE(PetaleEncoder, Module):
 
     def loss(self, x: tensor, idx: List[int]) -> tensor:
         """
-        Computes the mean squared differences between the genes' embeddings
-        decoded from the signatures and the real embeddings
+        Computes the weighted squared differences between the signatures of patients
+        and then add the mean squared differences between the genes' embeddings
+        decoded from the signatures and the real embeddings.
 
         Args:
             x: (N, SIGNATURE_SIZE) tensor with genes' embeddings
@@ -277,8 +283,14 @@ class PetaleGGE(PetaleEncoder, Module):
         jaccard_sim = self.__jaccard[idx, idx]
         jaccard_sim /= jaccard_sim.sum()
 
-        # We return the loss
-        return (jaccard_sim * squared_diff).sum()
+        # We compute the loss associated to jaccard similarities
+        jacc_loss = (jaccard_sim * squared_diff).sum()
+
+        # We compute the loss associated to the decoding quality
+        dec_loss = mean(sum(pow(self.__dec(x) - self.__enc.cache, 2), dim=(1, 2)))
+
+        # We now calculate the lops
+        return jacc_loss + dec_loss
 
     def fit(self, dataset: PetaleDataset) -> None:
         """

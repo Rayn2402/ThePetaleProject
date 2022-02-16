@@ -94,7 +94,7 @@ class PetaleGGE(PetaleEncoder, Module):
                                                    genes_emb_sharing=genes_emb_sharing)
 
         # We create the decoder
-        self.__dec = GeneSignatureDecoder(chrom_composition_mat=self.__enc.build_chrom_composition_mat(),
+        self.__dec = GeneSignatureDecoder(nb_chrom=self.__enc.nb_chrom,
                                           hidden_size=hidden_size,
                                           signature_size=signature_size)
 

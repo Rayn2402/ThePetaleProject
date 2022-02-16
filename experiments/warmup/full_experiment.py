@@ -714,7 +714,7 @@ if __name__ == '__main__':
         evaluator = Evaluator(model_constructor=PetaleGGE,
                               dataset=dataset,
                               masks=masks,
-                              evaluation_name=f"ggae_warmup{eval_id}",
+                              evaluation_name=f"gge_warmup{eval_id}",
                               hps=GGEHPS,
                               n_trials=200,
                               evaluation_metrics=[],

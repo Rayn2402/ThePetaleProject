@@ -178,7 +178,7 @@ class GeneGraphEncoder(GeneEncoder):
     def chrom_weight_mat(self) -> tensor:
         return self.__chrom_weight_mat
 
-    def forward(self, x: tensor, fuzzyness: float = 0) -> tensor:
+    def forward(self, x: tensor) -> tensor:
         """
         Executes the following actions on each element in the batch:
 
@@ -191,21 +191,16 @@ class GeneGraphEncoder(GeneEncoder):
 
         Args:
             x: (N, D) tensor with D-dimensional samples
-            fuzzyness: if fuzzyness > 0, noise sampled from a multivariate normal of
-                       mean = 0 and sigma = fuzzyness will be added to gene embeddings
 
         Returns: (N, D') tensor where D' is the signature size
         """
         # Entity embedding on genes
         h = self._compute_genes_emb(x)  # (N, D) -> (N, NB_GENES, HIDDEN_SIZE)
 
-        # Noise addition
-        if fuzzyness > 0:
-            h = h + normal(mean=zeros(h.shape), std=fuzzyness).requires_grad_(False)
-
         # Compute entity embedding averages per chromosome subgraphs for each individual
         # (NB_CHROM, NB_GENES)(N, NB_GENES, HIDDEN_SIZE) -> (N, NB_CHROM, HIDDEN_SIZE)
         h = einsum('ij,kjf->kif', self.__chrom_weight_mat, h)
+        self._chrom_embedding_cache = h
 
         # Concatenate all chromosome averages side to side and apply relu
         # (N, NB_CHROM, HIDDEN_SIZE) -> (N, NB_CHROM*HIDDEN_SIZE)
@@ -354,6 +349,7 @@ class GeneGraphAttentionEncoder(GeneEncoder):
 
         # Gene attention layer
         h = relu(self._gene_attention_layer(h))  # (N, NB_GENES, HIDDEN_SIZE) -> (N, NB_CHROM, HIDDEN_SIZE)
+        self._chrom_embedding_cache = h
 
         # Chromosome attention layer
         h = relu(self._chrom_attention_layer(h))  # (N, NB_CHROM, HIDDEN_SIZE) -> (N, HIDDEN_SIZE)

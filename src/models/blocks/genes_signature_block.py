@@ -367,7 +367,7 @@ class GeneGraphAttentionEncoder(GeneEncoder):
         h = relu(self._chrom_attention_layer(h))  # (N, NB_CHROM, HIDDEN_SIZE) -> (N, HIDDEN_SIZE)
 
         # Signature calculation
-        return relu(self._linear_layer(h))
+        return self._bn(self._linear_layer(h))
 
 
 class GeneAttentionLayer(Module):

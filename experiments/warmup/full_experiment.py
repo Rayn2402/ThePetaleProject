@@ -71,9 +71,11 @@ def argument_parser():
     parser.add_argument('-ggae', '--ggae', default=False, action='store_true',
                         help='True if we want to run GeneGraphAttentionEncoder with enet experiment')
 
-    # Self supervised learning experiment with GeneGraphAttentionEncoder
+    # Self supervised learning experiments
     parser.add_argument('-ssl_ggae', '-ssl_ggae', default=False, action='store_true',
                         help='True if we want to run self supervised learning with the GeneGraphAttentionEncoder')
+    parser.add_argument('-ssl_gge', '-ssl_gge', default=False, action='store_true',
+                        help='True if we want to run self supervised learning with the GeneGraphEncoder')
 
     # Activation of sharpness-aware minimization
     parser.add_argument('-sam', '--enable_sam', default=False, action='store_true',
@@ -637,10 +639,8 @@ if __name__ == '__main__':
 
         print("Time Taken for encoder + HAN (minutes): ", round((time.time() - start) / 60, 2))
 
-    print("Overall time (minutes): ", round((time.time() - first_start) / 60, 2))
-
     """
-    Self supervised learning experiment
+    Self supervised learning experiment with GGAE
     """
     if args.ssl_ggae and genes:
 
@@ -684,3 +684,51 @@ if __name__ == '__main__':
         evaluator.evaluate()
 
         print("Time Taken for Self Supervised GGAE (minutes): ", round((time.time() - start) / 60, 2))
+
+    """
+    Self supervised learning experiment with GGE
+    """
+    if args.ssl_gge and genes:
+
+        # Start timer
+        start = time.time()
+
+        # Creation of the dataset
+        dataset = PetaleDataset(df, target, cont_cols, cat_cols,
+                                gene_cols=gene_cols, to_tensor=True, classification=False)
+
+        # Creation of a function to update fixed params
+        def update_fixed_params(dts):
+            return {'max_epochs': 200,
+                    'patience': 25,
+                    'gene_idx_groups': dts.gene_idx_groups,
+                    'hidden_size': 3,
+                    'signature_size': 3,
+                    'genes_emb_sharing': args.embedding_sharing,
+                    'aggregation_method': 'avg'}
+
+        # Saving of original fixed params for GGAE
+        fixed_params = update_fixed_params(dataset)
+
+        # Creation of the evaluator
+        evaluator = Evaluator(model_constructor=PetaleGGE,
+                              dataset=dataset,
+                              masks=masks,
+                              evaluation_name=f"ggae_warmup{eval_id}",
+                              hps=GGEHPS,
+                              n_trials=200,
+                              evaluation_metrics=[],
+                              fixed_params=fixed_params,
+                              fixed_params_update_function=update_fixed_params,
+                              feature_selector=feature_selector,
+                              save_hps_importance=True,
+                              save_optimization_history=True,
+                              seed=args.seed,
+                              pred_path=args.path)
+
+        # Evaluation
+        evaluator.evaluate()
+
+        print("Time Taken for Self Supervised GGE (minutes): ", round((time.time() - start) / 60, 2))
+
+    print("Overall time (minutes): ", round((time.time() - first_start) / 60, 2))

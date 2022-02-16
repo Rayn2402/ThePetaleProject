@@ -268,6 +268,8 @@ class PetaleGGE(PetaleEncoder, Module):
         and then add the mean squared differences between the genes' embeddings
         decoded from the signatures and the real embeddings.
 
+        Finally, we divide the loss by 2.
+
         Args:
             x: (N, SIGNATURE_SIZE) tensor with genes' embeddings
             idx: list of idx associated to patients for which the encodings
@@ -291,7 +293,7 @@ class PetaleGGE(PetaleEncoder, Module):
         dec_loss = mean(sum(pow(self.__dec(x) - self.__enc.cache, 2), dim=(1, 2)))
 
         # We now calculate the lops
-        return jacc_loss + dec_loss
+        return (jacc_loss + dec_loss)/2
 
     def fit(self, dataset: PetaleDataset) -> None:
         """

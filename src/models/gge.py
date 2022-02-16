@@ -290,7 +290,7 @@ class PetaleGGE(PetaleEncoder, Module):
         jacc_loss = (jaccard_sim * squared_diff).sum()
 
         # We compute the loss associated to the decoding quality
-        dec_loss = mean(sum(pow(self.__dec(x) - self.__enc.cache, 2), dim=(1, 2)))
+        dec_loss = mean(sum(pow(self.__dec(x) - self.__enc.chrom_embedding_cache, 2), dim=(1, 2)))
 
         # We now calculate the lops
         return (jacc_loss + dec_loss)/2

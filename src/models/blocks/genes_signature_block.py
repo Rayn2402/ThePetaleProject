@@ -75,12 +75,20 @@ class GeneEncoder(Encoder, Module):
         return self._gene_idx_groups
 
     @property
+    def genes_idx(self) -> List[int]:
+        return self._genes_idx
+
+    @property
     def hidden_size(self) -> int:
         return self._hidden_size
 
     @property
     def nb_chrom(self) -> int:
         return self._nb_chrom
+
+    @property
+    def nb_genes(self) -> int:
+        return self._nb_genes
 
     def build_chrom_composition_mat(self) -> tensor:
         """

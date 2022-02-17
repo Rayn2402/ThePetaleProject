@@ -11,7 +11,7 @@ Date of last modification: 2022/02/08
 
 from src.models.abstract_models.encoder import Encoder
 from src.models.blocks.mlp_blocks import BaseBlock, EntityEmbeddingBlock
-from torch import bmm, einsum, exp, normal, tensor, zeros
+from torch import bmm, einsum, exp, normal, sigmoid, tensor, zeros
 from torch.nn import BatchNorm1d, Conv1d, Linear, Module, Parameter
 from torch.nn.functional import leaky_relu, relu
 from typing import Dict, List
@@ -65,13 +65,6 @@ class GeneEncoder(Encoder, Module):
 
         # Creation of a cache to store gene embeddings
         self._gene_embedding_cache = None
-
-        # Creation of a cache to store chromosome embeddings
-        self._chrom_embedding_cache = None
-
-    @property
-    def chrom_embedding_cache(self) -> tensor:
-        return self._chrom_embedding_cache
 
     @property
     def gene_embedding_cache(self) -> tensor:
@@ -204,7 +197,6 @@ class GeneGraphEncoder(GeneEncoder):
         # Compute entity embedding averages per chromosome subgraphs for each individual
         # (NB_CHROM, NB_GENES)(N, NB_GENES, HIDDEN_SIZE) -> (N, NB_CHROM, HIDDEN_SIZE)
         h = einsum('ij,kjf->kif', self.__chrom_weight_mat, h)
-        self._chrom_embedding_cache = h
 
         # Concatenate all chromosome averages side to side and apply relu
         # (N, NB_CHROM, HIDDEN_SIZE) -> (N, NB_CHROM*HIDDEN_SIZE)
@@ -228,7 +220,7 @@ class GeneSignatureDecoder(Module):
     the original gene embeddings
     """
     def __init__(self,
-                 nb_chrom: int,
+                 nb_genes: int,
                  hidden_size: int,
                  signature_size: int = 10):
 
@@ -237,7 +229,7 @@ class GeneSignatureDecoder(Module):
         to the genome of patient
 
         Args:
-            nb_chrom: number of chromosomes in patient genes data
+            nb_genes: number of genes in patient genes data
             hidden_size: embedding size of each genes during intermediate
                          signature creation procedure
             signature_size: genomic signature size (input size)
@@ -248,12 +240,12 @@ class GeneSignatureDecoder(Module):
 
         # Creation of BaseBlock (first layer of the decoder)
         self.__linear_layer = BaseBlock(input_size=signature_size,
-                                        output_size=nb_chrom,
+                                        output_size=nb_genes,
                                         activation='ReLU')
 
         # Creation of convolutional layer
         self.__conv_layer = Conv1d(in_channels=1,
-                                   out_channels=hidden_size,
+                                   out_channels=3,
                                    kernel_size=(1,),
                                    stride=(1,))
 
@@ -275,16 +267,16 @@ class GeneSignatureDecoder(Module):
         Returns: (N, NB_GENES, HIDDEN_SIZE) tensor with genes' embeddings
         """
         # Apply (linear layer -> batch norm -> activation) to signatures
-        h = self.__linear_layer(x)  # (N, SIGNATURE_SIZE) -> (N, NB_CHROM)
+        h = self.__linear_layer(x)  # (N, SIGNATURE_SIZE) -> (N, NB_GENES)
 
         # Addition of a dummy dimension for convolutional layer
-        h.unsqueeze_(dim=1)  # (N, NB_CHROM) -> (N, 1, NB_CHROM)
+        h.unsqueeze_(dim=1)  # (N, NB_GENES) -> (N, 1, NB_GENES)
 
-        # Apply convolutional layer, batch norm and relu
-        h = relu(self._bn(self.__conv_layer(h)))  # (N, 1, NB_CHROM) -> (N, HIDDEN_SIZE, NB_CHROM)
+        # Apply convolutional layer, batch norm and sigmoid
+        h = sigmoid(self._bn(self.__conv_layer(h)))  # (N, 1, NB_GENES) -> (N, 3, NB_GENES)
 
         # Transposition of last dimensions
-        h = h.transpose(1, 2)  # (N, HIDDEN_SIZE, NB_CHROM) -> (N, NB_CHROM, HIDDEN_SIZE)
+        h = h.transpose(1, 2)  # (N, 3, NB_GENES) -> (N, NB_GENES, 3)
 
         return h
 
@@ -353,7 +345,6 @@ class GeneGraphAttentionEncoder(GeneEncoder):
 
         # Gene attention layer
         h = relu(self._gene_attention_layer(h))  # (N, NB_GENES, HIDDEN_SIZE) -> (N, NB_CHROM, HIDDEN_SIZE)
-        self._chrom_embedding_cache = h
 
         # Chromosome attention layer
         h = relu(self._chrom_attention_layer(h))  # (N, NB_CHROM, HIDDEN_SIZE) -> (N, HIDDEN_SIZE)

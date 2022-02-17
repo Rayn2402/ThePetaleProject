@@ -19,6 +19,7 @@ from src.utils.hyperparameters import HP, NumericalContinuousHP, NumericalIntHP
 from src.utils.score_metrics import Direction
 from torch import abs, eye, mean, mm, no_grad, pow, save, sum, tensor, zeros
 from torch.nn import Module
+from torch.nn.functional import one_hot
 from torch.optim import Adam
 from torch.utils.data import DataLoader, SubsetRandomSampler
 from typing import Dict, List, Optional, Tuple
@@ -94,7 +95,7 @@ class PetaleGGE(PetaleEncoder, Module):
                                                    genes_emb_sharing=genes_emb_sharing)
 
         # We create the decoder
-        self.__dec = GeneSignatureDecoder(nb_chrom=self.__enc.nb_chrom,
+        self.__dec = GeneSignatureDecoder(nb_genes=self.__enc.nb_genes,
                                           hidden_size=hidden_size,
                                           signature_size=signature_size)
 
@@ -103,6 +104,9 @@ class PetaleGGE(PetaleEncoder, Module):
 
         # We initialize the Jaccard similarities tensor
         self.__jaccard = None
+
+        # We initialize the one-hot tensor
+        self.__one_hot = None
 
     @staticmethod
     def __create_dataloader(dataset: PetaleDataset,
@@ -231,7 +235,7 @@ class PetaleGGE(PetaleEncoder, Module):
         # We enable running stats again
         self.__enable_running_stats()
 
-    def __set_jaccard_similarities(self, dts: PetaleDataset) -> None:
+    def __set_jaccard_similarities(self) -> None:
         """
         Sets the jaccard similarities matrix using one hot encodings of genes
 
@@ -241,6 +245,26 @@ class PetaleGGE(PetaleEncoder, Module):
         the same index, M00 is the number of times that the two vectors share
         a 0 at the same index and n is the length of both vectors.
 
+        Returns: None
+        """
+        # We get one hot encodings related to genes and saves the number of patient
+        e = self.__one_hot
+        n = self.__one_hot.shape[0]
+
+        # We calculate M11 for all patients pairs
+        m11 = mm(e, e.t()) - eye(n)
+
+        # We calculate M00 for all patients pairs
+        e = abs(e - 1)
+        m00 = mm(e, e.t()) - eye(n)
+
+        # We save the Jaccard similarities
+        self.__jaccard = (m11/(e.shape[1] - m00)).requires_grad_(False)
+
+    def __set_one_hot_encodings(self, dts: PetaleDataset) -> None:
+        """
+        Saves the one hot encodings related to patient genes
+
         Args:
             dts: PetaleDataset which its items are tuples (x, y, idx) where
                      - x : (N,D) tensor with D-dimensional samples
@@ -249,18 +273,7 @@ class PetaleGGE(PetaleEncoder, Module):
 
         Returns: None
         """
-        # We get one hot encodings related to genes
-        e = dts.get_genes_one_hot_encodings()
-
-        # We calculate M11 for all patients pairs
-        m11 = mm(e, e.t()) - eye(len(dts))
-
-        # We calculate M00 for all patients pairs
-        e = abs(e - 1)
-        m00 = mm(e, e.t()) - eye(len(dts))
-
-        # We save the Jaccard similarities
-        self.__jaccard = (m11/(e.shape[1] - m00)).requires_grad_(False)
+        self.__one_hot = one_hot(dts.x[self.__enc.genes_idx])
 
     def loss(self, x: tensor, idx: List[int]) -> tensor:
         """
@@ -292,7 +305,7 @@ class PetaleGGE(PetaleEncoder, Module):
         # We compute the loss associated to the decoding quality
         dec_loss = mean(sum(pow(self.__dec(x) - self.__enc.chrom_embedding_cache, 2), dim=(1, 2)))
 
-        # We now calculate the lops
+        # We now calculate the loss
         return (jacc_loss + dec_loss)/2
 
     def fit(self, dataset: PetaleDataset) -> None:
@@ -321,8 +334,11 @@ class PetaleGGE(PetaleEncoder, Module):
         # Creation of the optimizer
         self.__optimizer = SAM(self.parameters(), Adam, rho=self._train_params['rho'], lr=self._train_params['lr'])
 
+        # We set the one hot encodings matrix
+        self.__set_one_hot_encodings(dataset)
+
         # We set the jaccard similarities matrix
-        self.__set_jaccard_similarities(dataset)
+        self.__set_jaccard_similarities()
 
         # Self supervised train
         for epoch in range(self._train_params['max_epochs']):
@@ -341,6 +357,9 @@ class PetaleGGE(PetaleEncoder, Module):
                       f" best_epoch = {epoch - self._train_params['patience']}"
                       f" and best self supervised training loss = {round(early_stopper.best_val_score, 4)}")
                 break
+
+        # We set the jaccard and one-hot matrix back to None
+        self.__jaccard, self.__one_hot = None, None
 
     def forward(self, x: tensor) -> tensor:
         """

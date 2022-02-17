@@ -358,9 +358,6 @@ class PetaleGGE(PetaleEncoder, Module):
                       f" and best self supervised training loss = {round(early_stopper.best_val_score, 4)}")
                 break
 
-        # We set the jaccard and one-hot matrix back to None
-        self.__jaccard, self.__one_hot = None, None
-
     def forward(self, x: tensor) -> tensor:
         """
         Executes a forward pass with the encoder to create genomic signature

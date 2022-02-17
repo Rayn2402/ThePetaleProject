@@ -248,8 +248,8 @@ class PetaleGGE(PetaleEncoder, Module):
         Returns: None
         """
         # We get one hot encodings related to genes and saves the number of patient
-        e = self.__one_hot
         n = self.__one_hot.shape[0]
+        e = self.__one_hot.reshape(n, self.__enc.nb_genes*3) # (N, NB_GENES, 3) -> (N, NB_GENES*3)
 
         # We calculate M11 for all patients pairs
         m11 = mm(e, e.t()) - eye(n)
@@ -273,7 +273,7 @@ class PetaleGGE(PetaleEncoder, Module):
 
         Returns: None
         """
-        self.__one_hot = one_hot(dts.x[self.__enc.genes_idx], num_classes=3).float().requires_grad_(False)
+        self.__one_hot = one_hot(dts.x[:, self.__enc.genes_idx], num_classes=3).float().requires_grad_(False)
 
     def loss(self, x: tensor, idx: List[int]) -> tensor:
         """
@@ -303,7 +303,7 @@ class PetaleGGE(PetaleEncoder, Module):
         jacc_loss = (jaccard_sim * squared_diff).sum()
 
         # We compute the loss associated to the decoding quality
-        dec_loss = mean(sum(pow(self.__dec(x) - self.__one_hot, 2), dim=(1, 2)))
+        dec_loss = mean(sum(pow(self.__dec(x) - self.__one_hot[idx, :, :], 2), dim=(1, 2)))
 
         # We now calculate the loss
         return (jacc_loss + dec_loss)/2

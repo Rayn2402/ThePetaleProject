@@ -249,7 +249,7 @@ class PetaleGGE(PetaleEncoder, Module):
         """
         # We get one hot encodings related to genes and saves the number of patient
         n = self.__one_hot.shape[0]
-        e = self.__one_hot.reshape(n, self.__enc.nb_genes*3) # (N, NB_GENES, 3) -> (N, NB_GENES*3)
+        e = self.__one_hot.reshape(n, self.__enc.nb_genes*3)  # (N, NB_GENES, 3) -> (N, NB_GENES*3)
 
         # We calculate M11 for all patients pairs
         m11 = mm(e, e.t()) - eye(n)

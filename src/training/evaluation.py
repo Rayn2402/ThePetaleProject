@@ -20,8 +20,8 @@ from settings.paths import Paths
 from src.data.extraction.constants import PARTICIPANT
 from src.data.processing.datasets import MaskType, PetaleDataset
 from src.data.processing.feature_selection import FeatureSelector
-from src.models.abstract_models.base_models import PetaleBinaryClassifier, PetaleEncoder, PetaleRegressor
-from src.recording.constants import PREDICTION, RECORDS_FILE, TEST_RESULTS, TRAIN_RESULTS
+from src.models.abstract_models.base_models import PetaleBinaryClassifier, PetaleRegressor
+from src.recording.constants import PREDICTION, RECORDS_FILE, TEST_RESULTS, TRAIN_RESULTS, VALID_RESULTS
 from src.recording.recording import Recorder, compare_prediction_recordings, \
     get_evaluation_recap, plot_hps_importance_chart
 from src.training.tuning import Objective, Tuner
@@ -282,13 +282,33 @@ class Evaluator:
         with open(path.join(self._pred_path, f"Split_{split_number}", RECORDS_FILE), "r") as read_file:
             data = load(read_file)
 
+        # We check the format of predictions
+        random_pred = list(data[TRAIN_RESULTS].values())[0][PREDICTION]
+        if "[" not in random_pred:
+
+            # Saving of the number of predictions columns
+            nb_pred_col = 1
+
+            # Creation of the conversion function to extract predictions from strings
+            def convert(x: str) -> List[float]:
+                return [float(x)]
+        else:
+
+            # Saving of the number of predictions columns
+            nb_pred_col = len(random_pred[1:-1].split(','))
+
+            # Creation of the conversion function to extract predictions from strings
+            def convert(x: str) -> List[float]:
+                return [float(a) for a in x[1:-1].split(',')]
+
         # Extraction of predictions
         pred = {}
-        for section in TRAIN_RESULTS, TEST_RESULTS:
-            pred = {**pred, **{p_id: [p_id, round(float(v[PREDICTION]), 2)] for p_id, v in data[section].items()}}
+        for section in TRAIN_RESULTS, TEST_RESULTS, VALID_RESULTS:
+            pred = {**pred, **{p_id: [p_id, *convert(v[PREDICTION])] for p_id, v in data[section].items()}}
 
         # Creation of pandas dataframe
-        df = DataFrame.from_dict(pred, orient='index', columns=[PARTICIPANT, 'pred'])
+        pred_col_names = [f'pred{i}' for i in range(nb_pred_col)]
+        df = DataFrame.from_dict(pred, orient='index', columns=[PARTICIPANT, *pred_col_names])
 
         # Creation of new augmented dataset
         return subset.create_superset(data=df, categorical=False)

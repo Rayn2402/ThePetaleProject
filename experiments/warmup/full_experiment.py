@@ -6,7 +6,7 @@ Authors: Nicolas Raymond
 Description: This file is used to execute all the model comparisons
              made on the warmup dataset
 
-Date of last modification : 2022/01/25
+Date of last modification : 2022/02/18
 """
 import sys
 import argparse
@@ -88,7 +88,7 @@ def argument_parser():
 
     # Usage of predictions from another experiment
     parser.add_argument('-p', '--path', type=str, default=None,
-                        help='Path leading to predictions of another model, will only be used by HAN if specified')
+                        help='Path leading to predictions of another model')
 
     # Seed
     parser.add_argument('-seed', '--seed', type=int, default=1010710, help='Seed used during model evaluations')
@@ -231,7 +231,8 @@ if __name__ == '__main__':
                               evaluation_metrics=evaluation_metrics,
                               save_hps_importance=True,
                               save_optimization_history=True,
-                              seed=args.seed)
+                              seed=args.seed,
+                              pred_path=args.path)
 
         # Evaluation
         evaluator.evaluate()
@@ -260,7 +261,8 @@ if __name__ == '__main__':
                               feature_selector=feature_selector,
                               save_hps_importance=True,
                               save_optimization_history=True,
-                              seed=args.seed)
+                              seed=args.seed,
+                              pred_path=args.path)
 
         # Evaluation
         evaluator.evaluate()
@@ -289,7 +291,8 @@ if __name__ == '__main__':
                               feature_selector=feature_selector,
                               save_hps_importance=True,
                               save_optimization_history=True,
-                              seed=args.seed)
+                              seed=args.seed,
+                              pred_path=args.path)
 
         # Evaluation
         evaluator.evaluate()
@@ -337,7 +340,8 @@ if __name__ == '__main__':
                               fixed_params_update_function=update_fixed_params,
                               save_hps_importance=True,
                               save_optimization_history=True,
-                              seed=args.seed)
+                              seed=args.seed,
+                              pred_path=args.path)
 
         # Evaluation
         evaluator.evaluate()
@@ -390,7 +394,8 @@ if __name__ == '__main__':
                               fixed_params_update_function=update_fixed_params,
                               save_hps_importance=True,
                               save_optimization_history=True,
-                              seed=args.seed)
+                              seed=args.seed,
+                              pred_path=args.path)
 
         # Evaluation
         evaluator.evaluate()
@@ -398,7 +403,7 @@ if __name__ == '__main__':
         print("Time Taken for ENET (minutes): ", round((time.time() - start) / 60, 2))
 
     """
-    GeneEncoding experiment
+    GGE experiment
     """
     if args.gge and genes:
 
@@ -632,7 +637,8 @@ if __name__ == '__main__':
                               feature_selector=feature_selector,
                               save_hps_importance=True,
                               save_optimization_history=True,
-                              seed=args.seed)
+                              seed=args.seed,
+                              pred_path=args.path)
 
         # Evaluation
         evaluator.evaluate()
@@ -677,8 +683,7 @@ if __name__ == '__main__':
                               feature_selector=feature_selector,
                               save_hps_importance=True,
                               save_optimization_history=True,
-                              seed=args.seed,
-                              pred_path=args.path)
+                              seed=args.seed)
 
         # Evaluation
         evaluator.evaluate()
@@ -723,8 +728,7 @@ if __name__ == '__main__':
                               feature_selector=feature_selector,
                               save_hps_importance=True,
                               save_optimization_history=True,
-                              seed=args.seed,
-                              pred_path=args.path)
+                              seed=args.seed)
 
         # Evaluation
         evaluator.evaluate()

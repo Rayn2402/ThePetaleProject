@@ -339,42 +339,46 @@ class Evaluator:
                                     (subset.test_mask, MaskType.TEST),
                                     (subset.valid_mask, MaskType.VALID)]:
 
-                # We compute prediction
-                pred = model.predict_proba(subset, mask)
+                if len(mask) > 0:
 
-                # We extract ids and targets
-                ids = [subset.ids[i] for i in mask]
-                _, y, _ = subset[mask]
+                    # We compute prediction
+                    pred = model.predict_proba(subset, mask)
 
-                # We record all metric scores
-                for metric in self.evaluation_metrics:
-                    recorder.record_scores(score=metric(pred, y, thresh=model.thresh),
-                                           metric=metric.name, mask_type=mask_type)
+                    # We extract ids and targets
+                    ids = [subset.ids[i] for i in mask]
+                    _, y, _ = subset[mask]
 
-                if not is_tensor(pred):
-                    pred = from_numpy(pred)
+                    # We record all metric scores
+                    for metric in self.evaluation_metrics:
+                        recorder.record_scores(score=metric(pred, y, thresh=model.thresh),
+                                               metric=metric.name, mask_type=mask_type)
 
-                # We get the final predictions from the soft predictions
-                pred = (pred >= model.thresh).long()
+                    if not is_tensor(pred):
+                        pred = from_numpy(pred)
 
-                # We save the predictions
-                recorder.record_predictions(predictions=pred, ids=ids, targets=y, mask_type=mask_type)
+                    # We get the final predictions from the soft predictions
+                    pred = (pred >= model.thresh).long()
+
+                    # We save the predictions
+                    recorder.record_predictions(predictions=pred, ids=ids, targets=y, mask_type=mask_type)
 
         else:   # If instead the model is for regression
             for mask, mask_type in [(subset.train_mask, MaskType.TRAIN),
                                     (subset.test_mask, MaskType.TEST),
                                     (subset.valid_mask, MaskType.VALID)]:
 
-                # We extract ids and targets
-                ids = [subset.ids[i] for i in mask]
-                _, y, _ = subset[mask]
+                if len(mask) > 0:
 
-                # We get the real-valued predictions
-                pred = model.predict(subset, mask)
+                    # We extract ids and targets
+                    ids = [subset.ids[i] for i in mask]
+                    _, y, _ = subset[mask]
 
-                # We record all metric scores
-                for metric in self.evaluation_metrics:
-                    recorder.record_scores(score=metric(pred, y), metric=metric.name, mask_type=mask_type)
+                    # We get the real-valued predictions
+                    pred = model.predict(subset, mask)
 
-                # We save the predictions
-                recorder.record_predictions(predictions=pred, ids=ids, targets=y, mask_type=mask_type)
+                    # We record all metric scores
+                    for metric in self.evaluation_metrics:
+                        recorder.record_scores(score=metric(pred, y), metric=metric.name, mask_type=mask_type)
+
+                    # We save the predictions
+                    recorder.record_predictions(predictions=pred, ids=ids, targets=y, mask_type=mask_type)

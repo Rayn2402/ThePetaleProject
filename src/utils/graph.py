@@ -172,11 +172,11 @@ class PetaleGraph:
         Returns: (N, N) tensor with distances
         """
         # We first compute inverse of covariance matrix related to numerical columns of training set
-        x, _, _ = dataset[dataset.train_mask]
-        numerical_data = x[:, dataset.cont_idx]
-        if is_tensor(numerical_data):
-            numerical_data = numerical_data.numpy()
-        inv_cov_mat = tensor(inv(cov(numerical_data, rowvar=False))).float()
+        numerical_data = dataset.x[:, dataset.cont_idx]
+        numerical_train_data = numerical_data[dataset.train_mask, :]
+        if is_tensor(numerical_train_data):
+            numerical_train_data = numerical_train_data.numpy()
+        inv_cov_mat = tensor(inv(cov(numerical_train_data, rowvar=False))).float()
 
         # We convert numerical data to tensor
         numerical_data = tensor(numerical_data).float()

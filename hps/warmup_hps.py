@@ -8,6 +8,7 @@ Description: File used to store hps search spaces for warmup experiments
 Date of last modification: 2022/01/20
 """
 
+from src.models.gge import GGEHP
 from src.models.mlp import MLPHP
 from src.models.han import HanHP
 from src.models.tabnet import TabNetHP
@@ -193,4 +194,20 @@ ENET_HPS = {
     MLPHP.N_UNIT.name: {
         Range.VALUE: 5
     },
+}
+
+GGEHPS = {
+    GGEHP.BATCH_SIZE.name: {
+        Range.MIN: 15,
+        Range.MAX: 55,
+        Range.STEP: 10
+    },
+    GGEHP.LR.name: {
+        Range.MIN: 0.001,
+        Range.MAX: 0.5
+    },
+    GGEHP.RHO.name: {
+        Range.MIN: 0.05,
+        Range.MAX: 2
+    }
 }

@@ -79,7 +79,7 @@ class DataCleaner:
         if not (0 <= column_thresh <= 1 and 0 <= row_thresh <= 1):
             raise ValueError("Thresholds must be in range [0, 1]")
 
-        if min_n_per_cat >= 0:
+        if min_n_per_cat < 0:
             raise ValueError("The minimal number of items per category must be greater than 0")
 
         if not (0 < max_cat_percentage < 1):

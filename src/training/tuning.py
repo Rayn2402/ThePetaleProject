@@ -24,8 +24,8 @@ from os import makedirs
 from os.path import join
 from settings.paths import Paths
 from src.data.processing.datasets import MaskType, PetaleDataset
-from src.models.abstract_models.base_models import PetaleBinaryClassifier
-from src.utils.score_metrics import Metric
+from src.models.abstract_models.base_models import PetaleBinaryClassifier, PetaleRegressor
+from src.utils.score_metrics import Direction, Metric
 from src.utils.hyperparameters import CategoricalHP, Distribution, HP, NumericalContinuousHP, NumericalIntHP, Range
 from time import strftime
 from torch import mean, tensor
@@ -41,7 +41,7 @@ class Objective:
                  masks: Dict[int, Dict[str, List[int]]],
                  hps: Dict[str, Dict[str, Any]],
                  fixed_params: Optional[Dict[str, Any]],
-                 metric: Metric,
+                 metric: Optional[Metric],
                  model_constructor: Callable,
                  gpu_device: bool = False):
         """
@@ -59,6 +59,10 @@ class Objective:
         for hp in model_constructor.get_hps():
             if not (hp.name in list(hps.keys())):
                 raise ValueError(f"'{hp}' is missing from hps dictionary")
+
+        # We validate the given metric
+        if metric is None and not model_constructor.is_encoder():
+            raise ValueError('A metric must be specified for this type of model constructor')
 
         # We set protected attributes
         self._dataset = dataset
@@ -206,22 +210,30 @@ class Objective:
             dts = deepcopy(self._dataset)
             dts.update_masks(train_mask=train_idx, valid_mask=valid_idx, test_mask=test_idx)
 
-            # We build a model using hps and fixed params (PetaleRegressor or PetaleClassifier)
+            # We build a model using hps and fixed params (PetaleRegressor, PetaleClassifier or PetaleEncoder)
             model = self._model_constructor(**hps, **self._fixed_params)
 
             # We train the model
             model.fit(dts)
 
             # If the model is a classifier we find its optimal threshold
+            # and compute the prediction score
             if isinstance(model, PetaleBinaryClassifier):
                 model.find_optimal_threshold(dataset=dts, metric=self._metric)
                 pred = model.predict_proba(dataset=dts)
                 _, y, _ = dts[dts.test_mask]
                 score = self._metric(pred, y, thresh=model.thresh)
-            else:
+
+            # If the model is a regression model, we compute the prediction score
+            elif isinstance(model, PetaleRegressor):
                 pred = model.predict(dataset=dts)
                 _, y, _ = dts[dts.test_mask]
                 score = self._metric(pred, y)
+
+            # Otherwise, if its an encoder, we calculate the loss
+            else:
+                pred = model.predict(dataset=dts)
+                score = model.loss(pred, dts.test_mask)
 
             return score
 
@@ -298,7 +310,13 @@ class Tuner:
 
         Returns: study object
         """
-        return create_study(direction=self._objective.metric.direction,
+        # The metric can be None if the objective is associated to a PetaleEncoder
+        if self._objective.metric is None:
+            direction = Direction.MINIMIZE
+        else:
+            direction = self._objective.metric.direction
+
+        return create_study(direction=direction,
                             study_name=study_name,
                             sampler=TPESampler(n_startup_trials=20,
                                                n_ei_candidates=20,

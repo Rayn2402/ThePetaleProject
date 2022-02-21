@@ -7,7 +7,7 @@ Authors: Nicolas Raymond
 Description: This file is used to define the Evaluator class in charge
              of comparing models against each other
 
-Date of last modification : 2021/10/29
+Date of last modification : 2022/02/15
 """
 import ray
 
@@ -21,7 +21,7 @@ from src.data.extraction.constants import PARTICIPANT
 from src.data.processing.datasets import MaskType, PetaleDataset
 from src.data.processing.feature_selection import FeatureSelector
 from src.models.abstract_models.base_models import PetaleBinaryClassifier, PetaleRegressor
-from src.recording.constants import PREDICTION, RECORDS_FILE, TEST_RESULTS, TRAIN_RESULTS
+from src.recording.constants import PREDICTION, RECORDS_FILE, TEST_RESULTS, TRAIN_RESULTS, VALID_RESULTS
 from src.recording.recording import Recorder, compare_prediction_recordings, \
     get_evaluation_recap, plot_hps_importance_chart
 from src.training.tuning import Objective, Tuner
@@ -229,9 +229,10 @@ class Evaluator:
             recorder.generate_file()
 
             # We generate a plot that compares predictions to ground_truth
-            compare_prediction_recordings(evaluations=[self.evaluation_name],
-                                          split_index=k,
-                                          recording_path=Paths.EXPERIMENTS_RECORDS)
+            if not model.is_encoder():
+                compare_prediction_recordings(evaluations=[self.evaluation_name],
+                                              split_index=k,
+                                              recording_path=Paths.EXPERIMENTS_RECORDS)
 
         # We save the evaluation recap
         get_evaluation_recap(evaluation_name=self.evaluation_name, recordings_path=Paths.EXPERIMENTS_RECORDS)
@@ -255,12 +256,12 @@ class Evaluator:
 
         Returns: objective function
         """
-
+        metric = self.evaluation_metrics[-1] if len(self.evaluation_metrics) > 0 else None
         return Objective(dataset=subset,
                          masks=masks,
                          hps=self._hps,
                          fixed_params=self._fixed_params,
-                         metric=self.evaluation_metrics[-1],
+                         metric=metric,
                          model_constructor=self.model_constructor,
                          gpu_device=self._gpu_device)
 
@@ -281,13 +282,33 @@ class Evaluator:
         with open(path.join(self._pred_path, f"Split_{split_number}", RECORDS_FILE), "r") as read_file:
             data = load(read_file)
 
+        # We check the format of predictions
+        random_pred = list(data[TRAIN_RESULTS].values())[0][PREDICTION]
+        if "[" not in random_pred:
+
+            # Saving of the number of predictions columns
+            nb_pred_col = 1
+
+            # Creation of the conversion function to extract predictions from strings
+            def convert(x: str) -> List[float]:
+                return [float(x)]
+        else:
+
+            # Saving of the number of predictions columns
+            nb_pred_col = len(random_pred[1:-1].split(','))
+
+            # Creation of the conversion function to extract predictions from strings
+            def convert(x: str) -> List[float]:
+                return [float(a) for a in x[1:-1].split(',')]
+
         # Extraction of predictions
         pred = {}
-        for section in TRAIN_RESULTS, TEST_RESULTS:
-            pred = {**pred, **{p_id: [p_id, round(float(v[PREDICTION]), 2)] for p_id, v in data[section].items()}}
+        for section in TRAIN_RESULTS, TEST_RESULTS, VALID_RESULTS:
+            pred = {**pred, **{p_id: [p_id, *convert(v[PREDICTION])] for p_id, v in data[section].items()}}
 
         # Creation of pandas dataframe
-        df = DataFrame.from_dict(pred, orient='index', columns=[PARTICIPANT, 'pred'])
+        pred_col_names = [f'pred{i}' for i in range(nb_pred_col)]
+        df = DataFrame.from_dict(pred, orient='index', columns=[PARTICIPANT, *pred_col_names])
 
         # Creation of new augmented dataset
         return subset.create_superset(data=df, categorical=False)
@@ -314,41 +335,50 @@ class Evaluator:
             model.find_optimal_threshold(dataset=subset, metric=self.evaluation_metrics[-1])
             recorder.record_data_info('thresh', str(model.thresh))
 
-            for mask, test_bool in [(subset.train_mask, False), (subset.test_mask, True)]:
+            for mask, mask_type in [(subset.train_mask, MaskType.TRAIN),
+                                    (subset.test_mask, MaskType.TEST),
+                                    (subset.valid_mask, MaskType.VALID)]:
 
-                # We compute prediction
-                pred = model.predict_proba(subset, mask)
+                if len(mask) > 0:
 
-                # We extract ids and targets
-                ids = [subset.ids[i] for i in mask]
-                _, y, _ = subset[mask]
+                    # We compute prediction
+                    pred = model.predict_proba(subset, mask)
 
-                # We record all metric scores
-                for metric in self.evaluation_metrics:
-                    recorder.record_scores(score=metric(pred, y, thresh=model.thresh), metric=metric.name, test=test_bool)
+                    # We extract ids and targets
+                    ids = [subset.ids[i] for i in mask]
+                    _, y, _ = subset[mask]
 
-                if not is_tensor(pred):
-                    pred = from_numpy(pred)
+                    # We record all metric scores
+                    for metric in self.evaluation_metrics:
+                        recorder.record_scores(score=metric(pred, y, thresh=model.thresh),
+                                               metric=metric.name, mask_type=mask_type)
 
-                # We get the final predictions from the soft predictions
-                pred = (pred >= model.thresh).long()
+                    if not is_tensor(pred):
+                        pred = from_numpy(pred)
 
-                # We save the predictions
-                recorder.record_predictions(predictions=pred, ids=ids, target=y, test=test_bool)
-
-        else:   # If instead the model is for regression
-            for mask, test_bool in [(subset.train_mask, False), (subset.test_mask, True)]:
-
-                # We extract ids and targets
-                ids = [subset.ids[i] for i in mask]
-                _, y, _ = subset[mask]
-
-                # We get the real-valued predictions
-                pred = model.predict(subset, mask)
-
-                # We record all metric scores
-                for metric in self.evaluation_metrics:
-                    recorder.record_scores(score=metric(pred, y), metric=metric.name, test=test_bool)
+                    # We get the final predictions from the soft predictions
+                    pred = (pred >= model.thresh).long()
 
                     # We save the predictions
-                    recorder.record_predictions(predictions=pred, ids=ids, target=y, test=test_bool)
+                    recorder.record_predictions(predictions=pred, ids=ids, targets=y, mask_type=mask_type)
+
+        else:   # If instead the model is for regression
+            for mask, mask_type in [(subset.train_mask, MaskType.TRAIN),
+                                    (subset.test_mask, MaskType.TEST),
+                                    (subset.valid_mask, MaskType.VALID)]:
+
+                if len(mask) > 0:
+
+                    # We extract ids and targets
+                    ids = [subset.ids[i] for i in mask]
+                    _, y, _ = subset[mask]
+
+                    # We get the real-valued predictions
+                    pred = model.predict(subset, mask)
+
+                    # We record all metric scores
+                    for metric in self.evaluation_metrics:
+                        recorder.record_scores(score=metric(pred, y), metric=metric.name, mask_type=mask_type)
+
+                    # We save the predictions
+                    recorder.record_predictions(predictions=pred, ids=ids, targets=y, mask_type=mask_type)

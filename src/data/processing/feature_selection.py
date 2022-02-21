@@ -23,14 +23,18 @@ class FeatureSelector:
     See the following source:
     Deep Learning for Coders with fastai & PyTorch : AI Applications Without a PhD (p.486-489)
     """
-    def __init__(self, importance_threshold: float):
+    def __init__(self,
+                 importance_threshold: float,
+                 seed: Optional[int] = None):
         """
         Sets protected attributes
 
         Args:
             importance_threshold: cumulative importance of features selected
+            seed: number used as a random state for the random forest doing feature selection
         """
         self.__importance_thresh = importance_threshold
+        self.__seed = seed
 
     def __call__(self,
                  dataset: PetaleDataset,
@@ -82,9 +86,13 @@ class FeatureSelector:
 
         # Selection of model
         if dataset.classification:
-            model = RandomForestClassifier(n_jobs=-1, oob_score=True).fit(dataset.x[mask], dataset.y[mask])
+            model = RandomForestClassifier(n_jobs=-1,
+                                           oob_score=True,
+                                           random_state=self.__seed).fit(dataset.x[mask], dataset.y[mask])
         else:
-            model = RandomForestRegressor(n_jobs=-1, oob_score=True).fit(dataset.x[mask], dataset.y[mask])
+            model = RandomForestRegressor(n_jobs=-1,
+                                          oob_score=True,
+                                          random_state=self.__seed).fit(dataset.x[mask], dataset.y[mask])
 
         # Creation of feature importance table
         features = dataset.get_imputed_dataframe().columns

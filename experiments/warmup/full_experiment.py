@@ -6,7 +6,7 @@ Authors: Nicolas Raymond
 Description: This file is used to execute all the model comparisons
              made on the warmup dataset
 
-Date of last modification : 2022/01/25
+Date of last modification : 2022/02/18
 """
 import sys
 import argparse
@@ -47,10 +47,6 @@ def argument_parser():
                         help='True if we want to include sex in features')
 
     # Genes encoding
-    parser.add_argument('-gen_emb', '--genomic_embedding', default=False, action='store_true',
-                        help='True if we want to use genomic signature generation for linear regression model')
-    parser.add_argument('-att', '--attention', default=False, action='store_true',
-                        help='True if we want to use GeneGraphAttentionEncoder instead of GeneGraphEncoder')
     parser.add_argument('-share', '--embedding_sharing', default=False, action='store_true',
                         help='True if we want to use a single entity embedding layer for all genes'
                              ' (currently only applies with genomic signature creation')
@@ -59,33 +55,43 @@ def argument_parser():
     parser.add_argument('-han_e', '--han_with_encoding', default=False, action='store_true',
                         help='True if we want to run HAN experiment with single layered pre-encoder')
     parser.add_argument('-han', '--han', default=False, action='store_true',
-                        help='True if we want to run heterogeneous graph attention network experiments')
-    parser.add_argument('-lin', '--linear_regression', default=False, action='store_true',
-                        help='True if we want to run logistic regression experiments')
+                        help='True if we want to run heterogeneous graph attention network experiment')
+    parser.add_argument('-enet', '--enet', default=False, action='store_true',
+                        help='True if we want to enet experiment')
     parser.add_argument('-mlp', '--mlp', default=False, action='store_true',
-                        help='True if we want to run mlp experiments')
+                        help='True if we want to run mlp experiment')
     parser.add_argument('-rf', '--random_forest', default=False, action='store_true',
-                        help='True if we want to run random forest experiments')
+                        help='True if we want to run random forest experiment')
     parser.add_argument('-xg', '--xg_boost', default=False, action='store_true',
-                        help='True if we want to run xgboost experiments')
+                        help='True if we want to run xgboost experiment')
     parser.add_argument('-tab', '--tabnet', default=False, action='store_true',
-                        help='True if we want to run TabNet experiments')
+                        help='True if we want to run TabNet experiment')
+    parser.add_argument('-gge', '--gge', default=False, action='store_true',
+                        help='True if we want to run GeneGraphEncoder with enet experiment')
+    parser.add_argument('-ggae', '--ggae', default=False, action='store_true',
+                        help='True if we want to run GeneGraphAttentionEncoder with enet experiment')
+
+    # Self supervised learning experiments
+    parser.add_argument('-ssl_ggae', '-ssl_ggae', default=False, action='store_true',
+                        help='True if we want to run self supervised learning with the GeneGraphAttentionEncoder')
+    parser.add_argument('-ssl_gge', '-ssl_gge', default=False, action='store_true',
+                        help='True if we want to run self supervised learning with the GeneGraphEncoder')
 
     # Activation of sharpness-aware minimization
     parser.add_argument('-sam', '--enable_sam', default=False, action='store_true',
                         help='True if we want to use Sharpness-Aware Minimization Optimizer')
 
     # Activation of self supervised learning
-    parser.add_argument('-pre_training', '--pre_training', default=False, action='store_true',
-                        help='True if we want to apply pre self supervised training to model'
-                             'where it is enabled. Currently available for ENET with genes encoding')
+    # parser.add_argument('-pre_training', '--pre_training', default=False, action='store_true',
+    #                    help='True if we want to apply pre self supervised training to model'
+    #                         'where it is enabled. Currently available for ENET with genes encoding')
 
     # Usage of predictions from another experiment
     parser.add_argument('-p', '--path', type=str, default=None,
-                        help='Path leading to predictions of another model, will only be used by HAN if specified')
+                        help='Path leading to predictions of another model')
 
     # Seed
-    parser.add_argument('-seed', '--seed', type=int, default=SEED, help='Seed to use during model evaluations')
+    parser.add_argument('-seed', '--seed', type=int, default=1010710, help='Seed used during model evaluations')
 
     arguments = parser.parse_args()
 
@@ -102,13 +108,14 @@ if __name__ == '__main__':
 
     # Imports specific to project
     sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
-    from hps.warmup_hps import TAB_HPS, RF_HPS, HAN_HPS, MLP_HPS, ENET_HPS, XGBOOST_HPS
+    from hps.warmup_hps import TAB_HPS, RF_HPS, HAN_HPS, MLP_HPS, ENET_HPS, XGBOOST_HPS, GGEHPS
     from settings.paths import Paths
     from src.data.processing.datasets import PetaleDataset, PetaleStaticGNNDataset
     from src.data.processing.feature_selection import FeatureSelector
     from src.data.processing.sampling import extract_masks, GeneChoice, get_warmup_data, push_valid_to_train
     from src.models.blocks.genes_signature_block import GeneEncoder, GeneGraphEncoder, GeneGraphAttentionEncoder
     from src.models.blocks.mlp_blocks import MLPEncodingBlock
+    from src.models.gge import PetaleGGE
     from src.models.han import PetaleHANR, HanHP
     from src.models.mlp import PetaleMLPR, MLPHP
     from src.models.tabnet import PetaleTNR
@@ -158,7 +165,7 @@ if __name__ == '__main__':
 
     # Initialization of feature selector
     if args.feature_selection:
-        feature_selector = FeatureSelector(0.95)
+        feature_selector = FeatureSelector(importance_threshold=0.90, seed=args.seed)
     else:
         feature_selector = None
 
@@ -223,7 +230,9 @@ if __name__ == '__main__':
                               feature_selector=feature_selector,
                               evaluation_metrics=evaluation_metrics,
                               save_hps_importance=True,
-                              save_optimization_history=True)
+                              save_optimization_history=True,
+                              seed=args.seed,
+                              pred_path=args.path)
 
         # Evaluation
         evaluator.evaluate()
@@ -251,7 +260,9 @@ if __name__ == '__main__':
                               evaluation_metrics=evaluation_metrics,
                               feature_selector=feature_selector,
                               save_hps_importance=True,
-                              save_optimization_history=True)
+                              save_optimization_history=True,
+                              seed=args.seed,
+                              pred_path=args.path)
 
         # Evaluation
         evaluator.evaluate()
@@ -279,7 +290,9 @@ if __name__ == '__main__':
                               evaluation_metrics=evaluation_metrics,
                               feature_selector=feature_selector,
                               save_hps_importance=True,
-                              save_optimization_history=True)
+                              save_optimization_history=True,
+                              seed=args.seed,
+                              pred_path=args.path)
 
         # Evaluation
         evaluator.evaluate()
@@ -326,7 +339,9 @@ if __name__ == '__main__':
                               fixed_params=fixed_params,
                               fixed_params_update_function=update_fixed_params,
                               save_hps_importance=True,
-                              save_optimization_history=True)
+                              save_optimization_history=True,
+                              seed=args.seed,
+                              pred_path=args.path)
 
         # Evaluation
         evaluator.evaluate()
@@ -334,40 +349,16 @@ if __name__ == '__main__':
         print("Time Taken for MLP (minutes): ", round((time.time() - start) / 60, 2))
 
     """
-    Linear regression experiment
+    ENET experiment
     """
-    if args.linear_regression:
+    if args.enet:
 
         # Start timer
         start = time.time()
 
         # Creation of the dataset
-        if not args.genomic_embedding:
-            dataset = PetaleDataset(df, target, cont_cols, cat_cols,
-                                    to_tensor=True, classification=False)
-            gene_encoder_constructor = None
-        else:
-            dataset = PetaleDataset(df, target, cont_cols, cat_cols,
-                                    gene_cols=gene_cols,
-                                    to_tensor=True, classification=False)
-
-            def gene_encoder_constructor(gene_idx_groups: Optional[Dict[str, List[int]]]) -> GeneEncoder:
-                """
-                Builds a GeneEncoder
-
-                Args:
-                    gene_idx_groups: dictionary where keys are names of chromosomes and values
-                                     are list of idx referring to columns of genes associated to
-                                     the chromosome
-
-                Returns: GeneEncoder
-                """
-                if args.attention:
-                    return GeneGraphAttentionEncoder(gene_idx_groups=gene_idx_groups,
-                                                     genes_emb_sharing=args.genomic_embedding)
-                else:
-                    return GeneGraphEncoder(gene_idx_groups=gene_idx_groups,
-                                            genes_emb_sharing=args.genomic_embedding)
+        dataset = PetaleDataset(df, target, cont_cols, cat_cols,
+                                to_tensor=True, classification=False)
 
         # Creation of function to update fixed params
         max_e = 200 if genes else 50
@@ -379,13 +370,10 @@ if __name__ == '__main__':
                     'num_cont_col': nb_cont_col,
                     'cat_idx': dts.cat_idx,
                     'cat_sizes': dts.cat_sizes,
-                    'cat_emb_sizes': dts.cat_sizes,
-                    'gene_idx_groups': dts.gene_idx_groups,
-                    'gene_encoder_constructor': gene_encoder_constructor,
-                    'pre_training': args.pre_training}
+                    'cat_emb_sizes': dts.cat_sizes}
 
 
-        # Saving of fixed_params for MLP
+        # Saving of fixed_params for ENET
         fixed_params = update_fixed_params(dataset)
 
         # Update of hyperparameters
@@ -397,19 +385,157 @@ if __name__ == '__main__':
         evaluator = Evaluator(model_constructor=PetaleMLPR,
                               dataset=dataset,
                               masks=m,
-                              evaluation_name=f"linear_reg_warmup{eval_id}",
+                              evaluation_name=f"enet_warmup{eval_id}",
                               hps=ENET_HPS,
                               n_trials=200,
                               evaluation_metrics=evaluation_metrics,
                               feature_selector=feature_selector,
                               fixed_params=fixed_params,
                               fixed_params_update_function=update_fixed_params,
-                              save_hps_importance=True, save_optimization_history=True)
+                              save_hps_importance=True,
+                              save_optimization_history=True,
+                              seed=args.seed,
+                              pred_path=args.path)
 
         # Evaluation
         evaluator.evaluate()
 
         print("Time Taken for ENET (minutes): ", round((time.time() - start) / 60, 2))
+
+    """
+    GGE experiment
+    """
+    if args.gge and genes:
+
+        # Start timer
+        start = time.time()
+
+        # Creation of the dataset
+        dataset = PetaleDataset(df, target, cont_cols, cat_cols,
+                                gene_cols=gene_cols, to_tensor=True, classification=False)
+
+        def gene_encoder_constructor(gene_idx_groups: Optional[Dict[str, List[int]]]) -> GeneEncoder:
+            """
+            Builds a GeneGraphEncoder
+
+            Args:
+                gene_idx_groups: dictionary where keys are names of chromosomes and values
+                                 are list of idx referring to columns of genes associated to
+                                 the chromosome
+
+            Returns: GeneEncoder
+            """
+
+            return GeneGraphEncoder(gene_idx_groups=gene_idx_groups,
+                                    genes_emb_sharing=args.embedding_sharing,
+                                    signature_size=3)
+
+        def update_fixed_params(dts):
+            nb_cont_col = len(dts.cont_cols) if dts.cont_cols is not None else 0
+            return {'max_epochs': 200,
+                    'patience': 25,
+                    'num_cont_col': nb_cont_col,
+                    'cat_idx': dts.cat_idx,
+                    'cat_sizes': dts.cat_sizes,
+                    'cat_emb_sizes': dts.cat_sizes,
+                    'gene_idx_groups': dts.gene_idx_groups,
+                    'gene_encoder_constructor': gene_encoder_constructor}
+
+
+        # Saving of fixed_params for GGE + ENET
+        fixed_params = update_fixed_params(dataset)
+
+        # Update of hyperparameters
+        if args.enable_sam:
+            ENET_HPS[MLPHP.RHO.name] = sam_search_space
+
+        # Creation of evaluator
+        evaluator = Evaluator(model_constructor=PetaleMLPR,
+                              dataset=dataset,
+                              masks=masks,
+                              evaluation_name=f"ggeEnet_warmup{eval_id}",
+                              hps=ENET_HPS,
+                              n_trials=200,
+                              evaluation_metrics=evaluation_metrics,
+                              feature_selector=feature_selector,
+                              fixed_params=fixed_params,
+                              fixed_params_update_function=update_fixed_params,
+                              save_hps_importance=True,
+                              save_optimization_history=True,
+                              seed=args.seed)
+
+        # Evaluation
+        evaluator.evaluate()
+
+        print("Time Taken for GGE (minutes): ", round((time.time() - start) / 60, 2))
+
+    """
+    GGAE experiment
+    """
+    if args.ggae and genes:
+
+        # Start timer
+        start = time.time()
+
+        # Creation of the dataset
+        dataset = PetaleDataset(df, target, cont_cols, cat_cols,
+                                gene_cols=gene_cols, to_tensor=True, classification=False)
+
+
+        def gene_encoder_constructor(gene_idx_groups: Optional[Dict[str, List[int]]]) -> GeneEncoder:
+            """
+            Builds a GeneGraphAttentionEncoder
+
+            Args:
+                gene_idx_groups: dictionary where keys are names of chromosomes and values
+                                 are list of idx referring to columns of genes associated to
+                                 the chromosome
+
+            Returns: GeneEncoder
+            """
+
+            return GeneGraphAttentionEncoder(gene_idx_groups=gene_idx_groups,
+                                             genes_emb_sharing=args.embedding_sharing,
+                                             signature_size=3)
+
+        def update_fixed_params(dts):
+            nb_cont_col = len(dts.cont_cols) if dts.cont_cols is not None else 0
+            return {'max_epochs': 200,
+                    'patience': 25,
+                    'num_cont_col': nb_cont_col,
+                    'cat_idx': dts.cat_idx,
+                    'cat_sizes': dts.cat_sizes,
+                    'cat_emb_sizes': dts.cat_sizes,
+                    'gene_idx_groups': dts.gene_idx_groups,
+                    'gene_encoder_constructor': gene_encoder_constructor}
+
+
+        # Saving of fixed_params for GGAE + ENET
+        fixed_params = update_fixed_params(dataset)
+
+        # Update of hyperparameters
+        if args.enable_sam:
+            ENET_HPS[MLPHP.RHO.name] = sam_search_space
+
+        # Creation of evaluator
+        evaluator = Evaluator(model_constructor=PetaleMLPR,
+                              dataset=dataset,
+                              masks=masks,
+                              evaluation_name=f"ggaeEnet_warmup{eval_id}",
+                              hps=ENET_HPS,
+                              n_trials=200,
+                              evaluation_metrics=evaluation_metrics,
+                              feature_selector=feature_selector,
+                              fixed_params=fixed_params,
+                              fixed_params_update_function=update_fixed_params,
+                              save_hps_importance=True,
+                              save_optimization_history=True,
+                              seed=args.seed)
+
+        # Evaluation
+        evaluator.evaluate()
+
+        print("Time Taken for GGAE (minutes): ", round((time.time() - start) / 60, 2))
 
     """
     HAN experiment
@@ -452,6 +578,7 @@ if __name__ == '__main__':
                               feature_selector=feature_selector,
                               save_hps_importance=True,
                               save_optimization_history=True,
+                              seed=args.seed,
                               pred_path=args.path)
 
         # Evaluation
@@ -490,7 +617,7 @@ if __name__ == '__main__':
                     'pre_encoder_constructor': build_encoder}
 
 
-        # Saving of original fixed params for HAN
+        # Saving of original fixed params for HANe
         fixed_params = update_fixed_params(dataset)
 
         # Update of hyperparameters
@@ -501,7 +628,7 @@ if __name__ == '__main__':
         evaluator = Evaluator(model_constructor=PetaleHANR,
                               dataset=dataset,
                               masks=gnn_masks,
-                              evaluation_name=f"ENC_HAN_warmup{eval_id}",
+                              evaluation_name=f"HANe_warmup{eval_id}",
                               hps=HAN_HPS,
                               n_trials=200,
                               evaluation_metrics=evaluation_metrics,
@@ -509,11 +636,103 @@ if __name__ == '__main__':
                               fixed_params_update_function=update_fixed_params,
                               feature_selector=feature_selector,
                               save_hps_importance=True,
-                              save_optimization_history=True)
+                              save_optimization_history=True,
+                              seed=args.seed,
+                              pred_path=args.path)
 
         # Evaluation
         evaluator.evaluate()
 
         print("Time Taken for encoder + HAN (minutes): ", round((time.time() - start) / 60, 2))
+
+    """
+    Self supervised learning experiment with GGAE
+    """
+    if args.ssl_ggae and genes:
+
+        # Start timer
+        start = time.time()
+
+        # Creation of the dataset
+        dataset = PetaleDataset(df, target, cont_cols, cat_cols,
+                                gene_cols=gene_cols, to_tensor=True, classification=False)
+
+        # Creation of a function to update fixed params
+        def update_fixed_params(dts):
+            return {'max_epochs': 200,
+                    'patience': 25,
+                    'gene_idx_groups': dts.gene_idx_groups,
+                    'hidden_size': 3,
+                    'signature_size': 3,
+                    'genes_emb_sharing': args.embedding_sharing,
+                    'aggregation_method': 'att'}
+
+        # Saving of original fixed params for GGAE
+        fixed_params = update_fixed_params(dataset)
+
+        # Creation of the evaluator
+        evaluator = Evaluator(model_constructor=PetaleGGE,
+                              dataset=dataset,
+                              masks=masks,
+                              evaluation_name=f"ggae_warmup{eval_id}",
+                              hps=GGEHPS,
+                              n_trials=200,
+                              evaluation_metrics=[],
+                              fixed_params=fixed_params,
+                              fixed_params_update_function=update_fixed_params,
+                              feature_selector=feature_selector,
+                              save_hps_importance=True,
+                              save_optimization_history=True,
+                              seed=args.seed)
+
+        # Evaluation
+        evaluator.evaluate()
+
+        print("Time Taken for Self Supervised GGAE (minutes): ", round((time.time() - start) / 60, 2))
+
+    """
+    Self supervised learning experiment with GGE
+    """
+    if args.ssl_gge and genes:
+
+        # Start timer
+        start = time.time()
+
+        # Creation of the dataset
+        dataset = PetaleDataset(df, target, cont_cols, cat_cols,
+                                gene_cols=gene_cols, to_tensor=True, classification=False)
+
+        # Creation of a function to update fixed params
+        def update_fixed_params(dts):
+            return {'max_epochs': 200,
+                    'patience': 25,
+                    'gene_idx_groups': dts.gene_idx_groups,
+                    'hidden_size': 3,
+                    'signature_size': 3,
+                    'genes_emb_sharing': args.embedding_sharing,
+                    'aggregation_method': 'avg'}
+
+        # Saving of original fixed params for GGAE
+        fixed_params = update_fixed_params(dataset)
+
+        # Creation of the evaluator
+        evaluator = Evaluator(model_constructor=PetaleGGE,
+                              dataset=dataset,
+                              masks=masks,
+                              evaluation_name=f"gge_warmup{eval_id}",
+                              hps=GGEHPS,
+                              n_trials=200,
+                              evaluation_metrics=[],
+                              fixed_params=fixed_params,
+                              fixed_params_update_function=update_fixed_params,
+                              feature_selector=feature_selector,
+                              save_hps_importance=True,
+                              save_optimization_history=True,
+                              seed=args.seed)
+
+        # Evaluation
+        evaluator.evaluate()
+
+        print("Time Taken for Self Supervised GGE (minutes): ", round((time.time() - start) / 60, 2))
 
     print("Overall time (minutes): ", round((time.time() - first_start) / 60, 2))

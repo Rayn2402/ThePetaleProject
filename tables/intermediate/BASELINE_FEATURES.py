@@ -4,9 +4,9 @@ Filename: BASELINE_FEATURES.py
 Authors: Nicolas Raymond
 
 Description: This file stores the procedure to execute in order to obtain
-             "BASE_FEATURES_AND_COMPLICATIONS" table in the database.
+             "BASELINE_FEATURES_AND_COMPLICATIONS" table in the database.
 
-         FIXED_FEATURES_AND_COMPLICATIONS contains :
+         BASELINE_FEATURES_AND_COMPLICATIONS contains :
 
             Features:
              - SEX
@@ -23,7 +23,7 @@ Description: This file stores the procedure to execute in order to obtain
             - Skeletal/Bone (0: No, 1: Yes)
             - Cardiometabolic (0: No, 1: Yes)
 
-Date of last modification : 2021/11/05
+Date of last modification : 2022/02/01
 """
 
 import pandas as pd

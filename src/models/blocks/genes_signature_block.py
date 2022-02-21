@@ -6,12 +6,12 @@ Author: Nicolas Raymond
 Description: Defines the modules in charge of encoding
              and decoding the genomic signature associated to patients.
 
-Date of last modification: 2022/01/25
+Date of last modification: 2022/02/08
 """
 
 from src.models.abstract_models.encoder import Encoder
 from src.models.blocks.mlp_blocks import BaseBlock, EntityEmbeddingBlock
-from torch import bmm, einsum, exp, normal, tensor, zeros
+from torch import bmm, einsum, exp, normal, sigmoid, tensor, zeros
 from torch.nn import BatchNorm1d, Conv1d, Linear, Module, Parameter
 from torch.nn.functional import leaky_relu, relu
 from typing import Dict, List
@@ -64,19 +64,31 @@ class GeneEncoder(Encoder, Module):
                                                       embedding_sharing=genes_emb_sharing)
 
         # Creation of a cache to store gene embeddings
-        self._embedding_cache = None
+        self._gene_embedding_cache = None
 
     @property
-    def cache(self) -> tensor:
-        return self._embedding_cache
+    def gene_embedding_cache(self) -> tensor:
+        return self._gene_embedding_cache
 
     @property
     def gene_idx_groups(self) -> Dict[str, List[int]]:
         return self._gene_idx_groups
 
     @property
+    def genes_idx(self) -> List[int]:
+        return self._genes_idx
+
+    @property
     def hidden_size(self) -> int:
         return self._hidden_size
+
+    @property
+    def nb_chrom(self) -> int:
+        return self._nb_chrom
+
+    @property
+    def nb_genes(self) -> int:
+        return self._nb_genes
 
     def build_chrom_composition_mat(self) -> tensor:
         """
@@ -115,7 +127,7 @@ class GeneEncoder(Encoder, Module):
 
         # Resize embeddings
         h = h.reshape(h.shape[0], self._nb_genes, self._hidden_size)  # (N, NB_GENES, HIDDEN_SIZE)
-        self._embedding_cache = h
+        self._gene_embedding_cache = h
 
         return h
 
@@ -163,8 +175,9 @@ class GeneGraphEncoder(GeneEncoder):
         # Linear layer that gives the final signature
         self._linear_layer = Linear(self._nb_chrom, signature_size)
 
-        # Batch norm layer that normalize final signatures
-        self._bn = BatchNorm1d(signature_size)
+        # Batch norm layers
+        self._bn1 = BatchNorm1d(self._nb_chrom)  # Normalizes after convolution layer
+        self._bn2 = BatchNorm1d(signature_size)  # Normalizes final signatures
 
     @property
     def chrom_weight_mat(self) -> tensor:
@@ -193,18 +206,18 @@ class GeneGraphEncoder(GeneEncoder):
         # (NB_CHROM, NB_GENES)(N, NB_GENES, HIDDEN_SIZE) -> (N, NB_CHROM, HIDDEN_SIZE)
         h = einsum('ij,kjf->kif', self.__chrom_weight_mat, h)
 
-        # Concatenate all chromosome averages side to side
+        # Concatenate all chromosome averages side to side and apply relu
         # (N, NB_CHROM, HIDDEN_SIZE) -> (N, NB_CHROM*HIDDEN_SIZE)
-        h = h.reshape(h.shape[0], self._nb_chrom*self._hidden_size)
+        h = relu(h.reshape(h.shape[0], self._nb_chrom*self._hidden_size))
 
         # Add a dummy dimension
         h.unsqueeze_(dim=1)
 
         # Apply convolutional layer and RELU then squeeze for the linear layer
-        h = relu(self._conv_layer(h)).squeeze()  # (N, 1, NB_CHROM*HIDDEN_SIZE) -> (N, NB_CHROM)
+        h = relu(self._bn1(self._conv_layer(h).squeeze()))  # (N, 1, NB_CHROM*HIDDEN_SIZE) -> (N, NB_CHROM)
 
         # Apply linear layer and batch norm
-        h = self._bn(self._linear_layer(h))  # (N, NB_CHROM) -> (N, SIGNATURE_SIZE)
+        h = self._bn2(self._linear_layer(h))  # (N, NB_CHROM) -> (N, SIGNATURE_SIZE)
 
         return h
 
@@ -215,7 +228,7 @@ class GeneSignatureDecoder(Module):
     the original gene embeddings
     """
     def __init__(self,
-                 chrom_composition_mat: tensor,
+                 nb_genes: int,
                  hidden_size: int,
                  signature_size: int = 10):
 
@@ -224,8 +237,7 @@ class GeneSignatureDecoder(Module):
         to the genome of patient
 
         Args:
-            chrom_composition_mat: (NB_CHROM, NB_GENES) tensor where each element at the position
-                                    i,j is a 1 if gene-j is part of chromosome-i and 0 otherwise
+            nb_genes: number of genes in patient genes data
             hidden_size: embedding size of each genes during intermediate
                          signature creation procedure
             signature_size: genomic signature size (input size)
@@ -234,25 +246,19 @@ class GeneSignatureDecoder(Module):
         # Call of parent's constructor
         super().__init__()
 
-        # Saving of nb of chromosomes and number of genes
-        self.__nb_genes = chrom_composition_mat.shape[1]
-        self.__nb_chrom = chrom_composition_mat.shape[0]
-
-        # Setting of matrix used to recover genes embedding for chromosome embedding
-        self.__gene_weight_mat = Parameter(normal(mean=zeros(self.__nb_genes, self.__nb_chrom),
-                                                  std=1.0).requires_grad_(True))
-        self.__mask = chrom_composition_mat.clone().detach().bool().byte().t().requires_grad_(False)
-
         # Creation of BaseBlock (first layer of the decoder)
         self.__linear_layer = BaseBlock(input_size=signature_size,
-                                        output_size=self.__nb_chrom,
+                                        output_size=nb_genes,
                                         activation='ReLU')
 
         # Creation of convolutional layer
         self.__conv_layer = Conv1d(in_channels=1,
-                                   out_channels=hidden_size,
+                                   out_channels=3,
                                    kernel_size=(1,),
                                    stride=(1,))
+
+        # Batch norm layer to apply after convolution
+        self._bn = BatchNorm1d(hidden_size)
 
     def forward(self, x: tensor) -> tensor:
         """
@@ -268,19 +274,17 @@ class GeneSignatureDecoder(Module):
 
         Returns: (N, NB_GENES, HIDDEN_SIZE) tensor with genes' embeddings
         """
-        # Apply (linear layer -> activation -> batch norm) to signatures
-        h = self.__linear_layer(x)  # (N, SIGNATURE_SIZE) -> (N, NB_CHROM)
+        # Apply (linear layer -> batch norm -> activation) to signatures
+        h = self.__linear_layer(x)  # (N, SIGNATURE_SIZE) -> (N, NB_GENES)
 
         # Addition of a dummy dimension for convolutional layer
-        h.unsqueeze_(dim=1)  # (N, NB_CHROM) -> (N, 1, NB_CHROM)
+        h.unsqueeze_(dim=1)  # (N, NB_GENES) -> (N, 1, NB_GENES)
 
-        # Apply convolutional layer
-        h = self.__conv_layer(h).transpose(1, 2)  # (N, 1, NB_CHROM) -> (N, NB_CHROM, HIDDEN_SIZE)
+        # Apply convolutional layer, batch norm and sigmoid
+        h = sigmoid(self._bn(self.__conv_layer(h)))  # (N, 1, NB_GENES) -> (N, 3, NB_GENES)
 
-        # Multiplication by gene_weight_mat to recover gene embeddings
-        # the mask ensure that 0's are not updated in the gene_weight_mat
-        # (NB_GENES, NB_CHROM)(N, NB_CHROM, HIDDEN_SIZE) -> (N, NB_GENES, HIDDEN_SIZE)
-        h = einsum('ij,kjf->kif', (self.__gene_weight_mat*self.__mask), h)
+        # Transposition of last dimensions
+        h = h.transpose(1, 2)  # (N, 3, NB_GENES) -> (N, NB_GENES, 3)
 
         return h
 
@@ -354,7 +358,7 @@ class GeneGraphAttentionEncoder(GeneEncoder):
         h = relu(self._chrom_attention_layer(h))  # (N, NB_CHROM, HIDDEN_SIZE) -> (N, HIDDEN_SIZE)
 
         # Signature calculation
-        return relu(self._linear_layer(h))
+        return self._bn(self._linear_layer(h))
 
 
 class GeneAttentionLayer(Module):

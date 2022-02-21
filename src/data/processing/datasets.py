@@ -13,6 +13,7 @@ from numpy import array, concatenate, where
 from pandas import DataFrame, merge, Series
 from src.data.extraction.constants import *
 from src.data.processing.preprocessing import preprocess_categoricals, preprocess_continuous
+from src.data.processing.transforms import CategoricalTransform as CaT
 from torch.utils.data import Dataset
 from torch import cat, from_numpy, tensor
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
@@ -66,12 +67,6 @@ class PetaleDataset(Dataset):
         for columns in [cont_cols, cat_cols]:
             self._check_columns_validity(df, columns)
 
-        if gene_cols is not None:
-            self._gene_cols = gene_cols
-            self._check_genes_validity(cat_cols, gene_cols)
-        else:
-            self._gene_cols = []
-
         # Set default protected attributes
         self._cat_cols, self._cat_idx = cat_cols, []
         self._classification = classification
@@ -85,6 +80,13 @@ class PetaleDataset(Dataset):
         self._train_mask, self._valid_mask, self._test_mask = [], None, []
         self._x_cat, self._x_cont = None, None
         self._y = self._initialize_targets(df[target], classification, to_tensor)
+
+        # We check if genes are among categorical columns
+        if gene_cols is not None:
+            self._gene_cols = gene_cols
+            self._valid_columns_type(gene_cols, categorical=True)
+        else:
+            self._gene_cols = []
 
         # Define protected feature "getter" method
         self._x = self._define_feature_getter(cont_cols, cat_cols, to_tensor)
@@ -387,8 +389,8 @@ class PetaleDataset(Dataset):
             data: pandas dataframe with 2 columns
                   First column must be PARTICIPANT ids
                   Second column must be the feature we want to add
-            categorical: True if the new feature is categorical
-            gene: True if the new feature is considered as a gene
+            categorical: True if the new features are categorical
+            gene: True if the new features are considered as genes
 
         Returns: pandas dataframe, list of cont cols, list of cat cols
         """
@@ -584,6 +586,39 @@ class PetaleDataset(Dataset):
 
         return mu, std, modes
 
+    def get_one_hot_encodings(self, cat_cols: List[str]) -> Union[array, tensor]:
+        """
+        Returns one hot encodings associated to the specified categorical columns
+
+        Args:
+            cat_cols: list of categorical columns
+
+        Returns: array or tensor with one hot encodings
+        """
+        # We check if the column names specified are categorical
+        self._valid_columns_type(cat_cols, categorical=True)
+
+        # We extract one hot encodings
+        e = CaT.one_hot_encode(self.get_imputed_dataframe()[cat_cols])
+
+        # We return the good type of data
+        if self._to_tensor:
+            return CaT.to_tensor(e)
+        else:
+            return e.to_numpy(dtype=int)
+
+    def get_genes_one_hot_encodings(self) -> Union[array, tensor]:
+        """
+        Returns one hot encodings associate to genes columns
+
+        Returns: array or tensor with one hot encodings
+        """
+        if len(self._gene_cols) == 0:
+            raise Exception('No gene columns were provided at dataset initialization')
+
+        else:
+            return self.get_one_hot_encodings(self._gene_cols)
+
     def update_masks(self,
                      train_mask: List[int],
                      test_mask: List[int],
@@ -610,6 +645,30 @@ class PetaleDataset(Dataset):
         # We update the data that will be available via __get_item__
         self._set_numerical(mu, std)
         self._set_categorical(modes)
+
+    def _valid_columns_type(self,
+                            col_list: List[str],
+                            categorical: bool) -> None:
+        """
+        Checks if all element in the column names list are either in
+        the cat_cols list or the cont_cols list
+
+        Args:
+            col_list: list of column names
+            categorical: if True,
+
+        Returns: None
+        """
+        if categorical:
+            cols = self._cat_cols if self._cat_cols is not None else []
+            col_type = 'categorical'
+        else:
+            cols = self._cont_cols if self._cont_cols is not None else []
+            col_type = 'continuous'
+
+        for c in col_list:
+            if c not in cols:
+                raise ValueError(f'Column name {c} is not part of the {col_type} columns')
 
     @staticmethod
     def _initialize_targets(targets_column: Series,
@@ -646,29 +705,14 @@ class PetaleDataset(Dataset):
         Args:
             df: pandas dataframe with original data
             columns: list of column names
+
+        Returns: None
         """
         if columns is not None:
             dataframe_columns = list(df.columns.values)
             for c in columns:
                 if c not in dataframe_columns:
                     raise ValueError(f"Column {c} is not part of the given dataframe")
-
-    @staticmethod
-    def _check_genes_validity(cat_cols: Optional[List[str]],
-                              gene_cols: List[str]) -> None:
-        """
-        Checks if all column names related to genes are included in categorical columns
-
-        Args:
-            cat_cols: list of categorical column names
-            gene_cols: list of categorical columns related to genes
-
-        Returns: None
-        """
-        cat_cols = [] if cat_cols is None else cat_cols
-        for gene in gene_cols:
-            if gene not in cat_cols:
-                raise ValueError(f'Gene {gene} from gene_cols cannot be found in cat_cols')
 
     @staticmethod
     def _get_graphs_edges(u: List[int],

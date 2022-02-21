@@ -6,7 +6,7 @@ Authors: Nicolas Raymond
 
 Description: This file is used to define the Recorder class
 
-Date of last modification : 2021/10/28
+Date of last modification : 2022/02/15
 """
 
 import json
@@ -16,17 +16,27 @@ import pickle
 
 from collections import Counter
 from numpy import arange, max, mean, median, min, std
+from src.data.processing.datasets import MaskType
 from src.models.abstract_models.base_models import PetaleBinaryClassifier, PetaleRegressor
 from src.recording.constants import *
-from torch import tensor, save
+from torch import tensor, save, zeros
 from torch.nn import Module
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 
 
 class Recorder:
     """
     Recorder objects used save results of the experiments
     """
+    # Dictionary that associate the mask types to their proper section
+    MASK_TO_SECTION = {METRICS: {MaskType.TRAIN: TRAIN_METRICS,
+                                 MaskType.TEST: TEST_METRICS,
+                                 MaskType.VALID: VALID_METRICS},
+                       RESULTS: {MaskType.TRAIN: TRAIN_RESULTS,
+                                 MaskType.TEST: TEST_RESULTS,
+                                 MaskType.VALID: VALID_RESULTS}
+                       }
+
     def __init__(self,
                  evaluation_name: str,
                  index: int,
@@ -48,9 +58,11 @@ class Recorder:
                       HYPERPARAMETER_IMPORTANCE: {},
                       TRAIN_METRICS: {},
                       TEST_METRICS: {},
+                      VALID_METRICS: {},
                       COEFFICIENT: {},
                       TRAIN_RESULTS: {},
-                      TEST_RESULTS: {}}
+                      TEST_RESULTS: {},
+                      VALID_RESULTS: {}}
 
         self._path = os.path.join(recordings_path, evaluation_name, f"Split_{index}")
 
@@ -146,50 +158,102 @@ class Recorder:
     def record_scores(self,
                       score: float,
                       metric: str,
-                      test: bool = True) -> None:
+                      mask_type: str = MaskType.TRAIN) -> None:
         """
         Saves the score associated to a metric
 
         Args:
             score: float
             metric: name of the metric
-            test: true if the scores are recorded for the test set
+            mask_type: train, test or valid
 
         Returns: None
-
         """
+        # We find the proper section name
+        section = Recorder.MASK_TO_SECTION[METRICS][mask_type]
+
         # We save the score of the given metric
-        section = TEST_METRICS if test else TRAIN_METRICS
         self._data[section][metric] = round(score, 6)
 
     def record_predictions(self,
                            ids: List[str],
                            predictions: tensor,
-                           target: tensor,
-                           test: bool = True) -> None:
+                           targets: Optional[tensor],
+                           mask_type: str = MaskType.TRAIN) -> None:
         """
         Save the predictions of a given model for each patient ids
 
         Args:
             ids: patient/participant ids
             predictions: predicted class or regression value
-            target: target value
-            test: true if the predictions are recorded for the test set
+            targets: target value
+            mask_type: mask_type: train, test or valid
 
         Returns: None
         """
+        # We find the proper section name
+        section = Recorder.MASK_TO_SECTION[RESULTS][mask_type]
+
         # We save the predictions
-        section = TEST_RESULTS if test else TRAIN_RESULTS
+        targets = targets if targets is not None else zeros(predictions.shape[0])
         if len(predictions.shape) == 0:
             for j, id_ in enumerate(ids):
                 self._data[section][str(id_)] = {
                     PREDICTION: str(predictions[j].item()),
-                    TARGET: str(target[j].item())}
+                    TARGET: str(targets[j].item())}
         else:
             for j, id_ in enumerate(ids):
                 self._data[section][str(id_)] = {
                     PREDICTION: str(predictions[j].tolist()),
-                    TARGET: str(target[j].item())}
+                    TARGET: str(targets[j].item())}
+
+    def record_test_predictions(self,
+                                ids: List[str],
+                                predictions: tensor,
+                                targets: tensor) -> None:
+        """
+        Records the test set's predictions
+
+        Args:
+            ids: list of patient/participant ids
+            predictions: tensor with predicted targets
+            targets: tensor with ground truth
+
+        Returns: None
+        """
+        return self.record_predictions(ids, predictions, targets, mask_type=MaskType.TEST)
+
+    def record_train_predictions(self,
+                                 ids: List[str],
+                                 predictions: tensor,
+                                 targets: tensor) -> None:
+        """
+        Records the training set's predictions
+
+        Args:
+            ids: list of patient/participant ids
+            predictions: tensor with predicted targets
+            targets: tensor with ground truth
+
+        Returns: None
+        """
+        return self.record_predictions(ids, predictions, targets)
+
+    def record_valid_predictions(self,
+                                 ids: List[str],
+                                 predictions: tensor,
+                                 targets: tensor) -> None:
+        """
+        Records the validation set's predictions
+
+        Args:
+            ids: list of patient/participant ids
+            predictions: tensor with predicted targets
+            targets: tensor with ground truth
+
+        Returns: None
+        """
+        return self.record_predictions(ids, predictions, targets, mask_type=MaskType.VALID)
 
 
 def get_evaluation_recap(evaluation_name: str,

@@ -14,7 +14,7 @@ from numpy.linalg import inv
 from pandas import DataFrame
 from src.data.extraction.constants import PARTICIPANT
 from src.data.processing.datasets import MaskType, PetaleDataset
-from torch import mm, tensor, transpose, zeros
+from torch import eye, mm, tensor, topk, transpose, zeros
 from typing import Any, Dict, List, Optional, Tuple
 
 
@@ -49,7 +49,7 @@ class PetaleKGNNDataset(PetaleDataset):
         # We set train, valid and test subgraphs data to default value
         self._subgraphs = {MaskType.TRAIN: tuple(), MaskType.VALID: tuple(), MaskType.TEST: tuple()}
 
-        # We save the number of k-nearest neigbors
+        # We save the number of k-nearest neighbors
         self._k = k
 
         # We use the _init_ of the parent class
@@ -86,12 +86,20 @@ class PetaleKGNNDataset(PetaleDataset):
 
         Returns: Homogeneous graph representing the datasets
         """
-        # We calculate 1/(1 + distance) - 1 between each item
+        # We calculate similarities between each item (1/(1 + distance) - 1)
+        similarities = 1/(self._compute_distances() + eye(self._n)) - eye(self._n)
 
-        # We calculate the order the values in decreasing order for each item
+        # We get the idx of the n-closest neighbors of each item
+        _, top_n_idx = topk(similarities, k=self._n, dim=1)
 
-        # For each item saves the k-nearest neighbors that are in the train set
-        # or is own set
+        # For each element in the training set, we filter its top_n_idx list
+        # to only keep element from the training set
+
+        # For each element in the test set, we filter its top_n_idx list
+        # to only keep element from the its set or the training set
+
+        # For each element in the valid set, we filter its top_n_idx list
+        # to only keep element from the its set or the training set
 
         # Build the graph
 

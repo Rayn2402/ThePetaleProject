@@ -116,7 +116,7 @@ if __name__ == '__main__':
 
         # We proceed to correction and smoothing of the predictions
         y_copy = deepcopy(dataset.y)
-        cs_pred = correct_and_smooth(g, pred, y_copy, m, r_correct=args.r_correct,
+        cs_pred = correct_and_smooth(g, pred=pred, labels=y_copy, masks=m, r_correct=args.r_correct,
                                      r_smooth=args.r_smooth, nb_iter=args.nb_iter)
 
         for mask, masktype in [(m[MaskType.TRAIN], MaskType.TRAIN), (m[MaskType.TEST], MaskType.TEST)]:

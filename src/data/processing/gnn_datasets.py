@@ -84,6 +84,15 @@ class PetaleKGNNDataset(PetaleDataset):
 
         Returns: Homogeneous graph representing the datasets
         """
+        # We calculate 1/(1 + distance) - 1 between each item
+
+        # We calculate the order the values in decreasing order for each item
+
+        # For each item saves the k-nearest neighbors that are in the train set
+        # or is own set
+
+        # Build the graph
+
         raise NotImplemented
 
     def _set_subgraphs_data(self) -> None:
@@ -128,6 +137,8 @@ class PetaleKGNNDataset(PetaleDataset):
         """
         First, updates the train, valid and test masks and preprocess the data available
         according to the current statistics of the training data.
+
+        Then, rebuild the graph by running k-nearest neighbors algorithm.
 
         Second, updates train, valid and test subgraph and idx map.
 

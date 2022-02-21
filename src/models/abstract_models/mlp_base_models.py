@@ -10,14 +10,13 @@ Description: This file is used to define the MLP model with entity embeddings
              and PetaleBinaryClassifier classes. However, two wrapper classes for torch models
              are provided to enable the use of these mlp models with hyperparameter tuning functions.
 
-Date of last modification : 2022/01/19
+Date of last modification : 2022/02/21
 """
 
 from src.models.abstract_models.custom_torch_base import TorchCustomModel
 from src.models.blocks.mlp_blocks import MLPEncodingBlock
 from src.data.processing.datasets import MaskType, PetaleDataset
 from src.training.early_stopping import EarlyStopper
-from src.training.self_supervised_training import SSGeneEncoderTrainer
 from src.utils.score_metrics import BinaryCrossEntropy, Metric, RootMeanSquaredError
 from torch import cat, no_grad, tensor, ones, sigmoid
 from torch.nn import BCEWithLogitsLoss, Identity, Linear, MSELoss
@@ -203,34 +202,6 @@ class MLP(TorchCustomModel):
             return True
 
         return False
-
-    def _run_self_supervised_learning(self,
-                                      dataset: PetaleDataset,
-                                      lr: float,
-                                      batch_size: int = 25,
-                                      max_epochs: int = 200,
-                                      patience: int = 15) -> None:
-        """
-        Trains the encoder and a decoder using self supervised learning.
-        Uses Sharpness-Aware Minimization by default.
-
-        Args:
-            dataset: PetaleDataset used to feed the training dataloader
-            lr: learning rate
-            batch_size: size of the batches in the training loader
-            max_epochs: Maximum number of epochs for training
-            patience: Number of consecutive epochs without training loss improvement allowed
-
-        Returns: None
-        """
-        # Creation of a SSGeneEncoderTrainer
-        trainer = SSGeneEncoderTrainer(gene_encoder=self._genes_encoding_block)
-
-        # Self supervised training
-        trainer.fit(dataset=dataset, lr=lr, batch_size=batch_size, max_epochs=max_epochs, patience=patience)
-
-        # Pre trained encoder extraction
-        self._genes_encoding_block = trainer.encoder
 
     def forward(self, x: tensor) -> tensor:
         """

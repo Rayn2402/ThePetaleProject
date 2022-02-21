@@ -34,9 +34,9 @@ def argument_parser():
                              '(Ex. records/experiments/warmup/enet...')
     parser.add_argument('-nb_iter', '--nb_iter', type=int,
                         help='Number of correction adn smoothing iterations')
-    parser.add_argument('-rc', '--r_correct', type=float,
+    parser.add_argument('-rc', '--r_correct', type=float, default=0.20,
                         help='Restart probability used in propagation algorithm for correction')
-    parser.add_argument('-rs', '--r_smooth', type=float,
+    parser.add_argument('-rs', '--r_smooth', type=float, default=0.80,
                         help='Restart probability used in propagation algorithm for smoothing')
     parser.add_argument('-d', '--include_distances', default=False, action='store_true',
                         help='True if to consider distances during graph construction')

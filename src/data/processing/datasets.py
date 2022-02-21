@@ -389,8 +389,8 @@ class PetaleDataset(Dataset):
             data: pandas dataframe with 2 columns
                   First column must be PARTICIPANT ids
                   Second column must be the feature we want to add
-            categorical: True if the new feature is categorical
-            gene: True if the new feature is considered as a gene
+            categorical: True if the new features are categorical
+            gene: True if the new features are considered as genes
 
         Returns: pandas dataframe, list of cont cols, list of cat cols
         """

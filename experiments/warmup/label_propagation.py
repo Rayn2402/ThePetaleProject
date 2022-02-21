@@ -40,7 +40,7 @@ def argument_parser():
                         help='Restart probability used in propagation algorithm for smoothing')
     parser.add_argument('-d', '--include_distances', default=False, action='store_true',
                         help='True if to consider distances during graph construction')
-    parser.add_argument('-max_degree', '--max_degree', type=int,
+    parser.add_argument('-max_degree', '--max_degree', type=int, default=3,
                         help='Maximum degree of a nodes in the graph')
 
     arguments = parser.parse_args()

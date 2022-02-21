@@ -89,8 +89,8 @@ class PetaleKGNNDataset(PetaleDataset):
         # We calculate similarities between each item (1/(1 + distance) - 1)
         similarities = 1/(self._compute_distances() + eye(self._n)) - eye(self._n)
 
-        # We get the idx of the n-closest neighbors of each item
-        _, top_n_idx = topk(similarities, k=self._n, dim=1)
+        # We get the idx of the (n-1)-closest neighbors of each item
+        _, top_n_idx = topk(similarities, k=(self._n-1), dim=1)
 
         # For each element in the training set, we filter its top_n_idx list
         # to only keep element from the training set

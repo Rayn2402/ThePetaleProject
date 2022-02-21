@@ -9,10 +9,12 @@ Date of last modification: 2022/02/21
 """
 
 from dgl import DGLGraph, node_subgraph
+from numpy import cov
+from numpy.linalg import inv
 from pandas import DataFrame
 from src.data.extraction.constants import PARTICIPANT
 from src.data.processing.datasets import MaskType, PetaleDataset
-from torch import tensor
+from torch import mm, tensor, transpose, zeros
 from typing import Any, Dict, List, Optional, Tuple
 
 
@@ -94,6 +96,30 @@ class PetaleKGNNDataset(PetaleDataset):
         # Build the graph
 
         raise NotImplemented
+
+    def _compute_distances(self) -> tensor:
+        """
+        Calculates mahalanobis distances between individuals, using the training set
+        to estimate covariance matrix
+
+        Returns: (N, N) tensor with distances
+        """
+        # We first compute inverse of covariance matrix related to numerical columns of training set
+        numerical_data = self.x[:, self.cont_idx]
+        numerical_train_data = numerical_data[self.train_mask, :]
+        inv_cov_mat = tensor(inv(cov(numerical_train_data, rowvar=False))).float()
+
+        # We compute squared mahalanobis distances
+        mahalanobis_dist = zeros(self._n, self._n, requires_grad=False)
+        for i in range(self._n):
+            for j in range(i+1, self._n):
+                diff = (numerical_data[i, :] - numerical_data[j, :]).reshape(-1, 1)
+                mahalanobis_dist[i, j] = mm(mm(transpose(diff, 0, 1), inv_cov_mat), diff)
+
+        # We add the matrix to its transpose to have all distances
+        mahalanobis_dist = mahalanobis_dist + transpose(mahalanobis_dist, 0, 1)
+
+        return mahalanobis_dist
 
     def _set_subgraphs_data(self) -> None:
         """

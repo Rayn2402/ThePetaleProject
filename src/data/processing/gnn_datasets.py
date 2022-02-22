@@ -13,7 +13,7 @@ from numpy import cov
 from numpy.linalg import inv
 from pandas import DataFrame
 from src.data.processing.datasets import MaskType, PetaleDataset
-from torch import eye, mm, tensor, topk, transpose, zeros
+from torch import eye, mm, ones, tensor, topk, transpose, zeros
 from typing import Any, Dict, List, Optional, Tuple
 
 
@@ -31,6 +31,7 @@ class PetaleKGNNDataset(PetaleDataset):
                  cont_cols: Optional[List[str]] = None,
                  cat_cols: Optional[List[str]] = None,
                  gene_cols: Optional[List[str]] = None,
+                 conditional_cat_col: Optional[str] = None,
                  classification: bool = True):
         """
         Sets protected and public attributes of our custom dataset class
@@ -42,9 +43,17 @@ class PetaleKGNNDataset(PetaleDataset):
             cont_cols: list of column names associated with continuous data
             cat_cols: list of column names associated with categorical data
             gene_cols: list of categorical column names that must be considered as genes
+            conditional_cat_col: name of column for which items need to share the same
+                                 value in order to be allowed to be connected in the population graph
             classification: true for classification task, False for regression
 
         """
+        # We save the conditional categorical column given
+        if conditional_cat_col is not None:
+            if conditional_cat_col not in cat_cols:
+                raise ValueError(f'{conditional_cat_col} not found among cat_cols')
+        self.conditional_cat_col = conditional_cat_col
+
         # We set the graph attribute to default value
         self._graph = None
 
@@ -79,6 +88,39 @@ class PetaleKGNNDataset(PetaleDataset):
     def valid_subgraph(self) -> Tuple[DGLGraph, List[int], Dict[int, int]]:
         return self._subgraphs[MaskType.VALID]
 
+    def _build_neighbors_filter_mat(self) -> tensor:
+        """
+        Creates an (N,N) tensor where element i,j is a 1 if item-i and item-j
+        shares the same value for the conditional_cat_col. Element i,j are zeros otherwise.
+
+        Returns: (N,N) tensor
+        """
+        # If no conditional column was given
+        if self.conditional_cat_col is None:
+            return ones(self._n, self._n)
+
+        # We initialize a matrix filled with zeros
+        neighbors_filter = zeros(self._n, self._n)
+
+        # We fill the upper triangle of the edges matrix
+        df = self.get_imputed_dataframe()
+        for value in self.encodings[self.conditional_cat_col].keys():
+
+            # Idx of patients sharing same categorical value
+            idx_subset = df.loc[df[self.conditional_cat_col] == value].index.to_numpy()
+
+            # For patient with common value we add edges
+            k = 0
+            for i in idx_subset:
+                for j in idx_subset[k+1:]:
+                    neighbors_filter[i, j] += 1
+                k += 1
+
+        # We add it to its transpose to have the complete matrix
+        neighbors_filter = neighbors_filter + neighbors_filter.t()
+
+        return neighbors_filter
+
     def _build_population_graph(self) -> DGLGraph:
         """
         Builds the graph structure
@@ -87,6 +129,10 @@ class PetaleKGNNDataset(PetaleDataset):
         """
         # We calculate similarities between each item (1/(1 + distance) - 1)
         similarities = 1/(self._compute_distances() + eye(self._n)) - eye(self._n)
+
+        # We turn some similarities to zeros if a conditional column was given
+        filter_mat = self._build_neighbors_filter_mat()
+        similarities *= filter_mat
 
         # We get the idx of the (n-1)-closest neighbors of each item
         _, top_n_idx = topk(similarities, k=(self._n-1), dim=1)

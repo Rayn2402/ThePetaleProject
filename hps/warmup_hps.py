@@ -216,7 +216,7 @@ GATHPS = {
     },
     GATHP.HIDDEN_SIZE.name: {
         Range.MIN: 2,
-        Range.MAX: 10,
+        Range.MAX: 20,
         Range.STEP: 2
     },
     GATHP.LR.name: {
@@ -227,8 +227,7 @@ GATHPS = {
         Range.VALUE: 0
     },
     GATHP.NUM_HEADS.name: {
-        Range.MIN: 1,
-        Range.MAX: 20
+        Range.VALUE: 1,
     },
 }
 GGEHPS = {

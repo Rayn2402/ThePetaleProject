@@ -12,9 +12,9 @@ from dgl.nn.pytorch import GATv2Conv
 from src.data.processing.gnn_datasets import MaskType, PetaleKGNNDataset
 from src.models.abstract_models.custom_torch_base import TorchCustomModel
 from src.training.early_stopping import EarlyStopper
-from src.utils.score_metrics import Metric
+from src.utils.score_metrics import Metric, RootMeanSquaredError
 from torch import cat, no_grad, ones, tensor
-from torch.nn import Linear
+from torch.nn import Linear, MSELoss
 from torch.nn.functional import elu
 from torch.utils.data import DataLoader
 from typing import Callable, Dict, List, Optional, Union, Tuple
@@ -229,3 +229,86 @@ class GAT(TorchCustomModel):
 
         # We apply the linear layer
         return self._linear_layer(h).squeeze()
+
+
+class GATRegressor(GAT):
+    """
+    Graph Attention Network regression model
+    """
+    def __init__(self,
+                 hidden_size: int,
+                 num_heads: int,
+                 eval_metric: Metric,
+                 dropout: float = 0,
+                 alpha: float = 0,
+                 beta: float = 0,
+                 num_cont_col: Optional[int] = None,
+                 cat_idx: Optional[List[int]] = None,
+                 cat_sizes: Optional[List[int]] = None,
+                 cat_emb_sizes: Optional[List[int]] = None,
+                 verbose: bool = False):
+        """
+        Sets the attributes using the parent constructor
+
+        Args:
+            hidden_size: size of the hidden states after the graph convolution
+            num_heads: number of attention heads
+            eval_metric: evaluation metric
+            dropout: probability of dropout
+            alpha: L1 penalty coefficient
+            beta: L2 penalty coefficient
+            num_cont_col: number of numerical continuous columns in the dataset
+            cat_idx: idx of categorical columns in the dataset
+            cat_sizes: list of integer representing the size of each categorical column
+            cat_emb_sizes: list of integer representing the size of each categorical embedding
+            verbose: True if we want trace of the training progress
+        """
+        # We call parent's constructor
+        eval_metric = eval_metric if eval_metric is not None else RootMeanSquaredError()
+        super().__init__(output_size=1,
+                         hidden_size=hidden_size,
+                         num_heads=num_heads,
+                         criterion=MSELoss(reduction='None'),
+                         criterion_name='MSE',
+                         eval_metric=eval_metric,
+                         dropout=dropout,
+                         alpha=alpha,
+                         beta=beta,
+                         num_cont_col=num_cont_col,
+                         cat_idx=cat_idx,
+                         cat_sizes=cat_sizes,
+                         cat_emb_sizes=cat_emb_sizes,
+                         verbose=verbose)
+
+    def predict(self,
+                dataset: PetaleKGNNDataset,
+                mask: Optional[List[int]] = None) -> tensor:
+        """
+        Returns the real-valued predictions for all samples
+        in a particular set (default = test)
+
+        Args:
+            dataset: PetaleDatasets which its items are tuples (x, y, idx) where
+                     - x : (N,D) tensor with D-dimensional samples
+                     - y : (N,) tensor with classification labels
+                     - idx : (N,) tensor with idx of samples according to the whole dataset
+            mask: list of dataset idx for which we want to predict target
+
+        Returns: (N,) tensor
+        """
+        # We extract subgraph data (we add training data for graph convolution)
+        if mask is not None:
+            mask_with_train = list(set(mask + dataset.train_mask))
+            g, idx_map = dataset.get_arbitrary_subgraph(mask_with_train)
+        else:
+            mask = dataset.test_mask
+            g, idx_map, mask_with_train = dataset.test_subgraph
+
+        # Set model for evaluation
+        self.eval()
+
+        # Execute a forward pass and apply a softmax
+        with no_grad():
+            pos_idx = [idx_map[i] for i in mask]
+            x, _, _ = dataset[mask_with_train]
+            return self(g, x)[pos_idx]

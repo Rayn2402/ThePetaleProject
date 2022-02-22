@@ -17,7 +17,7 @@ from torch import cat, no_grad, ones, tensor
 from torch.nn import Linear, MSELoss
 from torch.nn.functional import elu
 from torch.utils.data import DataLoader
-from typing import Callable, Dict, List, Optional, Union, Tuple
+from typing import Callable, List, Optional, Union, Tuple
 
 
 class GAT(TorchCustomModel):
@@ -217,7 +217,7 @@ class GAT(TorchCustomModel):
         if len(self._cont_idx) != 0:
             new_x.append(x[:, self._cont_idx])
 
-        # We perform entity embeddings on categorical features not identified as genes
+        # We perform entity embeddings on categorical features
         if len(self._cat_idx) != 0:
             new_x.append(self._embedding_block(x))
 

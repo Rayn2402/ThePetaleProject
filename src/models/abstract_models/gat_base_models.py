@@ -80,7 +80,7 @@ class GAT(TorchCustomModel):
                                      activation=elu)
 
         # We build the final linear layer
-        self._linear_layer = Linear(hidden_size*num_heads, output_size)
+        self._linear_layer = Linear(hidden_size, output_size)
 
     def _execute_train_step(self, train_data: Tuple[DataLoader, PetaleKGNNDataset],
                             sample_weights: tensor) -> float:
@@ -268,7 +268,7 @@ class GATRegressor(GAT):
         super().__init__(output_size=1,
                          hidden_size=hidden_size,
                          num_heads=num_heads,
-                         criterion=MSELoss(reduction='None'),
+                         criterion=MSELoss(reduction='none'),
                          criterion_name='MSE',
                          eval_metric=eval_metric,
                          dropout=dropout,

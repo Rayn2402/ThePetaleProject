@@ -5,9 +5,10 @@ Author: Nicolas Raymond
 
 Description: File used to store hps search spaces for warmup experiments
 
-Date of last modification: 2022/01/20
+Date of last modification: 2022/02/22
 """
 
+from src.models.gat import GATHP
 from src.models.gge import GGEHP
 from src.models.mlp import MLPHP
 from src.models.han import HanHP
@@ -196,6 +197,40 @@ ENET_HPS = {
     },
 }
 
+GATHPS = {
+    GATHP.ALPHA.name: {
+        Range.MIN: 0,
+        Range.MAX: 2
+    },
+    GATHP.BATCH_SIZE.name: {
+        Range.MIN: 15,
+        Range.MAX: 55,
+        Range.STEP: 10
+    },
+    GATHP.BETA.name: {
+        Range.MIN: 0,
+        Range.MAX: 2
+    },
+    GATHP.DROPOUT.name: {
+        Range.VALUE: 0,
+    },
+    GATHP.HIDDEN_SIZE.name: {
+        Range.MIN: 2,
+        Range.MAX: 10,
+        Range.STEP: 2
+    },
+    GATHP.LR.name: {
+        Range.MIN: 0.001,
+        Range.MAX: 0.5
+    },
+    GATHP.RHO.name: {
+        Range.VALUE: 0
+    },
+    GATHP.NUM_HEADS.name: {
+        Range.MIN: 1,
+        Range.MAX: 20
+    },
+}
 GGEHPS = {
     GGEHP.BATCH_SIZE.name: {
         Range.MIN: 15,

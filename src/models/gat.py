@@ -11,7 +11,7 @@ Date of last modification: 2022/02/22
 from src.models.abstract_models.gat_base_models import GATRegressor
 from src.models.wrappers.torch_wrappers import TorchRegressorWrapper
 from src.utils.hyperparameters import HP, NumericalContinuousHP, NumericalIntHP
-from src.utils.score_metrics import Metric
+from src.utils.score_metrics import RegressionMetric
 from typing import List, Optional
 
 
@@ -22,7 +22,7 @@ class PetaleGATR(TorchRegressorWrapper):
     def __init__(self,
                  hidden_size: int,
                  num_heads: int,
-                 eval_metric: Metric,
+                 eval_metric: Optional[RegressionMetric] = None,
                  dropout: float = 0,
                  lr: float = 0.05,
                  rho: float = 0,

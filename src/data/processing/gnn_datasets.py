@@ -52,7 +52,7 @@ class PetaleKGNNDataset(PetaleDataset):
         if conditional_cat_col is not None:
             if conditional_cat_col not in cat_cols:
                 raise ValueError(f'{conditional_cat_col} not found among cat_cols')
-        self.conditional_cat_col = conditional_cat_col
+        self._conditional_cat_col = conditional_cat_col
 
         # We set the graph attribute to default value
         self._graph = None
@@ -96,7 +96,7 @@ class PetaleKGNNDataset(PetaleDataset):
         Returns: (N,N) tensor
         """
         # If no conditional column was given
-        if self.conditional_cat_col is None:
+        if self._conditional_cat_col is None:
             return ones(self._n, self._n)
 
         # We initialize a matrix filled with zeros
@@ -104,10 +104,10 @@ class PetaleKGNNDataset(PetaleDataset):
 
         # We fill the upper triangle of the edges matrix
         df = self.get_imputed_dataframe()
-        for value in self.encodings[self.conditional_cat_col].keys():
+        for value in self.encodings[self._conditional_cat_col].keys():
 
             # Idx of patients sharing same categorical value
-            idx_subset = df.loc[df[self.conditional_cat_col] == value].index.to_numpy()
+            idx_subset = df.loc[df[self._conditional_cat_col] == value].index.to_numpy()
 
             # For patient with common value we add edges
             k = 0
@@ -158,7 +158,7 @@ class PetaleKGNNDataset(PetaleDataset):
         for i in range(len(top_n_idx)):
             nb_neighbor = min(len(top_n_idx[i]), self._k)
             u += [u]*nb_neighbor
-            v += top_n_idx[:nb_neighbor]
+            v += top_n_idx[i][:nb_neighbor]
         u, v = tensor(u).long(), tensor(v).long()
 
         # We build the graph, add missing edges and then add self loop
@@ -269,7 +269,7 @@ class PetaleKGNNDataset(PetaleDataset):
                                  cont_cols=cont_cols,
                                  cat_cols=cat_cols,
                                  gene_cols=gene_cols,
-                                 conditional_cat_col=self.conditional_cat_col,
+                                 conditional_cat_col=self._conditional_cat_col,
                                  classification=self.classification)
 
     def create_superset(self,
@@ -296,5 +296,5 @@ class PetaleKGNNDataset(PetaleDataset):
                                  cont_cols=cont_cols,
                                  cat_cols=cat_cols,
                                  gene_cols=gene_cols,
-                                 conditional_cat_col=self.conditional_cat_col,
+                                 conditional_cat_col=self._conditional_cat_col,
                                  classification=self.classification)

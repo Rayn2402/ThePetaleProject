@@ -6,7 +6,7 @@ Authors: Nicolas Raymond
 Description: This file is used to execute all the model comparisons
              made on the warmup dataset
 
-Date of last modification : 2022/02/18
+Date of last modification : 2022/02/22
 """
 import sys
 import argparse
@@ -66,6 +66,8 @@ def argument_parser():
                         help='True if we want to run xgboost experiment')
     parser.add_argument('-tab', '--tabnet', default=False, action='store_true',
                         help='True if we want to run TabNet experiment')
+    parser.add_argument('-gat', '--gat', default=False, action='store_true',
+                        help='True if we want to run GraphAttentionNetwork experiment')
     parser.add_argument('-gge', '--gge', default=False, action='store_true',
                         help='True if we want to run GeneGraphEncoder with enet experiment')
     parser.add_argument('-ggae', '--ggae', default=False, action='store_true',
@@ -81,10 +83,6 @@ def argument_parser():
     parser.add_argument('-sam', '--enable_sam', default=False, action='store_true',
                         help='True if we want to use Sharpness-Aware Minimization Optimizer')
 
-    # Activation of self supervised learning
-    # parser.add_argument('-pre_training', '--pre_training', default=False, action='store_true',
-    #                    help='True if we want to apply pre self supervised training to model'
-    #                         'where it is enabled. Currently available for ENET with genes encoding')
 
     # Usage of predictions from another experiment
     parser.add_argument('-p', '--path', type=str, default=None,
@@ -108,13 +106,15 @@ if __name__ == '__main__':
 
     # Imports specific to project
     sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
-    from hps.warmup_hps import TAB_HPS, RF_HPS, HAN_HPS, MLP_HPS, ENET_HPS, XGBOOST_HPS, GGEHPS
+    from hps.warmup_hps import ENET_HPS, GATHPS, GGEHPS, HAN_HPS, MLP_HPS, RF_HPS, TAB_HPS, XGBOOST_HPS
     from settings.paths import Paths
     from src.data.processing.datasets import PetaleDataset, PetaleStaticGNNDataset
+    from src.data.processing.gnn_datasets import PetaleKGNNDataset
     from src.data.processing.feature_selection import FeatureSelector
     from src.data.processing.sampling import extract_masks, GeneChoice, get_warmup_data, push_valid_to_train
     from src.models.blocks.genes_signature_block import GeneEncoder, GeneGraphEncoder, GeneGraphAttentionEncoder
     from src.models.blocks.mlp_blocks import MLPEncodingBlock
+    from src.models.gat import PetaleGATR
     from src.models.gge import PetaleGGE
     from src.models.han import PetaleHANR, HanHP
     from src.models.mlp import PetaleMLPR, MLPHP
@@ -156,7 +156,6 @@ if __name__ == '__main__':
 
     # Extraction of masks
     masks = extract_masks(Paths.WARMUP_MASK, k=args.nb_outer_splits, l=args.nb_inner_splits)
-    gnn_masks = extract_masks(Paths.WARMUP_MASK, k=args.nb_outer_splits, l=args.nb_inner_splits)
     masks_without_val = deepcopy(masks)
     push_valid_to_train(masks_without_val)
 
@@ -538,6 +537,56 @@ if __name__ == '__main__':
         print("Time Taken for GGAE (minutes): ", round((time.time() - start) / 60, 2))
 
     """
+    GAT experiment
+    """
+    if args.han and (genes or args.sex) and args.baselines:
+
+        # Start timer
+        start = time.time()
+
+        # Creation of the dataset
+        cond_cat_col = SEX if args.sex else None
+        dataset = PetaleKGNNDataset(df, target, k=5, cont_cols=cont_cols, cat_cols=cat_cols,
+                                    conditional_cat_col=cond_cat_col, classification=False)
+
+        # Creation of function to update fixed params
+        def update_fixed_params(dts):
+            return {'num_cont_col': len(dts.cont_cols),
+                    'cat_idx': dts.cat_idx,
+                    'cat_sizes': dts.cat_sizes,
+                    'cat_emb_sizes': dts.cat_sizes,
+                    'max_epochs': 200,
+                    'patience': 25}
+
+        # Saving of original fixed params for HAN
+        fixed_params = update_fixed_params(dataset)
+
+        # Update of hyperparameters
+        if args.enable_sam:
+            HAN_HPS[HanHP.RHO.name] = sam_search_space
+
+        # Creation of the evaluator
+        evaluator = Evaluator(model_constructor=PetaleGATR,
+                              dataset=dataset,
+                              masks=masks,
+                              evaluation_name=f"GAT_warmup{eval_id}",
+                              hps=GATHPS,
+                              n_trials=200,
+                              evaluation_metrics=evaluation_metrics,
+                              fixed_params=fixed_params,
+                              fixed_params_update_function=update_fixed_params,
+                              feature_selector=feature_selector,
+                              save_hps_importance=True,
+                              save_optimization_history=True,
+                              seed=args.seed,
+                              pred_path=args.path)
+
+        # Evaluation
+        evaluator.evaluate()
+
+        print("Time Taken for GAT (minutes): ", round((time.time() - start) / 60, 2))
+
+    """
     HAN experiment
     """
     if args.han and (genes or args.sex) and args.baselines:
@@ -568,7 +617,7 @@ if __name__ == '__main__':
         # Creation of the evaluator
         evaluator = Evaluator(model_constructor=PetaleHANR,
                               dataset=dataset,
-                              masks=gnn_masks,
+                              masks=masks,
                               evaluation_name=f"HAN_warmup{eval_id}",
                               hps=HAN_HPS,
                               n_trials=200,
@@ -627,7 +676,7 @@ if __name__ == '__main__':
         # Creation of the evaluator
         evaluator = Evaluator(model_constructor=PetaleHANR,
                               dataset=dataset,
-                              masks=gnn_masks,
+                              masks=masks,
                               evaluation_name=f"HANe_warmup{eval_id}",
                               hps=HAN_HPS,
                               n_trials=200,

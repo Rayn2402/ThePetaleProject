@@ -79,6 +79,9 @@ class GAT(TorchCustomModel):
                                      attn_drop=dropout,
                                      activation=elu)
 
+        # We save the number of attention heads
+        self._num_att_heads = num_heads
+
         # We build the final linear layer
         self._linear_layer = Linear(hidden_size, output_size)
 
@@ -226,6 +229,9 @@ class GAT(TorchCustomModel):
 
         # We apply the graph convolutional layer
         h = self._conv_layer(g, h)
+
+        # We take the average of all the attention heads
+        h = h.sum(dim=1)/self._num_att_heads
 
         # We apply the linear layer
         return self._linear_layer(h).squeeze()

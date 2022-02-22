@@ -157,7 +157,7 @@ class PetaleKGNNDataset(PetaleDataset):
         u, v = [], []
         for i in range(len(top_n_idx)):
             nb_neighbor = min(len(top_n_idx[i]), self._k)
-            u += [u]*nb_neighbor
+            u += [i]*nb_neighbor
             v += top_n_idx[i][:nb_neighbor]
         u, v = tensor(u).long(), tensor(v).long()
 

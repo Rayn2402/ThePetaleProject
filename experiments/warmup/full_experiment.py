@@ -539,7 +539,7 @@ if __name__ == '__main__':
     """
     GAT experiment
     """
-    if args.han and (genes or args.sex) and args.baselines:
+    if args.gat and args.baselines:
 
         # Start timer
         start = time.time()

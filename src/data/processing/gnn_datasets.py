@@ -262,7 +262,15 @@ class PetaleKGNNDataset(PetaleDataset):
 
         Returns: instance of the PetaleKGNNDataset class
         """
-        raise NotImplementedError
+        subset = self._retrieve_subset_from_original(cont_cols, cat_cols)
+        gene_cols = None if len(self._gene_cols) == 0 else [c for c in self._gene_cols if c in cat_cols]
+        return PetaleKGNNDataset(df=subset,
+                                 target=self.target,
+                                 cont_cols=cont_cols,
+                                 cat_cols=cat_cols,
+                                 gene_cols=gene_cols,
+                                 conditional_cat_col=self.conditional_cat_col,
+                                 classification=self.classification)
 
     def create_superset(self,
                         data: DataFrame,
@@ -280,4 +288,13 @@ class PetaleKGNNDataset(PetaleDataset):
 
         Returns: instance of the PetaleKGNNDataset class
         """
-        raise NotImplementedError
+        # We build the augmented dataframe
+        df, cont_cols, cat_cols, gene_cols = self._get_augmented_dataframe(data, categorical, gene)
+
+        return PetaleKGNNDataset(df=df,
+                                 target=self.target,
+                                 cont_cols=cont_cols,
+                                 cat_cols=cat_cols,
+                                 gene_cols=gene_cols,
+                                 conditional_cat_col=self.conditional_cat_col,
+                                 classification=self.classification)

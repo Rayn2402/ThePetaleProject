@@ -14,6 +14,7 @@ Date of last modification: 2021/11/18
 from abc import ABC, abstractmethod
 from dgl import DGLHeteroGraph
 from src.data.processing.datasets import MaskType, PetaleDataset, PetaleStaticGNNDataset
+from src.data.processing.gnn_datasets import PetaleKGNNDataset
 from src.models.blocks.mlp_blocks import EntityEmbeddingBlock
 from src.training.early_stopping import EarlyStopper
 from src.training.sam import SAM
@@ -112,10 +113,7 @@ class TorchCustomModel(Module, ABC):
                                    dataset: PetaleDataset,
                                    valid_batch_size: Optional[int],
                                    patience: int
-                                   ) -> Tuple[Optional[EarlyStopper],
-                                              Optional[Union[DataLoader,
-                                                             Tuple[DataLoader,
-                                                                   PetaleStaticGNNDataset]]]]:
+                                   ) -> Tuple:
         """
         Creates the objects needed for validation during the training process
 
@@ -141,7 +139,7 @@ class TorchCustomModel(Module, ABC):
             early_stopper = EarlyStopper(patience, self._eval_metric.direction)
 
             # If the dataset is a GNN dataset, we include it into train data
-            if isinstance(dataset, PetaleStaticGNNDataset):
+            if isinstance(dataset, PetaleStaticGNNDataset) or isinstance(dataset, PetaleKGNNDataset):
                 valid_data = (valid_data, dataset)
 
         return early_stopper, valid_data

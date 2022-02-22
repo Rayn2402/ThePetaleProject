@@ -361,7 +361,7 @@ class TorchCustomModel(Module, ABC):
     @staticmethod
     def _create_train_objects(dataset: PetaleDataset,
                               batch_size: int
-                              ) -> Union[DataLoader, Tuple[DataLoader, PetaleStaticGNNDataset]]:
+                              ) -> Tuple:
         """
         Creates the objects needed for the training
 
@@ -377,7 +377,7 @@ class TorchCustomModel(Module, ABC):
                                 sampler=SubsetRandomSampler(dataset.train_mask))
 
         # If the dataset is a GNN dataset, we include it into train data
-        if isinstance(dataset, PetaleStaticGNNDataset):
+        if isinstance(dataset, PetaleStaticGNNDataset) or isinstance(dataset, PetaleKGNNDataset):
             train_data = (train_data, dataset)
 
         return train_data

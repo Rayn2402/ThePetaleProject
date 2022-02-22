@@ -13,7 +13,7 @@ from src.data.processing.gnn_datasets import PetaleKGNNDataset
 from src.models.abstract_models.custom_torch_base import TorchCustomModel
 from src.training.early_stopping import EarlyStopper
 from src.utils.score_metrics import Metric
-from torch import tensor
+from torch import cat, tensor
 from torch.nn import Linear
 from torch.nn.functional import elu
 from torch.utils.data import DataLoader
@@ -93,4 +93,31 @@ class GAT(TorchCustomModel):
     def forward(self,
                 g: DGLGraph,
                 x: tensor) -> tensor:
-        raise NotImplementedError
+        """
+        Executes the forward pass
+
+        Args:
+            g: Homogeneous bidirected population graph
+            x: (N,D) tensor with D-dimensional samples
+
+        Returns: (N, D') tensor with values of the node within the last layer
+        """
+        # We initialize a list of tensors to concatenate
+        new_x = []
+
+        # We extract continuous data
+        if len(self._cont_idx) != 0:
+            new_x.append(x[:, self._cont_idx])
+
+        # We perform entity embeddings on categorical features not identified as genes
+        if len(self._cat_idx) != 0:
+            new_x.append(self._embedding_block(x))
+
+        # We concatenate all inputs
+        h = cat(new_x, 1)
+
+        # We apply the graph convolutional layer
+        h = self._conv_layer(g, h)
+
+        # We apply the linear layer
+        return self._linear_layer(h).squeeze()

@@ -8,11 +8,10 @@ Description: File used to store datasets associated to GNNs
 Date of last modification: 2022/02/21
 """
 
-from dgl import DGLGraph, node_subgraph
+from dgl import add_self_loop, DGLGraph, graph, node_subgraph, to_bidirected
 from numpy import cov
 from numpy.linalg import inv
 from pandas import DataFrame
-from src.data.extraction.constants import PARTICIPANT
 from src.data.processing.datasets import MaskType, PetaleDataset
 from torch import eye, mm, tensor, topk, transpose, zeros
 from typing import Any, Dict, List, Optional, Tuple
@@ -39,18 +38,21 @@ class PetaleKGNNDataset(PetaleDataset):
         Args:
             df: dataframe with the original data
             target: name of the column with the targets
-            k: maximum degree in the population graph built
+            k: number of closest neighbors used to build the population graph
             cont_cols: list of column names associated with continuous data
             cat_cols: list of column names associated with categorical data
             gene_cols: list of categorical column names that must be considered as genes
             classification: true for classification task, False for regression
 
         """
-        # We set train, valid and test subgraphs data to default value
-        self._subgraphs = {MaskType.TRAIN: tuple(), MaskType.VALID: tuple(), MaskType.TEST: tuple()}
+        # We set the graph attribute to default value
+        self._graph = None
 
         # We save the number of k-nearest neighbors
         self._k = k
+
+        # We set train, valid and test subgraphs data to default value
+        self._subgraphs = {MaskType.TRAIN: tuple(), MaskType.VALID: tuple(), MaskType.TEST: tuple()}
 
         # We use the _init_ of the parent class
         super().__init__(df=df,
@@ -60,9 +62,6 @@ class PetaleKGNNDataset(PetaleDataset):
                          gene_cols=gene_cols,
                          classification=classification,
                          to_tensor=True)
-
-        # We initialize the graph attribute proper to StaticGNNDataset class
-        self._graph = self._build_population_graph()
 
     @property
     def graph(self) -> DGLGraph:
@@ -91,19 +90,35 @@ class PetaleKGNNDataset(PetaleDataset):
 
         # We get the idx of the (n-1)-closest neighbors of each item
         _, top_n_idx = topk(similarities, k=(self._n-1), dim=1)
+        top_n_idx = top_n_idx.tolist()
 
         # For each element in the training set, we filter its top_n_idx list
         # to only keep element from the training set
-
-        # For each element in the test set, we filter its top_n_idx list
-        # to only keep element from the its set or the training set
+        for i in self.train_mask:
+            top_n_idx[i] = [j for j in top_n_idx[i] if j in self.train_mask]
 
         # For each element in the valid set, we filter its top_n_idx list
         # to only keep element from the its set or the training set
+        for i in self.valid_mask:
+            top_n_idx[i] = [j for j in top_n_idx[i] if j in self.train_mask + self.valid_mask]
 
-        # Build the graph
+        # For each element in the test set, we filter its top_n_idx list
+        # to only keep element from the its set or the training set
+        for i in self.test_mask:
+            top_n_idx[i] = [j for j in top_n_idx[i] if j in self.train_mask + self.test_mask]
 
-        raise NotImplemented
+        # We build the edges of the graph
+        u, v = [], []
+        for i in range(len(top_n_idx)):
+            nb_neighbor = min(len(top_n_idx[i]), self._k)
+            u += [u]*nb_neighbor
+            v += top_n_idx[:nb_neighbor]
+        u, v = tensor(u).long(), tensor(v).long()
+
+        # We build the graph, add missing edges and then add self loop
+        g = add_self_loop(to_bidirected(graph((u, v))))
+
+        return g
 
     def _compute_distances(self) -> tensor:
         """
@@ -160,7 +175,7 @@ class PetaleKGNNDataset(PetaleDataset):
         Args:
             idx: list of idx such as masks
 
-        Returns: homogeneous graph
+        Returns: homogeneous graph, dict matching each training index to its physical position in idx list
         """
         return node_subgraph(self.graph, nodes=idx, store_ids=True), {v: i for i, v in enumerate(idx)}
 
@@ -180,11 +195,14 @@ class PetaleKGNNDataset(PetaleDataset):
         # We first update masks as usual for datasets
         PetaleDataset.update_masks(self, train_mask=train_mask, test_mask=test_mask, valid_mask=valid_mask)
 
-        # We update the graph structure
-        self._graph = self._build_population_graph()
+        # If we are not calling update_masks for initialization purpose
+        if len(test_mask) != 0:
 
-        # We update the subgraphs data
-        self._set_subgraphs_data()
+            # We update the graph structure
+            self._graph = self._build_population_graph()
+
+            # We update the subgraphs data
+            self._set_subgraphs_data()
 
     def create_subset(self,
                       cont_cols: Optional[List[str]] = None,

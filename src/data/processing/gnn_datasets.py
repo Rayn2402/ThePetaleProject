@@ -5,10 +5,12 @@ Author: Nicolas Raymond
 
 Description: File used to store datasets associated to GNNs
 
-Date of last modification: 2022/02/21
+Date of last modification: 2022/02/23
 """
+import matplotlib.pyplot as plt
 
-from dgl import add_self_loop, DGLGraph, graph, node_subgraph, to_bidirected
+from dgl import DGLGraph, graph, node_subgraph
+from networkx import draw, connected_components
 from numpy import cov
 from numpy.linalg import inv
 from pandas import DataFrame
@@ -134,37 +136,41 @@ class PetaleKGNNDataset(PetaleDataset):
         filter_mat = self._build_neighbors_filter_mat()
         similarities *= filter_mat
 
+        # We count the number of ones in each row of the filter mat
+        ones_count = (filter_mat == 1).sum(dim=1)
+
         # We get the idx of the (n-1)-closest neighbors of each item
         _, top_n_idx = topk(similarities, k=(self._n-1), dim=1)
         top_n_idx = top_n_idx.tolist()
 
         # For each element in the training set, we filter its top_n_idx list
-        # to only keep element from the training set
+        # to only keep element from the training set that are not 0's
         for i in self.train_mask:
+            top_n_idx[i] = top_n_idx[i][:ones_count[i]]
             top_n_idx[i] = [j for j in top_n_idx[i] if j in self.train_mask]
 
         # For each element in the valid set, we filter its top_n_idx list
-        # to only keep element from the its set or the training set
+        # to only keep element from the its set or the training set that are not 0's
         for i in self.valid_mask:
+            top_n_idx[i] = top_n_idx[i][:ones_count[i]]
             top_n_idx[i] = [j for j in top_n_idx[i] if j in self.train_mask + self.valid_mask]
 
         # For each element in the test set, we filter its top_n_idx list
-        # to only keep element from the its set or the training set
+        # to only keep element from the its set or the training set that are not 0's
         for i in self.test_mask:
+            top_n_idx[i] = top_n_idx[i][:ones_count[i]]
             top_n_idx[i] = [j for j in top_n_idx[i] if j in self.train_mask + self.test_mask]
 
         # We build the edges of the graph
         u, v = [], []
         for i in range(len(top_n_idx)):
             nb_neighbor = min(len(top_n_idx[i]), self._k)
-            u += [i]*nb_neighbor
-            v += top_n_idx[i][:nb_neighbor]
+            u += top_n_idx[i][:nb_neighbor]
+            v += [i]*nb_neighbor
         u, v = tensor(u).long(), tensor(v).long()
 
-        # We build the graph, add missing edges and then add self loop
-        g = add_self_loop(to_bidirected(graph((u, v))))
-
-        return g
+        # We return the graph
+        return graph((u, v))
 
     def _compute_distances(self) -> tensor:
         """
@@ -211,6 +217,16 @@ class PetaleKGNNDataset(PetaleDataset):
             # index to its physical position in the train + valid mask
             train_valid_mask = self.train_mask + self.valid_mask
             self._subgraphs[MaskType.VALID] = (*self.get_arbitrary_subgraph(idx=train_valid_mask), train_valid_mask)
+
+    # def draw_train_graph(self) -> None:
+    #     """
+    #     Draws the training graph using NetworkX
+    #
+    #     Returns: None
+    #     """
+    #     g, _, idx = self.train_subgraph
+    #     draw(g.to_networkx(), node_color=self.y[idx])
+    #     plt.show()
 
     def get_arbitrary_subgraph(self, idx: List[int]) -> Tuple[DGLGraph, Dict[int, int]]:
         """

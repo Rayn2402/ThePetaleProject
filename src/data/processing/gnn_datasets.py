@@ -104,7 +104,7 @@ class PetaleKGNNDataset(PetaleDataset):
 
         # We fill the upper triangle of the edges matrix
         df = self.get_imputed_dataframe()
-        for value in self.encodings[self._conditional_cat_col].keys():
+        for value in self.encodings[self._conditional_cat_col].values():
 
             # Idx of patients sharing same categorical value
             idx_subset = df.loc[df[self._conditional_cat_col] == value].index.to_numpy()

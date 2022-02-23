@@ -14,7 +14,7 @@ from src.models.abstract_models.custom_torch_base import TorchCustomModel
 from src.training.early_stopping import EarlyStopper
 from src.utils.score_metrics import Metric, RootMeanSquaredError
 from torch import cat, no_grad, ones, tensor
-from torch.nn import Linear, MSELoss
+from torch.nn import Linear, MSELoss, BatchNorm1d
 from torch.nn.functional import elu
 from torch.utils.data import DataLoader
 from typing import Callable, List, Optional, Union, Tuple
@@ -78,6 +78,9 @@ class GAT(TorchCustomModel):
                                      feat_drop=dropout,
                                      attn_drop=dropout,
                                      activation=elu)
+
+        # We save the batch norm layer
+        self._bn = BatchNorm1d(hidden_size)
 
         # We save the number of attention heads
         self._num_att_heads = num_heads
@@ -230,8 +233,8 @@ class GAT(TorchCustomModel):
         # We apply the graph convolutional layer
         h = self._conv_layer(g, h)
 
-        # We take the average of all the attention heads
-        h = h.sum(dim=1)/self._num_att_heads
+        # We take the average of all the attention heads and apply batch norm
+        h = self._bn(h.sum(dim=1)/self._num_att_heads)
 
         # We apply the linear layer
         return self._linear_layer(h).squeeze()

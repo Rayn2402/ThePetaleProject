@@ -25,7 +25,6 @@ class PetaleKGNNDataset(PetaleDataset):
     K-GNN means that the graph structure is built using the K-nearest neighbors
     on the specified columns.
     """
-
     def __init__(self,
                  df: DataFrame,
                  target: str,
@@ -183,27 +182,22 @@ class PetaleKGNNDataset(PetaleDataset):
 
     def _compute_distances(self) -> tensor:
         """
-        Calculates squared mahalanobis distances between individuals, using the training set
-        to estimate covariance matrix
+        Calculates squared euclidean distances between individuals
 
         Returns: (N, N) tensor with distances
         """
-        # We first compute inverse of covariance matrix related to numerical columns of training set
+        # We compute squared euclidean distances
         numerical_data = self.x[:, self.cont_idx]
-        numerical_train_data = numerical_data[self.train_mask, :]
-        inv_cov_mat = tensor(inv(cov(numerical_train_data, rowvar=False))).float()
-
-        # We compute squared mahalanobis distances
-        mahalanobis_dist = zeros(self._n, self._n, requires_grad=False)
+        euclidean_dist = zeros(self._n, self._n, requires_grad=False)
         for i in range(self._n):
             for j in range(i+1, self._n):
                 diff = (numerical_data[i, :] - numerical_data[j, :]).reshape(-1, 1)
-                mahalanobis_dist[i, j] = mm(mm(transpose(diff, 0, 1), inv_cov_mat), diff)
+                euclidean_dist[i, j] = mm(diff.t(), diff)
 
         # We add the matrix to its transpose to have all distances
-        mahalanobis_dist = mahalanobis_dist + mahalanobis_dist.t()
+        euclidean_dist = euclidean_dist + euclidean_dist.t()
 
-        return mahalanobis_dist
+        return euclidean_dist
 
     def _set_subgraphs_data(self) -> None:
         """

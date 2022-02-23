@@ -9,7 +9,7 @@ Date of last modification: 2022/02/23
 """
 import matplotlib.pyplot as plt
 
-from dgl import DGLGraph, graph, node_subgraph
+from dgl import add_self_loop, DGLGraph, graph, node_subgraph
 from networkx import draw, connected_components
 from numpy import cov
 from numpy.linalg import inv
@@ -30,6 +30,7 @@ class PetaleKGNNDataset(PetaleDataset):
                  df: DataFrame,
                  target: str,
                  k: int = 5,
+                 self_loop: bool = True,
                  cont_cols: Optional[List[str]] = None,
                  cat_cols: Optional[List[str]] = None,
                  gene_cols: Optional[List[str]] = None,
@@ -42,6 +43,7 @@ class PetaleKGNNDataset(PetaleDataset):
             df: dataframe with the original data
             target: name of the column with the targets
             k: number of closest neighbors used to build the population graph
+            self_loop: if True, self loop will be added to nodes in the graph
             cont_cols: list of column names associated with continuous data
             cat_cols: list of column names associated with categorical data
             gene_cols: list of categorical column names that must be considered as genes
@@ -59,7 +61,8 @@ class PetaleKGNNDataset(PetaleDataset):
         # We set the graph attribute to default value
         self._graph = None
 
-        # We save the number of k-nearest neighbors
+        # We save the number of k-nearest neighbors and the self-loop attribute
+        self._self_loop = self_loop
         self._k = k
 
         # We set train, valid and test subgraphs data to default value
@@ -170,7 +173,13 @@ class PetaleKGNNDataset(PetaleDataset):
         u, v = tensor(u).long(), tensor(v).long()
 
         # We return the graph
-        return graph((u, v))
+        g = graph((u, v))
+
+        # We add self loops if required
+        if self._self_loop:
+            g = add_self_loop(g)
+
+        return g
 
     def _compute_distances(self) -> tensor:
         """

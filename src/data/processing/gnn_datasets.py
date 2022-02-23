@@ -109,7 +109,7 @@ class PetaleKGNNDataset(PetaleDataset):
             # Idx of patients sharing same categorical value
             idx_subset = df.loc[df[self._conditional_cat_col] == value].index.to_numpy()
 
-            # For patient with common value we add edges
+            # For patient with common value we add 1
             k = 0
             for i in idx_subset:
                 for j in idx_subset[k+1:]:
@@ -168,7 +168,7 @@ class PetaleKGNNDataset(PetaleDataset):
 
     def _compute_distances(self) -> tensor:
         """
-        Calculates mahalanobis distances between individuals, using the training set
+        Calculates squared mahalanobis distances between individuals, using the training set
         to estimate covariance matrix
 
         Returns: (N, N) tensor with distances

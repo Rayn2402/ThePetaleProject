@@ -186,7 +186,7 @@ class PetaleKGNNDataset(PetaleDataset):
                 mahalanobis_dist[i, j] = mm(mm(transpose(diff, 0, 1), inv_cov_mat), diff)
 
         # We add the matrix to its transpose to have all distances
-        mahalanobis_dist = mahalanobis_dist + transpose(mahalanobis_dist, 0, 1)
+        mahalanobis_dist = mahalanobis_dist + mahalanobis_dist.t()
 
         return mahalanobis_dist
 

@@ -251,7 +251,7 @@ class PetaleKGNNDataset(PetaleDataset):
         # We get the idx of the (n-1)-nearest neighbors of each item
         _, self._nearest_neighbors_idx = topk(similarities, k=(self._n - 1), dim=1)
 
-    def get_arbitrary_subgraph(self, idx: List[int]) -> Tuple[DGLGraph, Dict[int, int]]:
+    def get_arbitrary_subgraph(self, idx: List[int]) -> Tuple[DGLGraph, Dict[int, int], List[int]]:
         """
         Returns a tuple with :
         1 - homogeneous subgraph with only the nodes associated to idx in the list
@@ -260,11 +260,16 @@ class PetaleKGNNDataset(PetaleDataset):
         Args:
             idx: list of idx such as masks
 
-        Returns: homogeneous graph, dict matching each training index to its physical position in idx list
+        Returns: homogeneous graph, dict matching each training index to its physical position in idx list,
+                 list with all the idx
         """
+        # We remove the given idx from the native nodes idx list
+        native_idx = [i for i in idx if i not in range(self._n)]
+
         # We build the subgraph
-        g, m, _ = self._build_pop_subgraph(native_node_idx=self.train_mask, added_node_idx=idx)
-        return g, m
+        g, m, idx = self._build_pop_subgraph(native_node_idx=native_idx, added_node_idx=idx)
+
+        return g, m, idx
 
     def update_masks(self,
                      train_mask: List[int],

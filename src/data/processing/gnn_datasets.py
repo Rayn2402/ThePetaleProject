@@ -58,7 +58,6 @@ class PetaleKGNNDataset(PetaleDataset):
         self._conditional_cat_col = conditional_cat_col
 
         # We set the some attributes to default value
-        self._graph = None
         self._neighbors_count = None
         self._nearest_neighbors_idx = None
 
@@ -79,10 +78,6 @@ class PetaleKGNNDataset(PetaleDataset):
                          to_tensor=True)
 
     @property
-    def graph(self) -> DGLGraph:
-        return self._graph
-
-    @property
     def train_subgraph(self) -> Tuple[DGLGraph, List[int], Dict[int, int]]:
         return self._subgraphs[MaskType.TRAIN]
 
@@ -98,7 +93,7 @@ class PetaleKGNNDataset(PetaleDataset):
                               idx: List[int],
                               top_n_neighbors: List[List[int]]) -> Tuple[DGLGraph, Dict[int, int]]:
         """
-        Builds a graph by connecting the each node i in the idx list to its k-nearest neighbors
+        Builds a graph by connecting each node i in the idx list to its k-nearest neighbors
         ordered in the top_n_neighbors[i] list.
 
         Args:
@@ -185,61 +180,6 @@ class PetaleKGNNDataset(PetaleDataset):
         g, m = self._build_graph_from_knn(all_nodes_idx, nn_idx)
 
         return g, m, all_nodes_idx
-
-    def _build_population_graph(self) -> DGLGraph:
-        """
-        Builds the graph structure
-
-        Returns: Homogeneous graph representing the datasets
-        """
-        # We calculate similarities between each item (1/(1 + distance) - 1)
-        similarities = 1/(self._compute_distances() + eye(self._n)) - eye(self._n)
-
-        # We turn some similarities to zeros if a conditional column was given
-        filter_mat = self._build_neighbors_filter_mat()
-        similarities *= filter_mat
-
-        # We count the number of ones in each row of the filter mat
-        ones_count = (filter_mat == 1).sum(dim=1)
-
-        # We get the idx of the (n-1)-closest neighbors of each item
-        _, top_n_idx = topk(similarities, k=(self._n-1), dim=1)
-        top_n_idx = top_n_idx.tolist()
-
-        # For each element in the training set, we filter its top_n_idx list
-        # to only keep element from the training set that are not 0's
-        for i in self.train_mask:
-            top_n_idx[i] = top_n_idx[i][:ones_count[i]]
-            top_n_idx[i] = [j for j in top_n_idx[i] if j in self.train_mask]
-
-        # For each element in the valid set, we filter its top_n_idx list
-        # to only keep element from the its set or the training set that are not 0's
-        for i in self.valid_mask:
-            top_n_idx[i] = top_n_idx[i][:ones_count[i]]
-            top_n_idx[i] = [j for j in top_n_idx[i] if j in self.train_mask + self.valid_mask]
-
-        # For each element in the test set, we filter its top_n_idx list
-        # to only keep element from the its set or the training set that are not 0's
-        for i in self.test_mask:
-            top_n_idx[i] = top_n_idx[i][:ones_count[i]]
-            top_n_idx[i] = [j for j in top_n_idx[i] if j in self.train_mask + self.test_mask]
-
-        # We build the edges of the graph
-        u, v = [], []
-        for i in range(len(top_n_idx)):
-            nb_neighbor = min(len(top_n_idx[i]), self._k)
-            u += top_n_idx[i][:nb_neighbor]
-            v += [i]*nb_neighbor
-        u, v = tensor(u).long(), tensor(v).long()
-
-        # We return the graph
-        g = graph((u, v))
-
-        # We add self loops if required
-        if self._self_loop:
-            g = add_self_loop(g)
-
-        return g
 
     def _compute_distances(self) -> tensor:
         """
@@ -345,8 +285,8 @@ class PetaleKGNNDataset(PetaleDataset):
         # If we are not calling update_masks for initialization purpose
         if len(test_mask) != 0:
 
-            # We update the graph structure
-            self._graph = self._build_population_graph()
+            # We set the attributes related to nearest neighbors
+            self._set_nearest_neighbors()
 
             # We update the subgraphs data
             self._set_subgraphs_data()

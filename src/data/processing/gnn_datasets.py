@@ -57,8 +57,10 @@ class PetaleKGNNDataset(PetaleDataset):
                 raise ValueError(f'{conditional_cat_col} not found among cat_cols')
         self._conditional_cat_col = conditional_cat_col
 
-        # We set the graph attribute to default value
+        # We set the some attributes to default value
         self._graph = None
+        self._neighbors_count = None
+        self._nearest_neighbors_idx = None
 
         # We save the number of k-nearest neighbors and the self-loop attribute
         self._self_loop = self_loop
@@ -261,6 +263,26 @@ class PetaleKGNNDataset(PetaleDataset):
     #     g, _, idx = self.train_subgraph
     #     draw(g.to_networkx(), node_color=self.y[idx])
     #     plt.show()
+
+    def set_nearest_neighbors(self) -> None:
+        """
+        Sets, for each item in the dataset, an ordered sequence of idx representing the nearest neighbors.
+        Also saves the number of possible neighbors for each item.
+
+        Returns: None
+        """
+        # We calculate similarities between each item (1/(1 + distance) - 1)
+        similarities = 1 / (self._compute_distances() + eye(self._n)) - eye(self._n)
+
+        # We turn some similarities to zeros if a conditional column was given
+        filter_mat = self._build_neighbors_filter_mat()
+        similarities *= filter_mat
+
+        # We count the number of ones in each row of the filter mat
+        self._neighbors_count = (filter_mat == 1).sum(dim=1)
+
+        # We get the idx of the (n-1)-nearest neighbors of each item
+        _, self._nearest_neighbors_idx = topk(similarities, k=(self._n - 1), dim=1)
 
     def get_arbitrary_subgraph(self, idx: List[int]) -> Tuple[DGLGraph, Dict[int, int]]:
         """

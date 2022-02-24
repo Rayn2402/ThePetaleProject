@@ -158,6 +158,34 @@ class PetaleKGNNDataset(PetaleDataset):
 
         return neighbors_filter
 
+    def _build_pop_subgraph(self,
+                            native_node_idx: List[int],
+                            added_node_idx: Optional[List[int]] = None
+                            ) -> Tuple[DGLGraph, Dict[int, int], List[int]]:
+        """
+        Builds a graph where all nodes can only be connected to any native node
+
+        Args:
+            native_node_idx: list of idx associated to native nodes
+            added_node_idx: list of idx associated to added nodes
+
+        Returns: DGLgraph, dictionary mapping each idx to its position the graph, list with all the idx
+        """
+        # We extract the nearest neighbors idx list
+        nn_idx = self._nearest_neighbors_idx.tolist()
+
+        # We filter nodes possible neighbors
+        added_node_idx = [] if added_node_idx is None else added_node_idx
+        all_nodes_idx = native_node_idx + added_node_idx
+        for i in all_nodes_idx:
+            nn_idx[i] = nn_idx[i][:self._neighbors_count[i]]
+            nn_idx[i] = [j for j in nn_idx[i] if j in native_node_idx]
+
+        # We build the graph and the node mapping
+        g, m = self._build_graph_from_knn(all_nodes_idx, nn_idx)
+
+        return g, m, all_nodes_idx
+
     def _build_population_graph(self) -> DGLGraph:
         """
         Builds the graph structure
@@ -238,21 +266,20 @@ class PetaleKGNNDataset(PetaleDataset):
 
         Returns: None
         """
-        # Set the subgraph associated to training set and a map matching each training
+        # Set the subgraph associated to the training set and a map matching each training
         # index to its physical position in the train mask
-        self._subgraphs[MaskType.TRAIN] = (*self.get_arbitrary_subgraph(idx=self.train_mask), self.train_mask)
+        self._subgraphs[MaskType.TRAIN] = self._build_pop_subgraph(native_node_idx=self.train_mask)
 
         # Set the subgraph associated to test and a map matching each test
         # index to its physical position in the train + test mask
-        train_test_mask = self.train_mask + self.test_mask
-        self._subgraphs[MaskType.TEST] = (*self.get_arbitrary_subgraph(idx=train_test_mask), train_test_mask)
-
+        self._subgraphs[MaskType.TEST] = self._build_pop_subgraph(native_node_idx=self.train_mask + self.valid_mask,
+                                                                  added_node_idx=self.test_mask)
         if len(self.valid_mask) != 0:
 
             # Set the subgraph associated to validation and a map matching each valid
             # index to its physical position in the train + valid mask
-            train_valid_mask = self.train_mask + self.valid_mask
-            self._subgraphs[MaskType.VALID] = (*self.get_arbitrary_subgraph(idx=train_valid_mask), train_valid_mask)
+            self._subgraphs[MaskType.VALID] = self._build_pop_subgraph(native_node_idx=self.train_mask,
+                                                                       added_node_idx=self.valid_mask)
 
     # def draw_train_graph(self) -> None:
     #     """
@@ -264,7 +291,7 @@ class PetaleKGNNDataset(PetaleDataset):
     #     draw(g.to_networkx(), node_color=self.y[idx])
     #     plt.show()
 
-    def set_nearest_neighbors(self) -> None:
+    def _set_nearest_neighbors(self) -> None:
         """
         Sets, for each item in the dataset, an ordered sequence of idx representing the nearest neighbors.
         Also saves the number of possible neighbors for each item.
@@ -295,7 +322,9 @@ class PetaleKGNNDataset(PetaleDataset):
 
         Returns: homogeneous graph, dict matching each training index to its physical position in idx list
         """
-        return node_subgraph(self.graph, nodes=idx, store_ids=True), {v: i for i, v in enumerate(idx)}
+        # We build the subgraph
+        g, m, _ = self._build_pop_subgraph(native_node_idx=self.train_mask, added_node_idx=idx)
+        return g, m
 
     def update_masks(self,
                      train_mask: List[int],

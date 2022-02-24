@@ -92,6 +92,37 @@ class PetaleKGNNDataset(PetaleDataset):
     def valid_subgraph(self) -> Tuple[DGLGraph, List[int], Dict[int, int]]:
         return self._subgraphs[MaskType.VALID]
 
+    def _build_graph_from_knn(self,
+                              idx: List[int],
+                              top_n_neighbors: List[List[int]]) -> Tuple[DGLGraph, Dict[int, int]]:
+        """
+        Builds a graph by connecting the each node i in the idx list to its k-nearest neighbors
+        ordered in the top_n_neighbors[i] list.
+
+        Args:
+            idx: list of nodes idx to use in order to build the graph
+            top_n_neighbors: list of list containing idx of closest neighbors of each node
+
+        Returns: DGLgraph, dictionary mapping each idx to its position the graph
+        """
+        # We build the edges of the graph
+        u, v = [], []
+        for i in idx:
+            nb_neighbor = min(len(top_n_neighbors[i]), self._k)
+            u += top_n_neighbors[i][:nb_neighbor]
+            v += [i] * nb_neighbor
+        u, v = tensor(u).long(), tensor(v).long()
+
+        # We build the graph
+        g = graph((u, v))
+
+        # We add self loops if required
+        if self._self_loop:
+            g = add_self_loop(g)
+
+        # We return the graph and the mapping of each idx to its position in the graph
+        return g, self._create_idx_map(idx)
+
     def _build_neighbors_filter_mat(self) -> tensor:
         """
         Creates an (N,N) tensor where element i,j is a 1 if item-i and item-j
@@ -317,3 +348,15 @@ class PetaleKGNNDataset(PetaleDataset):
                                  gene_cols=gene_cols,
                                  conditional_cat_col=self._conditional_cat_col,
                                  classification=self.classification)
+
+    @staticmethod
+    def _create_idx_map(idx: List[int]) -> Dict[int, int]:
+        """
+        Creates a dictionary mapping each element of a list to its position in the list
+
+        Args:
+            idx: list of idx
+
+        Returns: dictionary
+        """
+        return {v: i for i, v in enumerate(idx)}

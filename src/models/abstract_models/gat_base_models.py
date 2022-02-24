@@ -152,12 +152,12 @@ class GAT(TorchCustomModel):
 
         Returns: True if we need to early stop
         """
+        # We check if there is validation to do
+        if valid_data is None:
+            return False
+
         # We extract train loader, dataset
         valid_loader, dataset = valid_data
-
-        # We check if there is validation to do
-        if valid_loader is None:
-            return False
 
         # We extract valid_subgraph, mask (train + valid) and valid_idx_map
         valid_subgraph, valid_idx_map, mask = dataset.valid_subgraph
@@ -307,11 +307,10 @@ class GATRegressor(GAT):
         """
         # We extract subgraph data (we add training data for graph convolution)
         if mask is not None:
-            mask_with_train = list(set(mask + dataset.train_mask))
-            g, idx_map = dataset.get_arbitrary_subgraph(mask_with_train)
+            g, idx_map, mask_with_remaining_idx = dataset.get_arbitrary_subgraph(mask)
         else:
             mask = dataset.test_mask
-            g, idx_map, mask_with_train = dataset.test_subgraph
+            g, idx_map, mask_with_remaining_idx = dataset.test_subgraph
 
         # Set model for evaluation
         self.eval()
@@ -319,5 +318,5 @@ class GATRegressor(GAT):
         # Execute a forward pass and apply a softmax
         with no_grad():
             pos_idx = [idx_map[i] for i in mask]
-            x, _, _ = dataset[mask_with_train]
+            x, _, _ = dataset[mask_with_remaining_idx]
             return self(g, x)[pos_idx]

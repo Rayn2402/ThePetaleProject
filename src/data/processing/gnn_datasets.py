@@ -271,11 +271,12 @@ class PetaleKGNNDataset(PetaleDataset):
         Returns: homogeneous graph, dict matching each training index to its physical position in idx list,
                  list with all the idx
         """
-        # We remove the given idx from the native nodes idx list
-        native_idx = [i for i in idx if i not in range(self._n)]
+
+        # We remove the that are part of the native node
+        added_idx = [i for i in idx if i not in self.train_mask]
 
         # We build the subgraph
-        g, m, idx = self._build_pop_subgraph(native_node_idx=native_idx, added_node_idx=idx)
+        g, m, idx = self._build_pop_subgraph(native_node_idx=self.train_mask, added_node_idx=added_idx)
 
         return g, m, idx
 

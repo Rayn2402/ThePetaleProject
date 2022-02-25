@@ -102,23 +102,31 @@ class PetaleKGNNDataset(PetaleDataset):
 
         Returns: DGLgraph, dictionary mapping each idx to its position the graph
         """
-        # We build the edges of the graph
+        # We create the dictionary mapping the original idx to their position in the graph
+        idx_map = self._create_idx_map(idx)
+
+        # We build the edges of the graph using the original idx
         u, v = [], []
         for i in idx:
             nb_neighbor = min(len(top_n_neighbors[i]), self._k)
             u += top_n_neighbors[i][:nb_neighbor]
             v += [i] * nb_neighbor
+
+        # We replace the idx with their node position
+        u = [idx_map[n] for n in u]
+        v = [idx_map[n] for n in v]
         u, v = tensor(u).long(), tensor(v).long()
 
-        # We build the graph
+        # We build the graph and saves the original id
         g = graph((u, v))
+        g.ndata['IDs'] = tensor(idx)
 
         # We add self loops if required
         if self._self_loop:
             g = add_self_loop(g)
 
         # We return the graph and the mapping of each idx to its position in the graph
-        return g, self._create_idx_map(idx)
+        return g, idx_map
 
     def _build_neighbors_filter_mat(self) -> tensor:
         """

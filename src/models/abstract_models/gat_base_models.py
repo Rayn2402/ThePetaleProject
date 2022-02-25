@@ -305,7 +305,7 @@ class GATRegressor(GAT):
 
         Returns: (N,) tensor
         """
-        if all([i in dataset.test_mask for i in mask]) or mask is None:
+        if mask is None or all([i in dataset.test_mask for i in mask]):
             mask = dataset.test_mask
             g, idx_map, mask_with_remaining_idx = dataset.test_subgraph
 

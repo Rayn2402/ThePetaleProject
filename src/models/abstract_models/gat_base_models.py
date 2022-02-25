@@ -305,12 +305,13 @@ class GATRegressor(GAT):
 
         Returns: (N,) tensor
         """
-        # We extract subgraph data (we add training data for graph convolution)
-        if mask is not None:
-            g, idx_map, mask_with_remaining_idx = dataset.get_arbitrary_subgraph(mask)
-        else:
+        if all([i in dataset.test_mask for i in mask]) or mask is None:
             mask = dataset.test_mask
             g, idx_map, mask_with_remaining_idx = dataset.test_subgraph
+
+        # We extract subgraph data (we add training data for graph convolution)
+        else:
+            g, idx_map, mask_with_remaining_idx = dataset.get_arbitrary_subgraph(mask)
 
         # Set model for evaluation
         self.eval()

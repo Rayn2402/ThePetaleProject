@@ -46,7 +46,7 @@ def argument_parser():
     parser.add_argument('-s', '--sex', default=False, action='store_true',
                         help='True if we want to include sex in features')
 
-    # Genes encoding
+    # Genes encoding parameter
     parser.add_argument('-share', '--embedding_sharing', default=False, action='store_true',
                         help='True if we want to use a single entity embedding layer for all genes'
                              ' (currently only applies with genomic signature creation')
@@ -72,6 +72,10 @@ def argument_parser():
                         help='True if we want to run GeneGraphEncoder with enet experiment')
     parser.add_argument('-ggae', '--ggae', default=False, action='store_true',
                         help='True if we want to run GeneGraphAttentionEncoder with enet experiment')
+
+    # GAT graph construction parameters
+    parser.add_argument('-w_sim', '--weighted_similarity', default=False, action='store_true',
+                        help='True if we want calculate patients similarities using weighted metrics')
 
     # Self supervised learning experiments
     parser.add_argument('-ssl_ggae', '-ssl_ggae', default=False, action='store_true',
@@ -545,8 +549,15 @@ if __name__ == '__main__':
         start = time.time()
 
         # Creation of the dataset
+        if args.sex or genes:
+            sim_measure = PetaleKGNNDataset.COSINE
+        else:
+            sim_measure = PetaleKGNNDataset.EUCLIDEAN
+
         cond_cat_col = SEX if args.sex else None
-        dataset = PetaleKGNNDataset(df, target, k=5, cont_cols=cont_cols, cat_cols=cat_cols,
+        dataset = PetaleKGNNDataset(df, target, k=5, similarity=sim_measure,
+                                    weighted_similarity=args.weighted_similarity,
+                                    cont_cols=cont_cols, cat_cols=cat_cols,
                                     conditional_cat_col=cond_cat_col, classification=False)
 
         # Creation of function to update fixed params

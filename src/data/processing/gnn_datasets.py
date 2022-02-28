@@ -13,7 +13,8 @@ from dgl import add_self_loop, DGLGraph, graph, node_subgraph
 from networkx import draw, connected_components
 from pandas import DataFrame
 from src.data.processing.datasets import MaskType, PetaleDataset
-from torch import cat, eye, mm, ones, sqrt, tensor, topk, zeros
+from src.data.processing.feature_selection import FeatureSelector
+from torch import cat, diag, eye, mm, ones, sqrt, tensor, topk, zeros
 from typing import Any, Dict, List, Optional, Tuple
 
 
@@ -32,6 +33,7 @@ class PetaleKGNNDataset(PetaleDataset):
                  k: int = 5,
                  self_loop: bool = True,
                  similarity: str = EUCLIDEAN,
+                 weighted_similarity: bool = False,
                  cont_cols: Optional[List[str]] = None,
                  cat_cols: Optional[List[str]] = None,
                  gene_cols: Optional[List[str]] = None,
@@ -45,6 +47,9 @@ class PetaleKGNNDataset(PetaleDataset):
             target: name of the column with the targets
             k: number of closest neighbors used to build the population graph
             self_loop: if True, self loop will be added to nodes in the graph
+            similarity: 'euclidean' or 'cosine'
+            weighted_similarity: if True, the weights will assigned to features
+                                 during similarities calculation
             cont_cols: list of column names associated with continuous data
             cat_cols: list of column names associated with categorical data
             gene_cols: list of categorical column names that must be considered as genes
@@ -60,9 +65,13 @@ class PetaleKGNNDataset(PetaleDataset):
         self._conditional_cat_col = conditional_cat_col
 
         # We set the some attributes to default value
+        self._feature_imp_extractor = None
         self._neighbors_count = None
         self._nearest_neighbors_idx = None
         self._similarity = similarity
+
+        if weighted_similarity:
+            self._feature_imp_extractor = FeatureSelector(100, seed=1010710)
 
         # We save the number of k-nearest neighbors and the self-loop attribute
         self._self_loop = self_loop
@@ -221,13 +230,22 @@ class PetaleKGNNDataset(PetaleDataset):
 
         Returns: (N, N) tensor with distances
         """
+        # We calculate the weight of the continuous features
+        if self._feature_imp_extractor is not None:
+            fi = self._get_features_importance()
+            fi = fi[:len(self.cont_idx)]
+            fi /= fi.sum()
+            weight_mat = diag(fi)
+        else:
+            weight_mat = eye(len(self.cont_idx))
+
         # We compute squared euclidean distances
-        numerical_data = self.x[:, self.cont_idx]
+        numerical_data = self.x_cont
         euclidean_dist = zeros(self._n, self._n, requires_grad=False)
         for i in range(self._n):
             for j in range(i+1, self._n):
                 diff = (numerical_data[i, :] - numerical_data[j, :]).reshape(-1, 1)
-                euclidean_dist[i, j] = mm(diff.t(), diff)
+                euclidean_dist[i, j] = mm(mm(diff.t(), weight_mat), diff)
 
         # We add the matrix to its transpose to have all distances
         euclidean_dist = euclidean_dist + euclidean_dist.t()
@@ -246,6 +264,37 @@ class PetaleKGNNDataset(PetaleDataset):
             sim = self.compute_cosine_sim()
 
         return sim - eye(self._n)
+
+    def _get_features_importance(self) -> tensor:
+        """
+        Calculates the feature importance of each feature in the dataset
+        according to the labels
+
+        Returns: tensor with feature importance
+        """
+        # We initialize a dictionary to store feature importance
+        fi_dict = {}
+        for i in range(len(self._cont_idx)):
+            fi_dict[self._cont_cols[i]] = 1
+
+        cat_sizes = self.cat_sizes
+        for i in range(len(self._cat_idx)):
+            fi_dict[self._cat_cols[i]] = cat_sizes[i]
+
+        # We calculate feature importance
+        fi_table = self._feature_imp_extractor.get_features_importance(self)
+
+        # We store the feature importance in the dictionary
+        for _, row in fi_table.iterrows():
+            fi_dict[row['features']] = [row['imp']]*fi_dict[row['features']]
+
+        # We flatten the values of the dictionary
+        fi = []
+        for v in fi_dict.values():
+            fi += v
+
+        # We return a tensor
+        return tensor(fi)
 
     def _set_subgraphs_data(self) -> None:
         """

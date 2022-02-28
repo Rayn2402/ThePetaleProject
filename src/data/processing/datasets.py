@@ -599,7 +599,7 @@ class PetaleDataset(Dataset):
         self._valid_columns_type(cat_cols, categorical=True)
 
         # We extract one hot encodings
-        e = CaT.one_hot_encode(self.get_imputed_dataframe()[cat_cols])
+        e = CaT.one_hot_encode(self.get_imputed_dataframe()[cat_cols].astype('str'))
 
         # We return the good type of data
         if self._to_tensor:

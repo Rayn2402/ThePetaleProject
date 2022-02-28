@@ -200,7 +200,7 @@ ENET_HPS = {
 GATHPS = {
     GATHP.ALPHA.name: {
         Range.MIN: 0,
-        Range.MAX: 2
+        Range.MAX: 1
     },
     GATHP.BATCH_SIZE.name: {
         Range.MIN: 15,
@@ -212,7 +212,8 @@ GATHPS = {
         Range.MAX: 2
     },
     GATHP.DROPOUT.name: {
-        Range.VALUE: 0,
+        Range.MIN: 0,
+        Range.MAX: 0.25
     },
     GATHP.HIDDEN_SIZE.name: {
         Range.MIN: 2,
@@ -221,13 +222,14 @@ GATHPS = {
     },
     GATHP.LR.name: {
         Range.MIN: 0.001,
-        Range.MAX: 0.5
+        Range.MAX: 0.1
     },
     GATHP.RHO.name: {
         Range.VALUE: 0
     },
     GATHP.NUM_HEADS.name: {
-        Range.VALUE: 1,
+        Range.MIN: 1,
+        Range.MAX: 20
     },
 }
 GGEHPS = {

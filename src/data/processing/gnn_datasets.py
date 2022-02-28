@@ -215,11 +215,18 @@ class PetaleKGNNDataset(PetaleDataset):
             x.append(self.get_one_hot_encodings(cat_cols=self._cat_cols))
         x = cat(x, dim=1)
 
-        # We compute dot products between individuals
-        x_prime = mm(x, x.t())
+        # We extract feature importance
+        if self._feature_imp_extractor is not None:
+            fi = self._get_features_importance()
+            fi = fi.reshape(1, -1)
+        else:
+            fi = ones(x.shape)
 
-        # We compute norms
-        norms = sqrt(pow(x, 2).sum(dim=1)).reshape(-1, 1)
+        # We compute weighted dot products between individuals
+        x_prime = mm(x*fi, x.t())
+
+        # We compute weighted norms
+        norms = sqrt((pow(x, 2)*fi).sum(dim=1)).reshape(-1, 1)
 
         # We return cosine similarities
         return x_prime / mm(norms, norms.t())

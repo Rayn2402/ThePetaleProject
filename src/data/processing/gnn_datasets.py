@@ -11,11 +11,9 @@ import matplotlib.pyplot as plt
 
 from dgl import add_self_loop, DGLGraph, graph, node_subgraph
 from networkx import draw, connected_components
-from numpy import cov
-from numpy.linalg import inv
 from pandas import DataFrame
 from src.data.processing.datasets import MaskType, PetaleDataset
-from torch import eye, mm, ones, tensor, topk, transpose, zeros
+from torch import cat, eye, mm, ones, sqrt, tensor, topk, zeros
 from typing import Any, Dict, List, Optional, Tuple
 
 
@@ -25,11 +23,15 @@ class PetaleKGNNDataset(PetaleDataset):
     K-GNN means that the graph structure is built using the K-nearest neighbors
     on the specified columns.
     """
+    EUCLIDEAN: str = 'euclidean'
+    COSINE: str = 'cosine'
+
     def __init__(self,
                  df: DataFrame,
                  target: str,
                  k: int = 5,
                  self_loop: bool = True,
+                 similarity: str = EUCLIDEAN,
                  cont_cols: Optional[List[str]] = None,
                  cat_cols: Optional[List[str]] = None,
                  gene_cols: Optional[List[str]] = None,
@@ -60,6 +62,7 @@ class PetaleKGNNDataset(PetaleDataset):
         # We set the some attributes to default value
         self._neighbors_count = None
         self._nearest_neighbors_idx = None
+        self._similarity = similarity
 
         # We save the number of k-nearest neighbors and the self-loop attribute
         self._self_loop = self_loop
@@ -189,7 +192,30 @@ class PetaleKGNNDataset(PetaleDataset):
 
         return g, m, all_nodes_idx
 
-    def _compute_distances(self) -> tensor:
+    def compute_cosine_sim(self) -> tensor:
+        """
+        Calculates cosine similarities between individuals
+
+        Returns: (N, N) tensor with distances
+        """
+        # We extract data
+        x = []
+        if len(self._cat_idx) > 0:
+            x.append(self.x_cont)
+        if len(self._cat_idx) > 0:
+            x.append(self.get_one_hot_encodings(cat_cols=self._cat_cols))
+        x = cat(x, dim=1)
+
+        # We compute dot products between individuals
+        x_prime = mm(x, x.t())
+
+        # We compute norms
+        norms = sqrt(pow(x, 2).sum(dim=1)).reshape(-1, 1)
+
+        # We return cosine similarities
+        return x_prime / mm(norms, norms.t())
+
+    def _compute_euclidean_dist(self) -> tensor:
         """
         Calculates squared euclidean distances between individuals
 
@@ -207,6 +233,19 @@ class PetaleKGNNDataset(PetaleDataset):
         euclidean_dist = euclidean_dist + euclidean_dist.t()
 
         return euclidean_dist
+
+    def _compute_similarities(self) -> tensor:
+        """
+        Computes similarities between individuals
+
+        Returns: (N, N) tensor
+        """
+        if self._similarity == PetaleKGNNDataset.EUCLIDEAN:
+            sim = 1 / (self._compute_euclidean_dist() + eye(self._n))
+        else:
+            sim = self.compute_cosine_sim()
+
+        return sim - eye(self._n)
 
     def _set_subgraphs_data(self) -> None:
         """
@@ -246,8 +285,8 @@ class PetaleKGNNDataset(PetaleDataset):
 
         Returns: None
         """
-        # We calculate similarities between each item (1/(1 + distance) - 1)
-        similarities = 1 / (self._compute_distances() + eye(self._n)) - eye(self._n)
+        # We calculate similarities between each item
+        similarities = self._compute_similarities()
 
         # We turn some similarities to zeros if a conditional column was given
         filter_mat = self._build_neighbors_filter_mat()

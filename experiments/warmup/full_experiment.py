@@ -551,45 +551,50 @@ if __name__ == '__main__':
             sim_measure = PetaleKGNNDataset.EUCLIDEAN
 
         cond_cat_col = SEX if args.sex else None
-        dataset = PetaleKGNNDataset(df, target, k=7, similarity=sim_measure,
-                                    weighted_similarity=args.weighted_similarity,
-                                    cont_cols=cont_cols, cat_cols=cat_cols,
-                                    conditional_cat_col=cond_cat_col, classification=False)
 
-        # Creation of function to update fixed params
-        def update_fixed_params(dts):
-            return {'num_cont_col': len(dts.cont_idx),
-                    'cat_idx': dts.cat_idx,
-                    'cat_sizes': dts.cat_sizes,
-                    'cat_emb_sizes': dts.cat_sizes,
-                    'max_epochs': 200,
-                    'patience': 25}
+        GAT_options = [("", False)] if not args.weighted_similarity else [("", False), ("w", True)]
 
-        # Saving of original fixed params for HAN
-        fixed_params = update_fixed_params(dataset)
+        for suffix, w_sim in GAT_options:
 
-        # Update of hyperparameters
-        if args.enable_sam:
-            HAN_HPS[HanHP.RHO.name] = sam_search_space
+            dataset = PetaleKGNNDataset(df, target, k=7, similarity=sim_measure,
+                                        weighted_similarity=w_sim,
+                                        cont_cols=cont_cols, cat_cols=cat_cols,
+                                        conditional_cat_col=cond_cat_col, classification=False)
 
-        # Creation of the evaluator
-        evaluator = Evaluator(model_constructor=PetaleGATR,
-                              dataset=dataset,
-                              masks=masks,
-                              evaluation_name=f"GAT_warmup{eval_id}",
-                              hps=GATHPS,
-                              n_trials=200,
-                              evaluation_metrics=evaluation_metrics,
-                              fixed_params=fixed_params,
-                              fixed_params_update_function=update_fixed_params,
-                              feature_selector=feature_selector,
-                              save_hps_importance=True,
-                              save_optimization_history=True,
-                              seed=args.seed,
-                              pred_path=args.path)
+            # Creation of function to update fixed params
+            def update_fixed_params(dts):
+                return {'num_cont_col': len(dts.cont_idx),
+                        'cat_idx': dts.cat_idx,
+                        'cat_sizes': dts.cat_sizes,
+                        'cat_emb_sizes': dts.cat_sizes,
+                        'max_epochs': 200,
+                        'patience': 25}
 
-        # Evaluation
-        evaluator.evaluate()
+            # Saving of original fixed params for HAN
+            fixed_params = update_fixed_params(dataset)
+
+            # Update of hyperparameters
+            if args.enable_sam:
+                HAN_HPS[HanHP.RHO.name] = sam_search_space
+
+            # Creation of the evaluator
+            evaluator = Evaluator(model_constructor=PetaleGATR,
+                                  dataset=dataset,
+                                  masks=masks,
+                                  evaluation_name=f"{suffix}GAT_warmup{eval_id}",
+                                  hps=GATHPS,
+                                  n_trials=200,
+                                  evaluation_metrics=evaluation_metrics,
+                                  fixed_params=fixed_params,
+                                  fixed_params_update_function=update_fixed_params,
+                                  feature_selector=feature_selector,
+                                  save_hps_importance=True,
+                                  save_optimization_history=True,
+                                  seed=args.seed,
+                                  pred_path=args.path)
+
+            # Evaluation
+            evaluator.evaluate()
 
         print("Time Taken for GAT (minutes): ", round((time.time() - start) / 60, 2))
 

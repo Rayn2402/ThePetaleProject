@@ -12,7 +12,7 @@ Date of last modification: 2022/02/08
 from src.models.abstract_models.encoder import Encoder
 from src.models.blocks.mlp_blocks import BaseBlock, EntityEmbeddingBlock
 from torch import bmm, einsum, exp, normal, sigmoid, tensor, zeros
-from torch.nn import BatchNorm1d, Conv1d, Linear, Module, Parameter
+from torch.nn import BatchNorm1d, Conv1d, Dropout, Linear, Module, Parameter
 from torch.nn.functional import leaky_relu, relu
 from typing import Dict, List
 
@@ -141,6 +141,7 @@ class GeneGraphEncoder(GeneEncoder):
                  gene_idx_groups: Dict[str, List[int]],
                  hidden_size: int = 3,
                  signature_size: int = 10,
+                 dropout: float = 0.5,
                  genes_emb_sharing: bool = False):
         """
         Sets protected attributes with parent's constructor, the convolutional layer,
@@ -153,6 +154,7 @@ class GeneGraphEncoder(GeneEncoder):
             hidden_size: embedding size of each genes during intermediate
                          signature creation procedure
             signature_size: final genomic signature size (output size)
+            dropout: dropout probability in the last hidden layer
             genes_emb_sharing: if True, genes will share the same entity embedding layer
         """
         # Call of parent's constructor
@@ -178,6 +180,9 @@ class GeneGraphEncoder(GeneEncoder):
         # Batch norm layers
         self._bn1 = BatchNorm1d(self._nb_chrom)  # Normalizes after convolution layer
         self._bn2 = BatchNorm1d(signature_size)  # Normalizes final signatures
+
+        # Dropout layer
+        self._dropout = Dropout(p=dropout)
 
     @property
     def chrom_weight_mat(self) -> tensor:
@@ -215,6 +220,9 @@ class GeneGraphEncoder(GeneEncoder):
 
         # Apply convolutional layer and RELU then squeeze for the linear layer
         h = relu(self._bn1(self._conv_layer(h).squeeze()))  # (N, 1, NB_CHROM*HIDDEN_SIZE) -> (N, NB_CHROM)
+
+        # Apply dropout
+        h = self._dropout(h)
 
         # Apply linear layer and batch norm
         h = self._bn2(self._linear_layer(h))  # (N, NB_CHROM) -> (N, SIGNATURE_SIZE)
@@ -298,6 +306,7 @@ class GeneGraphAttentionEncoder(GeneEncoder):
                  gene_idx_groups: Dict[str, List[int]],
                  hidden_size: int = 3,
                  signature_size: int = 10,
+                 dropout: float = 0.5,
                  genes_emb_sharing: bool = False):
         """
         Sets protected attributes with parent's constructor, the gene attention layer,
@@ -310,6 +319,7 @@ class GeneGraphAttentionEncoder(GeneEncoder):
             hidden_size: embedding size of each genes during intermediate
                          signature creation procedure
             signature_size: final genomic signature size (output size)
+            dropout: dropout probability
             genes_emb_sharing: If True, genes will share the same entity embedding layer
         """
         # Call of parent's constructor
@@ -332,6 +342,11 @@ class GeneGraphAttentionEncoder(GeneEncoder):
         # Initialization of the batch norm
         self._bn = BatchNorm1d(num_features=self._output_size)
 
+        # Dropout layers
+        self._dropout1 = Dropout(p=dropout)
+        self._dropout2 = Dropout(p=dropout)
+        self._dropout3 = Dropout(p=dropout)
+
     def forward(self, x: tensor) -> tensor:
         """
         Executes the following actions on each element in the batch:
@@ -351,11 +366,20 @@ class GeneGraphAttentionEncoder(GeneEncoder):
         # Entity embedding on genes
         h = self._compute_genes_emb(x)  # (N, D) -> (N, NB_GENES, HIDDEN_SIZE)
 
+        # First dropout layer
+        h = self._dropout1(h)
+
         # Gene attention layer
         h = relu(self._gene_attention_layer(h))  # (N, NB_GENES, HIDDEN_SIZE) -> (N, NB_CHROM, HIDDEN_SIZE)
 
+        # Second dropout layer
+        h = self._dropout2(h)
+
         # Chromosome attention layer
         h = relu(self._chrom_attention_layer(h))  # (N, NB_CHROM, HIDDEN_SIZE) -> (N, HIDDEN_SIZE)
+
+        # Third dropout layer
+        h = self._dropout3(h)
 
         # Signature calculation
         return self._bn(self._linear_layer(h))

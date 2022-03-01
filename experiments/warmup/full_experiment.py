@@ -110,7 +110,7 @@ if __name__ == '__main__':
 
     # Imports specific to project
     sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
-    from hps.warmup_hps import ENET_HPS, GATHPS, GGEHPS, HAN_HPS, MLP_HPS, RF_HPS, TAB_HPS, XGBOOST_HPS
+    from hps.warmup_hps import ENET_HPS, ENET_GGE_HPS, GATHPS, GGEHPS, HAN_HPS, MLP_HPS, RF_HPS, TAB_HPS, XGBOOST_HPS
     from settings.paths import Paths
     from src.data.processing.datasets import PetaleDataset, PetaleStaticGNNDataset
     from src.data.processing.gnn_datasets import PetaleKGNNDataset
@@ -410,7 +410,8 @@ if __name__ == '__main__':
         dataset = PetaleDataset(df, target, cont_cols, cat_cols,
                                 gene_cols=gene_cols, to_tensor=True, classification=False)
 
-        def gene_encoder_constructor(gene_idx_groups: Optional[Dict[str, List[int]]]) -> GeneEncoder:
+        def gene_encoder_constructor(gene_idx_groups: Optional[Dict[str, List[int]]],
+                                     dropout: float) -> GeneEncoder:
             """
             Builds a GeneGraphEncoder
 
@@ -418,12 +419,14 @@ if __name__ == '__main__':
                 gene_idx_groups: dictionary where keys are names of chromosomes and values
                                  are list of idx referring to columns of genes associated to
                                  the chromosome
+                dropout: dropout probability
 
             Returns: GeneEncoder
             """
 
             return GeneGraphEncoder(gene_idx_groups=gene_idx_groups,
                                     genes_emb_sharing=args.embedding_sharing,
+                                    dropout=dropout,
                                     signature_size=3)
 
         def update_fixed_params(dts):
@@ -442,7 +445,7 @@ if __name__ == '__main__':
 
         # Update of hyperparameters
         if args.enable_sam:
-            ENET_HPS[MLPHP.RHO.name] = sam_search_space
+            ENET_GGE_HPS[MLPHP.RHO.name] = sam_search_space
 
         # Creation of evaluator
         evaluator = Evaluator(model_constructor=PetaleMLPR,
@@ -477,7 +480,8 @@ if __name__ == '__main__':
                                 gene_cols=gene_cols, to_tensor=True, classification=False)
 
 
-        def gene_encoder_constructor(gene_idx_groups: Optional[Dict[str, List[int]]]) -> GeneEncoder:
+        def gene_encoder_constructor(gene_idx_groups: Optional[Dict[str, List[int]]],
+                                     dropout: float) -> GeneEncoder:
             """
             Builds a GeneGraphAttentionEncoder
 
@@ -485,12 +489,14 @@ if __name__ == '__main__':
                 gene_idx_groups: dictionary where keys are names of chromosomes and values
                                  are list of idx referring to columns of genes associated to
                                  the chromosome
+                dropout: dropout probability
 
             Returns: GeneEncoder
             """
 
             return GeneGraphAttentionEncoder(gene_idx_groups=gene_idx_groups,
                                              genes_emb_sharing=args.embedding_sharing,
+                                             dropout=dropout,
                                              signature_size=3)
 
         def update_fixed_params(dts):
@@ -509,7 +515,7 @@ if __name__ == '__main__':
 
         # Update of hyperparameters
         if args.enable_sam:
-            ENET_HPS[MLPHP.RHO.name] = sam_search_space
+            ENET_GGE_HPS[MLPHP.RHO.name] = sam_search_space
 
         # Creation of evaluator
         evaluator = Evaluator(model_constructor=PetaleMLPR,
@@ -570,7 +576,7 @@ if __name__ == '__main__':
 
             # Update of hyperparameters
             if args.enable_sam:
-                HAN_HPS[HanHP.RHO.name] = sam_search_space
+                GATHPS[HanHP.RHO.name] = sam_search_space
 
             # Creation of the evaluator
             evaluator = Evaluator(model_constructor=PetaleGATR,

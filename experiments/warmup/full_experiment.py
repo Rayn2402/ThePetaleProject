@@ -364,7 +364,7 @@ if __name__ == '__main__':
 
         def update_fixed_params(dts):
             return {'max_epochs': 200,
-                    'patience': 25,
+                    'patience': 50,
                     'num_cont_col': len(dts.cont_idx),
                     'cat_idx': dts.cat_idx,
                     'cat_sizes': dts.cat_sizes,
@@ -428,7 +428,7 @@ if __name__ == '__main__':
 
         def update_fixed_params(dts):
             return {'max_epochs': 200,
-                    'patience': 25,
+                    'patience': 50,
                     'num_cont_col': len(dts.cont_idx),
                     'cat_idx': dts.cat_idx,
                     'cat_sizes': dts.cat_sizes,
@@ -495,7 +495,7 @@ if __name__ == '__main__':
 
         def update_fixed_params(dts):
             return {'max_epochs': 200,
-                    'patience': 25,
+                    'patience': 50,
                     'num_cont_col': len(dts.cont_idx),
                     'cat_idx': dts.cat_idx,
                     'cat_sizes': dts.cat_sizes,
@@ -563,7 +563,7 @@ if __name__ == '__main__':
                         'cat_sizes': dts.cat_sizes,
                         'cat_emb_sizes': dts.cat_sizes,
                         'max_epochs': 200,
-                        'patience': 25}
+                        'patience': 50}
 
             # Saving of original fixed params for HAN
             fixed_params = update_fixed_params(dataset)
@@ -611,8 +611,8 @@ if __name__ == '__main__':
                     'cat_idx': dts.cat_idx,
                     'cat_sizes': dts.cat_sizes,
                     'cat_emb_sizes': dts.cat_sizes,
-                    'max_epochs': 250,
-                    'patience': 15}
+                    'max_epochs': 200,
+                    'patience': 50}
 
         # Saving of original fixed params for HAN
         fixed_params = update_fixed_params(dataset)
@@ -668,8 +668,8 @@ if __name__ == '__main__':
                     'cat_idx': dts.cat_idx,
                     'cat_sizes': dts.cat_sizes,
                     'cat_emb_sizes': dts.cat_sizes,
-                    'max_epochs': 250,
-                    'patience': 15,
+                    'max_epochs': 200,
+                    'patience': 50,
                     'pre_encoder_constructor': build_encoder}
 
 
@@ -716,7 +716,7 @@ if __name__ == '__main__':
         # Creation of a function to update fixed params
         def update_fixed_params(dts):
             return {'max_epochs': 200,
-                    'patience': 25,
+                    'patience': 50,
                     'gene_idx_groups': dts.gene_idx_groups,
                     'hidden_size': 3,
                     'signature_size': 3,
@@ -761,7 +761,7 @@ if __name__ == '__main__':
         # Creation of a function to update fixed params
         def update_fixed_params(dts):
             return {'max_epochs': 200,
-                    'patience': 25,
+                    'patience': 50,
                     'gene_idx_groups': dts.gene_idx_groups,
                     'hidden_size': 3,
                     'signature_size': 3,

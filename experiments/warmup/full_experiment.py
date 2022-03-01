@@ -76,6 +76,8 @@ def argument_parser():
     # GAT graph construction parameters
     parser.add_argument('-w_sim', '--weighted_similarity', default=False, action='store_true',
                         help='True if we want calculate patients similarities using weighted metrics')
+    parser.add_argument('-cond_col', '--conditional_column', default=False, action='store_true',
+                        help='True if we want calculate to use the sex as conditional column in GAT construction')
 
     # Self supervised learning experiments
     parser.add_argument('-ssl_ggae', '-ssl_ggae', default=False, action='store_true',
@@ -546,13 +548,12 @@ if __name__ == '__main__':
         start = time.time()
 
         # Creation of the dataset
-        if args.sex or genes:
+        if (args.sex and not args.conditional_column) or genes:
             sim_measure = PetaleKGNNDataset.COSINE
         else:
             sim_measure = PetaleKGNNDataset.EUCLIDEAN
 
-        cond_cat_col = SEX if args.sex else None
-
+        cond_cat_col = SEX if (args.sex and args.conditional_column) else None
         GAT_options = [("", False)] if not args.weighted_similarity else [("", False), ("w", True)]
 
         for prefix, w_sim in GAT_options:

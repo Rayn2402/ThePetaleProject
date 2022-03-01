@@ -60,12 +60,11 @@ RF_HPS = {
         Range.VALUES: ["sqrt", "log2"],
     },
     RandomForestHP.MAX_SAMPLES.name: {
-        Range.MIN: 0.65,
+        Range.MIN: 0.80,
         Range.MAX: 1
     },
     RandomForestHP.MIN_SAMPLES_SPLIT.name: {
-        Range.MIN: 2,
-        Range.MAX: 5,
+        Range.VALUE: 2,
     },
     RandomForestHP.N_ESTIMATORS.name: {
         Range.MIN: 1000,
@@ -92,7 +91,8 @@ XGBOOST_HPS = {
         Range.MAX: 10,
     },
     XGBoostHP.SUBSAMPLE.name: {
-        Range.VALUE: 1,
+        Range.MIN: 0.80,
+        Range.MAX: 1
     },
 }
 

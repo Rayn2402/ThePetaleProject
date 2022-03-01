@@ -204,6 +204,42 @@ ENET_HPS = {
     },
 }
 
+ENET_GGE_HPS = {
+    MLPHP.ACTIVATION.name: {
+        Range.VALUE: "PReLU"
+    },
+    MLPHP.ALPHA.name: {
+        Range.MIN: 0,
+        Range.MAX: 1
+    },
+    MLPHP.BATCH_SIZE.name: {
+        Range.MIN: 15,
+        Range.MAX: 55,
+        Range.STEP: 10
+    },
+    MLPHP.BETA.name: {
+        Range.MIN: 0,
+        Range.MAX: 1
+    },
+    MLPHP.DROPOUT.name: {
+        Range.MIN: 0,
+        Range.MAX: 0.20
+    },
+    MLPHP.LR.name: {
+        Range.MIN: 0.001,
+        Range.MAX: 0.1
+    },
+    MLPHP.RHO.name: {
+        Range.VALUE: 0
+    },
+    MLPHP.N_LAYER.name: {
+        Range.VALUE: 0
+    },
+    MLPHP.N_UNIT.name: {
+        Range.VALUE: 5
+    },
+}
+
 GATHPS = {
     GATHP.ALPHA.name: {
         Range.MIN: 0,
@@ -244,6 +280,10 @@ GGEHPS = {
         Range.MIN: 15,
         Range.MAX: 55,
         Range.STEP: 10
+    },
+    GGEHP.DROPOUT.name: {
+        Range.MIN: 0,
+        Range.MAX: 0.25,
     },
     GGEHP.LR.name: {
         Range.MIN: 0.001,

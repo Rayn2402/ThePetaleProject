@@ -555,7 +555,7 @@ if __name__ == '__main__':
             sim_measure = PetaleKGNNDataset.EUCLIDEAN
 
         cond_cat_col = SEX if args.sex else None
-        dataset = PetaleKGNNDataset(df, target, k=5, similarity=sim_measure,
+        dataset = PetaleKGNNDataset(df, target, k=7, similarity=sim_measure,
                                     weighted_similarity=args.weighted_similarity,
                                     cont_cols=cont_cols, cat_cols=cat_cols,
                                     conditional_cat_col=cond_cat_col, classification=False)

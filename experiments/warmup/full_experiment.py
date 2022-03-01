@@ -315,10 +315,9 @@ if __name__ == '__main__':
 
         # Creation of function to update fixed params
         def update_fixed_params(dts):
-            nb_cont_col = len(dts.cont_cols) if dts.cont_cols is not None else 0
             return {'max_epochs': 250,
                     'patience': 50,
-                    'num_cont_col': nb_cont_col,
+                    'num_cont_col': len(dts.cont_idx),
                     'cat_idx': dts.cat_idx,
                     'cat_sizes': dts.cat_sizes,
                     'cat_emb_sizes': dts.cat_sizes}
@@ -367,10 +366,9 @@ if __name__ == '__main__':
         max_e = 200 if genes else 50
 
         def update_fixed_params(dts):
-            nb_cont_col = len(dts.cont_cols) if dts.cont_cols is not None else 0
             return {'max_epochs': max_e,
                     'patience': 25,
-                    'num_cont_col': nb_cont_col,
+                    'num_cont_col': len(dts.cont_idx),
                     'cat_idx': dts.cat_idx,
                     'cat_sizes': dts.cat_sizes,
                     'cat_emb_sizes': dts.cat_sizes}
@@ -434,10 +432,9 @@ if __name__ == '__main__':
                                     signature_size=3)
 
         def update_fixed_params(dts):
-            nb_cont_col = len(dts.cont_cols) if dts.cont_cols is not None else 0
             return {'max_epochs': 200,
                     'patience': 25,
-                    'num_cont_col': nb_cont_col,
+                    'num_cont_col': len(dts.cont_idx),
                     'cat_idx': dts.cat_idx,
                     'cat_sizes': dts.cat_sizes,
                     'cat_emb_sizes': dts.cat_sizes,
@@ -502,10 +499,9 @@ if __name__ == '__main__':
                                              signature_size=3)
 
         def update_fixed_params(dts):
-            nb_cont_col = len(dts.cont_cols) if dts.cont_cols is not None else 0
             return {'max_epochs': 200,
                     'patience': 25,
-                    'num_cont_col': nb_cont_col,
+                    'num_cont_col': len(dts.cont_idx),
                     'cat_idx': dts.cat_idx,
                     'cat_sizes': dts.cat_sizes,
                     'cat_emb_sizes': dts.cat_sizes,
@@ -562,7 +558,7 @@ if __name__ == '__main__':
 
         # Creation of function to update fixed params
         def update_fixed_params(dts):
-            return {'num_cont_col': len(dts.cont_cols),
+            return {'num_cont_col': len(dts.cont_idx),
                     'cat_idx': dts.cat_idx,
                     'cat_sizes': dts.cat_sizes,
                     'cat_emb_sizes': dts.cat_sizes,
@@ -611,7 +607,7 @@ if __name__ == '__main__':
         # Creation of function to update fixed params
         def update_fixed_params(dts):
             return {'meta_paths': dts.get_metapaths(),
-                    'num_cont_col': len(dts.cont_cols),
+                    'num_cont_col': len(dts.cont_idx),
                     'cat_idx': dts.cat_idx,
                     'cat_sizes': dts.cat_sizes,
                     'cat_emb_sizes': dts.cat_sizes,
@@ -668,7 +664,7 @@ if __name__ == '__main__':
         # Creation of function to update fixed params
         def update_fixed_params(dts):
             return {'meta_paths': dts.get_metapaths(),
-                    'num_cont_col': len(dts.cont_cols),
+                    'num_cont_col': len(dts.cont_idx),
                     'cat_idx': dts.cat_idx,
                     'cat_sizes': dts.cat_sizes,
                     'cat_emb_sizes': dts.cat_sizes,

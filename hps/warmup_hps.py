@@ -148,6 +148,10 @@ MLP_HPS = {
         Range.MIN: 0,
         Range.MAX: 1
     },
+    MLPHP.DROPOUT.name: {
+        Range.MIN: 0,
+        Range.MAX: 0.25
+    },
     MLPHP.LR.name: {
         Range.MIN: 0.001,
         Range.MAX: 0.1

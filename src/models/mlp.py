@@ -211,6 +211,7 @@ class MLPHP:
     ALPHA = NumericalContinuousHP("alpha")
     BATCH_SIZE = NumericalIntHP("batch_size")
     BETA = NumericalContinuousHP("beta")
+    DROPOUT = NumericalContinuousHP("dropout")
     LR = NumericalContinuousHP("lr")
     N_LAYER = NumericalIntHP("n_layer")
     N_UNIT = NumericalIntHP("n_unit")
@@ -218,5 +219,5 @@ class MLPHP:
     WEIGHT = NumericalContinuousHP("weight")
 
     def __iter__(self):
-        return iter([self.ACTIVATION, self.ALPHA, self.BATCH_SIZE, self.BETA, self.LR,
-                     self.N_LAYER, self.N_UNIT, self.RHO])
+        return iter([self.ACTIVATION, self.ALPHA, self.BATCH_SIZE, self.DROPOUT,
+                     self.BETA, self.LR, self.N_LAYER, self.N_UNIT, self.RHO])

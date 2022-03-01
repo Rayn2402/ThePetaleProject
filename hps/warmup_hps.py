@@ -186,6 +186,9 @@ ENET_HPS = {
         Range.MIN: 0,
         Range.MAX: 1
     },
+    MLPHP.DROPOUT.name: {
+        Range.VALUE: 0,
+    },
     MLPHP.LR.name: {
         Range.MIN: 0.001,
         Range.MAX: 0.1

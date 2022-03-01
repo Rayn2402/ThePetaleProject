@@ -5,7 +5,7 @@ Author: Nicolas Raymond
 
 Description: File used to store hps search spaces for warmup experiments
 
-Date of last modification: 2022/02/22
+Date of last modification: 2022/03/01
 """
 
 from src.models.gat import GATHP
@@ -46,7 +46,7 @@ TAB_HPS = {
     },
     TabNetHP.LR.name: {
         Range.MIN: 0.001,
-        Range.MAX: 0.5
+        Range.MAX: 0.1
     },
 }
 
@@ -77,15 +77,15 @@ RF_HPS = {
 XGBOOST_HPS = {
     XGBoostHP.ALPHA.name: {
         Range.MIN: 0,
-        Range.MAX: 2
+        Range.MAX: 1
     },
     XGBoostHP.BETA.name: {
         Range.MIN: 0,
-        Range.MAX: 2
+        Range.MAX: 1
     },
     XGBoostHP.LR.name: {
         Range.MIN: 0.001,
-        Range.MAX: 0.5
+        Range.MAX: 0.1
     },
     XGBoostHP.MAX_DEPTH.name: {
         Range.MIN: 1,
@@ -99,7 +99,7 @@ XGBOOST_HPS = {
 HAN_HPS = {
     HanHP.ALPHA.name: {
         Range.MIN: 0,
-        Range.MAX: 2
+        Range.MAX: 1
     },
     HanHP.BATCH_SIZE.name: {
         Range.MIN: 15,
@@ -108,7 +108,7 @@ HAN_HPS = {
     },
     HanHP.BETA.name: {
         Range.MIN: 0,
-        Range.MAX: 2
+        Range.MAX: 1
     },
     HanHP.DROPOUT.name: {
         Range.VALUE: 0,
@@ -137,7 +137,7 @@ MLP_HPS = {
     },
     MLPHP.ALPHA.name: {
         Range.MIN: 0,
-        Range.MAX: 2
+        Range.MAX: 1
     },
     MLPHP.BATCH_SIZE.name: {
         Range.MIN: 15,
@@ -146,11 +146,11 @@ MLP_HPS = {
     },
     MLPHP.BETA.name: {
         Range.MIN: 0,
-        Range.MAX: 2
+        Range.MAX: 1
     },
     MLPHP.LR.name: {
         Range.MIN: 0.001,
-        Range.MAX: 0.5
+        Range.MAX: 0.1
     },
     MLPHP.RHO.name: {
         Range.VALUE: 0
@@ -171,7 +171,7 @@ ENET_HPS = {
     },
     MLPHP.ALPHA.name: {
         Range.MIN: 0,
-        Range.MAX: 3
+        Range.MAX: 1
     },
     MLPHP.BATCH_SIZE.name: {
         Range.MIN: 15,
@@ -180,11 +180,11 @@ ENET_HPS = {
     },
     MLPHP.BETA.name: {
         Range.MIN: 0,
-        Range.MAX: 3
+        Range.MAX: 1
     },
     MLPHP.LR.name: {
         Range.MIN: 0.001,
-        Range.MAX: 0.5
+        Range.MAX: 0.1
     },
     MLPHP.RHO.name: {
         Range.VALUE: 0
@@ -209,7 +209,7 @@ GATHPS = {
     },
     GATHP.BETA.name: {
         Range.MIN: 0,
-        Range.MAX: 2
+        Range.MAX: 1
     },
     GATHP.DROPOUT.name: {
         Range.MIN: 0,
@@ -240,7 +240,7 @@ GGEHPS = {
     },
     GGEHP.LR.name: {
         Range.MIN: 0.001,
-        Range.MAX: 0.5
+        Range.MAX: 0.1
     },
     GGEHP.RHO.name: {
         Range.MIN: 0.05,

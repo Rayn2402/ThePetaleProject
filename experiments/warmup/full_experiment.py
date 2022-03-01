@@ -362,17 +362,13 @@ if __name__ == '__main__':
         dataset = PetaleDataset(df, target, cont_cols, cat_cols,
                                 to_tensor=True, classification=False)
 
-        # Creation of function to update fixed params
-        max_e = 200 if genes else 50
-
         def update_fixed_params(dts):
-            return {'max_epochs': max_e,
+            return {'max_epochs': 200,
                     'patience': 25,
                     'num_cont_col': len(dts.cont_idx),
                     'cat_idx': dts.cat_idx,
                     'cat_sizes': dts.cat_sizes,
                     'cat_emb_sizes': dts.cat_sizes}
-
 
         # Saving of fixed_params for ENET
         fixed_params = update_fixed_params(dataset)
@@ -382,10 +378,9 @@ if __name__ == '__main__':
             ENET_HPS[MLPHP.RHO.name] = sam_search_space
 
         # Creation of evaluator
-        m = masks_without_val if not genes else masks
         evaluator = Evaluator(model_constructor=PetaleMLPR,
                               dataset=dataset,
-                              masks=m,
+                              masks=masks,
                               evaluation_name=f"enet_warmup{eval_id}",
                               hps=ENET_HPS,
                               n_trials=200,

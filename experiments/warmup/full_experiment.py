@@ -555,7 +555,7 @@ if __name__ == '__main__':
 
         GAT_options = [("", False)] if not args.weighted_similarity else [("", False), ("w", True)]
 
-        for suffix, w_sim in GAT_options:
+        for prefix, w_sim in GAT_options:
 
             dataset = PetaleKGNNDataset(df, target, k=7, similarity=sim_measure,
                                         weighted_similarity=w_sim,
@@ -582,7 +582,7 @@ if __name__ == '__main__':
             evaluator = Evaluator(model_constructor=PetaleGATR,
                                   dataset=dataset,
                                   masks=masks,
-                                  evaluation_name=f"{suffix}GAT_warmup{eval_id}",
+                                  evaluation_name=f"{prefix}GAT_warmup{eval_id}",
                                   hps=GATHPS,
                                   n_trials=200,
                                   evaluation_metrics=evaluation_metrics,

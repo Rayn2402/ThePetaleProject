@@ -182,7 +182,7 @@ class DropNode(Module):
             x = masks * x
 
         else:
-            x = x * (1. - drop_rates)
+            x = x * (1. - drop_rates.unsqueeze(1))
 
         return x
 

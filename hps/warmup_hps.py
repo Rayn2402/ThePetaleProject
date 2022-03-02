@@ -254,7 +254,7 @@ GATHPS = {
         Range.MIN: 0,
         Range.MAX: 1
     },
-    GATHP.DROPOUT.name: {
+    GATHP.FEAT_DROPOUT.name: {
         Range.MIN: 0,
         Range.MAX: 0.25
     },
@@ -267,12 +267,16 @@ GATHPS = {
         Range.MIN: 0.001,
         Range.MAX: 0.1
     },
-    GATHP.RHO.name: {
-        Range.VALUE: 0
+    GATHP.NODE_DROPOUT.name: {
+        Range.MIN: 0,
+        Range.MAX: 0.25
     },
     GATHP.NUM_HEADS.name: {
         Range.MIN: 1,
         Range.MAX: 20
+    },
+    GATHP.RHO.name: {
+        Range.VALUE: 0
     },
 }
 GGEHPS = {

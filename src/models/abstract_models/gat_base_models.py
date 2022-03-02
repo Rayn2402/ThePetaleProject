@@ -11,10 +11,11 @@ from dgl import DGLGraph
 from dgl.nn.pytorch import GATv2Conv
 from src.data.processing.gnn_datasets import MaskType, PetaleKGNNDataset
 from src.models.abstract_models.custom_torch_base import TorchCustomModel
+from src.models.blocks.gnn_blocks import DropNode
 from src.training.early_stopping import EarlyStopper
 from src.utils.score_metrics import Metric, RootMeanSquaredError
 from torch import cat, no_grad, ones, tensor
-from torch.nn import Linear, MSELoss, BatchNorm1d
+from torch.nn import Identity, Linear, MSELoss, BatchNorm1d
 from torch.nn.functional import elu
 from torch.utils.data import DataLoader
 from typing import Callable, List, Optional, Union, Tuple
@@ -31,7 +32,8 @@ class GAT(TorchCustomModel):
                  criterion: Callable,
                  criterion_name: str,
                  eval_metric: Metric,
-                 dropout: float = 0,
+                 feat_dropout: float = 0,
+                 node_dropout: float = 0,
                  alpha: float = 0,
                  beta: float = 0,
                  num_cont_col: Optional[int] = None,
@@ -49,7 +51,8 @@ class GAT(TorchCustomModel):
             criterion: loss function of our model
             criterion_name: name of the loss function
             eval_metric: evaluation metric
-            dropout: probability of dropout
+            feat_dropout: features dropout probability
+            node_dropout: node dropout probability
             alpha: L1 penalty coefficient
             beta: L2 penalty coefficient
             num_cont_col: number of numerical continuous columns in the dataset
@@ -75,9 +78,15 @@ class GAT(TorchCustomModel):
         self._conv_layer = GATv2Conv(in_feats=self._input_size,
                                      out_feats=hidden_size,
                                      num_heads=num_heads,
-                                     feat_drop=dropout,
-                                     attn_drop=dropout,
+                                     feat_drop=feat_dropout,
+                                     attn_drop=feat_dropout,
                                      activation=elu)
+
+        # We save the drop node layer
+        if node_dropout > 0:
+            self._drop_node = DropNode(p=node_dropout)
+        else:
+            self._drop_node = Identity()
 
         # We save the batch norm layer
         self._bn = BatchNorm1d(hidden_size)
@@ -230,6 +239,9 @@ class GAT(TorchCustomModel):
         # We concatenate all inputs
         h = cat(new_x, 1)
 
+        # We apply node dropout
+        h = self._drop_node(h)
+
         # We apply the graph convolutional layer
         h = self._conv_layer(g, h)
 
@@ -248,7 +260,8 @@ class GATRegressor(GAT):
                  hidden_size: int,
                  num_heads: int,
                  eval_metric: Metric,
-                 dropout: float = 0,
+                 feat_dropout: float = 0,
+                 node_dropout: float = 0,
                  alpha: float = 0,
                  beta: float = 0,
                  num_cont_col: Optional[int] = None,
@@ -263,7 +276,8 @@ class GATRegressor(GAT):
             hidden_size: size of the hidden states after the graph convolution
             num_heads: number of attention heads
             eval_metric: evaluation metric
-            dropout: probability of dropout
+            feat_dropout: features dropout probability
+            node_dropout: node dropout probability
             alpha: L1 penalty coefficient
             beta: L2 penalty coefficient
             num_cont_col: number of numerical continuous columns in the dataset
@@ -280,7 +294,8 @@ class GATRegressor(GAT):
                          criterion=MSELoss(reduction='none'),
                          criterion_name='MSE',
                          eval_metric=eval_metric,
-                         dropout=dropout,
+                         feat_dropout=feat_dropout,
+                         node_dropout=node_dropout,
                          alpha=alpha,
                          beta=beta,
                          num_cont_col=num_cont_col,

@@ -163,6 +163,7 @@ class DropNode(Module):
         Args:
             p: dropout probability
         """
+        super().__init__()
         self._p = p
 
     def forward(self, x: tensor) -> tensor:

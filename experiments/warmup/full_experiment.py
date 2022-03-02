@@ -79,6 +79,10 @@ def argument_parser():
     parser.add_argument('-cond_col', '--conditional_column', default=False, action='store_true',
                         help='True if we want calculate to use the sex as conditional column in GAT construction')
 
+    # Gene encoding parameter
+    parser.add_argument('-sign_size', '--signature_size', type=int, default=8,
+                        help='Genomic signature size')
+
     # Self supervised learning experiments
     parser.add_argument('-ssl_ggae', '-ssl_ggae', default=False, action='store_true',
                         help='True if we want to run self supervised learning with the GeneGraphAttentionEncoder')
@@ -429,7 +433,7 @@ if __name__ == '__main__':
             return GeneGraphEncoder(gene_idx_groups=gene_idx_groups,
                                     genes_emb_sharing=args.embedding_sharing,
                                     dropout=dropout,
-                                    signature_size=3)
+                                    signature_size=args.signature_size)
 
         def update_fixed_params(dts):
             return {'max_epochs': 200,
@@ -499,7 +503,7 @@ if __name__ == '__main__':
             return GeneGraphAttentionEncoder(gene_idx_groups=gene_idx_groups,
                                              genes_emb_sharing=args.embedding_sharing,
                                              dropout=dropout,
-                                             signature_size=3)
+                                             signature_size=args.signature_size)
 
         def update_fixed_params(dts):
             return {'max_epochs': 200,
@@ -726,7 +730,7 @@ if __name__ == '__main__':
                     'patience': 50,
                     'gene_idx_groups': dts.gene_idx_groups,
                     'hidden_size': 3,
-                    'signature_size': 3,
+                    'signature_size': args.signature_size,
                     'genes_emb_sharing': args.embedding_sharing,
                     'aggregation_method': 'att'}
 
@@ -771,7 +775,7 @@ if __name__ == '__main__':
                     'patience': 50,
                     'gene_idx_groups': dts.gene_idx_groups,
                     'hidden_size': 3,
-                    'signature_size': 3,
+                    'signature_size': args.signature_size,
                     'genes_emb_sharing': args.embedding_sharing,
                     'aggregation_method': 'avg'}
 

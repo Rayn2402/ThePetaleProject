@@ -10,7 +10,7 @@ Date of last modification: 2021/11/09
 
 from dgl import DGLHeteroGraph, metapath_reachable_graph
 from dgl.nn.pytorch import GATv2Conv
-from torch import stack, tensor
+from torch import bernoulli, ones, stack, tensor
 from torch.nn import Linear, Module, ModuleList, Sequential, Tanh
 from torch.nn.functional import softmax, elu
 from typing import List, Union
@@ -146,3 +146,43 @@ class SemanticAttention(Module):
         beta = beta.expand((z.shape[0],) + beta.shape)  # (N, M, 1)
 
         return (beta * z).sum(1)                        # (N, D * K)
+
+
+class DropNode(Module):
+    """
+    Node Dropout layer
+
+    Base on drop_node function implemented by DGL:
+    https://github.com/dmlc/dgl/blob/master/examples/pytorch/grand/model.py
+
+    """
+    def __init__(self, p: float = 0.5):
+        """
+        Sets the dropout probability
+
+        Args:
+            p: dropout probability
+        """
+        self._p = p
+
+    def forward(self, x: tensor) -> tensor:
+        """
+        Sets randomly rows of the tensor to zero
+
+        Args:
+            x: (N, D) tensor with D-dimensional samples
+
+        Returns: (N, D) tensor
+        """
+        drop_rates = ones(x.shape[0]) * self._p
+        if self.training:
+
+            masks = bernoulli(1. - drop_rates).unsqueeze(1)
+            x = masks * x
+
+        else:
+            x = x * (1. - x)
+
+        return x
+
+

@@ -5,7 +5,7 @@ Author: Nicolas Raymond
 
 Description: This file is used to define the wrapper for the GATRegressor
 
-Date of last modification: 2022/02/22
+Date of last modification: 2022/03/02
 """
 
 from src.models.abstract_models.gat_base_models import GATRegressor
@@ -23,7 +23,8 @@ class PetaleGATR(TorchRegressorWrapper):
                  hidden_size: int,
                  num_heads: int,
                  eval_metric: Optional[RegressionMetric] = None,
-                 dropout: float = 0,
+                 feat_dropout: float = 0,
+                 node_dropout: float = 0,
                  lr: float = 0.05,
                  rho: float = 0,
                  batch_size: int = 55,
@@ -44,7 +45,8 @@ class PetaleGATR(TorchRegressorWrapper):
             hidden_size: size of the hidden states after the graph convolution
             num_heads: number of attention heads
             eval_metric: evaluation metric
-            dropout: probability of dropout
+            feat_dropout: features dropout probability
+            node_dropout: node dropout probability
             lr: learning rate
             rho: if >=0 will be used as neighborhood size in Sharpness-Aware Minimization optimizer,
                  otherwise, standard Adam optimizer will be used
@@ -65,7 +67,8 @@ class PetaleGATR(TorchRegressorWrapper):
         model = GATRegressor(hidden_size=hidden_size,
                              num_heads=num_heads,
                              eval_metric=eval_metric,
-                             dropout=dropout,
+                             feat_dropout=feat_dropout,
+                             node_dropout=node_dropout,
                              alpha=alpha,
                              beta=beta,
                              num_cont_col=num_cont_col,
@@ -99,13 +102,14 @@ class GATHP:
     ALPHA = NumericalContinuousHP("alpha")
     BATCH_SIZE = NumericalIntHP("batch_size")
     BETA = NumericalContinuousHP("beta")
-    DROPOUT = NumericalContinuousHP("dropout")
+    FEAT_DROPOUT = NumericalContinuousHP("feat_dropout")
     HIDDEN_SIZE = NumericalIntHP("hidden_size")
     LR = NumericalContinuousHP("lr")
+    NODE_DROPOUT = NumericalContinuousHP("node_dropout")
     NUM_HEADS = NumericalIntHP("num_heads")
     RHO = NumericalContinuousHP("rho")
     WEIGHT = NumericalContinuousHP("weight")
 
     def __iter__(self):
-        return iter([self.ALPHA, self.BATCH_SIZE, self.BETA, self.DROPOUT,
-                     self.HIDDEN_SIZE, self.LR, self.NUM_HEADS, self.RHO])
+        return iter([self.ALPHA, self.BATCH_SIZE, self.BETA, self.FEAT_DROPOUT,
+                     self.HIDDEN_SIZE, self.LR, self.NODE_DROPOUT, self.NUM_HEADS, self.RHO])

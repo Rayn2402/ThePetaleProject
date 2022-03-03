@@ -458,7 +458,7 @@ if __name__ == '__main__':
                               dataset=dataset,
                               masks=masks,
                               evaluation_name=f"ggeEnet_warmup{eval_id}",
-                              hps=ENET_HPS,
+                              hps=ENET_GGE_HPS,
                               n_trials=200,
                               evaluation_metrics=evaluation_metrics,
                               feature_selector=feature_selector,
@@ -528,7 +528,7 @@ if __name__ == '__main__':
                               dataset=dataset,
                               masks=masks,
                               evaluation_name=f"ggaeEnet_warmup{eval_id}",
-                              hps=ENET_HPS,
+                              hps=ENET_GGE_HPS,
                               n_trials=200,
                               evaluation_metrics=evaluation_metrics,
                               feature_selector=feature_selector,
@@ -557,12 +557,18 @@ if __name__ == '__main__':
         else:
             sim_measure = PetaleKGNNDataset.EUCLIDEAN
 
-        cond_cat_col = SEX if (args.sex and args.conditional_column) else None
-        GAT_options = [("", False)] if not args.weighted_similarity else [("", False), ("w", True)]
+        if args.sex and args.conditional_column:
+            cond_cat_col = SEX
+            nb_neighbor = 5
+        else:
+            cond_cat_col = None
+            nb_neighbor = 7
+
+        GAT_options = [("", False)] if not args.weighted_similarity else [("w", True)]
 
         for prefix, w_sim in GAT_options:
 
-            dataset = PetaleKGNNDataset(df, target, k=7, similarity=sim_measure,
+            dataset = PetaleKGNNDataset(df, target, k=nb_neighbor, similarity=sim_measure,
                                         weighted_similarity=w_sim,
                                         cont_cols=cont_cols, cat_cols=cat_cols,
                                         conditional_cat_col=cond_cat_col, classification=False)

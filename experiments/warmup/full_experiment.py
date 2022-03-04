@@ -564,7 +564,7 @@ if __name__ == '__main__':
             cond_cat_col = None
             nb_neighbor = 7
 
-        GAT_options = [("", False)] if not args.weighted_similarity else [("w", True)]
+        GAT_options = [("", False)] if not args.weighted_similarity else [("", False), ("w", True)]
 
         for prefix, w_sim in GAT_options:
 

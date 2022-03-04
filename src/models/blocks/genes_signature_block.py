@@ -345,7 +345,6 @@ class GeneGraphAttentionEncoder(GeneEncoder):
         # Dropout layers
         self._dropout1 = Dropout(p=dropout)
         self._dropout2 = Dropout(p=dropout)
-        self._dropout3 = Dropout(p=dropout)
 
     def forward(self, x: tensor) -> tensor:
         """
@@ -366,20 +365,17 @@ class GeneGraphAttentionEncoder(GeneEncoder):
         # Entity embedding on genes
         h = self._compute_genes_emb(x)  # (N, D) -> (N, NB_GENES, HIDDEN_SIZE)
 
-        # First dropout layer
-        h = self._dropout1(h)
-
         # Gene attention layer
         h = relu(self._gene_attention_layer(h))  # (N, NB_GENES, HIDDEN_SIZE) -> (N, NB_CHROM, HIDDEN_SIZE)
 
         # Second dropout layer
-        h = self._dropout2(h)
+        h = self._dropout1(h)
 
         # Chromosome attention layer
         h = relu(self._chrom_attention_layer(h))  # (N, NB_CHROM, HIDDEN_SIZE) -> (N, HIDDEN_SIZE)
 
         # Third dropout layer
-        h = self._dropout3(h)
+        h = self._dropout2(h)
 
         # Signature calculation
         return self._bn(self._linear_layer(h))

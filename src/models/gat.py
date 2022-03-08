@@ -24,7 +24,7 @@ class PetaleGATR(TorchRegressorWrapper):
                  num_heads: int,
                  eval_metric: Optional[RegressionMetric] = None,
                  feat_dropout: float = 0,
-                 node_dropout: float = 0,
+                 attn_dropout: float = 0,
                  lr: float = 0.05,
                  rho: float = 0,
                  batch_size: int = 55,
@@ -46,7 +46,7 @@ class PetaleGATR(TorchRegressorWrapper):
             num_heads: number of attention heads
             eval_metric: evaluation metric
             feat_dropout: features dropout probability
-            node_dropout: node dropout probability
+            attention dropout probability
             lr: learning rate
             rho: if >=0 will be used as neighborhood size in Sharpness-Aware Minimization optimizer,
                  otherwise, standard Adam optimizer will be used
@@ -68,7 +68,7 @@ class PetaleGATR(TorchRegressorWrapper):
                              num_heads=num_heads,
                              eval_metric=eval_metric,
                              feat_dropout=feat_dropout,
-                             node_dropout=node_dropout,
+                             attn_dropout=attn_dropout,
                              alpha=alpha,
                              beta=beta,
                              num_cont_col=num_cont_col,

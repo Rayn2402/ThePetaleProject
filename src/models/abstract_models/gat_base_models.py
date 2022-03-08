@@ -33,7 +33,7 @@ class GAT(TorchCustomModel):
                  criterion_name: str,
                  eval_metric: Metric,
                  feat_dropout: float = 0,
-                 node_dropout: float = 0,
+                 attn_dropout: float = 0,
                  alpha: float = 0,
                  beta: float = 0,
                  num_cont_col: Optional[int] = None,
@@ -52,7 +52,7 @@ class GAT(TorchCustomModel):
             criterion_name: name of the loss function
             eval_metric: evaluation metric
             feat_dropout: features dropout probability
-            node_dropout: node dropout probability
+            attn_dropout: attention dropout probability
             alpha: L1 penalty coefficient
             beta: L2 penalty coefficient
             num_cont_col: number of numerical continuous columns in the dataset
@@ -79,14 +79,8 @@ class GAT(TorchCustomModel):
                                      out_feats=hidden_size,
                                      num_heads=num_heads,
                                      feat_drop=feat_dropout,
-                                     attn_drop=feat_dropout,
+                                     attn_drop=attn_dropout,
                                      activation=elu)
-
-        # We save the drop node layer
-        if node_dropout > 0:
-            self._drop_node = DropNode(p=node_dropout)
-        else:
-            self._drop_node = Identity()
 
         # We save the batch norm layer
         self._bn = BatchNorm1d(hidden_size)
@@ -220,7 +214,7 @@ class GAT(TorchCustomModel):
         Executes the forward pass
 
         Args:
-            g: Homogeneous bidirected population graph
+            g: Homogeneous directed population graph
             x: (N,D) tensor with D-dimensional samples
 
         Returns: (N, D') tensor with values of the node within the last layer
@@ -261,7 +255,7 @@ class GATRegressor(GAT):
                  num_heads: int,
                  eval_metric: Metric,
                  feat_dropout: float = 0,
-                 node_dropout: float = 0,
+                 attn_dropout: float = 0,
                  alpha: float = 0,
                  beta: float = 0,
                  num_cont_col: Optional[int] = None,
@@ -277,7 +271,7 @@ class GATRegressor(GAT):
             num_heads: number of attention heads
             eval_metric: evaluation metric
             feat_dropout: features dropout probability
-            node_dropout: node dropout probability
+            attn_dropout: attention dropout probability
             alpha: L1 penalty coefficient
             beta: L2 penalty coefficient
             num_cont_col: number of numerical continuous columns in the dataset
@@ -295,7 +289,7 @@ class GATRegressor(GAT):
                          criterion_name='MSE',
                          eval_metric=eval_metric,
                          feat_dropout=feat_dropout,
-                         node_dropout=node_dropout,
+                         attn_dropout=attn_dropout,
                          alpha=alpha,
                          beta=beta,
                          num_cont_col=num_cont_col,

@@ -100,16 +100,16 @@ class GATHP:
     GAT's hyperparameters
     """
     ALPHA = NumericalContinuousHP("alpha")
+    ATTN_DROPOUT = NumericalContinuousHP("attn_dropout")
     BATCH_SIZE = NumericalIntHP("batch_size")
     BETA = NumericalContinuousHP("beta")
     FEAT_DROPOUT = NumericalContinuousHP("feat_dropout")
     HIDDEN_SIZE = NumericalIntHP("hidden_size")
     LR = NumericalContinuousHP("lr")
-    NODE_DROPOUT = NumericalContinuousHP("node_dropout")
     NUM_HEADS = NumericalIntHP("num_heads")
     RHO = NumericalContinuousHP("rho")
     WEIGHT = NumericalContinuousHP("weight")
 
     def __iter__(self):
-        return iter([self.ALPHA, self.BATCH_SIZE, self.BETA, self.FEAT_DROPOUT,
-                     self.HIDDEN_SIZE, self.LR, self.NODE_DROPOUT, self.NUM_HEADS, self.RHO])
+        return iter([self.ALPHA, self.ATTN_DROPOUT, self.BATCH_SIZE, self.BETA,
+                     self.FEAT_DROPOUT, self.HIDDEN_SIZE, self.LR, self.NUM_HEADS, self.RHO])

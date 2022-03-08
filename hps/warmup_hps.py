@@ -255,25 +255,22 @@ GATHPS = {
         Range.MAX: 1
     },
     GATHP.FEAT_DROPOUT.name: {
-        Range.MIN: 0,
-        Range.MAX: 0.25
+        Range.VALUE: 0.20
     },
     GATHP.HIDDEN_SIZE.name: {
         Range.MIN: 2,
-        Range.MAX: 20,
+        Range.MAX: 10,
         Range.STEP: 2
     },
     GATHP.LR.name: {
         Range.MIN: 0.001,
         Range.MAX: 0.1
     },
-    GATHP.NODE_DROPOUT.name: {
-        Range.MIN: 0,
-        Range.MAX: 0.25
+    GATHP.ATTN_DROPOUT.name: {
+        Range.VALUE: 0.5
     },
     GATHP.NUM_HEADS.name: {
-        Range.MIN: 1,
-        Range.MAX: 20
+        Range.VALUE: 1,
     },
     GATHP.RHO.name: {
         Range.VALUE: 0

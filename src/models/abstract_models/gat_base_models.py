@@ -233,9 +233,6 @@ class GAT(TorchCustomModel):
         # We concatenate all inputs
         h = cat(new_x, 1)
 
-        # We apply node dropout
-        h = self._drop_node(h)
-
         # We apply the graph convolutional layer
         h = self._conv_layer(g, h)
 

@@ -11,11 +11,10 @@ from dgl import DGLGraph
 from dgl.nn.pytorch import GATv2Conv
 from src.data.processing.gnn_datasets import MaskType, PetaleKGNNDataset
 from src.models.abstract_models.custom_torch_base import TorchCustomModel
-from src.models.blocks.gnn_blocks import DropNode
 from src.training.early_stopping import EarlyStopper
 from src.utils.score_metrics import Metric, RootMeanSquaredError
 from torch import cat, no_grad, ones, tensor
-from torch.nn import Identity, Linear, MSELoss, BatchNorm1d
+from torch.nn import MSELoss, BatchNorm1d
 from torch.nn.functional import elu
 from torch.utils.data import DataLoader
 from typing import Callable, List, Optional, Union, Tuple
@@ -87,9 +86,6 @@ class GAT(TorchCustomModel):
 
         # We save the number of attention heads
         self._num_att_heads = num_heads
-
-        # We build the final linear layer
-        self._linear_layer = Linear(hidden_size, output_size)
 
     def _execute_train_step(self, train_data: Tuple[DataLoader, PetaleKGNNDataset],
                             sample_weights: tensor) -> float:

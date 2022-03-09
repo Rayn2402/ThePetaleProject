@@ -14,6 +14,7 @@ Date of last modification: 2021/11/18
 from abc import ABC, abstractmethod
 from dgl import DGLHeteroGraph
 from src.data.processing.datasets import MaskType, PetaleDataset, PetaleStaticGNNDataset
+from src.data.processing.gnn_datasets import PetaleKGNNDataset
 from src.models.blocks.mlp_blocks import EntityEmbeddingBlock
 from src.training.early_stopping import EarlyStopper
 from src.training.sam import SAM
@@ -112,10 +113,7 @@ class TorchCustomModel(Module, ABC):
                                    dataset: PetaleDataset,
                                    valid_batch_size: Optional[int],
                                    patience: int
-                                   ) -> Tuple[Optional[EarlyStopper],
-                                              Optional[Union[DataLoader,
-                                                             Tuple[DataLoader,
-                                                                   PetaleStaticGNNDataset]]]]:
+                                   ) -> Tuple:
         """
         Creates the objects needed for validation during the training process
 
@@ -141,7 +139,7 @@ class TorchCustomModel(Module, ABC):
             early_stopper = EarlyStopper(patience, self._eval_metric.direction)
 
             # If the dataset is a GNN dataset, we include it into train data
-            if isinstance(dataset, PetaleStaticGNNDataset):
+            if isinstance(dataset, PetaleStaticGNNDataset) or isinstance(dataset, PetaleKGNNDataset):
                 valid_data = (valid_data, dataset)
 
         return early_stopper, valid_data
@@ -266,7 +264,7 @@ class TorchCustomModel(Module, ABC):
             dataset: PetaleDataset used to feed the dataloaders
             lr: learning rate
             rho: if >=0 will be used as neighborhood size in Sharpness-Aware Minimization optimizer,
-                 otherwise, standard SGD optimizer with momentum will be used
+                 otherwise, Adam optimizer will be used
             batch_size: size of the batches in the training loader
             valid_batch_size: size of the batches in the valid loader (None = one single batch)
             max_epochs: Maximum number of epochs for training
@@ -363,7 +361,7 @@ class TorchCustomModel(Module, ABC):
     @staticmethod
     def _create_train_objects(dataset: PetaleDataset,
                               batch_size: int
-                              ) -> Union[DataLoader, Tuple[DataLoader, PetaleStaticGNNDataset]]:
+                              ) -> Tuple:
         """
         Creates the objects needed for the training
 
@@ -379,7 +377,7 @@ class TorchCustomModel(Module, ABC):
                                 sampler=SubsetRandomSampler(dataset.train_mask))
 
         # If the dataset is a GNN dataset, we include it into train data
-        if isinstance(dataset, PetaleStaticGNNDataset):
+        if isinstance(dataset, PetaleStaticGNNDataset) or isinstance(dataset, PetaleKGNNDataset):
             train_data = (train_data, dataset)
 
         return train_data

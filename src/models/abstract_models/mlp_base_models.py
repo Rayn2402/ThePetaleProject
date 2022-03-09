@@ -89,7 +89,7 @@ class MLP(TorchCustomModel):
                          verbose=verbose)
 
         if gene_idx_groups is not None:
-            self._genes_encoding_block = gene_encoder_constructor(gene_idx_groups=gene_idx_groups)
+            self._genes_encoding_block = gene_encoder_constructor(gene_idx_groups=gene_idx_groups, dropout=dropout)
             self._genes_available = True
             self._pre_training = pre_training
             self._input_size += self._genes_encoding_block.output_size

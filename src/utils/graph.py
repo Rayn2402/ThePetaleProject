@@ -6,7 +6,7 @@ Authors: Nicolas Raymond
 Description: This file is used to define a class called PetaleGraph
              that was used to test CorrectAndSmooth algorithm.
 
-Date of last modification : 2021/11/02
+Date of last modification : 2022/02/21
 """
 
 from numpy import cov
@@ -163,19 +163,20 @@ class PetaleGraph:
     @staticmethod
     def compute_distances(dataset: PetaleDataset) -> tensor:
         """
-        Calculates mahalanobis distances between individuals
+        Calculates mahalanobis distances between individuals according to
+        the training set.
 
         Args:
             dataset: custom dataset with training and test data
 
         Returns: (N, N) tensor with distances
         """
-        # We first compute inverse of covariance matrix related to numerical columns
-        x, _, _ = dataset[:]
-        numerical_data = x[:, dataset.cont_idx]
-        if is_tensor(numerical_data):
-            numerical_data = numerical_data.numpy()
-        inv_cov_mat = tensor(inv(cov(numerical_data, rowvar=False))).float()
+        # We first compute inverse of covariance matrix related to numerical columns of training set
+        numerical_data = dataset.x[:, dataset.cont_idx]
+        numerical_train_data = numerical_data[dataset.train_mask, :]
+        if is_tensor(numerical_train_data):
+            numerical_train_data = numerical_train_data.numpy()
+        inv_cov_mat = tensor(inv(cov(numerical_train_data, rowvar=False))).float()
 
         # We convert numerical data to tensor
         numerical_data = tensor(numerical_data).float()
@@ -195,8 +196,11 @@ class PetaleGraph:
 
 def correct_and_smooth(g: PetaleGraph,
                        pred: tensor,
-                       labels: tensor, masks: Dict[str, Optional[List[int]]],
-                       r: float, nb_iter: int) -> tensor:
+                       labels: tensor,
+                       masks: Dict[str, Optional[List[int]]],
+                       r_correct: float,
+                       r_smooth: float,
+                       nb_iter: int) -> tensor:
     """
     Applies correction and smoothing to the original predictions
 
@@ -205,7 +209,8 @@ def correct_and_smooth(g: PetaleGraph,
         pred: (N,) tensor with predictions
         labels: (N,) tensor with real labels (ground truth)
         masks: Dictionary with train, valid and test mask (at least train and test)
-        r: proportion attributed to original labels throughout iteration
+        r_correct: weight attributed to default errors calculated
+        r_smooth: weight attributed to default labels
         nb_iter: nb of propagation iteration
 
     Returns: (N,) tensor with corrected and smoothed labels
@@ -223,11 +228,11 @@ def correct_and_smooth(g: PetaleGraph,
     labels = labels.reshape(-1, 1)
     errors = zeros(size=(len(labels), 1))
     errors[labeled_mask] = pred[labeled_mask] - labels[labeled_mask]
-    errors = g.propagate_labels(errors, r, nb_iter)
+    errors = g.propagate_labels(errors, r_correct, nb_iter)
 
     # We smooth labels
     test_mask = masks[MaskType.TEST]
     labels[test_mask] = pred[test_mask] - errors[test_mask]
-    labels = g.propagate_labels(labels, r, nb_iter)
+    labels = g.propagate_labels(labels, r_smooth, nb_iter)
 
     return labels.flatten()

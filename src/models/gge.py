@@ -37,6 +37,7 @@ class PetaleGGE(PetaleEncoder, Module):
                  gene_idx_groups: Dict[str, List[int]],
                  lr: float,
                  rho: float = 0.5,
+                 dropout: float = 0,
                  batch_size: int = 25,
                  valid_batch_size: Optional[int] = None,
                  max_epochs: int = 200,
@@ -55,6 +56,7 @@ class PetaleGGE(PetaleEncoder, Module):
             lr: learning rate
             rho: if >=0 will be used as neighborhood size in Sharpness-Aware Minimization optimizer,
                  otherwise, standard SGD optimizer with momentum will be used
+            dropout: dropout probability
             batch_size: size of the batches in the training loader
             valid_batch_size: size of the batches in the valid loader
             max_epochs: Maximum number of epochs for training
@@ -87,11 +89,13 @@ class PetaleGGE(PetaleEncoder, Module):
             self.__enc = GeneGraphEncoder(gene_idx_groups=gene_idx_groups,
                                           hidden_size=hidden_size,
                                           signature_size=signature_size,
+                                          dropout=dropout,
                                           genes_emb_sharing=genes_emb_sharing)
         else:
             self.__enc = GeneGraphAttentionEncoder(gene_idx_groups=gene_idx_groups,
                                                    hidden_size=hidden_size,
                                                    signature_size=signature_size,
+                                                   dropout=dropout,
                                                    genes_emb_sharing=genes_emb_sharing)
 
         # We create the decoder
@@ -447,8 +451,9 @@ class GGEHP:
     GeneGraphEncoder's hyperparameters
     """
     BATCH_SIZE = NumericalIntHP("batch_size")
+    DROPOUT = NumericalContinuousHP("dropout")
     LR = NumericalContinuousHP("lr")
     RHO = NumericalContinuousHP("rho")
 
     def __iter__(self):
-        return iter([self.BATCH_SIZE, self.LR, self.RHO])
+        return iter([self.BATCH_SIZE, self.DROPOUT, self.LR, self.RHO])

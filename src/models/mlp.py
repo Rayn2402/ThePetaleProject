@@ -57,7 +57,7 @@ class PetaleBinaryMLPC(TorchBinaryClassifierWrapper):
             beta: L2 penalty coefficient
             lr: learning rate
             rho: if >=0 will be used as neighborhood size in Sharpness-Aware Minimization optimizer,
-                 otherwise, standard SGD optimizer with momentum will be used
+                 otherwise, Adam optimizer will be used
             batch_size: size of the batches in the training loader
             valid_batch_size: size of the batches in the valid loader (None = one single batch)
             max_epochs: maximum number of epochs for training
@@ -211,6 +211,7 @@ class MLPHP:
     ALPHA = NumericalContinuousHP("alpha")
     BATCH_SIZE = NumericalIntHP("batch_size")
     BETA = NumericalContinuousHP("beta")
+    DROPOUT = NumericalContinuousHP("dropout")
     LR = NumericalContinuousHP("lr")
     N_LAYER = NumericalIntHP("n_layer")
     N_UNIT = NumericalIntHP("n_unit")
@@ -218,5 +219,5 @@ class MLPHP:
     WEIGHT = NumericalContinuousHP("weight")
 
     def __iter__(self):
-        return iter([self.ACTIVATION, self.ALPHA, self.BATCH_SIZE, self.BETA, self.LR,
-                     self.N_LAYER, self.N_UNIT, self.RHO])
+        return iter([self.ACTIVATION, self.ALPHA, self.BATCH_SIZE, self.DROPOUT,
+                     self.BETA, self.LR, self.N_LAYER, self.N_UNIT, self.RHO])

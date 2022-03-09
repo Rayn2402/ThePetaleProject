@@ -243,28 +243,27 @@ ENET_GGE_HPS = {
 GATHPS = {
     GATHP.ALPHA.name: {
         Range.MIN: 0,
-        Range.MAX: 1
+        Range.MAX: 0.001
     },
     GATHP.BATCH_SIZE.name: {
-        Range.MIN: 15,
-        Range.MAX: 55,
-        Range.STEP: 10
+        Range.MIN: 5,
+        Range.MAX: 25,
+        Range.STEP: 5
     },
     GATHP.BETA.name: {
         Range.MIN: 0,
-        Range.MAX: 1
+        Range.MAX: 0.001
     },
     GATHP.FEAT_DROPOUT.name: {
         Range.VALUE: 0.20
     },
     GATHP.HIDDEN_SIZE.name: {
-        Range.MIN: 2,
-        Range.MAX: 10,
+        Range.MIN: 8,
+        Range.MAX: 16,
         Range.STEP: 2
     },
     GATHP.LR.name: {
-        Range.MIN: 0.001,
-        Range.MAX: 0.1
+        Range.VALUE: 0.001
     },
     GATHP.ATTN_DROPOUT.name: {
         Range.VALUE: 0.5

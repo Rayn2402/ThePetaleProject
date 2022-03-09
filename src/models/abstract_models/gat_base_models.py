@@ -14,7 +14,7 @@ from src.models.abstract_models.custom_torch_base import TorchCustomModel
 from src.training.early_stopping import EarlyStopper
 from src.utils.score_metrics import Metric, RootMeanSquaredError
 from torch import cat, no_grad, ones, tensor
-from torch.nn import MSELoss, BatchNorm1d
+from torch.nn import Linear, MSELoss, BatchNorm1d
 from torch.nn.functional import elu
 from torch.utils.data import DataLoader
 from typing import Callable, List, Optional, Union, Tuple
@@ -86,6 +86,9 @@ class GAT(TorchCustomModel):
 
         # We save the number of attention heads
         self._num_att_heads = num_heads
+
+        # We save the linear layer
+        self._linear_layer = Linear(hidden_size, output_size)
 
     def _execute_train_step(self, train_data: Tuple[DataLoader, PetaleKGNNDataset],
                             sample_weights: tensor) -> float:

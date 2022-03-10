@@ -561,6 +561,8 @@ if __name__ == '__main__':
 
         for nb_neighbor in args.degree:
 
+            nb_neighbor = int(nb_neighbor)
+
             if args.sex and args.conditional_column:
                 cond_cat_col = SEX
                 nb_neighbor = int(nb_neighbor/2)

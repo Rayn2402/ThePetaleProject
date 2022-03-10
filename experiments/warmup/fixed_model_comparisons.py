@@ -537,7 +537,7 @@ if __name__ == '__main__':
                             'cat_emb_sizes': dts.cat_sizes,
                             'max_epochs': 500,
                             'patience': 50,
-                            }
+                            **GATHPS}
 
                 # Saving of original fixed params for HAN
                 fixed_params = update_fixed_params(dataset)

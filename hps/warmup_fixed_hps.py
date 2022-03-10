@@ -25,8 +25,8 @@ RF_HPS = {
 XGBOOST_HPS = {
     XGBoostHP.ALPHA.name: 0,
     XGBoostHP.BETA.name: .0005,
-    XGBoostHP.LR.name: 0.001,
-    XGBoostHP.MAX_DEPTH.name: 3,
+    XGBoostHP.LR.name: 0.1,
+    XGBoostHP.MAX_DEPTH.name: 2,
     XGBoostHP.SUBSAMPLE.name: 0.80,
 }
 
@@ -48,7 +48,7 @@ ENET_HPS = {
     MLPHP.BATCH_SIZE.name: 5,
     MLPHP.BETA.name: 0.0005,
     MLPHP.DROPOUT.name: 0,
-    MLPHP.LR.name: 0.001,
+    MLPHP.LR.name: 0.01,
     MLPHP.RHO.name: 0,
     MLPHP.N_LAYER.name: 0,
     MLPHP.N_UNIT.name: 5

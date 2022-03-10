@@ -13,174 +13,74 @@ from src.models.gge import GGEHP
 from src.models.mlp import MLPHP
 from src.models.random_forest import RandomForestHP
 from src.models.xgboost_ import XGBoostHP
-from src.utils.hyperparameters import Range
 
 RF_HPS = {
-    RandomForestHP.MAX_LEAF_NODES.name: {
-        Range.VALUE: 25,
-    },
-    RandomForestHP.MAX_FEATURES.name: {
-        Range.VALUE: "sqrt",
-    },
-    RandomForestHP.MAX_SAMPLES.name: {
-        Range.VALUE: 0.80,
-    },
-    RandomForestHP.MIN_SAMPLES_SPLIT.name: {
-        Range.VALUE: 2,
-    },
-    RandomForestHP.N_ESTIMATORS.name: {
-        Range.VALUE: 2000,
-    },
+    RandomForestHP.MAX_LEAF_NODES.name: 25,
+    RandomForestHP.MAX_FEATURES.name: "sqrt",
+    RandomForestHP.MAX_SAMPLES.name: 0.80,
+    RandomForestHP.MIN_SAMPLES_SPLIT.name: 2,
+    RandomForestHP.N_ESTIMATORS.name: 2000,
 }
 
 XGBOOST_HPS = {
-    XGBoostHP.ALPHA.name: {
-        Range.VALUE: 0,
-    },
-    XGBoostHP.BETA.name: {
-        Range.VALUE: .0005
-    },
-    XGBoostHP.LR.name: {
-        Range.VALUE: 0.001,
-    },
-    XGBoostHP.MAX_DEPTH.name: {
-        Range.VALUE: 3,
-    },
-    XGBoostHP.SUBSAMPLE.name: {
-        Range.VALUE: 0.80,
-    },
+    XGBoostHP.ALPHA.name: 0,
+    XGBoostHP.BETA.name: .0005,
+    XGBoostHP.LR.name: 0.001,
+    XGBoostHP.MAX_DEPTH.name: 3,
+    XGBoostHP.SUBSAMPLE.name: 0.80,
 }
 
 MLP_HPS = {
-    MLPHP.ACTIVATION.name: {
-        Range.VALUE: "PReLU"
-    },
-    MLPHP.ALPHA.name: {
-        Range.VALUE: 0,
-    },
-    MLPHP.BATCH_SIZE.name: {
-        Range.VALUE: 5,
-    },
-    MLPHP.BETA.name: {
-        Range.VALUE: 0.0005
-    },
-    MLPHP.DROPOUT.name: {
-        Range.VALUE: 0.25,
-    },
-    MLPHP.LR.name: {
-        Range.VALUE: 0.001,
-    },
-    MLPHP.RHO.name: {
-        Range.VALUE: 0
-    },
-    MLPHP.N_LAYER.name: {
-        Range.VALUE: 1,
-    },
-    MLPHP.N_UNIT.name: {
-        Range.VALUE: 4,
-    },
+    MLPHP.ACTIVATION.name: "PReLU",
+    MLPHP.ALPHA.name: 0,
+    MLPHP.BATCH_SIZE.name: 5,
+    MLPHP.BETA.name: 0.0005,
+    MLPHP.DROPOUT.name: 0.25,
+    MLPHP.LR.name: 0.001,
+    MLPHP.RHO.name: 0,
+    MLPHP.N_LAYER.name: 1,
+    MLPHP.N_UNIT.name: 4,
 }
 
 ENET_HPS = {
-    MLPHP.ACTIVATION.name: {
-        Range.VALUE: "PReLU"
-    },
-    MLPHP.ALPHA.name: {
-        Range.VALUE: 0,
-    },
-    MLPHP.BATCH_SIZE.name: {
-        Range.VALUE: 5,
-    },
-    MLPHP.BETA.name: {
-        Range.VALUE: 0.0005
-    },
-    MLPHP.DROPOUT.name: {
-        Range.VALUE: 0,
-    },
-    MLPHP.LR.name: {
-        Range.VALUE: 0.001,
-    },
-    MLPHP.RHO.name: {
-        Range.VALUE: 0
-    },
-    MLPHP.N_LAYER.name: {
-        Range.VALUE: 0
-    },
-    MLPHP.N_UNIT.name: {
-        Range.VALUE: 5
-    },
+    MLPHP.ACTIVATION.name: "PReLU",
+    MLPHP.ALPHA.name: 0,
+    MLPHP.BATCH_SIZE.name: 5,
+    MLPHP.BETA.name: 0.0005,
+    MLPHP.DROPOUT.name: 0,
+    MLPHP.LR.name: 0.001,
+    MLPHP.RHO.name: 0,
+    MLPHP.N_LAYER.name: 0,
+    MLPHP.N_UNIT.name: 5
 }
 
 ENET_GGE_HPS = {
-    MLPHP.ACTIVATION.name: {
-        Range.VALUE: "PReLU"
-    },
-    MLPHP.ALPHA.name: {
-        Range.VALUE: 0,
-    },
-    MLPHP.BATCH_SIZE.name: {
-        Range.VALUE: 5,
-    },
-    MLPHP.BETA.name: {
-        Range.VALUE: 0.0005
-    },
-    MLPHP.DROPOUT.name: {
-        Range.VALUE: 0.25
-    },
-    MLPHP.LR.name: {
-        Range.VALUE: 0.001,
-    },
-    MLPHP.RHO.name: {
-        Range.VALUE: 0
-    },
-    MLPHP.N_LAYER.name: {
-        Range.VALUE: 0
-    },
-    MLPHP.N_UNIT.name: {
-        Range.VALUE: 5
-    },
+    MLPHP.ACTIVATION.name: "PReLU",
+    MLPHP.ALPHA.name: 0,
+    MLPHP.BATCH_SIZE.name: 5,
+    MLPHP.BETA.name: 0.0005,
+    MLPHP.DROPOUT.name: 0.25,
+    MLPHP.LR.name: 0.001,
+    MLPHP.RHO.name: 0,
+    MLPHP.N_LAYER.name: 0,
+    MLPHP.N_UNIT.name: 5
 }
 
 GATHPS = {
-    GATHP.ALPHA.name: {
-        Range.VALUE: 0,
-    },
-    GATHP.BATCH_SIZE.name: {
-        Range.VALUE: 5,
-    },
-    GATHP.BETA.name: {
-        Range.MAX: 0.0005
-    },
-    GATHP.FEAT_DROPOUT.name: {
-        Range.VALUE: 0.25,
-    },
-    GATHP.HIDDEN_SIZE.name: {
-        Range.VALUE: 8,
-    },
-    GATHP.LR.name: {
-        Range.VALUE: 0.001,
-    },
-    GATHP.ATTN_DROPOUT.name: {
-        Range.VALUE: 0.25,
-    },
-    GATHP.NUM_HEADS.name: {
-        Range.VALUE: 1,
-    },
-    GATHP.RHO.name: {
-        Range.VALUE: 0
-    },
+    GATHP.ALPHA.name: 0,
+    GATHP.BATCH_SIZE.name: 5,
+    GATHP.BETA.name: 0.0005,
+    GATHP.FEAT_DROPOUT.name: 0.25,
+    GATHP.HIDDEN_SIZE.name: 8,
+    GATHP.LR.name: 0.001,
+    GATHP.ATTN_DROPOUT.name: 0.25,
+    GATHP.NUM_HEADS.name: 1,
+    GATHP.RHO.name: 0,
 }
+
 GGEHPS = {
-    GGEHP.BATCH_SIZE.name: {
-        Range.VALUE: 5,
-    },
-    GGEHP.DROPOUT.name: {
-        Range.VALUE: 0.25,
-    },
-    GGEHP.LR.name: {
-        Range.VALUE: 0.001,
-    },
-    GGEHP.RHO.name: {
-        Range.MIN: 0.05,
-    }
+    GGEHP.BATCH_SIZE.name: 5,
+    GGEHP.DROPOUT.name: 0.25,
+    GGEHP.LR.name: 0.001,
+    GGEHP.RHO.name: 0.05,
 }

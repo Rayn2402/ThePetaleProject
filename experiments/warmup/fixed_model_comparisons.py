@@ -120,7 +120,7 @@ if __name__ == '__main__':
     from src.data.processing.feature_selection import FeatureSelector
     from src.data.processing.sampling import extract_masks, GeneChoice, get_warmup_data, push_valid_to_train
     from src.models.blocks.genes_signature_block import GeneEncoder, GeneGraphEncoder, GeneGraphAttentionEncoder
-    from src.models.gat import PetaleGATR
+    from src.models.gat import PetaleGATR, GATHP
     from src.models.gge import PetaleGGE
     from src.models.han import HanHP
     from src.models.mlp import PetaleMLPR, MLPHP
@@ -509,6 +509,14 @@ if __name__ == '__main__':
         else:
             sim_measure = PetaleKGNNDataset.EUCLIDEAN
 
+        # Hidden size choice
+        hidden_size = 0
+        if args.baselines:
+            hidden_size += 6
+        if args.sex:
+            hidden_size += 2
+        GATHPS[GATHP.HIDDEN_SIZE] = hidden_size
+
         for nb_neighbor in args.degree:
 
             nb_neighbor = int(nb_neighbor)
@@ -527,6 +535,8 @@ if __name__ == '__main__':
                                             weighted_similarity=w_sim,
                                             cont_cols=cont_cols, cat_cols=cat_cols,
                                             conditional_cat_col=cond_cat_col, classification=False)
+
+
 
                 # Creation of function to update fixed params
                 def update_fixed_params(dts):

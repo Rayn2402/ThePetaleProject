@@ -29,24 +29,24 @@ def argument_parser():
 
     # Nb inner split and nb outer split selection
     parser.add_argument('-k', '--nb_outer_splits', type=int, default=10,
-                        help='Number of outer splits during the models evaluations')
+                        help='Number of outer splits used during the models evaluations')
     parser.add_argument('-l', '--nb_inner_splits', type=int, default=10,
-                        help='Number of inner splits during the models evaluations')
+                        help='Number of inner splits used during the models evaluations')
 
     # Features selection
     parser.add_argument('-b', '--baselines', default=False, action='store_true',
-                        help='True if we want to include variables from the original equation')
+                        help='True if we want to include the variables from the original equation')
     parser.add_argument('-r_w', '--remove_walk_variables', default=False, action='store_true',
-                        help='True if we want to remove six minutes walk test variables from baselines'
-                             '(only applies if baselines are included')
+                        help='True if we want to remove the six minutes walk test variables from the baselines'
+                             '(only applies if the baselines are included')
     parser.add_argument('-gen1', '--genes_subgroup', default=False, action='store_true',
-                        help='True if we want to include genes if features')
+                        help='True if we want to include a group of selected genes in the features')
     parser.add_argument('-gen2', '--all_genes', default=False, action='store_true',
-                        help='True if we want to include genes if features')
+                        help='True if we want to include all the genes in the features')
     parser.add_argument('-f', '--feature_selection', default=False, action='store_true',
                         help='True if we want to apply automatic feature selection')
     parser.add_argument('-s', '--sex', default=False, action='store_true',
-                        help='True if we want to include sex in features')
+                        help='True if we want to include the sex in features')
 
     # Genes encoding parameter
     parser.add_argument('-share', '--embedding_sharing', default=False, action='store_true',
@@ -55,7 +55,7 @@ def argument_parser():
 
     # Models selection
     parser.add_argument('-enet', '--enet', default=False, action='store_true',
-                        help='True if we want to enet experiment')
+                        help='True if we want to run enet experiment')
     parser.add_argument('-mlp', '--mlp', default=False, action='store_true',
                         help='True if we want to run mlp experiment')
     parser.add_argument('-rf', '--random_forest', default=False, action='store_true',
@@ -71,9 +71,9 @@ def argument_parser():
 
     # GAT graph construction parameters
     parser.add_argument('-w_sim', '--weighted_similarity', default=False, action='store_true',
-                        help='True if we want calculate patients similarities using weighted metrics')
+                        help='True if we want to calculate patients similarities using weighted metrics')
     parser.add_argument('-cond_col', '--conditional_column', default=False, action='store_true',
-                        help='True if we want calculate to use the sex as conditional column in GAT construction')
+                        help='True if we want to use the sex as a conditional column in GAT construction')
     parser.add_argument('-deg', '--degree', nargs='*', type=str, default=[7],
                         help="Maximum number of neighbors for each node in the graph")
 
@@ -129,7 +129,6 @@ if __name__ == '__main__':
     from src.training.evaluation import Evaluator
     from src.data.extraction.constants import *
     from src.data.extraction.data_management import PetaleDataManager
-    from src.utils.hyperparameters import Range
     from src.utils.score_metrics import AbsoluteError, Pearson, RootMeanSquaredError, SquaredError
 
     # Arguments parsing
@@ -190,7 +189,7 @@ if __name__ == '__main__':
         eval_id += "_sam"
 
     # We save the Sharpness-Aware Minimization search space
-    sam_search_space = {Range.VALUE: 0.05}
+    sam_value = 0.05
 
     # We start a timer for the whole experiment
     first_start = time.time()
@@ -283,7 +282,7 @@ if __name__ == '__main__':
 
         # Update of hyperparameters
         if args.enable_sam:
-            MLP_HPS[MLPHP.RHO.name] = sam_search_space
+            MLP_HPS[MLPHP.RHO.name] = sam_value
 
         # Creation of evaluator
         evaluator = Evaluator(model_constructor=PetaleMLPR,
@@ -332,7 +331,7 @@ if __name__ == '__main__':
 
         # Update of hyperparameters
         if args.enable_sam:
-            ENET_HPS[MLPHP.RHO.name] = sam_search_space
+            ENET_HPS[MLPHP.RHO.name] = sam_value
 
         # Creation of evaluator
         evaluator = Evaluator(model_constructor=PetaleMLPR,
@@ -403,7 +402,7 @@ if __name__ == '__main__':
 
         # Update of hyperparameters
         if args.enable_sam:
-            ENET_GGE_HPS[MLPHP.RHO.name] = sam_search_space
+            ENET_GGE_HPS[MLPHP.RHO.name] = sam_value
 
         # Creation of evaluator
         evaluator = Evaluator(model_constructor=PetaleMLPR,
@@ -474,7 +473,7 @@ if __name__ == '__main__':
 
         # Update of hyperparameters
         if args.enable_sam:
-            ENET_GGE_HPS[MLPHP.RHO.name] = sam_search_space
+            ENET_GGE_HPS[MLPHP.RHO.name] = sam_value
 
         # Creation of evaluator
         evaluator = Evaluator(model_constructor=PetaleMLPR,
@@ -544,7 +543,7 @@ if __name__ == '__main__':
 
                 # Update of hyperparameters
                 if args.enable_sam:
-                    GATHPS[HanHP.RHO.name] = sam_search_space
+                    GATHPS[HanHP.RHO.name] = sam_value
 
                 # Creation of the evaluator
                 evaluator = Evaluator(model_constructor=PetaleGATR,

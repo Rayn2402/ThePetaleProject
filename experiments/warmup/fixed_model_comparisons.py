@@ -515,7 +515,8 @@ if __name__ == '__main__':
             hidden_size += 6
         if args.sex:
             hidden_size += 2
-        GATHPS[GATHP.HIDDEN_SIZE] = hidden_size
+
+        GATHPS[GATHP.HIDDEN_SIZE.name] = hidden_size
 
         for nb_neighbor in args.degree:
 

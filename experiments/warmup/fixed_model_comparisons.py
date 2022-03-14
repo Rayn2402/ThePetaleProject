@@ -41,6 +41,8 @@ def argument_parser():
                              '(only applies if the baselines are included')
     parser.add_argument('-gen1', '--genes_subgroup', default=False, action='store_true',
                         help='True if we want to include a group of selected genes in the features')
+    parser.add_argument('-s_gen', '--single_gen', default=False, action='store_true',
+                        help='True if we want to only keep gene 7_45932669 from gen1')
     parser.add_argument('-gen2', '--all_genes', default=False, action='store_true',
                         help='True if we want to include all the genes in the features')
     parser.add_argument('-f', '--feature_selection', default=False, action='store_true',
@@ -153,7 +155,13 @@ if __name__ == '__main__':
                                                       baselines=args.baselines,
                                                       genes=genes_selection,
                                                       sex=args.sex)
-    # We filter variables if needed
+    # We filter gene variables if needed
+    if args.single_gen:
+        removed_genes = [g for g in gene_cols if g != '7_45932669']
+        df.drop(removed_genes, axis=1, inplace=True)
+        cat_cols = [c for c in cat_cols if c not in removed_genes]
+
+    # We filter baselines variables if needed
     if args.baselines and args.remove_walk_variables:
         df.drop([TDM6_HR_END, TDM6_DIST], axis=1, inplace=True)
         cont_cols = [c for c in cont_cols if c not in [TDM6_HR_END, TDM6_DIST]]

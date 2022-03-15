@@ -401,9 +401,9 @@ def get_learning_one_data(data_manager: PetaleDataManager,
         cat_cols.append(WARMUP_DUMMY)
 
     # We extract the dataframe
-    df = data_manager.get_table(LEARNING_1, columns=[PARTICIPANT, OBESITY] + cont_cols + cat_cols)
+    df = data_manager.get_table(LEARNING_1, columns=[PARTICIPANT, TOTAL_BODY_FAT] + cont_cols + cat_cols)
 
-    return df, BMI, cont_cols, cat_cols
+    return df, TOTAL_BODY_FAT, cont_cols, cat_cols
 
 
 def generate_multitask_labels(df: DataFrame,

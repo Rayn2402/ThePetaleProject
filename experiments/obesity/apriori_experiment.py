@@ -36,7 +36,7 @@ if __name__ == '__main__':
     df, target, cont_cols, cat_cols = get_learning_one_data(manager, genes=GeneChoice.ALL)
 
     # Extraction of masks
-    masks = extract_masks(Paths.BMI_MASK, k=10, l=0)
+    masks = extract_masks(Paths.OBESITY_MASK, k=10, l=0)
 
     # We run apriori experiment
     run_apriori_experiment(experiment_name='L1',
@@ -45,4 +45,4 @@ if __name__ == '__main__':
                            cat_cols=cat_cols,
                            masks=masks,
                            arguments=args,
-                           continuous_target=True)
+                           continuous_target=False)

@@ -105,7 +105,7 @@ if __name__ == '__main__':
 
     # Imports specific to project
     sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
-    from hps.warmup_hps import ENET_HPS, ENET_GGE_HPS, GATHPS, GGEHPS, MLP_HPS, RF_HPS, XGBOOST_HPS
+    from hps.warmup_fixed_hps import ENET_HPS, ENET_GGE_HPS, GATHPS, GGEHPS, MLP_HPS, RF_HPS, XGBOOST_HPS
     from settings.paths import Paths
     from src.data.processing.datasets import PetaleDataset
     from src.data.processing.gnn_datasets import PetaleKGNNDataset
@@ -263,6 +263,7 @@ if __name__ == '__main__':
         # Update of hyperparameters
         if args.enable_sam:
             MLP_HPS[MLPHP.RHO.name] = sam_value
+        MLP_HPS[MLPHP.N_UNIT.name] = 5
 
         # Creation of evaluator
         evaluator = Evaluator(model_constructor=PetaleMLPR,
@@ -489,12 +490,6 @@ if __name__ == '__main__':
         start = time.time()
 
         # Creation of the dataset
-        if (not args.conditional_column) or genes:
-            sim_measure = PetaleKGNNDataset.COSINE
-        else:
-            sim_measure = PetaleKGNNDataset.EUCLIDEAN
-
-        # Hidden size choice
         GATHPS[GATHP.HIDDEN_SIZE.name] = 11
 
         for nb_neighbor in args.degree:
@@ -511,7 +506,7 @@ if __name__ == '__main__':
 
             for prefix, w_sim in GAT_options:
 
-                dataset = PetaleKGNNDataset(df, target, k=nb_neighbor, similarity=sim_measure,
+                dataset = PetaleKGNNDataset(df, target, k=nb_neighbor, similarity=PetaleKGNNDataset.COSINE,
                                             weighted_similarity=w_sim,
                                             cont_cols=cont_cols, cat_cols=cat_cols,
                                             conditional_cat_col=cond_cat_col, classification=False)

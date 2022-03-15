@@ -124,7 +124,6 @@ if __name__ == '__main__':
     from src.models.blocks.genes_signature_block import GeneEncoder, GeneGraphEncoder, GeneGraphAttentionEncoder
     from src.models.gat import PetaleGATR, GATHP
     from src.models.gge import PetaleGGE
-    from src.models.han import HanHP
     from src.models.mlp import PetaleMLPR, MLPHP
     from src.models.random_forest import PetaleRFR
     from src.models.xgboost_ import PetaleXGBR
@@ -218,7 +217,7 @@ if __name__ == '__main__':
                               dataset=dataset,
                               masks=masks_without_val,
                               evaluation_name=f"RandomForest_warmup{eval_id}",
-                              hps=RF_HPS,
+                              hps={},
                               n_trials=0,
                               evaluation_metrics=evaluation_metrics,
                               feature_selector=feature_selector,
@@ -249,7 +248,7 @@ if __name__ == '__main__':
                               dataset=dataset,
                               masks=masks_without_val,
                               evaluation_name=f"XGBoost_warmup{eval_id}",
-                              hps=XGBOOST_HPS,
+                              hps={},
                               n_trials=0,
                               evaluation_metrics=evaluation_metrics,
                               feature_selector=feature_selector,
@@ -297,7 +296,7 @@ if __name__ == '__main__':
                               dataset=dataset,
                               masks=masks,
                               evaluation_name=f"MLP_warmup{eval_id}",
-                              hps=MLP_HPS,
+                              hps={},
                               n_trials=0,
                               evaluation_metrics=evaluation_metrics,
                               feature_selector=feature_selector,
@@ -346,7 +345,7 @@ if __name__ == '__main__':
                               dataset=dataset,
                               masks=masks,
                               evaluation_name=f"enet_warmup{eval_id}",
-                              hps=ENET_HPS,
+                              hps={},
                               n_trials=0,
                               evaluation_metrics=evaluation_metrics,
                               feature_selector=feature_selector,
@@ -417,7 +416,7 @@ if __name__ == '__main__':
                               dataset=dataset,
                               masks=masks,
                               evaluation_name=f"ggeEnet_warmup{eval_id}",
-                              hps=ENET_GGE_HPS,
+                              hps={},
                               n_trials=0,
                               evaluation_metrics=evaluation_metrics,
                               feature_selector=feature_selector,
@@ -488,7 +487,7 @@ if __name__ == '__main__':
                               dataset=dataset,
                               masks=masks,
                               evaluation_name=f"ggaeEnet_warmup{eval_id}",
-                              hps=ENET_GGE_HPS,
+                              hps={},
                               n_trials=0,
                               evaluation_metrics=evaluation_metrics,
                               feature_selector=feature_selector,
@@ -562,14 +561,14 @@ if __name__ == '__main__':
 
                 # Update of hyperparameters
                 if args.enable_sam:
-                    GATHPS[HanHP.RHO.name] = sam_value
+                    GATHPS[GATHP.RHO.name] = sam_value
 
                 # Creation of the evaluator
                 evaluator = Evaluator(model_constructor=PetaleGATR,
                                       dataset=dataset,
                                       masks=masks,
                                       evaluation_name=f"{prefix}GAT{nb_neighbor}_warmup{eval_id}",
-                                      hps=GATHPS,
+                                      hps={},
                                       n_trials=0,
                                       evaluation_metrics=evaluation_metrics,
                                       fixed_params=fixed_params,
@@ -605,7 +604,8 @@ if __name__ == '__main__':
                     'hidden_size': 3,
                     'signature_size': args.signature_size,
                     'genes_emb_sharing': args.embedding_sharing,
-                    'aggregation_method': 'att'}
+                    'aggregation_method': 'att',
+                    **GGEHPS}
 
         # Saving of original fixed params for GGAE
         fixed_params = update_fixed_params(dataset)
@@ -615,7 +615,7 @@ if __name__ == '__main__':
                               dataset=dataset,
                               masks=masks,
                               evaluation_name=f"ggae_warmup{eval_id}",
-                              hps=GGEHPS,
+                              hps={},
                               n_trials=0,
                               evaluation_metrics=[],
                               fixed_params=fixed_params,
@@ -650,7 +650,8 @@ if __name__ == '__main__':
                     'hidden_size': 3,
                     'signature_size': args.signature_size,
                     'genes_emb_sharing': args.embedding_sharing,
-                    'aggregation_method': 'avg'}
+                    'aggregation_method': 'avg',
+                    **GGEHPS}
 
         # Saving of original fixed params for GGAE
         fixed_params = update_fixed_params(dataset)
@@ -660,7 +661,7 @@ if __name__ == '__main__':
                               dataset=dataset,
                               masks=masks,
                               evaluation_name=f"gge_warmup{eval_id}",
-                              hps=GGEHPS,
+                              hps={},
                               n_trials=0,
                               evaluation_metrics=[],
                               fixed_params=fixed_params,

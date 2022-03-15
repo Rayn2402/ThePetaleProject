@@ -21,7 +21,7 @@ class Paths:
     HYPERPARAMETERS: str = join(PROJECT_DIR, "hps")
     MASKS: str = join(PROJECT_DIR, "masks")
     WARMUP_MASK: str = join(MASKS, "warmup_mask.json")
-    BMI_MASK: str = join(MASKS, "BMI_mask.json")
+    OBESITY_MASK: str = join(MASKS, "obesity_mask.json")
     MODELS: str = join(PROJECT_DIR, "models")
     RECORDS: str = join(PROJECT_DIR, "records")
     CLEANING_RECORDS: str = join(RECORDS, "cleaning")

@@ -39,6 +39,7 @@ if __name__ == '__main__':
     from src.data.extraction.data_management import PetaleDataManager
     from src.data.extraction.helpers import get_abs_years_timelapse, get_missing_update
     from src.data.processing.cleaning import DataCleaner
+    from src.utils.visualization import visualize_class_distribution
 
     # We build a PetaleDataManager that will help interacting with PETALE database
     data_manager = PetaleDataManager()
@@ -105,6 +106,12 @@ if __name__ == '__main__':
 
     # We remove rows and columns with too many missing values and stores other cleaning suggestions
     complete_df = data_cleaner(complete_df)
+
+    # We create a dummy column that combines sex and VO2 quartiles
+    complete_df[WARMUP_DUMMY] = pd.qcut(complete_df[TOTAL_BODY_FAT].astype(float).values, 2, labels=False)
+    complete_df[WARMUP_DUMMY] = complete_df[SEX] + complete_df[TOTAL_BODY_FAT].astype(str)
+    complete_df[WARMUP_DUMMY] = complete_df[WARMUP_DUMMY].apply(func=lambda x: WARMUP_DUMMY_DICT_INT[x])
+    visualize_class_distribution(complete_df[WARMUP_DUMMY].values, WARMUP_DUMMY_DICT_NAME)
 
     # We look at the missing data
     print(f"n_cols : {len(complete_df.columns)}")

@@ -78,6 +78,8 @@ def argument_parser():
                         help='True if we want calculate patients similarities using weighted metrics')
     parser.add_argument('-cond_col', '--conditional_column', default=False, action='store_true',
                         help='True if we want calculate to use the sex as conditional column in GAT construction')
+    parser.add_argument('-deg', '--degree', nargs='*', type=str, default=[7],
+                        help="Maximum number of neighbors for each node in the graph")
 
     # Gene encoding parameter
     parser.add_argument('-sign_size', '--signature_size', type=int, default=8,
@@ -557,56 +559,59 @@ if __name__ == '__main__':
         else:
             sim_measure = PetaleKGNNDataset.EUCLIDEAN
 
-        if args.sex and args.conditional_column:
-            cond_cat_col = SEX
-            nb_neighbor = 5
-        else:
-            cond_cat_col = None
-            nb_neighbor = 7
+        for nb_neighbor in args.degree:
 
-        GAT_options = [("", False)] if not args.weighted_similarity else [("", False), ("w", True)]
+            nb_neighbor = int(nb_neighbor)
 
-        for prefix, w_sim in GAT_options:
+            if args.sex and args.conditional_column:
+                cond_cat_col = SEX
+                nb_neighbor = int(nb_neighbor/2)
+            else:
+                cond_cat_col = None
 
-            dataset = PetaleKGNNDataset(df, target, k=nb_neighbor, similarity=sim_measure,
-                                        weighted_similarity=w_sim,
-                                        cont_cols=cont_cols, cat_cols=cat_cols,
-                                        conditional_cat_col=cond_cat_col, classification=False)
+            GAT_options = [("", False)] if not args.weighted_similarity else [("", False), ("w", True)]
 
-            # Creation of function to update fixed params
-            def update_fixed_params(dts):
-                return {'num_cont_col': len(dts.cont_idx),
-                        'cat_idx': dts.cat_idx,
-                        'cat_sizes': dts.cat_sizes,
-                        'cat_emb_sizes': dts.cat_sizes,
-                        'max_epochs': 200,
-                        'patience': 50}
+            for prefix, w_sim in GAT_options:
 
-            # Saving of original fixed params for HAN
-            fixed_params = update_fixed_params(dataset)
+                dataset = PetaleKGNNDataset(df, target, k=nb_neighbor, similarity=sim_measure,
+                                            weighted_similarity=w_sim,
+                                            cont_cols=cont_cols, cat_cols=cat_cols,
+                                            conditional_cat_col=cond_cat_col, classification=False)
 
-            # Update of hyperparameters
-            if args.enable_sam:
-                GATHPS[HanHP.RHO.name] = sam_search_space
+                # Creation of function to update fixed params
+                def update_fixed_params(dts):
+                    return {'num_cont_col': len(dts.cont_idx),
+                            'cat_idx': dts.cat_idx,
+                            'cat_sizes': dts.cat_sizes,
+                            'cat_emb_sizes': dts.cat_sizes,
+                            'max_epochs': 500,
+                            'patience': 50}
 
-            # Creation of the evaluator
-            evaluator = Evaluator(model_constructor=PetaleGATR,
-                                  dataset=dataset,
-                                  masks=masks,
-                                  evaluation_name=f"{prefix}GAT_warmup{eval_id}",
-                                  hps=GATHPS,
-                                  n_trials=200,
-                                  evaluation_metrics=evaluation_metrics,
-                                  fixed_params=fixed_params,
-                                  fixed_params_update_function=update_fixed_params,
-                                  feature_selector=feature_selector,
-                                  save_hps_importance=True,
-                                  save_optimization_history=True,
-                                  seed=args.seed,
-                                  pred_path=args.path)
+                # Saving of original fixed params for HAN
+                fixed_params = update_fixed_params(dataset)
 
-            # Evaluation
-            evaluator.evaluate()
+                # Update of hyperparameters
+                if args.enable_sam:
+                    GATHPS[HanHP.RHO.name] = sam_search_space
+
+                # Creation of the evaluator
+                evaluator = Evaluator(model_constructor=PetaleGATR,
+                                      dataset=dataset,
+                                      masks=masks,
+                                      evaluation_name=f"{prefix}GAT{nb_neighbor}_warmup{eval_id}",
+                                      hps=GATHPS,
+                                      n_trials=200,
+                                      evaluation_metrics=evaluation_metrics,
+                                      fixed_params=fixed_params,
+                                      fixed_params_update_function=update_fixed_params,
+                                      feature_selector=feature_selector,
+                                      save_hps_importance=True,
+                                      save_optimization_history=True,
+                                      seed=args.seed,
+                                      pred_path=args.path)
+
+                # Evaluation
+                evaluator.evaluate()
 
         print("Time Taken for GAT (minutes): ", round((time.time() - start) / 60, 2))
 

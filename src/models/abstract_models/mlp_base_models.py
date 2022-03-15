@@ -19,7 +19,7 @@ from src.data.processing.datasets import MaskType, PetaleDataset
 from src.training.early_stopping import EarlyStopper
 from src.utils.score_metrics import BinaryCrossEntropy, Metric, RootMeanSquaredError
 from torch import cat, no_grad, tensor, ones, sigmoid
-from torch.nn import BCEWithLogitsLoss, Identity, Linear, MSELoss
+from torch.nn import BCEWithLogitsLoss, Dropout, Identity, Linear, MSELoss
 from torch.utils.data import DataLoader
 from typing import Callable, Dict, List, Optional
 
@@ -90,11 +90,13 @@ class MLP(TorchCustomModel):
 
         if gene_idx_groups is not None:
             self._genes_encoding_block = gene_encoder_constructor(gene_idx_groups=gene_idx_groups, dropout=dropout)
+            self._genes_dropout_layer = Identity() if dropout <= 0 else Dropout(p=dropout)
             self._genes_available = True
             self._pre_training = pre_training
             self._input_size += self._genes_encoding_block.output_size
         else:
             self._genes_encoding_block = None
+            self._genes_dropout_layer = Identity()
             self._genes_available = False
             self._pre_training = False
 
@@ -226,7 +228,7 @@ class MLP(TorchCustomModel):
 
         # We compute a genomic signature for categorical features identified as genes
         if self._genes_available:
-            new_x.append(self._genes_encoding_block(x))
+            new_x.append(self._genes_dropout_layer(self._genes_encoding_block(x)))
 
         # We concatenate all inputs
         x = cat(new_x, 1)

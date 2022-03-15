@@ -87,8 +87,8 @@ if __name__ == '__main__':
     # We create the obesity column
     percentile = intermediate_df2.loc[intermediate_df2[AGE] < 18, [TOTAL_BODY_FAT]].quantile(0.95).to_numpy().item()
     intermediate_df2[OBESITY] = zeros(intermediate_df2.shape[0])
-    intermediate_df2.loc[(intermediate_df2[SEX] == 'Women') & (intermediate_df2[TOTAL_BODY_FAT] > 35), [OBESITY]] = 1
-    intermediate_df2.loc[(intermediate_df2[SEX] == 'Men') & (intermediate_df2[TOTAL_BODY_FAT] > 25), [OBESITY]] = 1
+    intermediate_df2.loc[(intermediate_df2[SEX] == 'Women') & (intermediate_df2[AGE] > 18) & (intermediate_df2[TOTAL_BODY_FAT] > 35), [OBESITY]] = 1
+    intermediate_df2.loc[(intermediate_df2[SEX] == 'Men') & (intermediate_df2[AGE] > 18) & (intermediate_df2[TOTAL_BODY_FAT] > 25), [OBESITY]] = 1
     intermediate_df2.loc[(intermediate_df2[AGE] < 18) & (intermediate_df2[TOTAL_BODY_FAT] >= percentile), [OBESITY]] = 1
 
     # We proceed to table concatenation (baselines + ages + body fat + genes)

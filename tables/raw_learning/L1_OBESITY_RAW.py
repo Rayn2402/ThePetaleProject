@@ -90,7 +90,7 @@ if __name__ == '__main__':
     intermediate_df2.loc[(intermediate_df2[SEX] == 'Women') & (intermediate_df2[AGE] > 18) & (intermediate_df2[TOTAL_BODY_FAT] > 35), [OBESITY]] = 1
     intermediate_df2.loc[(intermediate_df2[SEX] == 'Men') & (intermediate_df2[AGE] > 18) & (intermediate_df2[TOTAL_BODY_FAT] > 25), [OBESITY]] = 1
     intermediate_df2.loc[(intermediate_df2[AGE] < 18) & (intermediate_df2[TOTAL_BODY_FAT] >= percentile), [OBESITY]] = 1
-    intermediate_df2.drop([TOTAL_BODY_FAT], axis=1, inplace=True)
+    intermediate_df2.drop([AGE, TOTAL_BODY_FAT], axis=1, inplace=True)
 
     # We proceed to table concatenation (baselines + ages + body fat + genes)
     complete_df = pd.merge(intermediate_df2, chrom_pos_df, on=[PARTICIPANT], how=INNER)

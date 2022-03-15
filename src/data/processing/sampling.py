@@ -62,7 +62,7 @@ class RandomStratifiedSampler:
         """
         if n_out_split <= 0:
             raise ValueError('Number of outer split must be greater than 0')
-        if n_in_split <= 0:
+        if n_in_split < 0:
             raise ValueError('Number of inner split must be greater or equal to 0')
         if not (0 <= valid_size < 1):
             raise ValueError('Validation size must be in the range [0, 1)')

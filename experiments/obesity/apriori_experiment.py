@@ -6,7 +6,7 @@ Authors: Nicolas Raymond
 Description: This file is used to identify meaningful association
              rules between categorical values and BMI quantiles.
 
-Date of last modification : 2022/02/02
+Date of last modification : 2022/03/15
 """
 
 from os.path import dirname, exists, realpath, join
@@ -45,4 +45,4 @@ if __name__ == '__main__':
                            cat_cols=cat_cols,
                            masks=masks,
                            arguments=args,
-                           continuous_target=False)
+                           continuous_target=True)

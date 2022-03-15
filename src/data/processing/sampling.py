@@ -392,16 +392,16 @@ def get_learning_one_data(data_manager: PetaleDataManager,
             raise ValueError(f"genes value must be in {GeneChoice()}")
 
         if genes == GeneChoice.SIGNIFICANT:
-            cat_cols += SIGNIFICANT_CHROM_POS_BMI
+            cat_cols += SIGNIFICANT_CHROM_POS_OBESITY
 
         else:
-            cat_cols += ALL_CHROM_POS_BMI
+            cat_cols += ALL_CHROM_POS_OBESITY
 
     if dummy:
         cat_cols.append(WARMUP_DUMMY)
 
     # We extract the dataframe
-    df = data_manager.get_table(LEARNING_1, columns=[PARTICIPANT, BMI] + cont_cols + cat_cols)
+    df = data_manager.get_table(LEARNING_1, columns=[PARTICIPANT, OBESITY] + cont_cols + cat_cols)
 
     return df, BMI, cont_cols, cat_cols
 

@@ -44,6 +44,9 @@ def argument_parser():
     parser.add_argument('-tc', '--target_column', type=str,
                         help="Name of the column to use as target")
 
+    parser.add_argument('-cat', '--categorical', default=False, action='store_true',
+                        help='True if the target is categorical')
+
     parser.add_argument('-s', '--seed', type=int, default=SEED,
                         help=f"Seed value used to create holdout set (default = {SEED})")
 
@@ -86,7 +89,8 @@ if __name__ == '__main__':
     # We extract an holdout set from the whole dataframe using a sampler
     cont_cols = list(retrieve_numerical_var(df, []).columns.values)
     cat_cols = [c for c in df.columns.values if c not in [PARTICIPANT, args.target_column] + cont_cols]
-    dataset = PetaleDataset(df, args.target_column, cont_cols=cont_cols, cat_cols=cat_cols)
+    dataset = PetaleDataset(df, args.target_column, cont_cols=cont_cols, cat_cols=cat_cols,
+                            classification=args.categorical)
     rss = RandomStratifiedSampler(dataset,
                                   n_out_split=1,
                                   n_in_split=0,

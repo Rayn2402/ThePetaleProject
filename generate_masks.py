@@ -30,6 +30,9 @@ def argument_parser():
 
     parser.add_argument('-tc', '--target_column', type=str, help="Name of the column to use as target")
 
+    parser.add_argument('-cat', '--categorical', default=False, action='store_true',
+                        help='True if the target is categorical')
+
     parser.add_argument('-rc', '--removed_columns', nargs='*', type=str, default=[],
                         help="Columns to remove from dataframe before creating mask")
 
@@ -83,7 +86,8 @@ if __name__ == '__main__':
     # We create stratified mask according to the target columns
     cont_cols = list(retrieve_numerical_var(df, []).columns.values)
     cat_cols = [c for c in df.columns.values if c not in [PARTICIPANT, args.target_column] + cont_cols]
-    dataset = PetaleDataset(df, args.target_column, cont_cols=cont_cols, cat_cols=cat_cols, classification=False)
+    dataset = PetaleDataset(df, args.target_column, cont_cols=cont_cols, cat_cols=cat_cols,
+                            classification=args.categorical)
     rss = RandomStratifiedSampler(dataset, n_out_split=args.nb_out_split, n_in_split=args.nb_in_split,
                                   valid_size=args.validation_size, test_size=args.test_size,
                                   random_state=args.seed, alpha=args.alpha, patience=1000)

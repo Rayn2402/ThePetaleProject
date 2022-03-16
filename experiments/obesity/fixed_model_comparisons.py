@@ -38,6 +38,8 @@ def argument_parser():
                         help='True if we want to include genes if features')
     parser.add_argument('-f', '--feature_selection', default=False, action='store_true',
                         help='True if we want to apply automatic feature selection')
+    parser.add_argument('-imp', '--feature_imp_thresh', type=float, default=0.95,
+                        help='Feature importance threshold when feature selection is activated')
 
     # Genes encoding parameter
     parser.add_argument('-share', '--embedding_sharing', default=False, action='store_true',
@@ -89,7 +91,6 @@ def argument_parser():
 
     # Seed
     parser.add_argument('-seed', '--seed', type=int, default=1010710, help='Seed used during model evaluations')
-
     arguments = parser.parse_args()
 
     # Print arguments
@@ -152,7 +153,7 @@ if __name__ == '__main__':
 
     # Initialization of feature selector
     if args.feature_selection:
-        feature_selector = FeatureSelector(importance_threshold=0.90, seed=args.seed)
+        feature_selector = FeatureSelector(importance_threshold=args.feature_imp_thresh, seed=args.seed)
     else:
         feature_selector = None
 

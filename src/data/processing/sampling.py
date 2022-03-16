@@ -403,6 +403,9 @@ def get_learning_one_data(data_manager: PetaleDataManager,
     # We extract the dataframe
     df = data_manager.get_table(LEARNING_1, columns=[PARTICIPANT, TOTAL_BODY_FAT] + cont_cols + cat_cols)
 
+    # We replace wrong categorical values
+    df.replace("0/2", "0/1", inplace=True)
+
     return df, TOTAL_BODY_FAT, cont_cols, cat_cols
 
 

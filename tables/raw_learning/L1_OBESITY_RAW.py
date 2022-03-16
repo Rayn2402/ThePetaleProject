@@ -93,7 +93,7 @@ if __name__ == '__main__':
     obesity_df.loc[(obesity_df[SEX] == 'Women') & (obesity_df[AGE] > 18) & (obesity_df[TOTAL_BODY_FAT] > 35), [OBESITY]] = 1
     obesity_df.loc[(obesity_df[SEX] == 'Men') & (obesity_df[AGE] > 18) & (obesity_df[TOTAL_BODY_FAT] > 25), [OBESITY]] = 1
     obesity_df.loc[(obesity_df[AGE] < 18) & (obesity_df[TOTAL_BODY_FAT] >= percentile), [OBESITY]] = 1
-    obesity_df = obesity_df[[PARTICIPANT, OBESITY]]
+    obesity_df = obesity_df[[PARTICIPANT, AGE, SEX, OBESITY]]
 
     types = {c: TYPES.get(c, CATEGORICAL_TYPE) for c in list(obesity_df.columns)}
     data_manager.create_and_fill_table(obesity_df, OBESITY_TARGET, types, primary_key=[PARTICIPANT])

@@ -7,17 +7,25 @@ Description: This file stores experiment functions that can be used with differe
 
 Date of last modification: 2022/02/03
 """
+import json
+
 from apyori import apriori
+from copy import deepcopy
 from os import mkdir
 from os.path import exists, join
-
 from pandas import DataFrame
 from settings.paths import Paths
-from src.data.processing.datasets import MaskType
+from src.data.processing.datasets import MaskType, PetaleDataset
 from src.data.processing.preprocessing import preprocess_for_apriori
+from src.recording.constants import PREDICTION, RECORDS_FILE, TRAIN_RESULTS, TEST_RESULTS, VALID_RESULTS
+from src.recording.recording import Recorder, compare_prediction_recordings, get_evaluation_recap
+from src.utils.graph import PetaleGraph, correct_and_smooth
 from src.utils.results_analysis import get_apriori_statistics, print_and_save_apriori_rules
+from src.utils.score_metrics import RegressionMetric, BinaryClassificationMetric
 from time import time
-from typing import Dict, List
+from torch import zeros
+from tqdm import tqdm
+from typing import Dict, List, Optional, Union
 
 
 def run_apriori_experiment(experiment_name: str,
@@ -113,6 +121,69 @@ def run_apriori_experiment(experiment_name: str,
 
     # We compute summary of apriori results for rules associated to target
     get_apriori_statistics(f2)
+
+
+def run_correct_and_smooth_experiment(dataset: PetaleDataset,
+                                      evaluation_name: str,
+                                      masks: dict,
+                                      metrics: Union[List[BinaryClassificationMetric], List[RegressionMetric]],
+                                      path: str,
+                                      r_smooth: float,
+                                      r_correct: float,
+                                      max_degree: Optional[int] = None,
+                                      include_distances: bool = False,
+                                      nb_iter: int = 1):
+
+    # For all splits
+    for k, m in tqdm(masks.items()):
+
+        # We extract the records from folder "Split k"
+        with open(join(path, f"Split_{k}", RECORDS_FILE)) as json_file:
+            records_k = json.load(json_file)
+
+        # We save the predictions made for each id
+        pred = zeros((len(dataset), 1))
+        for result_section in [TRAIN_RESULTS, TEST_RESULTS, VALID_RESULTS]:
+            for id_, result_dict in records_k[result_section].items():
+                pred[dataset.ids_to_row_idx[id_]] = float(result_dict[PREDICTION])
+
+        # We update dataset mask
+        dataset.update_masks(train_mask=m[MaskType.TRAIN],
+                             test_mask=m[MaskType.TEST],
+                             valid_mask=m[MaskType.VALID])
+
+        # Recorder initialization
+        recorder = Recorder(evaluation_name=evaluation_name,
+                            index=k, recordings_path=Paths.EXPERIMENTS_RECORDS)
+
+        # We build the graph
+        g = PetaleGraph(dataset, include_distances=include_distances,
+                        cat_cols=dataset.cat_cols, max_degree=max_degree)
+
+        # We proceed to correction and smoothing of the predictions
+        y_copy = deepcopy(dataset.y)
+        cs_pred = correct_and_smooth(g, pred=pred, labels=y_copy, masks=m, r_correct=r_correct,
+                                     r_smooth=r_smooth, nb_iter=nb_iter)
+
+        for mask, masktype in [(m[MaskType.TRAIN], MaskType.TRAIN),
+                               (m[MaskType.TEST], MaskType.TEST),
+                               (m[MaskType.VALID], MaskType.VALID)]:
+            if mask is not None:
+
+                # We record predictions
+                pred, ground_truth = cs_pred[mask], dataset.y[mask]
+                recorder.record_predictions([dataset.ids[i] for i in mask], pred, ground_truth, mask_type=masktype)
+
+                # We record scores
+                for metric in metrics:
+                    recorder.record_scores(score=metric(pred, ground_truth), metric=metric.name, mask_type=masktype)
+
+        # Generation of the file with the results
+        recorder.generate_file()
+        compare_prediction_recordings(evaluations=[evaluation_name], split_index=k,
+                                      recording_path=Paths.EXPERIMENTS_RECORDS)
+
+    get_evaluation_recap(evaluation_name=evaluation_name, recordings_path=Paths.EXPERIMENTS_RECORDS)
 
 
 

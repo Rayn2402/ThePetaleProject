@@ -22,6 +22,9 @@ MAX_CAT_PERCENTAGE = 0.95
 # DATA SAMPLING TRESHOLDS
 SAMPLING_OUTLIER_ALPHA = 6
 
+# CHILDHOOD OBESITY 95 percentile
+OBESITY_PERCENTILE = 42.695
+
 # TABLE NAMES
 GEN_1 = "General_1_Demographic Questionnaire"
 GEN_2 = "General_2_CRF Hematology-Oncology"

@@ -40,6 +40,39 @@ def apriori_argparser():
     return arguments
 
 
+def correct_and_smooth_parser():
+    """
+    Creates a parser for the correct and smooth experiment
+    """
+    # Create a parser
+    parser = argparse.ArgumentParser(usage='\n python label_propagation.py',
+                                     description="Runs the correction and smoothing experiment")
+
+    # Parameters selection
+    parser.add_argument('-p', '--path', type=str,
+                        help='Path of the folder from which to take predictions.'
+                             '(Ex. records/experiments/warmup/enet...')
+    parser.add_argument('-eval_name', '--evaluation_name', type=str,
+                        help='Name of the evaluation (in order to name the folder with the results)')
+    parser.add_argument('-nb_iter', '--nb_iter', type=int, default=1,
+                        help='Number of correction adn smoothing iterations (default = 1)')
+    parser.add_argument('-rc', '--r_correct', type=float, default=0.20,
+                        help='Restart probability used in propagation algorithm for correction (default = 0.20)')
+    parser.add_argument('-rs', '--r_smooth', type=float, default=0.80,
+                        help='Restart probability used in propagation algorithm for smoothing (default = 0.80)')
+    parser.add_argument('-gen1', '--genes_subgroup', default=False, action='store_true',
+                        help='If true, only considers significant genes')
+    parser.add_argument('-max_degree', '--max_degree', type=int, default=None,
+                        help='Maximum degree of a nodes in the graph (default = None)')
+
+    arguments = parser.parse_args()
+
+    # We show the arguments
+    print_arguments(arguments)
+
+    return arguments
+
+
 def print_arguments(arguments) -> None:
     """
     Prints the arguments of an argparser

@@ -81,18 +81,22 @@ if __name__ == '__main__':
 
     # We proceed to table concatenation (baselines + ages + body fat)
     intermediate_df2 = pd.merge(intermediate_df, body_fat_df, on=[PARTICIPANT], how=INNER)
+    intermediate_df2.drop([AGE], axis=1, inplace=True)
     removed = [p for p in list(intermediate_df[PARTICIPANT].values) if p not in list(intermediate_df2[PARTICIPANT].values)]
     print(f"Participant with missing body fat: {removed}")
     print(f"Total : {len(removed)}")
 
-    # We create the obesity column
-    # percentile = intermediate_df2.loc[intermediate_df2[AGE] < 18, [TOTAL_BODY_FAT]].quantile(0.95).to_numpy().item()
-    # intermediate_df2[OBESITY] = zeros(intermediate_df2.shape[0])
-    # intermediate_df2.loc[(intermediate_df2[SEX] == 'Women') & (intermediate_df2[AGE] > 18) & (intermediate_df2[TOTAL_BODY_FAT] > 35), [OBESITY]] = 1
-    # intermediate_df2.loc[(intermediate_df2[SEX] == 'Men') & (intermediate_df2[AGE] > 18) & (intermediate_df2[TOTAL_BODY_FAT] > 25), [OBESITY]] = 1
-    # intermediate_df2.loc[(intermediate_df2[AGE] < 18) & (intermediate_df2[TOTAL_BODY_FAT] >= percentile), [OBESITY]] = 1
-    # intermediate_df2.drop([AGE, TOTAL_BODY_FAT], axis=1, inplace=True)
-    intermediate_df2.drop([AGE], axis=1, inplace=True)
+    # We create the obesity table
+    obesity_df = pd.merge(intermediate_df, body_fat_df, on=[PARTICIPANT], how=INNER)
+    percentile = obesity_df.loc[obesity_df[AGE] < 18, [TOTAL_BODY_FAT]].quantile(0.95).to_numpy().item()
+    obesity_df[OBESITY] = zeros(obesity_df.shape[0])
+    obesity_df.loc[(obesity_df[SEX] == 'Women') & (obesity_df[AGE] > 18) & (obesity_df[TOTAL_BODY_FAT] > 35), [OBESITY]] = 1
+    obesity_df.loc[(obesity_df[SEX] == 'Men') & (obesity_df[AGE] > 18) & (obesity_df[TOTAL_BODY_FAT] > 25), [OBESITY]] = 1
+    obesity_df.loc[(obesity_df[AGE] < 18) & (obesity_df[TOTAL_BODY_FAT] >= percentile), [OBESITY]] = 1
+    obesity_df = obesity_df[[PARTICIPANT, OBESITY]]
+
+    types = {c: TYPES.get(c, CATEGORICAL_TYPE) for c in list(obesity_df.columns)}
+    data_manager.create_and_fill_table(obesity_df, OBESITY_TARGET, types, primary_key=[PARTICIPANT])
 
     # We proceed to table concatenation (baselines + ages + body fat + genes)
     complete_df = pd.merge(intermediate_df2, chrom_pos_df, on=[PARTICIPANT], how=INNER)

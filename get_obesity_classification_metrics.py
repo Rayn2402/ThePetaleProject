@@ -22,11 +22,11 @@ from torch import tensor
 
 def argument_parser():
     """
-    This function defines a parser that to extract scores of each model within an experiment
+    This function defines a parser that to extract classification metric scores of each model within an experiment
     """
     # Create a parser
-    parser = argparse.ArgumentParser(usage='\n python3 get_model_scores_csv.py [experiment_folder_path]',
-                                     description="Creates a csv with metrics scores of each model")
+    parser = argparse.ArgumentParser(usage='\n python3 get_obesity_classification_metrics.py [experiment_folder_path]',
+                                     description="Adds classification metrics scores to experiment summaries")
 
     parser.add_argument('-p', '--path', type=str, help='Path of the experiment folder')
     arguments = parser.parse_args()
@@ -63,7 +63,7 @@ if __name__ == '__main__':
             for k in data[section].keys():
                 pred[PARTICIPANT].append(k)
                 pred['Section'].append(section)
-                pred[TOTAL_BODY_FAT].append(data[section][k][PREDICTION])
+                pred[TOTAL_BODY_FAT].append(float(data[section][k][PREDICTION]))
                 pred[OBESITY_CLASS_PRED].append(0)
 
         # We save the predictions in a dataframe
@@ -81,12 +81,9 @@ if __name__ == '__main__':
         for s1, s2 in [(TRAIN_RESULTS, TRAIN_METRICS), (TEST_RESULTS, TEST_METRICS), (VALID_RESULTS, VALID_METRICS)]:
             subset_df = pred_df.loc[pred_df[SECTION] == s1, :]
             pred = tensor(subset_df[OBESITY_CLASS_PRED].to_numpy())
-            target = tensor(subset_df[OBESITY].to_numpy())
+            target = tensor(subset_df[OBESITY].astype('float').to_numpy()).long()
 
             for metric in metrics:
                 data[s2][metric.name] = metric(pred=pred, targets=target)
-
-        print(data)
-
 
 

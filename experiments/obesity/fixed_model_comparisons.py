@@ -6,7 +6,7 @@ Author: Nicolas Raymond
 Description: This file is a script used to run obesity experiments using fixed
              hyperparameters.
 
-Date of last modification: 2022/03/15
+Date of last modification: 2022/03/17
 """
 import sys
 import argparse
@@ -245,7 +245,6 @@ if __name__ == '__main__':
 
         # Creation of the dataset
         dataset = PetaleDataset(df, target, cont_cols, cat_cols, to_tensor=True, classification=False)
-
 
         # Creation of function to update fixed params
         def update_fixed_params(dts):
@@ -511,7 +510,6 @@ if __name__ == '__main__':
                                             weighted_similarity=w_sim,
                                             cont_cols=cont_cols, cat_cols=cat_cols,
                                             conditional_cat_col=cond_cat_col, classification=False)
-
 
                 # Creation of function to update fixed params
                 def update_fixed_params(dts):

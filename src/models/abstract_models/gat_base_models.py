@@ -79,7 +79,7 @@ class GAT(TorchCustomModel):
                                      num_heads=num_heads,
                                      feat_drop=feat_dropout,
                                      attn_drop=attn_dropout,
-                                     activation=elu)
+                                     activation=relu)
 
         # We save the batch norm layer
         self._bn = BatchNorm1d(hidden_size)

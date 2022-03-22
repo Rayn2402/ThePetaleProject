@@ -489,9 +489,6 @@ if __name__ == '__main__':
         # Start timer
         start = time.time()
 
-        # Creation of the dataset
-        GATHPS[GATHP.HIDDEN_SIZE.name] = 11
-
         for nb_neighbor in args.degree:
 
             nb_neighbor = int(nb_neighbor)

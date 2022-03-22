@@ -516,15 +516,6 @@ if __name__ == '__main__':
         else:
             sim_measure = PetaleKGNNDataset.EUCLIDEAN
 
-        # Hidden size choice
-        hidden_size = 0
-        if args.baselines:
-            hidden_size += 6
-        if args.sex:
-            hidden_size += 2
-
-        GATHPS[GATHP.HIDDEN_SIZE.name] = hidden_size
-
         for nb_neighbor in args.degree:
 
             nb_neighbor = int(nb_neighbor)

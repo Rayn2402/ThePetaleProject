@@ -4,7 +4,7 @@ Filename: label_propagation.py
 Authors: Nicolas Raymond
 
 Description: This file is used to to experiment the
-             label propagation method using warmup dataset
+             label propagation method using obesity dataset
 
 Date of last modification : 2022/03/16
 """
@@ -20,7 +20,7 @@ if __name__ == '__main__':
     sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
     from settings.paths import Paths
     from src.data.processing.datasets import PetaleDataset
-    from src.data.processing.sampling import extract_masks, GeneChoice, get_warmup_data
+    from src.data.processing.sampling import extract_masks, GeneChoice, get_learning_one_data
     from src.data.extraction.data_management import PetaleDataManager
     from src.utils.argparsers import correct_and_smooth_parser
     from src.utils.experiments import run_correct_and_smooth_experiment
@@ -30,7 +30,7 @@ if __name__ == '__main__':
     args = correct_and_smooth_parser()
 
     # Extraction of masks
-    masks = extract_masks(Paths.WARMUP_MASK, k=10, l=0)
+    masks = extract_masks(Paths.OBESITY_MASK, k=10, l=0)
 
     # Genes selection
     if args.genes_subgroup:
@@ -39,7 +39,7 @@ if __name__ == '__main__':
         gene_choice = GeneChoice.ALL
 
     # Extraction of data
-    df, target, cont_cols, cat_cols = get_warmup_data(PetaleDataManager(), baselines=False, genes=gene_choice)
+    df, target, cont_cols, cat_cols = get_learning_one_data(PetaleDataManager(), genes=gene_choice)
 
     # Creation of dataset
     dataset = PetaleDataset(df, target, cont_cols, cat_cols, classification=False, to_tensor=True)

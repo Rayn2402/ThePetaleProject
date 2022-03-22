@@ -3,12 +3,11 @@ Filename: fixed_model_comparisons.py
 
 Author: Nicolas Raymond
 
-Description: This file is a script used to run warmup experiments using fixed
+Description: This file is a script used to run obesity experiments using fixed
              hyperparameters.
 
-Date of last modification: 2022/03/10
+Date of last modification: 2022/03/17
 """
-
 import sys
 import argparse
 import time
@@ -23,32 +22,24 @@ def argument_parser():
     This function defines a parser that enables user to easily run different experiments
     """
     # Create a parser
-    parser = argparse.ArgumentParser(usage='\n python fixed_model_comparisons.py',
-                                     description="Runs all the experiments associated to the warmup dataset"
-                                                 "with fixed hps")
+    parser = argparse.ArgumentParser(usage='\n python full_experiment.py',
+                                     description="Runs all the experiments associated to the bmi dataset")
 
     # Nb inner split and nb outer split selection
     parser.add_argument('-k', '--nb_outer_splits', type=int, default=10,
-                        help='Number of outer splits used during the models evaluations')
+                        help='Number of outer splits during the models evaluations')
     parser.add_argument('-l', '--nb_inner_splits', type=int, default=10,
-                        help='Number of inner splits used during the models evaluations')
+                        help='Number of inner splits during the models evaluations')
 
     # Features selection
-    parser.add_argument('-b', '--baselines', default=False, action='store_true',
-                        help='True if we want to include the variables from the original equation')
-    parser.add_argument('-r_w', '--remove_walk_variables', default=False, action='store_true',
-                        help='True if we want to remove the six minutes walk test variables from the baselines'
-                             '(only applies if the baselines are included')
     parser.add_argument('-gen1', '--genes_subgroup', default=False, action='store_true',
-                        help='True if we want to include a group of selected genes in the features')
-    parser.add_argument('-s_gen', '--single_gen', default=False, action='store_true',
-                        help='True if we want to only keep gene 7_45932669 from gen1')
+                        help='True if we want to include genes if features')
     parser.add_argument('-gen2', '--all_genes', default=False, action='store_true',
-                        help='True if we want to include all the genes in the features')
+                        help='True if we want to include genes if features')
     parser.add_argument('-f', '--feature_selection', default=False, action='store_true',
                         help='True if we want to apply automatic feature selection')
-    parser.add_argument('-s', '--sex', default=False, action='store_true',
-                        help='True if we want to include the sex in features')
+    parser.add_argument('-imp', '--feature_imp_thresh', type=float, default=0.95,
+                        help='Feature importance threshold when feature selection is activated')
 
     # Genes encoding parameter
     parser.add_argument('-share', '--embedding_sharing', default=False, action='store_true',
@@ -57,7 +48,7 @@ def argument_parser():
 
     # Models selection
     parser.add_argument('-enet', '--enet', default=False, action='store_true',
-                        help='True if we want to run enet experiment')
+                        help='True if we want to enet experiment')
     parser.add_argument('-mlp', '--mlp', default=False, action='store_true',
                         help='True if we want to run mlp experiment')
     parser.add_argument('-rf', '--random_forest', default=False, action='store_true',
@@ -73,9 +64,9 @@ def argument_parser():
 
     # GAT graph construction parameters
     parser.add_argument('-w_sim', '--weighted_similarity', default=False, action='store_true',
-                        help='True if we want to calculate patients similarities using weighted metrics')
+                        help='True if we want calculate patients similarities using weighted metrics')
     parser.add_argument('-cond_col', '--conditional_column', default=False, action='store_true',
-                        help='True if we want to use the sex as a conditional column in GAT construction')
+                        help='True if we want calculate to use the sex as conditional column in GAT construction')
     parser.add_argument('-deg', '--degree', nargs='*', type=str, default=[7],
                         help="Maximum number of neighbors for each node in the graph")
 
@@ -93,13 +84,13 @@ def argument_parser():
     parser.add_argument('-sam', '--enable_sam', default=False, action='store_true',
                         help='True if we want to use Sharpness-Aware Minimization Optimizer')
 
+
     # Usage of predictions from another experiment
     parser.add_argument('-p', '--path', type=str, default=None,
                         help='Path leading to predictions of another model')
 
     # Seed
     parser.add_argument('-seed', '--seed', type=int, default=1010710, help='Seed used during model evaluations')
-
     arguments = parser.parse_args()
 
     # Print arguments
@@ -115,12 +106,12 @@ if __name__ == '__main__':
 
     # Imports specific to project
     sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
-    from hps.warmup_fixed_hps import ENET_HPS, ENET_GGE_HPS, GATHPS, GGEHPS, MLP_HPS, RF_HPS,XGBOOST_HPS
+    from hps.warmup_fixed_hps import ENET_HPS, ENET_GGE_HPS, GATHPS, GGEHPS, MLP_HPS, RF_HPS, XGBOOST_HPS
     from settings.paths import Paths
     from src.data.processing.datasets import PetaleDataset
     from src.data.processing.gnn_datasets import PetaleKGNNDataset
     from src.data.processing.feature_selection import FeatureSelector
-    from src.data.processing.sampling import extract_masks, GeneChoice, get_warmup_data, push_valid_to_train
+    from src.data.processing.sampling import extract_masks, GeneChoice, get_learning_one_data, push_valid_to_train
     from src.models.blocks.genes_signature_block import GeneEncoder, GeneGraphEncoder, GeneGraphAttentionEncoder
     from src.models.gat import PetaleGATR, GATHP
     from src.models.gge import PetaleGGE
@@ -141,32 +132,19 @@ if __name__ == '__main__':
     # We extract needed data
     if args.genes_subgroup:
         genes_selection = GeneChoice.SIGNIFICANT
-        gene_cols = SIGNIFICANT_CHROM_POS_WARMUP
+        gene_cols = SIGNIFICANT_CHROM_POS_OBESITY
     elif args.all_genes:
         genes_selection = GeneChoice.ALL
-        gene_cols = ALL_CHROM_POS_WARMUP
+        gene_cols = ALL_CHROM_POS_OBESITY
     else:
         genes_selection = None
         gene_cols = None
 
     genes = True if genes_selection is not None else False
-    df, target, cont_cols, cat_cols = get_warmup_data(manager,
-                                                      baselines=args.baselines,
-                                                      genes=genes_selection,
-                                                      sex=args.sex)
-    # We filter gene variables if needed
-    if args.single_gen:
-        removed_genes = [g for g in gene_cols if g != '7_45932669']
-        df.drop(removed_genes, axis=1, inplace=True)
-        cat_cols = [c for c in cat_cols if c not in removed_genes]
-
-    # We filter baselines variables if needed
-    if args.baselines and args.remove_walk_variables:
-        df.drop([TDM6_HR_END, TDM6_DIST], axis=1, inplace=True)
-        cont_cols = [c for c in cont_cols if c not in [TDM6_HR_END, TDM6_DIST]]
+    df, target, cont_cols, cat_cols = get_learning_one_data(manager, genes_selection)
 
     # Extraction of masks
-    masks = extract_masks(Paths.WARMUP_MASK, k=args.nb_outer_splits, l=args.nb_inner_splits)
+    masks = extract_masks(Paths.OBESITY_MASK, k=args.nb_outer_splits, l=args.nb_inner_splits)
     masks_without_val = deepcopy(masks)
     push_valid_to_train(masks_without_val)
 
@@ -175,23 +153,17 @@ if __name__ == '__main__':
 
     # Initialization of feature selector
     if args.feature_selection:
-        feature_selector = FeatureSelector(importance_threshold=0.90, seed=args.seed)
+        feature_selector = FeatureSelector(importance_threshold=args.feature_imp_thresh, seed=args.seed)
     else:
         feature_selector = None
 
     # We save the string that will help identify evaluations
     eval_id = "_fixedhps"
-    if args.baselines:
-        eval_id += "_baselines"
-        if args.remove_walk_variables:
-            eval_id += "_nw"
     if genes:
         if args.all_genes:
             eval_id += "_gen2"
         else:
             eval_id += "_gen1"
-    if args.sex:
-        eval_id += "_sex"
     if args.enable_sam:
         eval_id += "_sam"
 
@@ -216,7 +188,7 @@ if __name__ == '__main__':
         evaluator = Evaluator(model_constructor=PetaleRFR,
                               dataset=dataset,
                               masks=masks_without_val,
-                              evaluation_name=f"RandomForest_warmup{eval_id}",
+                              evaluation_name=f"RandomForest_obesity{eval_id}",
                               hps={},
                               n_trials=0,
                               evaluation_metrics=evaluation_metrics,
@@ -247,7 +219,7 @@ if __name__ == '__main__':
         evaluator = Evaluator(model_constructor=PetaleXGBR,
                               dataset=dataset,
                               masks=masks_without_val,
-                              evaluation_name=f"XGBoost_warmup{eval_id}",
+                              evaluation_name=f"XGBoost_obesity{eval_id}",
                               hps={},
                               n_trials=0,
                               evaluation_metrics=evaluation_metrics,
@@ -276,7 +248,7 @@ if __name__ == '__main__':
 
         # Creation of function to update fixed params
         def update_fixed_params(dts):
-            return {'max_epochs': 500,
+            return {'max_epochs': 250,
                     'patience': 50,
                     'num_cont_col': len(dts.cont_idx),
                     'cat_idx': dts.cat_idx,
@@ -284,18 +256,20 @@ if __name__ == '__main__':
                     'cat_emb_sizes': dts.cat_sizes,
                     **MLP_HPS}
 
+
         # Saving of fixed_params for MLP
         fixed_params = update_fixed_params(dataset)
 
         # Update of hyperparameters
         if args.enable_sam:
             MLP_HPS[MLPHP.RHO.name] = sam_value
+        MLP_HPS[MLPHP.N_UNIT.name] = 5
 
         # Creation of evaluator
         evaluator = Evaluator(model_constructor=PetaleMLPR,
                               dataset=dataset,
                               masks=masks,
-                              evaluation_name=f"MLP_warmup{eval_id}",
+                              evaluation_name=f"MLP_obesity{eval_id}",
                               hps={},
                               n_trials=0,
                               evaluation_metrics=evaluation_metrics,
@@ -324,6 +298,7 @@ if __name__ == '__main__':
         dataset = PetaleDataset(df, target, cont_cols, cat_cols,
                                 to_tensor=True, classification=False)
 
+
         def update_fixed_params(dts):
             return {'max_epochs': 500,
                     'patience': 50,
@@ -332,6 +307,7 @@ if __name__ == '__main__':
                     'cat_sizes': dts.cat_sizes,
                     'cat_emb_sizes': dts.cat_sizes,
                     **ENET_HPS}
+
 
         # Saving of fixed_params for ENET
         fixed_params = update_fixed_params(dataset)
@@ -344,7 +320,7 @@ if __name__ == '__main__':
         evaluator = Evaluator(model_constructor=PetaleMLPR,
                               dataset=dataset,
                               masks=masks,
-                              evaluation_name=f"enet_warmup{eval_id}",
+                              evaluation_name=f"enet_obesity{eval_id}",
                               hps={},
                               n_trials=0,
                               evaluation_metrics=evaluation_metrics,
@@ -373,6 +349,7 @@ if __name__ == '__main__':
         dataset = PetaleDataset(df, target, cont_cols, cat_cols,
                                 gene_cols=gene_cols, to_tensor=True, classification=False)
 
+
         def gene_encoder_constructor(gene_idx_groups: Optional[Dict[str, List[int]]],
                                      dropout: float) -> GeneEncoder:
             """
@@ -391,6 +368,7 @@ if __name__ == '__main__':
                                     genes_emb_sharing=args.embedding_sharing,
                                     dropout=dropout,
                                     signature_size=args.signature_size)
+
 
         def update_fixed_params(dts):
             return {'max_epochs': 500,
@@ -415,7 +393,7 @@ if __name__ == '__main__':
         evaluator = Evaluator(model_constructor=PetaleMLPR,
                               dataset=dataset,
                               masks=masks,
-                              evaluation_name=f"ggeEnet_warmup{eval_id}",
+                              evaluation_name=f"ggeEnet_obesity{eval_id}",
                               hps={},
                               n_trials=0,
                               evaluation_metrics=evaluation_metrics,
@@ -463,6 +441,7 @@ if __name__ == '__main__':
                                              dropout=dropout,
                                              signature_size=args.signature_size)
 
+
         def update_fixed_params(dts):
             return {'max_epochs': 500,
                     'patience': 50,
@@ -486,7 +465,7 @@ if __name__ == '__main__':
         evaluator = Evaluator(model_constructor=PetaleMLPR,
                               dataset=dataset,
                               masks=masks,
-                              evaluation_name=f"ggaeEnet_warmup{eval_id}",
+                              evaluation_name=f"ggaeEnet_obesity{eval_id}",
                               hps={},
                               n_trials=0,
                               evaluation_metrics=evaluation_metrics,
@@ -505,24 +484,18 @@ if __name__ == '__main__':
     """
     GAT experiment
     """
-    if args.gat and args.baselines:
+    if args.gat:
 
         # Start timer
         start = time.time()
-
-        # Creation of the dataset
-        if (args.sex and not args.conditional_column) or genes:
-            sim_measure = PetaleKGNNDataset.COSINE
-        else:
-            sim_measure = PetaleKGNNDataset.EUCLIDEAN
 
         for nb_neighbor in args.degree:
 
             nb_neighbor = int(nb_neighbor)
 
-            if args.sex and args.conditional_column:
+            if args.conditional_column:
                 cond_cat_col = SEX
-                nb_neighbor = int(nb_neighbor/2)
+                nb_neighbor = int(nb_neighbor / 2)
             else:
                 cond_cat_col = None
 
@@ -530,12 +503,10 @@ if __name__ == '__main__':
 
             for prefix, w_sim in GAT_options:
 
-                dataset = PetaleKGNNDataset(df, target, k=nb_neighbor, similarity=sim_measure,
+                dataset = PetaleKGNNDataset(df, target, k=nb_neighbor, similarity=PetaleKGNNDataset.COSINE,
                                             weighted_similarity=w_sim,
                                             cont_cols=cont_cols, cat_cols=cat_cols,
                                             conditional_cat_col=cond_cat_col, classification=False)
-
-
 
                 # Creation of function to update fixed params
                 def update_fixed_params(dts):
@@ -546,6 +517,7 @@ if __name__ == '__main__':
                             'max_epochs': 500,
                             'patience': 50,
                             **GATHPS}
+
 
                 # Saving of original fixed params for HAN
                 fixed_params = update_fixed_params(dataset)
@@ -559,7 +531,7 @@ if __name__ == '__main__':
                                       dataset=dataset,
                                       masks=masks,
                                       evaluation_name=f"{prefix}GAT{nb_neighbor}_warmup{eval_id}",
-                                      hps={},
+                                      hps=GATHPS,
                                       n_trials=0,
                                       evaluation_metrics=evaluation_metrics,
                                       fixed_params=fixed_params,
@@ -574,97 +546,3 @@ if __name__ == '__main__':
                 evaluator.evaluate()
 
         print("Time Taken for GAT (minutes): ", round((time.time() - start) / 60, 2))
-
-    """
-    Self supervised learning experiment with GGAE
-    """
-    if args.ssl_ggae and genes:
-
-        # Start timer
-        start = time.time()
-
-        # Creation of the dataset
-        dataset = PetaleDataset(df, target, cont_cols, cat_cols,
-                                gene_cols=gene_cols, to_tensor=True, classification=False)
-
-        # Creation of a function to update fixed params
-        def update_fixed_params(dts):
-            return {'max_epochs': 500,
-                    'patience': 50,
-                    'gene_idx_groups': dts.gene_idx_groups,
-                    'hidden_size': 3,
-                    'signature_size': args.signature_size,
-                    'genes_emb_sharing': args.embedding_sharing,
-                    'aggregation_method': 'att',
-                    **GGEHPS}
-
-        # Saving of original fixed params for GGAE
-        fixed_params = update_fixed_params(dataset)
-
-        # Creation of the evaluator
-        evaluator = Evaluator(model_constructor=PetaleGGE,
-                              dataset=dataset,
-                              masks=masks,
-                              evaluation_name=f"ggae_warmup{eval_id}",
-                              hps={},
-                              n_trials=0,
-                              evaluation_metrics=[],
-                              fixed_params=fixed_params,
-                              fixed_params_update_function=update_fixed_params,
-                              feature_selector=feature_selector,
-                              save_hps_importance=True,
-                              save_optimization_history=True,
-                              seed=args.seed)
-
-        # Evaluation
-        evaluator.evaluate()
-
-        print("Time Taken for Self Supervised GGAE (minutes): ", round((time.time() - start) / 60, 2))
-
-    """
-    Self supervised learning experiment with GGE
-    """
-    if args.ssl_gge and genes:
-
-        # Start timer
-        start = time.time()
-
-        # Creation of the dataset
-        dataset = PetaleDataset(df, target, cont_cols, cat_cols,
-                                gene_cols=gene_cols, to_tensor=True, classification=False)
-
-        # Creation of a function to update fixed params
-        def update_fixed_params(dts):
-            return {'max_epochs': 500,
-                    'patience': 50,
-                    'gene_idx_groups': dts.gene_idx_groups,
-                    'hidden_size': 3,
-                    'signature_size': args.signature_size,
-                    'genes_emb_sharing': args.embedding_sharing,
-                    'aggregation_method': 'avg',
-                    **GGEHPS}
-
-        # Saving of original fixed params for GGAE
-        fixed_params = update_fixed_params(dataset)
-
-        # Creation of the evaluator
-        evaluator = Evaluator(model_constructor=PetaleGGE,
-                              dataset=dataset,
-                              masks=masks,
-                              evaluation_name=f"gge_warmup{eval_id}",
-                              hps={},
-                              n_trials=0,
-                              evaluation_metrics=[],
-                              fixed_params=fixed_params,
-                              fixed_params_update_function=update_fixed_params,
-                              feature_selector=feature_selector,
-                              save_hps_importance=True,
-                              save_optimization_history=True,
-                              seed=args.seed)
-
-        # Evaluation
-        evaluator.evaluate()
-
-        print("Time Taken for Self Supervised GGE (minutes): ", round((time.time() - start) / 60, 2))
-
-    print("Overall time (minutes): ", round((time.time() - first_start) / 60, 2))

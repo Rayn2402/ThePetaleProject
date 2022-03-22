@@ -8,14 +8,14 @@ Description: This file defines the Graph Attention Network model
 Date of last modification: 2022/02/22
 """
 from dgl import DGLGraph
-from dgl.nn.pytorch import GATv2Conv
+from dgl.nn.pytorch import GATConv
 from src.data.processing.gnn_datasets import MaskType, PetaleKGNNDataset
 from src.models.abstract_models.custom_torch_base import TorchCustomModel
 from src.training.early_stopping import EarlyStopper
 from src.utils.score_metrics import Metric, RootMeanSquaredError
 from torch import cat, no_grad, ones, tensor
-from torch.nn import Linear, MSELoss, BatchNorm1d
-from torch.nn.functional import elu
+from torch.nn import BatchNorm1d, Identity, Linear, MSELoss
+from torch.nn.functional import elu, relu
 from torch.utils.data import DataLoader
 from typing import Callable, List, Optional, Union, Tuple
 
@@ -74,12 +74,12 @@ class GAT(TorchCustomModel):
                          verbose=verbose)
 
         # We build the main layer
-        self._conv_layer = GATv2Conv(in_feats=self._input_size,
-                                     out_feats=hidden_size,
-                                     num_heads=num_heads,
-                                     feat_drop=feat_dropout,
-                                     attn_drop=attn_dropout,
-                                     activation=elu)
+        self._conv_layer = GATConv(in_feats=self._input_size,
+                                   out_feats=hidden_size,
+                                   num_heads=num_heads,
+                                   feat_drop=feat_dropout,
+                                   attn_drop=attn_dropout,
+                                   activation=relu)
 
         # We save the batch norm layer
         self._bn = BatchNorm1d(hidden_size)
@@ -88,7 +88,10 @@ class GAT(TorchCustomModel):
         self._num_att_heads = num_heads
 
         # We save the linear layer
-        self._linear_layer = Linear(hidden_size, output_size)
+        if hidden_size != output_size:
+            self._linear_layer = Linear(hidden_size, output_size)
+        else:
+            self._linear_layer = Identity()
 
     def _execute_train_step(self, train_data: Tuple[DataLoader, PetaleKGNNDataset],
                             sample_weights: tensor) -> float:

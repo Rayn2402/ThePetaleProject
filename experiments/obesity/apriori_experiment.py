@@ -6,7 +6,7 @@ Authors: Nicolas Raymond
 Description: This file is used to identify meaningful association
              rules between categorical values and BMI quantiles.
 
-Date of last modification : 2022/02/02
+Date of last modification : 2022/03/15
 """
 
 from os.path import dirname, exists, realpath, join
@@ -36,7 +36,7 @@ if __name__ == '__main__':
     df, target, cont_cols, cat_cols = get_learning_one_data(manager, genes=GeneChoice.ALL)
 
     # Extraction of masks
-    masks = extract_masks(Paths.BMI_MASK, k=10, l=0)
+    masks = extract_masks(Paths.OBESITY_MASK, k=10, l=0)
 
     # We run apriori experiment
     run_apriori_experiment(experiment_name='L1',

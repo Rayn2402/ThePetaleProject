@@ -62,7 +62,7 @@ class RandomStratifiedSampler:
         """
         if n_out_split <= 0:
             raise ValueError('Number of outer split must be greater than 0')
-        if n_in_split <= 0:
+        if n_in_split < 0:
             raise ValueError('Number of inner split must be greater or equal to 0')
         if not (0 <= valid_size < 1):
             raise ValueError('Validation size must be in the range [0, 1)')
@@ -392,18 +392,22 @@ def get_learning_one_data(data_manager: PetaleDataManager,
             raise ValueError(f"genes value must be in {GeneChoice()}")
 
         if genes == GeneChoice.SIGNIFICANT:
-            cat_cols += SIGNIFICANT_CHROM_POS_BMI
+            cat_cols += SIGNIFICANT_CHROM_POS_OBESITY
 
         else:
-            cat_cols += ALL_CHROM_POS_BMI
+            cat_cols += ALL_CHROM_POS_OBESITY
 
     if dummy:
         cat_cols.append(WARMUP_DUMMY)
 
     # We extract the dataframe
-    df = data_manager.get_table(LEARNING_1, columns=[PARTICIPANT, BMI] + cont_cols + cat_cols)
+    df = data_manager.get_table(LEARNING_1, columns=[PARTICIPANT, TOTAL_BODY_FAT] + cont_cols + cat_cols)
 
-    return df, BMI, cont_cols, cat_cols
+    # We replace wrong categorical values
+    df.replace("0/2", "0/1", inplace=True)
+    df.replace("1/2", "1/1", inplace=True)
+
+    return df, TOTAL_BODY_FAT, cont_cols, cat_cols
 
 
 def generate_multitask_labels(df: DataFrame,

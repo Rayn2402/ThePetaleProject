@@ -29,6 +29,7 @@ OBESITY_PERCENTILE = 42.695
 GEN_1 = "General_1_Demographic Questionnaire"
 GEN_2 = "General_2_CRF Hematology-Oncology"
 CARDIO_0 = "Cardio_0_Évaluation à l'Effort (EE)"
+CARDIO_2 = "Cardio_2_Echocardiography"
 CARDIO_3 = "Cardio_3_Questionnaire d'Activité Physique (QAP)"
 CARDIO_4 = "Cardio_4_Test de Marche de 6 Minutes (TDM6)"
 VO2_ID_TABLE = "VO2_ID"
@@ -52,7 +53,9 @@ LEARNING_0_GENES = "L0_WARMUP_GENES"
 LEARNING_0_GENES_HOLDOUT = "L0_WARMUP_GENES_HOLDOUT"
 LEARNING_1 = "L1_OBESITY"
 LEARNING_1_HOLDOUT = "L1_OBESITY_HOLDOUT"
+LEARNING_2 = "L2_REF"
 OBESITY_TARGET = "OBESITY_TARGET"
+REDUCED_EF_TARGET = "REDUCED_EF_TARGET"
 RAW = "RAW"
 
 
@@ -102,6 +105,9 @@ VO2_MAX_PRED = "35008 EE_VO2_max_pred"
 VO2R_MAX = "35009 EE_VO2r_max"
 TAS_REST = "35020 EE_TAS_rest"
 TAD_REST = "35021 EE_TAD_rest"
+
+# CARDIO 2 COLUMNS
+EF = "34972 FE ModeM (cardio)"
 
 # CARDIO 3 COLUMNS
 MVLPA = "35116 QAPL8"
@@ -239,6 +245,7 @@ CARDIOMETABOLIC_COMPLICATIONS = "Cardiometabolic complications?"
 COMPLICATIONS = "Complications?"
 TOTAL_BODY_FAT = "Total body fat (%)"
 OBESITY = "Obesity"
+REDUCED_EF = "Reduced Ejection Fraction"
 WARMUP_DUMMY = "Dummy"
 
 # WARMUP DUMMY VARIABLE DICTIONARY
@@ -296,6 +303,8 @@ TYPES = {PARTICIPANT: CATEGORICAL_TYPE,
          WARMUP_DUMMY: NUMERIC_TYPE,
          BMI: NUMERIC_TYPE,
          OBESITY: NUMERIC_TYPE,
-         TOTAL_BODY_FAT: NUMERIC_TYPE
+         TOTAL_BODY_FAT: NUMERIC_TYPE,
+         EF: NUMERIC_TYPE,
+         REDUCED_EF: NUMERIC_TYPE
          }
 

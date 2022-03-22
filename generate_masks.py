@@ -84,7 +84,7 @@ if __name__ == '__main__':
     df = df[columns]
 
     # We create stratified mask according to the target columns
-    cont_cols = list(retrieve_numerical_var(df, []).columns.values)
+    cont_cols = [c for c in list(retrieve_numerical_var(df, []).columns.values) if c != args.target_column]
     cat_cols = [c for c in df.columns.values if c not in [PARTICIPANT, args.target_column] + cont_cols]
     dataset = PetaleDataset(df, args.target_column, cont_cols=cont_cols, cat_cols=cat_cols,
                             classification=args.categorical)

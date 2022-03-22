@@ -87,7 +87,7 @@ if __name__ == '__main__':
     df = df.loc[~df[PARTICIPANT].isin(list(outliers_ids[PARTICIPANT].values)), :]
 
     # We extract an holdout set from the whole dataframe using a sampler
-    cont_cols = list(retrieve_numerical_var(df, []).columns.values)
+    cont_cols = [c for c in list(retrieve_numerical_var(df, []).columns.values) if c != args.target_column]
     cat_cols = [c for c in df.columns.values if c not in [PARTICIPANT, args.target_column] + cont_cols]
     dataset = PetaleDataset(df, args.target_column, cont_cols=cont_cols, cat_cols=cat_cols,
                             classification=args.categorical)

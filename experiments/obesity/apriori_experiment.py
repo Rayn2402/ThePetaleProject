@@ -4,7 +4,7 @@ Filename: apriori_experiment.py
 Authors: Nicolas Raymond
 
 Description: This file is used to identify meaningful association
-             rules between categorical values and BMI quantiles.
+             rules between categorical values and total body fat (%) quantiles.
 
 Date of last modification : 2022/03/15
 """

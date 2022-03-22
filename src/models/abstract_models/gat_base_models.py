@@ -8,7 +8,7 @@ Description: This file defines the Graph Attention Network model
 Date of last modification: 2022/02/22
 """
 from dgl import DGLGraph
-from dgl.nn.pytorch import GATv2Conv
+from dgl.nn.pytorch import GATConv
 from src.data.processing.gnn_datasets import MaskType, PetaleKGNNDataset
 from src.models.abstract_models.custom_torch_base import TorchCustomModel
 from src.training.early_stopping import EarlyStopper
@@ -74,12 +74,12 @@ class GAT(TorchCustomModel):
                          verbose=verbose)
 
         # We build the main layer
-        self._conv_layer = GATv2Conv(in_feats=self._input_size,
-                                     out_feats=hidden_size,
-                                     num_heads=num_heads,
-                                     feat_drop=feat_dropout,
-                                     attn_drop=attn_dropout,
-                                     activation=relu)
+        self._conv_layer = GATConv(in_feats=self._input_size,
+                                   out_feats=hidden_size,
+                                   num_heads=num_heads,
+                                   feat_drop=feat_dropout,
+                                   attn_drop=attn_dropout,
+                                   activation=relu)
 
         # We save the batch norm layer
         self._bn = BatchNorm1d(hidden_size)

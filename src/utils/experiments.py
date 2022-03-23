@@ -349,7 +349,7 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
             MLP_HPS[MLPHP.RHO.name] = sam_value
 
         cat_sizes_sum = sum(dataset.cat_sizes) if dataset.cat_sizes is not None else 0
-        MLP_HPS[MLPHP.N_UNIT.name] = (len(cont_cols) + cat_sizes_sum)/2
+        MLP_HPS[MLPHP.N_UNIT.name] = int((len(cont_cols) + cat_sizes_sum)/2)
 
         # Creation of evaluator
         evaluator = Evaluator(model_constructor=PetaleMLPR,

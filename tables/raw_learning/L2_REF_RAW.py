@@ -17,6 +17,8 @@ Description: This file stores the procedure to execute in order to obtain
              - DEX (0; >0, <=Med; >Med) where Med is the median without 0's
              - GESTATIONAL AGE AT BIRTH (<37w, >=37w)
              - WEIGHT AT BIRTH (<2500g, >=2500g)
+             - METHO DOSE
+             - CORTICO DOSE
 
             Target:
             - EF (ejection fraction)
@@ -59,6 +61,7 @@ if __name__ == '__main__':
     baseline_df = data_manager.get_table(BASE_FEATURES_AND_COMPLICATIONS, baseline_vars)
     cardio2_df = data_manager.get_table(CARDIO_2, cardio2_vars)
     chrom_pos_df = data_manager.get_table(ALLGENES)
+    metho_cortico_df = data_manager.get_table(METHO_CORTICO_TABLE)
 
     # We only keep survivors from phase 1
     cardio2_df = cardio2_df[cardio2_df[TAG] == PHASE]
@@ -77,9 +80,15 @@ if __name__ == '__main__':
     types = {c: TYPES.get(c, CATEGORICAL_TYPE) for c in list(cardio2_df.columns)}
     data_manager.create_and_fill_table(cardio2_df, REDUCED_EF_TARGET, types, primary_key=[PARTICIPANT])
 
+    # We proceed to table concatenation (baselines + ef + metho cortico)
+    intermediate_df2 = pd.merge(intermediate_df, metho_cortico_df, on=[PARTICIPANT], how=INNER)
+    removed = [p for p in list(intermediate_df[PARTICIPANT].values) if p not in list(intermediate_df2[PARTICIPANT].values)]
+    print(f"Participant with missing metho-cortico data: {removed}")
+    print(f"Total : {len(removed)}")
+
     # We proceed to table concatenation (baselines + ef + genes)
-    complete_df = pd.merge(intermediate_df, chrom_pos_df, on=[PARTICIPANT], how=INNER)
-    removed = [p for p in list(intermediate_df[PARTICIPANT].values) if p not in list(complete_df[PARTICIPANT].values)]
+    complete_df = pd.merge(intermediate_df2, chrom_pos_df, on=[PARTICIPANT], how=INNER)
+    removed = [p for p in list(intermediate_df2[PARTICIPANT].values) if p not in list(complete_df[PARTICIPANT].values)]
     print(f"Missing participant from ALL GENES: {removed}")
     print(f"Total : {len(removed)}")
 

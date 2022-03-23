@@ -17,6 +17,8 @@ Description: This file stores the procedure to execute in order to obtain
              - DEX (0; >0, <=Med; >Med) where Med is the median without 0's
              - GESTATIONAL AGE AT BIRTH (<37w, >=37w)
              - WEIGHT AT BIRTH (<2500g, >=2500g)
+             - METHO DOSE
+             - CORTICO DOSE
 
             Target:
             - OBESITY
@@ -60,6 +62,7 @@ if __name__ == '__main__':
     baseline_df = data_manager.get_table(BASE_FEATURES_AND_COMPLICATIONS, baseline_vars)
     age_df = data_manager.get_table(GEN_1, gen_1_vars)
     chrom_pos_df = data_manager.get_table(ALLGENES)
+    metho_cortico_df = data_manager.get_table(METHO_CORTICO_TABLE)
 
     # We only keep survivors from phase 1 and calculate their ages
     age_df = age_df[age_df[TAG] == PHASE]
@@ -86,6 +89,12 @@ if __name__ == '__main__':
     print(f"Participant with missing body fat: {removed}")
     print(f"Total : {len(removed)}")
 
+    # We proceed to table concatenation (baselines + ages + body fat + metho cortico)
+    intermediate_df3 = pd.merge(intermediate_df2, metho_cortico_df, on=[PARTICIPANT], how=INNER)
+    removed = [p for p in list(intermediate_df2[PARTICIPANT].values) if p not in list(intermediate_df3[PARTICIPANT].values)]
+    print(f"Participant with missing metho-cortico data: {removed}")
+    print(f"Total : {len(removed)}")
+
     # We create the obesity table
     obesity_df = pd.merge(intermediate_df, body_fat_df, on=[PARTICIPANT], how=INNER)
     percentile = obesity_df.loc[obesity_df[AGE] < 18, [TOTAL_BODY_FAT]].quantile(0.95).to_numpy().item()
@@ -99,8 +108,8 @@ if __name__ == '__main__':
     data_manager.create_and_fill_table(obesity_df, OBESITY_TARGET, types, primary_key=[PARTICIPANT])
 
     # We proceed to table concatenation (baselines + ages + body fat + genes)
-    complete_df = pd.merge(intermediate_df2, chrom_pos_df, on=[PARTICIPANT], how=INNER)
-    removed = [p for p in list(intermediate_df2[PARTICIPANT].values) if p not in list(complete_df[PARTICIPANT].values)]
+    complete_df = pd.merge(intermediate_df3, chrom_pos_df, on=[PARTICIPANT], how=INNER)
+    removed = [p for p in list(intermediate_df3[PARTICIPANT].values) if p not in list(complete_df[PARTICIPANT].values)]
     print(f"Missing participant from ALL GENES: {removed}")
     print(f"Total : {len(removed)}")
 

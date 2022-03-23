@@ -438,7 +438,7 @@ def get_learning_two_data(data_manager: PetaleDataManager,
             raise ValueError(f"genes value must be in {GeneChoice()}")
 
         if genes == GeneChoice.SIGNIFICANT:
-            cat_cols += []
+            cat_cols += SIGNIFICANT_CHROM_POS_REF
 
         else:
             cat_cols += ALL_CHROM_POS_REF

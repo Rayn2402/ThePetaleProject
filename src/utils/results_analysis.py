@@ -27,6 +27,7 @@ from typing import Any, Callable, Dict, List, Union
 APRIORI_KEYS = ['Support', 'Lift', 'Confidence']
 SECTION = 'Section'
 CLASS_PRED = 'CP'
+REG_PRED = 'RP'
 
 
 def get_classification_metrics(target_table_name: str,
@@ -69,12 +70,12 @@ def get_classification_metrics(target_table_name: str,
                 data = load(read_file)
 
             # We save the predictions of every participant
-            pred = {PARTICIPANT: [], SECTION: [], PREDICTION: [], CLASS_PRED: []}
+            pred = {PARTICIPANT: [], SECTION: [], REG_PRED: [], CLASS_PRED: []}
             for section in [TRAIN_RESULTS, TEST_RESULTS, VALID_RESULTS]:
                 for k in data[section].keys():
                     pred[PARTICIPANT].append(k)
                     pred[SECTION].append(section)
-                    pred[PREDICTION].append(float(data[section][k][PREDICTION]))
+                    pred[REG_PRED].append(float(data[section][k][PREDICTION]))
                     pred[CLASS_PRED].append(0)
 
             # We save the predictions in a dataframe

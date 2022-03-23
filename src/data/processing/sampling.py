@@ -382,7 +382,7 @@ def get_learning_one_data(data_manager: PetaleDataManager,
     cont_cols, cat_cols = [], []
 
     # We add baselines
-    cont_cols += [AGE_AT_DIAGNOSIS, DT, DOX]
+    cont_cols += [AGE_AT_DIAGNOSIS, DT, DOX, METHO, CORTICO]
     cat_cols += [SEX, RADIOTHERAPY_DOSE, DEX, BIRTH_AGE]
 
     # We check for genes
@@ -428,7 +428,7 @@ def get_learning_two_data(data_manager: PetaleDataManager,
     cont_cols, cat_cols = [], []
 
     # We add baselines
-    cont_cols += [AGE_AT_DIAGNOSIS, DT, DOX]
+    cont_cols += [AGE_AT_DIAGNOSIS, DT, DOX, METHO, CORTICO]
     cat_cols += [SEX, RADIOTHERAPY_DOSE, DEX, BIRTH_AGE]
 
     # We check for genes

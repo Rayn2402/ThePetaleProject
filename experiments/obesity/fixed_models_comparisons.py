@@ -1,5 +1,5 @@
 """
-Filename: fixed_model_comparisons.py
+Filename: fixed_models_comparisons.py
 
 Author: Nicolas Raymond
 

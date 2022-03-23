@@ -156,11 +156,27 @@ def fixed_hps_lae_experiment_parser():
     return arguments
 
 
+def path_parser():
+    """
+    Provides an argparser that retrieves a path
+    """
+    # Create a parser
+    parser = argparse.ArgumentParser(usage='\n python3 file.py -p [path]',
+                                     description="Stores a path")
+
+    parser.add_argument('-p', '--path', type=str, help='Path of the experiment folder')
+    arguments = parser.parse_args()
+    print_arguments(arguments)
+
+    return arguments
+
+
 def print_arguments(arguments) -> None:
     """
     Prints the arguments of an argparser
+
     Args:
-        arguments:
+        arguments: arguments of an argparser
 
     Returns: None
     """

@@ -85,7 +85,7 @@ def get_classification_metrics(target_table_name: str,
             pred_df = merge(pred_df, gt_df, on=[PARTICIPANT], how=INNER)
 
             # We calculate the class targets predicted
-            pred_df = class_generator_function(df=pred_df, pred_col=CLASS_PRED)
+            pred_df = class_generator_function(df=pred_df)
 
             # We calculate the metrics
             for s1, s2 in [(TRAIN_RESULTS, TRAIN_METRICS), (TEST_RESULTS, TEST_METRICS), (VALID_RESULTS, VALID_METRICS)]:

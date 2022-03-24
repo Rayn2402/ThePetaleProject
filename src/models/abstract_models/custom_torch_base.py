@@ -20,9 +20,8 @@ from src.training.early_stopping import EarlyStopper
 from src.training.sam import SAM
 from src.utils.score_metrics import Metric
 from src.utils.visualization import visualize_epoch_progression
-from torch import ones, sum, tensor, zeros_like
+from torch import ones, sum, tensor
 from torch.nn import BatchNorm1d, Module
-from torch.nn.functional import l1_loss, mse_loss
 from torch.optim import Adam
 from torch.utils.data import DataLoader, SubsetRandomSampler
 from typing import Any, Callable, List, Optional, Tuple, Union
@@ -327,9 +326,10 @@ class TorchCustomModel(Module, ABC):
         Returns: tensor with loss value
         """
         # Computations of penalties
-        flatten_params = [w.view(-1, 1) for w in self.parameters()]
-        l1_penalty = sum(tensor([l1_loss(w, zeros_like(w)) for w in flatten_params]))
-        l2_penalty = sum(tensor([mse_loss(w, zeros_like(w)) for w in flatten_params]))
+        l1_penalty, l2_penalty = tensor(0.), tensor(0.)
+        for _, w in self.named_parameters():
+            l1_penalty = l1_penalty + w.abs().sum()
+            l2_penalty = l2_penalty + w.pow(2).sum()
 
         # Computation of loss without reduction
         loss = self._criterion(pred, y.float())  # (N,) tensor

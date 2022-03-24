@@ -1,5 +1,5 @@
 """
-Filename: warmup_fixed_hps.py
+Filename: fixed_hps.py
 
 Author: Nicolas Raymond
 

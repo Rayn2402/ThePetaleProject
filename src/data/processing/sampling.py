@@ -368,7 +368,7 @@ def get_learning_one_data(data_manager: PetaleDataManager,
                           genes: Optional[str],
                           dummy: bool = False) -> Tuple[DataFrame, str, List[str], List[str]]:
     """
-    Extracts dataframe needed to proceed to learning one experiments and turn it into a dataset
+    Extracts dataframe needed to proceed to "learning one" experiments and turn it into a dataset
 
     Args:
         data_manager: data manager to communicate with the database
@@ -382,7 +382,7 @@ def get_learning_one_data(data_manager: PetaleDataManager,
     cont_cols, cat_cols = [], []
 
     # We add baselines
-    cont_cols += [AGE_AT_DIAGNOSIS, DT, DOX]
+    cont_cols += [AGE_AT_DIAGNOSIS, DT, DOX, METHO, CORTICO]
     cat_cols += [SEX, RADIOTHERAPY_DOSE, DEX, BIRTH_AGE]
 
     # We check for genes
@@ -404,10 +404,54 @@ def get_learning_one_data(data_manager: PetaleDataManager,
     df = data_manager.get_table(LEARNING_1, columns=[PARTICIPANT, TOTAL_BODY_FAT] + cont_cols + cat_cols)
 
     # We replace wrong categorical values
+    df.loc[(df[DEX] != "0"), [DEX]] = ">0"
     df.replace("0/2", "0/1", inplace=True)
     df.replace("1/2", "1/1", inplace=True)
 
     return df, TOTAL_BODY_FAT, cont_cols, cat_cols
+
+
+def get_learning_two_data(data_manager: PetaleDataManager,
+                          genes: Optional[str]
+                          ) -> Tuple[DataFrame, str, List[str], List[str]]:
+    """
+    Extracts dataframe needed to proceed to "learning two" experiments and turn it into a dataset
+
+    Args:
+        data_manager: data manager to communicate with the database
+        genes: One choice among ("None", "significant", "all")
+
+    Returns: dataframe, target, continuous columns, categorical columns
+    """
+
+    # We initialize empty lists for continuous and categorical columns
+    cont_cols, cat_cols = [], []
+
+    # We add baselines
+    cont_cols += [AGE_AT_DIAGNOSIS, DT, DOX, METHO, CORTICO]
+    cat_cols += [SEX, RADIOTHERAPY_DOSE, DEX, BIRTH_AGE]
+
+    # We check for genes
+    if genes is not None:
+
+        if genes not in GeneChoice():
+            raise ValueError(f"genes value must be in {GeneChoice()}")
+
+        if genes == GeneChoice.SIGNIFICANT:
+            cat_cols += SIGNIFICANT_CHROM_POS_REF
+
+        else:
+            cat_cols += ALL_CHROM_POS_REF
+
+    # We extract the dataframe
+    df = data_manager.get_table(LEARNING_2, columns=[PARTICIPANT, EF] + cont_cols + cat_cols)
+
+    # We replace wrong categorical values
+    df.loc[(df[DEX] != "0"), [DEX]] = ">0"
+    df.replace("0/2", "0/1", inplace=True)
+    df.replace("1/2", "1/1", inplace=True)
+
+    return df, EF, cont_cols, cat_cols
 
 
 def generate_multitask_labels(df: DataFrame,

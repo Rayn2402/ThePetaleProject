@@ -12,14 +12,95 @@ from json import dump, load
 from numpy import mean, std
 from os import listdir
 from os.path import join, isdir
-from pandas import DataFrame
+from pandas import DataFrame, merge
 from settings.paths import Paths
-from src.recording.constants import MEAN, STD, SUMMARY_FILE, TEST_METRICS
+from src.data.extraction.constants import *
+from src.data.extraction.data_management import PetaleDataManager
+from src.recording.constants import *
+from src.recording.recording import get_evaluation_recap
+from src.utils.argparsers import path_parser
+from src.utils.score_metrics import Sensitivity, Specificity, BinaryBalancedAccuracy
 from time import time
-from typing import Any, Dict, List, Union
-
+from torch import tensor
+from typing import Any, Callable, Dict, List, Union
 
 APRIORI_KEYS = ['Support', 'Lift', 'Confidence']
+SECTION = 'Section'
+CLASS_PRED = 'CP'
+REG_PRED = 'RP'
+
+
+def get_classification_metrics(target_table_name: str,
+                               target_column_name: str,
+                               class_generator_function: Callable
+                               ) -> None:
+    """
+    Calculates the classification metrics related to regression predictions
+    according to the criterion in the class generator function
+
+    Args:
+        target_table_name: name of the sql table containing the ground truth
+        target_column_name: name of the column containing targets in the target_table
+        class_generator_function: function allowing classes to be generated from the
+                                  real valued predictions
+
+    Returns: None
+    """
+    # We extract the path leading to predictions
+    args = path_parser()
+    path = args.path
+
+    # We initialize the metrics
+    metrics = [Sensitivity(), Specificity(), BinaryBalancedAccuracy()]
+
+    # We load the obesity ground truth table
+    m = PetaleDataManager()
+    gt_df = m.get_table(target_table_name)
+
+    # We extract the names of all the folders in the directory
+    experiment_folders = get_directories(path)
+
+    # For each experiment folder, we look at the split folders
+    for f1 in experiment_folders:
+        sub_path = join(path, f1)
+        for f2 in get_directories(sub_path):
+
+            # We load the data from the records
+            with open(join(sub_path, f2, RECORDS_FILE), "r") as read_file:
+                data = load(read_file)
+
+            # We save the predictions of every participant
+            pred = {PARTICIPANT: [], SECTION: [], REG_PRED: [], CLASS_PRED: []}
+            for section in [TRAIN_RESULTS, TEST_RESULTS, VALID_RESULTS]:
+                for k in data[section].keys():
+                    pred[PARTICIPANT].append(k)
+                    pred[SECTION].append(section)
+                    pred[REG_PRED].append(float(data[section][k][PREDICTION]))
+                    pred[CLASS_PRED].append(0)
+
+            # We save the predictions in a dataframe
+            pred_df = DataFrame(data=pred)
+
+            # We concatenate the dataframes
+            pred_df = merge(pred_df, gt_df, on=[PARTICIPANT], how=INNER)
+
+            # We calculate the class targets predicted
+            pred_df = class_generator_function(df=pred_df)
+
+            # We calculate the metrics
+            for s1, s2 in [(TRAIN_RESULTS, TRAIN_METRICS), (TEST_RESULTS, TEST_METRICS), (VALID_RESULTS, VALID_METRICS)]:
+                subset_df = pred_df.loc[pred_df[SECTION] == s1, :]
+                pred = tensor(subset_df[CLASS_PRED].to_numpy())
+                target = tensor(subset_df[target_column_name].astype('float').to_numpy()).long()
+
+                for metric in metrics:
+                    data[s2][metric.name] = metric(pred=pred, targets=target)
+
+            # We update the json records file
+            with open(join(sub_path, f2, RECORDS_FILE), "w") as file:
+                dump(data, file, indent=True)
+
+        get_evaluation_recap(evaluation_name='', recordings_path=sub_path)
 
 
 def get_directories(path: str) -> List[str]:

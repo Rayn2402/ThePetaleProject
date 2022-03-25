@@ -237,11 +237,6 @@ GATHPS = {
     GATHP.ALPHA.name: {
         Range.VALUE: 0,
     },
-    GATHP.BATCH_SIZE.name: {
-        Range.MIN: 5,
-        Range.MAX: 25,
-        Range.STEP: 5
-    },
     GATHP.BETA.name: {
         Range.MIN: 0,
         Range.MAX: 0.001

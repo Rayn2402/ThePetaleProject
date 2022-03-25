@@ -146,7 +146,7 @@ class MLP(TorchCustomModel):
             epoch_loss += loss
             epoch_score += score
 
-        # We save mean epoch loss and mean epoch score
+        # We update evaluations history
         mean_epoch_loss = self.update_evaluations_progress(epoch_loss, epoch_score,
                                                            nb_batch=len(train_data),
                                                            mask_type=MaskType.TRAIN)

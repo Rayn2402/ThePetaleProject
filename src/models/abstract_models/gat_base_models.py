@@ -15,7 +15,7 @@ from src.training.early_stopping import EarlyStopper
 from src.utils.score_metrics import Metric, RootMeanSquaredError
 from torch import cat, no_grad, ones, tensor
 from torch.nn import BatchNorm1d, Identity, Linear, MSELoss
-from torch.nn.functional import elu, relu
+from torch.nn.functional import relu
 from torch.utils.data import DataLoader
 from typing import Callable, List, Optional, Union, Tuple
 
@@ -93,7 +93,8 @@ class GAT(TorchCustomModel):
         else:
             self._linear_layer = Identity()
 
-    def _execute_train_step(self, train_data: Tuple[DataLoader, PetaleKGNNDataset],
+    def _execute_train_step(self,
+                            train_data: Tuple[DataLoader, PetaleKGNNDataset],
                             sample_weights: tensor) -> float:
         """
         Executes one training epoch
@@ -138,15 +139,15 @@ class GAT(TorchCustomModel):
             epoch_loss += loss
             epoch_score += score
 
-        # We save mean epoch loss and mean epoch score
-        nb_batch = len(train_data)
-        mean_epoch_loss = epoch_loss / nb_batch
-        self._evaluations[MaskType.TRAIN][self._criterion_name].append(mean_epoch_loss)
-        self._evaluations[MaskType.TRAIN][self._eval_metric.name].append(epoch_score / nb_batch)
+        # We update evaluations history
+        mean_epoch_loss = self._update_evaluations_progress(epoch_loss, epoch_score,
+                                                            nb_batch=len(train_data),
+                                                            mask_type=MaskType.TRAIN)
 
         return mean_epoch_loss
 
-    def _execute_valid_step(self, valid_data: Optional[Union[DataLoader, Tuple[DataLoader, PetaleKGNNDataset]]],
+    def _execute_valid_step(self,
+                            valid_data: Optional[Union[DataLoader, Tuple[DataLoader, PetaleKGNNDataset]]],
                             early_stopper: Optional[EarlyStopper]) -> bool:
         """
         Executes an inference step on the validation data and apply early stopping if needed
@@ -194,13 +195,10 @@ class GAT(TorchCustomModel):
                 epoch_loss += self.loss(sample_weights, pred[pos_idx], y).item()
                 epoch_score += self._eval_metric(pred[pos_idx], y)
 
-        # We save mean epoch loss and mean epoch score
-        nb_batch = len(valid_loader)
-        mean_epoch_loss = epoch_loss / nb_batch
-        mean_epoch_score = epoch_score / nb_batch
-        self._evaluations[MaskType.VALID][self._criterion_name].append(mean_epoch_loss)
-        self._evaluations[MaskType.VALID][self._eval_metric.name].append(mean_epoch_score)
-
+        # We update evaluations history
+        mean_epoch_score = self._update_evaluations_progress(epoch_loss, epoch_score,
+                                                             nb_batch=len(valid_loader),
+                                                             mask_type=MaskType.VALID)
         # We check early stopping status
         early_stopper(mean_epoch_score, self)
 

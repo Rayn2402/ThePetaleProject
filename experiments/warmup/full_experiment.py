@@ -118,7 +118,7 @@ if __name__ == '__main__':
 
     # Imports specific to project
     sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
-    from hps.warmup_hps import ENET_HPS, ENET_GGE_HPS, GATHPS, GGEHPS, HAN_HPS, MLP_HPS, RF_HPS, TAB_HPS, XGBOOST_HPS
+    from hps.free_hps import ENET_HPS, ENET_GGE_HPS, GATHPS, GGEHPS, HAN_HPS, MLP_HPS, RF_HPS, TAB_HPS, XGBOOST_HPS
     from settings.paths import Paths
     from src.data.processing.datasets import PetaleDataset, PetaleStaticGNNDataset
     from src.data.processing.gnn_datasets import PetaleKGNNDataset

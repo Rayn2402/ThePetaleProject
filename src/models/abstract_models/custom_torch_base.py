@@ -334,12 +334,8 @@ class TorchCustomModel(Module, ABC):
             train_loss = self._execute_train_step(train_data, sample_weights)
             update_progress(epoch, train_loss)
 
-            # We calculate valid score
-            valid_score = self._execute_valid_step(valid_data)
-
-            # We apply early stopping if needed
-            early_stopper(valid_score, self)
-            if early_stopper.early_stop:
+            # We calculate valid score and apply early stopping if needed
+            if self._execute_valid_step(valid_data, early_stopper):
                 print(f"\nEarly stopping occurred at epoch {epoch} with best_epoch = {epoch - patience}"
                       f" and best_val_{self._eval_metric.name} = {round(early_stopper.best_val_score, 4)}")
                 break
@@ -485,14 +481,14 @@ class TorchCustomModel(Module, ABC):
     @abstractmethod
     def _execute_valid_step(self,
                             valid_data: Optional[Union[DataLoader, Tuple[DataLoader, PetaleDataset]]],
-                            ) -> float:
+                            early_stopper: EarlyStopper) -> bool:
         """
         Executes an inference step on the validation data
 
         Args:
             valid_data: valid dataloader or tuple (valid loader, dataset)
 
-        Returns: mean epoch validation score
+        Returns: True if we need to early stop
         """
         raise NotImplementedError
 

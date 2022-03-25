@@ -90,15 +90,15 @@ class PetaleKGNNDataset(PetaleDataset):
                          to_tensor=True)
 
     @property
-    def train_subgraph(self) -> Tuple[DGLGraph, List[int], Dict[int, int]]:
+    def train_subgraph(self) -> Tuple[DGLGraph, Dict[int, int], List[int]]:
         return self._subgraphs[MaskType.TRAIN]
 
     @property
-    def test_subgraph(self) -> Tuple[DGLGraph, List[int], Dict[int, int]]:
+    def test_subgraph(self) -> Tuple[DGLGraph, Dict[int, int], List[int]]:
         return self._subgraphs[MaskType.TEST]
 
     @property
-    def valid_subgraph(self) -> Tuple[DGLGraph, List[int], Dict[int, int]]:
+    def valid_subgraph(self) -> Tuple[DGLGraph, Dict[int, int], List[int]]:
         return self._subgraphs[MaskType.VALID]
 
     def _build_graph_from_knn(self,

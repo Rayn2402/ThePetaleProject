@@ -246,11 +246,28 @@ class TorchCustomModel(Module, ABC):
 
         return update_progress
 
-    def update_evaluations_progress(self,
-                                    loss: float,
-                                    score: float,
-                                    nb_batch: int,
-                                    mask_type: str) -> float:
+    def print_early_stopping_message(self,
+                                     epoch: int,
+                                     patience: int,
+                                     best_validation_score: float) -> None:
+        """
+        Prints a message when early stopping occurs
+
+        Args:
+            epoch: number of training epochs done
+            patience: number of consecutive epochs without improvement allowed
+            best_validation_score: best validation score obtained
+
+        Returns: None
+        """
+        print(f"\nEarly stopping occurred at epoch {epoch} with best_epoch = {epoch - patience}"
+              f" and best_val_{self._eval_metric.name} = {round(best_validation_score, 4)}")
+
+    def _update_evaluations_progress(self,
+                                     loss: float,
+                                     score: float,
+                                     nb_batch: int,
+                                     mask_type: str) -> float:
         """
         Add epoch score and loss to the evaluations history
 
@@ -336,8 +353,7 @@ class TorchCustomModel(Module, ABC):
 
             # We calculate valid score and apply early stopping if needed
             if self._execute_valid_step(valid_data, early_stopper):
-                print(f"\nEarly stopping occurred at epoch {epoch} with best_epoch = {epoch - patience}"
-                      f" and best_val_{self._eval_metric.name} = {round(early_stopper.best_val_score, 4)}")
+                self.print_early_stopping_message(epoch, patience, early_stopper.best_val_score)
                 break
 
         if early_stopper is not None:

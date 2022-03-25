@@ -246,6 +246,37 @@ class TorchCustomModel(Module, ABC):
 
         return update_progress
 
+    def update_evaluations_progress(self,
+                                    loss: float,
+                                    score: float,
+                                    nb_batch: int,
+                                    mask_type: str) -> float:
+        """
+        Add epoch score and loss to the evaluations history
+
+        Args:
+            loss: epoch loss
+            score: epoch score
+            nb_batch: nb of batches
+            mask_type: "train" of "valid"
+
+        Returns: mean epoch loss or mean epoch score
+        """
+
+        # We compute the loss average per batch
+        loss /= nb_batch
+        score /= nb_batch
+
+        # We update the evaluations history
+        self._evaluations[mask_type][self._criterion_name].append(loss)
+        self._evaluations[mask_type][self._eval_metric.name].append(score)
+
+        # We return a value according to the mask type
+        if mask_type == MaskType.VALID:
+            return score
+
+        return loss
+
     def fit(self,
             dataset: PetaleDataset,
             lr: float,

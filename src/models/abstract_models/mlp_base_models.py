@@ -147,11 +147,9 @@ class MLP(TorchCustomModel):
             epoch_score += score
 
         # We save mean epoch loss and mean epoch score
-        nb_batch = len(train_data)
-        mean_epoch_loss = epoch_loss/nb_batch
-        self._evaluations[MaskType.TRAIN][self._criterion_name].append(mean_epoch_loss)
-        self._evaluations[MaskType.TRAIN][self._eval_metric.name].append(epoch_score/nb_batch)
-
+        mean_epoch_loss = self.update_evaluations_progress(epoch_loss, epoch_score,
+                                                           nb_batch=len(train_data),
+                                                           mask_type=MaskType.TRAIN)
         return mean_epoch_loss
 
     def _execute_valid_step(self,
@@ -162,7 +160,6 @@ class MLP(TorchCustomModel):
 
         Args:
             valid_loader: validation dataloader
-            early_stopper: early stopper keeping track of the validation loss
 
         Returns: True if we need to early stop
         """
@@ -190,12 +187,10 @@ class MLP(TorchCustomModel):
                 epoch_loss += self.loss(sample_weights, output, y).item()  # Sample weights are equal for val (1/N)
                 epoch_score += self._eval_metric(output, y)
 
-        # We save mean epoch loss and mean epoch score
-        nb_batch = len(valid_loader)
-        mean_epoch_loss = epoch_loss / nb_batch
-        mean_epoch_score = epoch_score / nb_batch
-        self._evaluations[MaskType.VALID][self._criterion_name].append(mean_epoch_loss)
-        self._evaluations[MaskType.VALID][self._eval_metric.name].append(mean_epoch_score)
+        # We update evaluations history
+        mean_epoch_score = self.update_evaluations_progress(epoch_loss, epoch_score,
+                                                            nb_batch=len(valid_loader),
+                                                            mask_type=MaskType.VALID)
 
         # We check early stopping status
         early_stopper(mean_epoch_score, self)

@@ -75,11 +75,12 @@ RF_HPS = {
 
 XGBOOST_HPS = {
     XGBoostHP.ALPHA.name: {
-        Range.VALUE: 0,
+        Range.MIN: 0.0005,
+        Range.MAX: 1,
     },
     XGBoostHP.BETA.name: {
-        Range.MIN: 0,
-        Range.MAX: 0.001
+        Range.MIN: 0.0005,
+        Range.MAX: 1,
     },
     XGBoostHP.LR.name: {
         Range.MIN: 0.001,
@@ -95,46 +96,13 @@ XGBOOST_HPS = {
     },
 }
 
-HAN_HPS = {
-    HanHP.ALPHA.name: {
-        Range.VALUE: 0,
-    },
-    HanHP.BATCH_SIZE.name: {
-        Range.MIN: 5,
-        Range.MAX: 25,
-        Range.STEP: 5
-    },
-    HanHP.BETA.name: {
-        Range.MIN: 0,
-        Range.MAX: 0.001
-    },
-    HanHP.DROPOUT.name: {
-        Range.VALUE: 0,
-    },
-    HanHP.HIDDEN_SIZE.name: {
-        Range.MIN: 2,
-        Range.MAX: 10,
-        Range.STEP: 2
-    },
-    HanHP.LR.name: {
-        Range.MIN: 0.001,
-        Range.MAX: 0.5
-    },
-    HanHP.RHO.name: {
-        Range.VALUE: 0
-    },
-    HanHP.NUM_HEADS.name: {
-        Range.MIN: 5,
-        Range.MAX: 20
-    },
-}
-
 MLP_HPS = {
     MLPHP.ACTIVATION.name: {
         Range.VALUE: "PReLU"
     },
     MLPHP.ALPHA.name: {
-        Range.VALUE: 0,
+        Range.MIN: 0.0005,
+        Range.MAX: 1,
     },
     MLPHP.BATCH_SIZE.name: {
         Range.MIN: 5,
@@ -142,8 +110,8 @@ MLP_HPS = {
         Range.STEP: 5
     },
     MLPHP.BETA.name: {
-        Range.MIN: 0,
-        Range.MAX: 0.001
+        Range.MIN: 0.0005,
+        Range.MAX: 1,
     },
     MLPHP.DROPOUT.name: {
         Range.MIN: 0,
@@ -169,7 +137,8 @@ ENET_HPS = {
         Range.VALUE: "PReLU"
     },
     MLPHP.ALPHA.name: {
-        Range.VALUE: 0,
+        Range.MIN: 0.0005,
+        Range.MAX: 1,
     },
     MLPHP.BATCH_SIZE.name: {
         Range.MIN: 5,
@@ -177,8 +146,8 @@ ENET_HPS = {
         Range.STEP: 5
     },
     MLPHP.BETA.name: {
-        Range.MIN: 0,
-        Range.MAX: 0.001
+        Range.MIN: 0.0005,
+        Range.MAX: 1,
     },
     MLPHP.DROPOUT.name: {
         Range.VALUE: 0,
@@ -203,7 +172,8 @@ ENET_GGE_HPS = {
         Range.VALUE: "PReLU"
     },
     MLPHP.ALPHA.name: {
-        Range.VALUE: 0,
+        Range.MIN: 0.0005,
+        Range.MAX: 1,
     },
     MLPHP.BATCH_SIZE.name: {
         Range.MIN: 5,
@@ -211,8 +181,8 @@ ENET_GGE_HPS = {
         Range.STEP: 5
     },
     MLPHP.BETA.name: {
-        Range.MIN: 0,
-        Range.MAX: 0.001
+        Range.MIN: 0.0005,
+        Range.MAX: 1,
     },
     MLPHP.DROPOUT.name: {
         Range.MIN: 0,
@@ -235,11 +205,12 @@ ENET_GGE_HPS = {
 
 GATHPS = {
     GATHP.ALPHA.name: {
-        Range.VALUE: 0,
+        Range.MIN: 0.0005,
+        Range.MAX: 1,
     },
     GATHP.BETA.name: {
-        Range.MIN: 0,
-        Range.MAX: 0.001
+        Range.MIN: 0.0005,
+        Range.MAX: 1,
     },
     GATHP.FEAT_DROPOUT.name: {
         Range.MIN: 0,
@@ -250,7 +221,7 @@ GATHPS = {
     },
     GATHP.LR.name: {
         Range.MIN: 0.001,
-        Range.MAX: 0.01
+        Range.MAX: 0.1
     },
     GATHP.ATTN_DROPOUT.name: {
         Range.VALUE: 0.5

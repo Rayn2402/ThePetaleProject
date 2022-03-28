@@ -68,7 +68,6 @@ ENET_GGE_HPS = {
 
 GATHPS = {
     GATHP.ALPHA.name: 0,
-    GATHP.BATCH_SIZE.name: 5,
     GATHP.BETA.name: 0.0005,
     GATHP.FEAT_DROPOUT.name: 0.25,
     GATHP.HIDDEN_SIZE.name: 1,

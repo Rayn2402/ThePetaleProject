@@ -20,7 +20,7 @@ from src.training.early_stopping import EarlyStopper
 from src.training.sam import SAM
 from src.utils.score_metrics import Metric
 from src.utils.visualization import visualize_epoch_progression
-from torch import ones, sum, tensor
+from torch import ones, tensor
 from torch.nn import BatchNorm1d, Module
 from torch.optim import Adam
 from torch.utils.data import DataLoader, SubsetRandomSampler
@@ -112,7 +112,7 @@ class TorchCustomModel(Module, ABC):
                                    dataset: PetaleDataset,
                                    valid_batch_size: Optional[int],
                                    patience: int
-                                   ) -> Tuple:
+                                   ) -> Tuple[EarlyStopper, DataLoader]:
         """
         Creates the objects needed for validation during the training process
 
@@ -121,7 +121,7 @@ class TorchCustomModel(Module, ABC):
             valid_batch_size: size of the batches in the valid loader (None = one single batch)
             patience: number of consecutive epochs without improvement allowed
 
-        Returns: EarlyStopper, (Dataloader, PetaleDataset)
+        Returns: EarlyStopper, Dataloader
 
         """
         # We create the valid dataloader (if valid size != 0)
@@ -130,16 +130,15 @@ class TorchCustomModel(Module, ABC):
         if valid_size != 0:
 
             # We check if a valid batch size was provided
-            valid_bs = valid_batch_size if valid_batch_size is not None else valid_size
+            valid_batch_size = min(valid_size, valid_batch_size) if valid_batch_size is not None else valid_size
 
             # We create the valid loader
-            valid_bs = min(valid_size, valid_bs)
-            valid_data = DataLoader(dataset, batch_size=valid_bs, sampler=SubsetRandomSampler(dataset.valid_mask))
-            early_stopper = EarlyStopper(patience, self._eval_metric.direction)
+            valid_data = DataLoader(dataset,
+                                    batch_size=valid_batch_size,
+                                    sampler=SubsetRandomSampler(dataset.valid_mask))
 
-            # If the dataset is a GNN dataset, we include it into train data
-            if isinstance(dataset, PetaleStaticGNNDataset) or isinstance(dataset, PetaleKGNNDataset):
-                valid_data = (valid_data, dataset)
+            # We create the early stopper
+            early_stopper = EarlyStopper(patience, self._eval_metric.direction)
 
         return early_stopper, valid_data
 
@@ -247,11 +246,59 @@ class TorchCustomModel(Module, ABC):
 
         return update_progress
 
+    def print_early_stopping_message(self,
+                                     epoch: int,
+                                     patience: int,
+                                     best_validation_score: float) -> None:
+        """
+        Prints a message when early stopping occurs
+
+        Args:
+            epoch: number of training epochs done
+            patience: number of consecutive epochs without improvement allowed
+            best_validation_score: best validation score obtained
+
+        Returns: None
+        """
+        print(f"\nEarly stopping occurred at epoch {epoch} with best_epoch = {epoch - patience}"
+              f" and best_val_{self._eval_metric.name} = {round(best_validation_score, 4)}")
+
+    def _update_evaluations_progress(self,
+                                     loss: float,
+                                     score: float,
+                                     nb_batch: int,
+                                     mask_type: str) -> float:
+        """
+        Add epoch score and loss to the evaluations history
+
+        Args:
+            loss: epoch loss
+            score: epoch score
+            nb_batch: nb of batches
+            mask_type: "train" of "valid"
+
+        Returns: mean epoch loss or mean epoch score
+        """
+
+        # We compute the loss average per batch
+        loss /= nb_batch
+        score /= nb_batch
+
+        # We update the evaluations history
+        self._evaluations[mask_type][self._criterion_name].append(loss)
+        self._evaluations[mask_type][self._eval_metric.name].append(score)
+
+        # We return a value according to the mask type
+        if mask_type == MaskType.VALID:
+            return score
+
+        return loss
+
     def fit(self,
             dataset: PetaleDataset,
             lr: float,
             rho: float = 0,
-            batch_size: int = 55,
+            batch_size: Optional[int] = 55,
             valid_batch_size: Optional[int] = None,
             max_epochs: int = 200,
             patience: int = 15,
@@ -276,9 +323,9 @@ class TorchCustomModel(Module, ABC):
         sample_weights = self._validate_sample_weights(dataset, sample_weights)
 
         # We create the training objects
-        train_data = self._create_train_objects(dataset, batch_size)
+        train_data = self._create_train_dataloader(dataset, batch_size)
 
-        # We create the objects needed for validation
+        # We create the objects needed for validation (data loader, early stopper)
         early_stopper, valid_data = self._create_validation_objects(dataset, valid_batch_size, patience)
 
         # We init the update function
@@ -292,17 +339,21 @@ class TorchCustomModel(Module, ABC):
             self._update_weights = self._basic_weight_update
             self._optimizer = Adam(self.parameters(), lr=lr)
 
+        # We add the dataset to train_data and valid_data if it is a GNN dataset
+        if isinstance(dataset, PetaleStaticGNNDataset) or isinstance(dataset, PetaleKGNNDataset):
+            train_data = (train_data, dataset)
+            valid_data = (valid_data, dataset)
+
         # We execute the epochs
         for epoch in range(max_epochs):
 
-            # We calculate training mean epoch loss on all batches
-            mean_epoch_loss = self._execute_train_step(train_data, sample_weights)
-            update_progress(epoch, mean_epoch_loss)
+            # We calculate training loss
+            train_loss = self._execute_train_step(train_data, sample_weights)
+            update_progress(epoch, train_loss)
 
-            # We calculate valid mean epoch loss and apply early stopping if needed
+            # We calculate valid score and apply early stopping if needed
             if self._execute_valid_step(valid_data, early_stopper):
-                print(f"\nEarly stopping occurred at epoch {epoch} with best_epoch = {epoch - patience}"
-                      f" and best_val_{self._eval_metric.name} = {round(early_stopper.best_val_score, 4)}")
+                self.print_early_stopping_message(epoch, patience, early_stopper.best_val_score)
                 break
 
         if early_stopper is not None:
@@ -359,9 +410,9 @@ class TorchCustomModel(Module, ABC):
                                     path=save_path)
 
     @staticmethod
-    def _create_train_objects(dataset: PetaleDataset,
-                              batch_size: int
-                              ) -> Tuple:
+    def _create_train_dataloader(dataset: PetaleDataset,
+                                 batch_size: int
+                                 ) -> DataLoader:
         """
         Creates the objects needed for the training
 
@@ -369,16 +420,16 @@ class TorchCustomModel(Module, ABC):
             dataset: PetaleDataset used to feed the dataloaders
             batch_size: size of the batches in the train loader
 
-        Returns: train loader, PetaleDataset
+        Returns: train loader
 
         """
         # Creation of training loader
-        train_data = DataLoader(dataset, batch_size=min(len(dataset.train_mask), batch_size),
-                                sampler=SubsetRandomSampler(dataset.train_mask))
-
-        # If the dataset is a GNN dataset, we include it into train data
-        if isinstance(dataset, PetaleStaticGNNDataset) or isinstance(dataset, PetaleKGNNDataset):
-            train_data = (train_data, dataset)
+        train_size = len(dataset.train_mask)
+        batch_size = min(train_size, batch_size) if batch_size is not None else train_size
+        train_data = DataLoader(dataset,
+                                batch_size=batch_size,
+                                sampler=SubsetRandomSampler(dataset.train_mask),
+                                drop_last=(train_size % batch_size) == 1)
 
         return train_data
 
@@ -445,14 +496,13 @@ class TorchCustomModel(Module, ABC):
 
     @abstractmethod
     def _execute_valid_step(self,
-                            valid_data: Optional[Union[DataLoader, Tuple[DataLoader, PetaleStaticGNNDataset]]],
-                            early_stopper: Optional[EarlyStopper]) -> bool:
+                            valid_data: Optional[Union[DataLoader, Tuple[DataLoader, PetaleDataset]]],
+                            early_stopper: EarlyStopper) -> bool:
         """
         Executes an inference step on the validation data
 
         Args:
             valid_data: valid dataloader or tuple (valid loader, dataset)
-            early_stopper: early stopper keeping track of validation loss
 
         Returns: True if we need to early stop
         """

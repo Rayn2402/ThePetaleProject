@@ -5,7 +5,7 @@ Author: Nicolas Raymond
 
 Description: This file is used to define the wrapper for the GATRegressor
 
-Date of last modification: 2022/03/02
+Date of last modification: 2022/03/25
 """
 
 from src.models.abstract_models.gat_base_models import GATRegressor
@@ -27,8 +27,6 @@ class PetaleGATR(TorchRegressorWrapper):
                  attn_dropout: float = 0,
                  lr: float = 0.05,
                  rho: float = 0,
-                 batch_size: int = 55,
-                 valid_batch_size: Optional[int] = None,
                  max_epochs: int = 200,
                  patience: int = 15,
                  alpha: float = 0,
@@ -50,8 +48,6 @@ class PetaleGATR(TorchRegressorWrapper):
             lr: learning rate
             rho: if >=0 will be used as neighborhood size in Sharpness-Aware Minimization optimizer,
                  otherwise, standard Adam optimizer will be used
-            batch_size: size of the batches in the training loader
-            valid_batch_size: size of the batches in the valid loader (None = one single batch)
             max_epochs: maximum number of epochs for training
             patience: number of consecutive epochs without improvement
             alpha: L1 penalty coefficient
@@ -80,8 +76,8 @@ class PetaleGATR(TorchRegressorWrapper):
         super().__init__(model=model,
                          train_params={'lr': lr,
                                        'rho': rho,
-                                       'batch_size': batch_size,
-                                       'valid_batch_size': valid_batch_size,
+                                       'batch_size': None,
+                                       'valid_batch_size': None,
                                        'patience': patience,
                                        'max_epochs': max_epochs})
 
@@ -101,7 +97,6 @@ class GATHP:
     """
     ALPHA = NumericalContinuousHP("alpha")
     ATTN_DROPOUT = NumericalContinuousHP("attn_dropout")
-    BATCH_SIZE = NumericalIntHP("batch_size")
     BETA = NumericalContinuousHP("beta")
     FEAT_DROPOUT = NumericalContinuousHP("feat_dropout")
     HIDDEN_SIZE = NumericalIntHP("hidden_size")
@@ -111,5 +106,5 @@ class GATHP:
     WEIGHT = NumericalContinuousHP("weight")
 
     def __iter__(self):
-        return iter([self.ALPHA, self.ATTN_DROPOUT, self.BATCH_SIZE, self.BETA,
-                     self.FEAT_DROPOUT, self.HIDDEN_SIZE, self.LR, self.NUM_HEADS, self.RHO])
+        return iter([self.ALPHA, self.ATTN_DROPOUT, self.BETA, self.FEAT_DROPOUT,
+                     self.HIDDEN_SIZE, self.LR, self.NUM_HEADS, self.RHO])

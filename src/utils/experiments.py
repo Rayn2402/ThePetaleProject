@@ -11,7 +11,7 @@ import json
 
 from apyori import apriori
 from copy import deepcopy
-from hps.fixed_hps import ENET_HPS, ENET_GGE_HPS, GATHPS, MLP_HPS, RF_HPS, XGBOOST_HPS
+from hps.fixed_hps import ENET_HPS, ENET_GGE_HPS, GATHPS, GCNHPS, MLP_HPS, RF_HPS, XGBOOST_HPS
 from os import mkdir
 from os.path import exists, join
 from pandas import DataFrame
@@ -25,6 +25,7 @@ from src.data.processing.preprocessing import preprocess_for_apriori
 from src.data.processing.sampling import extract_masks, GeneChoice, push_valid_to_train
 from src.models.blocks.genes_signature_block import GeneEncoder, GeneGraphEncoder, GeneGraphAttentionEncoder
 from src.models.gat import PetaleGATR, GATHP
+from src.models.gcn import PetaleGCNR, GCNHP
 from src.models.mlp import PetaleMLPR, MLPHP
 from src.models.random_forest import PetaleRFR
 from src.models.xgboost_ import PetaleXGBR
@@ -569,14 +570,13 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
 
         for nb_neighbor in args.degree:
 
+            # We change the type from str to int
             nb_neighbor = int(nb_neighbor)
 
-            if args.conditional_column:
-                cond_cat_col = SEX
-                nb_neighbor = int(nb_neighbor / 2)
-            else:
-                cond_cat_col = None
+            # We set the conditional column
+            cond_cat_col = SEX if args.conditional_column else None
 
+            # We set the distance computations options
             GAT_options = [("", False)] if not args.weighted_similarity else [("", False), ("w", True)]
 
             for prefix, w_sim in GAT_options:
@@ -596,7 +596,7 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
                             'patience': 50,
                             **GATHPS}
 
-                # Saving of original fixed params for HAN
+                # Saving of original fixed params for GAT
                 fixed_params = update_fixed_params(dataset)
 
                 # Update of hyperparameters
@@ -623,5 +623,70 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
                 evaluator.evaluate()
 
         print("Time Taken for GAT (minutes): ", round((time() - start) / 60, 2))
+
+    """
+    GCN experiment
+    """
+    if args.gcn:
+
+        # Start timer
+        start = time()
+
+        for nb_neighbor in args.degree:
+
+            # We change the type from str to int
+            nb_neighbor = int(nb_neighbor)
+
+            # We set the conditional column
+            cond_cat_col = SEX if args.conditional_column else None
+
+            # We set the distance computations options
+            GCN_options = [("", False)] if not args.weighted_similarity else [("", False), ("w", True)]
+
+            for prefix, w_sim in GCN_options:
+
+                # Creation of the dataset
+                dataset = PetaleKGNNDataset(df, target, k=nb_neighbor,
+                                            weighted_similarity=w_sim,
+                                            cont_cols=cont_cols, cat_cols=cat_cols,
+                                            conditional_cat_col=cond_cat_col, classification=False)
+
+                # Creation of function to update fixed params
+                def update_fixed_params(dts):
+                    return {'num_cont_col': len(dts.cont_idx),
+                            'cat_idx': dts.cat_idx,
+                            'cat_sizes': dts.cat_sizes,
+                            'cat_emb_sizes': dts.cat_sizes,
+                            'max_epochs': 500,
+                            'patience': 50,
+                            **GCNHPS}
+
+                # Saving of original fixed params for GCN
+                fixed_params = update_fixed_params(dataset)
+
+                # Update of hyperparameters
+                if args.enable_sam:
+                    GCNHPS[GCNHP.RHO.name] = sam_value
+
+                # Creation of the evaluator
+                evaluator = Evaluator(model_constructor=PetaleGCNR,
+                                      dataset=dataset,
+                                      masks=masks,
+                                      evaluation_name=f"{prefix}GCN{nb_neighbor}_{experiment_id}",
+                                      hps=GCNHPS,
+                                      n_trials=0,
+                                      evaluation_metrics=evaluation_metrics,
+                                      fixed_params=fixed_params,
+                                      fixed_params_update_function=update_fixed_params,
+                                      feature_selector=feature_selector,
+                                      save_hps_importance=True,
+                                      save_optimization_history=True,
+                                      seed=args.seed,
+                                      pred_path=args.path)
+
+                # Evaluation
+                evaluator.evaluate()
+
+        print("Time Taken for GCN (minutes): ", round((time() - start) / 60, 2))
 
     print("Overall time (minutes): ", round((time() - first_start) / 60, 2))

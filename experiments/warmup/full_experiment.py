@@ -118,19 +118,17 @@ if __name__ == '__main__':
 
     # Imports specific to project
     sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
-    from hps.free_hps import ENET_HPS, ENET_GGE_HPS, GATHPS, GGEHPS, HAN_HPS, MLP_HPS, RF_HPS, TAB_HPS, XGBOOST_HPS
+    from hps.free_hps import ENET_HPS, ENET_GGE_HPS, GATHPS, GGEHPS, MLP_HPS, RF_HPS, XGBOOST_HPS
     from settings.paths import Paths
-    from src.data.processing.datasets import PetaleDataset, PetaleStaticGNNDataset
+    from src.data.processing.datasets import PetaleDataset
     from src.data.processing.gnn_datasets import PetaleKGNNDataset
     from src.data.processing.feature_selection import FeatureSelector
     from src.data.processing.sampling import extract_masks, GeneChoice, get_warmup_data, push_valid_to_train
     from src.models.blocks.genes_signature_block import GeneEncoder, GeneGraphEncoder, GeneGraphAttentionEncoder
-    from src.models.blocks.mlp_blocks import MLPEncodingBlock
     from src.models.gat import PetaleGATR
     from src.models.gge import PetaleGGE
-    from src.models.han import PetaleHANR, HanHP
+    from src.models.han import HanHP
     from src.models.mlp import PetaleMLPR, MLPHP
-    from src.models.tabnet import PetaleTNR
     from src.models.random_forest import PetaleRFR
     from src.models.xgboost_ import PetaleXGBR
     from src.training.evaluation import Evaluator
@@ -201,54 +199,6 @@ if __name__ == '__main__':
 
     # We start a timer for the whole experiment
     first_start = time.time()
-
-    """
-    TabNet experiment
-    """
-    if args.tabnet:
-
-        # Start timer
-        start = time.time()
-
-        # Creation of dataset
-        dataset = PetaleDataset(df, target, cont_cols, cat_cols, classification=False)
-
-        # Creation of function to update fixed params
-        def update_fixed_params(dts):
-            if len(dts.cat_idx) != 0:
-                return {'cat_idx': dts.cat_idx,
-                        'cat_sizes': dts.cat_sizes,
-                        'cat_emb_sizes': dts.cat_sizes,
-                        'max_epochs': 250,
-                        'patience': 50}
-            else:
-                return {'cat_idx': [],
-                        'cat_sizes': [],
-                        'cat_emb_sizes': [],
-                        'max_epochs': 250,
-                        'patience': 50}
-
-        # Saving of original fixed params for TabNet
-        fixed_params = update_fixed_params(dataset)
-
-        # Creation of the evaluator
-        evaluator = Evaluator(model_constructor=PetaleTNR, dataset=dataset,
-                              evaluation_name=f"TabNet_warmup{eval_id}",
-                              masks=masks, hps=TAB_HPS,
-                              n_trials=200,
-                              fixed_params=fixed_params,
-                              fixed_params_update_function=update_fixed_params,
-                              feature_selector=feature_selector,
-                              evaluation_metrics=evaluation_metrics,
-                              save_hps_importance=True,
-                              save_optimization_history=True,
-                              seed=args.seed,
-                              pred_path=args.path)
-
-        # Evaluation
-        evaluator.evaluate()
-
-        print("Time Taken for TabNet (minutes): ", round((time.time() - start) / 60, 2))
 
     """
     Random Forest experiment
@@ -323,7 +273,7 @@ if __name__ == '__main__':
 
         # Creation of function to update fixed params
         def update_fixed_params(dts):
-            return {'max_epochs': 250,
+            return {'max_epochs': 500,
                     'patience': 50,
                     'num_cont_col': len(dts.cont_idx),
                     'cat_idx': dts.cat_idx,
@@ -336,6 +286,8 @@ if __name__ == '__main__':
         # Update of hyperparameters
         if args.enable_sam:
             MLP_HPS[MLPHP.RHO.name] = sam_search_space
+        if genes and not args.single_gen:
+            ENET_HPS[MLPHP.ALPHA.name] = 0
 
         # Creation of evaluator
         evaluator = Evaluator(model_constructor=PetaleMLPR,
@@ -371,7 +323,7 @@ if __name__ == '__main__':
                                 to_tensor=True, classification=False)
 
         def update_fixed_params(dts):
-            return {'max_epochs': 200,
+            return {'max_epochs': 500,
                     'patience': 50,
                     'num_cont_col': len(dts.cont_idx),
                     'cat_idx': dts.cat_idx,
@@ -438,7 +390,7 @@ if __name__ == '__main__':
                                     signature_size=args.signature_size)
 
         def update_fixed_params(dts):
-            return {'max_epochs': 200,
+            return {'max_epochs': 500,
                     'patience': 50,
                     'num_cont_col': len(dts.cont_idx),
                     'cat_idx': dts.cat_idx,
@@ -508,7 +460,7 @@ if __name__ == '__main__':
                                              signature_size=args.signature_size)
 
         def update_fixed_params(dts):
-            return {'max_epochs': 200,
+            return {'max_epochs': 500,
                     'patience': 50,
                     'num_cont_col': len(dts.cont_idx),
                     'cat_idx': dts.cat_idx,
@@ -616,114 +568,6 @@ if __name__ == '__main__':
         print("Time Taken for GAT (minutes): ", round((time.time() - start) / 60, 2))
 
     """
-    HAN experiment
-    """
-    if args.han and (genes or args.sex) and args.baselines:
-
-        # Start timer
-        start = time.time()
-
-        # Creation of the dataset
-        dataset = PetaleStaticGNNDataset(df, target, cont_cols, cat_cols, classification=False)
-
-        # Creation of function to update fixed params
-        def update_fixed_params(dts):
-            return {'meta_paths': dts.get_metapaths(),
-                    'num_cont_col': len(dts.cont_idx),
-                    'cat_idx': dts.cat_idx,
-                    'cat_sizes': dts.cat_sizes,
-                    'cat_emb_sizes': dts.cat_sizes,
-                    'max_epochs': 200,
-                    'patience': 50}
-
-        # Saving of original fixed params for HAN
-        fixed_params = update_fixed_params(dataset)
-
-        # Update of hyperparameters
-        if args.enable_sam:
-            HAN_HPS[HanHP.RHO.name] = sam_search_space
-
-        # Creation of the evaluator
-        evaluator = Evaluator(model_constructor=PetaleHANR,
-                              dataset=dataset,
-                              masks=masks,
-                              evaluation_name=f"HAN_warmup{eval_id}",
-                              hps=HAN_HPS,
-                              n_trials=200,
-                              evaluation_metrics=evaluation_metrics,
-                              fixed_params=fixed_params,
-                              fixed_params_update_function=update_fixed_params,
-                              feature_selector=feature_selector,
-                              save_hps_importance=True,
-                              save_optimization_history=True,
-                              seed=args.seed,
-                              pred_path=args.path)
-
-        # Evaluation
-        evaluator.evaluate()
-
-        print("Time Taken for HAN (minutes): ", round((time.time() - start) / 60, 2))
-
-    """
-    HAN with single layered pre-encoder
-    """
-    if args.han_with_encoding and (genes or args.sex) and args.baselines:
-
-        # Start timer
-        start = time.time()
-
-        # Creation of the dataset
-        dataset = PetaleStaticGNNDataset(df, target, cont_cols, cat_cols, classification=False)
-
-        # Creation of function that builds pre-encoder
-        def build_encoder(input_size: int) -> MLPEncodingBlock:
-            return MLPEncodingBlock(input_size=input_size,
-                                    output_size=5,
-                                    layers=[],
-                                    activation="PReLU",
-                                    dropout=0)
-
-        # Creation of function to update fixed params
-        def update_fixed_params(dts):
-            return {'meta_paths': dts.get_metapaths(),
-                    'num_cont_col': len(dts.cont_idx),
-                    'cat_idx': dts.cat_idx,
-                    'cat_sizes': dts.cat_sizes,
-                    'cat_emb_sizes': dts.cat_sizes,
-                    'max_epochs': 200,
-                    'patience': 50,
-                    'pre_encoder_constructor': build_encoder}
-
-
-        # Saving of original fixed params for HANe
-        fixed_params = update_fixed_params(dataset)
-
-        # Update of hyperparameters
-        if args.enable_sam:
-            HAN_HPS[HanHP.RHO.name] = sam_search_space
-
-        # Creation of the evaluator
-        evaluator = Evaluator(model_constructor=PetaleHANR,
-                              dataset=dataset,
-                              masks=masks,
-                              evaluation_name=f"HANe_warmup{eval_id}",
-                              hps=HAN_HPS,
-                              n_trials=200,
-                              evaluation_metrics=evaluation_metrics,
-                              fixed_params=fixed_params,
-                              fixed_params_update_function=update_fixed_params,
-                              feature_selector=feature_selector,
-                              save_hps_importance=True,
-                              save_optimization_history=True,
-                              seed=args.seed,
-                              pred_path=args.path)
-
-        # Evaluation
-        evaluator.evaluate()
-
-        print("Time Taken for encoder + HAN (minutes): ", round((time.time() - start) / 60, 2))
-
-    """
     Self supervised learning experiment with GGAE
     """
     if args.ssl_ggae and genes:
@@ -737,7 +581,7 @@ if __name__ == '__main__':
 
         # Creation of a function to update fixed params
         def update_fixed_params(dts):
-            return {'max_epochs': 200,
+            return {'max_epochs': 500,
                     'patience': 50,
                     'gene_idx_groups': dts.gene_idx_groups,
                     'hidden_size': 3,
@@ -782,7 +626,7 @@ if __name__ == '__main__':
 
         # Creation of a function to update fixed params
         def update_fixed_params(dts):
-            return {'max_epochs': 200,
+            return {'max_epochs': 500,
                     'patience': 50,
                     'gene_idx_groups': dts.gene_idx_groups,
                     'hidden_size': 3,

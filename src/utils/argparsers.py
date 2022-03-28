@@ -156,6 +156,92 @@ def fixed_hps_lae_experiment_parser():
     return arguments
 
 
+def warmup_experiment_parser():
+    """
+    Creates a parser for warmup experiments
+    """
+    # Create a parser
+    parser = argparse.ArgumentParser(usage='\n python [warmup experiment file].py',
+                                     description="Runs all the experiments associated to the warmup dataset")
+
+    # Nb inner split and nb outer split selection
+    parser.add_argument('-k', '--nb_outer_splits', type=int, default=10,
+                        help='Number of outer splits used during the models evaluations')
+    parser.add_argument('-l', '--nb_inner_splits', type=int, default=10,
+                        help='Number of inner splits used during the models evaluations')
+
+    # Features selection
+    parser.add_argument('-b', '--baselines', default=False, action='store_true',
+                        help='True if we want to include the variables from the original equation')
+    parser.add_argument('-r_w', '--remove_walk_variables', default=False, action='store_true',
+                        help='True if we want to remove the six minutes walk test variables from the baselines'
+                             '(only applies if the baselines are included')
+    parser.add_argument('-gen1', '--genes_subgroup', default=False, action='store_true',
+                        help='True if we want to include a group of selected genes in the features')
+    parser.add_argument('-s_gen', '--single_gen', default=False, action='store_true',
+                        help='True if we want to only keep gene 7_45932669 from gen1')
+    parser.add_argument('-gen2', '--all_genes', default=False, action='store_true',
+                        help='True if we want to include all the genes in the features')
+    parser.add_argument('-f', '--feature_selection', default=False, action='store_true',
+                        help='True if we want to apply automatic feature selection')
+    parser.add_argument('-s', '--sex', default=False, action='store_true',
+                        help='True if we want to include the sex in features')
+
+    # Genes encoding parameter
+    parser.add_argument('-share', '--embedding_sharing', default=False, action='store_true',
+                        help='True if we want to use a single entity embedding layer for all genes'
+                             ' (currently only applies with genomic signature creation')
+
+    # Models selection
+    parser.add_argument('-enet', '--enet', default=False, action='store_true',
+                        help='True if we want to run enet experiment')
+    parser.add_argument('-mlp', '--mlp', default=False, action='store_true',
+                        help='True if we want to run mlp experiment')
+    parser.add_argument('-rf', '--random_forest', default=False, action='store_true',
+                        help='True if we want to run random forest experiment')
+    parser.add_argument('-xg', '--xg_boost', default=False, action='store_true',
+                        help='True if we want to run xgboost experiment')
+    parser.add_argument('-gat', '--gat', default=False, action='store_true',
+                        help='True if we want to run GraphAttentionNetwork experiment')
+    parser.add_argument('-gge', '--gge', default=False, action='store_true',
+                        help='True if we want to run GeneGraphEncoder with enet experiment')
+    parser.add_argument('-ggae', '--ggae', default=False, action='store_true',
+                        help='True if we want to run GeneGraphAttentionEncoder with enet experiment')
+
+    # GAT graph construction parameters
+    parser.add_argument('-w_sim', '--weighted_similarity', default=False, action='store_true',
+                        help='True if we want to calculate patients similarities using weighted metrics')
+    parser.add_argument('-cond_col', '--conditional_column', default=False, action='store_true',
+                        help='True if we want to use the sex as a conditional column in GAT construction')
+    parser.add_argument('-deg', '--degree', nargs='*', type=str, default=[7],
+                        help="Maximum number of neighbors for each node in the graph")
+
+    # Gene encoding parameter
+    parser.add_argument('-sign_size', '--signature_size', type=int, default=8,
+                        help='Genomic signature size')
+
+    # Self supervised learning experiments
+    parser.add_argument('-ssl_ggae', '-ssl_ggae', default=False, action='store_true',
+                        help='True if we want to run self supervised learning with the GeneGraphAttentionEncoder')
+    parser.add_argument('-ssl_gge', '-ssl_gge', default=False, action='store_true',
+                        help='True if we want to run self supervised learning with the GeneGraphEncoder')
+
+    # Activation of sharpness-aware minimization
+    parser.add_argument('-sam', '--enable_sam', default=False, action='store_true',
+                        help='True if we want to use Sharpness-Aware Minimization Optimizer')
+
+    # Usage of predictions from another experiment
+    parser.add_argument('-p', '--path', type=str, default=None,
+                        help='Path leading to predictions of another model')
+
+    # Seed
+    parser.add_argument('-seed', '--seed', type=int, default=1010710, help='Seed used during model evaluations')
+
+    arguments = parser.parse_args()
+
+    return arguments
+
+
 def path_parser():
     """
     Provides an argparser that retrieves a path

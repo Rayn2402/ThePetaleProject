@@ -114,6 +114,8 @@ def fixed_hps_lae_experiment_parser():
                         help='True if we want to run xgboost experiment')
     parser.add_argument('-gat', '--gat', default=False, action='store_true',
                         help='True if we want to run GraphAttentionNetwork experiment')
+    parser.add_argument('-gcn', '--gcn', default=False, action='store_true',
+                        help='True if we want to run GraphConvolutionalNetwork experiment')
     parser.add_argument('-gge', '--gge', default=False, action='store_true',
                         help='True if we want to run GeneGraphEncoder with enet experiment')
     parser.add_argument('-ggae', '--ggae', default=False, action='store_true',
@@ -203,6 +205,8 @@ def warmup_experiment_parser():
                         help='True if we want to run xgboost experiment')
     parser.add_argument('-gat', '--gat', default=False, action='store_true',
                         help='True if we want to run GraphAttentionNetwork experiment')
+    parser.add_argument('-gcn', '--gcn', default=False, action='store_true',
+                        help='True if we want to run GraphConvolutionalNetwork experiment')
     parser.add_argument('-gge', '--gge', default=False, action='store_true',
                         help='True if we want to run GeneGraphEncoder with enet experiment')
     parser.add_argument('-ggae', '--ggae', default=False, action='store_true',

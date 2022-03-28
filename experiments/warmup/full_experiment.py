@@ -505,12 +505,6 @@ if __name__ == '__main__':
         # Start timer
         start = time.time()
 
-        # Creation of the dataset
-        if (args.sex and not args.conditional_column) or genes:
-            sim_measure = PetaleKGNNDataset.COSINE
-        else:
-            sim_measure = PetaleKGNNDataset.EUCLIDEAN
-
         for nb_neighbor in args.degree:
 
             nb_neighbor = int(nb_neighbor)
@@ -525,7 +519,8 @@ if __name__ == '__main__':
 
             for prefix, w_sim in GAT_options:
 
-                dataset = PetaleKGNNDataset(df, target, k=nb_neighbor, similarity=sim_measure,
+                # Creation of the dataset
+                dataset = PetaleKGNNDataset(df, target, k=nb_neighbor,
                                             weighted_similarity=w_sim,
                                             cont_cols=cont_cols, cat_cols=cat_cols,
                                             conditional_cat_col=cond_cat_col, classification=False)

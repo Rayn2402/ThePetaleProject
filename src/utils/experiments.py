@@ -581,7 +581,7 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
 
             for prefix, w_sim in GAT_options:
 
-                dataset = PetaleKGNNDataset(df, target, k=nb_neighbor, similarity=PetaleKGNNDataset.COSINE,
+                dataset = PetaleKGNNDataset(df, target, k=nb_neighbor,
                                             weighted_similarity=w_sim,
                                             cont_cols=cont_cols, cat_cols=cat_cols,
                                             conditional_cat_col=cond_cat_col, classification=False)

@@ -5,7 +5,7 @@ Author: Nicolas Raymond
 
 Description: This file defines the Graph Attention Network model
 
-Date of last modification: 2022/02/22
+Date of last modification: 2022/02/28
 """
 from dgl import DGLGraph
 from dgl.nn.pytorch import GATConv
@@ -81,16 +81,15 @@ class GAT(TorchCustomModel):
                                    attn_drop=attn_dropout,
                                    activation=relu)
 
-        # We save the batch norm layer
-        self._bn = BatchNorm1d(hidden_size)
-
         # We save the number of attention heads
         self._num_att_heads = num_heads
 
-        # We save the linear layer
+        # We save the linear layer and the batch norm layer
         if hidden_size != output_size:
+            self._bn = BatchNorm1d(hidden_size)
             self._linear_layer = Linear(hidden_size, output_size)
         else:
+            self._bn = Identity()
             self._linear_layer = Identity()
 
     def _execute_train_step(self,

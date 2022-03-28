@@ -68,7 +68,8 @@ class PetaleKGNNDataset(PetaleDataset):
         self._feature_imp_extractor = None
         self._neighbors_count = None
         self._nearest_neighbors_idx = None
-        self._similarity = similarity
+        self._similarity_measure = similarity
+        self._similarities = None
 
         if weighted_similarity:
             self._feature_imp_extractor = FeatureSelector(100, seed=1010710)
@@ -118,24 +119,30 @@ class PetaleKGNNDataset(PetaleDataset):
         idx_map = self._create_idx_map(idx)
 
         # We build the edges of the graph using the original idx
-        u, v = [], []
-        for i in idx:
-            nb_neighbor = min(len(top_n_neighbors[i]), self._k)
-            u += top_n_neighbors[i][:nb_neighbor]
-            v += [i] * nb_neighbor
+        u, v = [], []  # Node ids
+        e = []  # Edges weights
+        if not self._self_loop:
+            for i in idx:
+                nb_neighbor = min(len(top_n_neighbors[i]), self._k)
+                u += top_n_neighbors[i][:nb_neighbor]
+                v += [i] * nb_neighbor
+                e += self._similarities[i, u]/self._similarities[i, u].sum()
+        else:
+            for i in idx:
+                nb_neighbor = min(len(top_n_neighbors[i]), self._k)
+                u += [i] + top_n_neighbors[i][:nb_neighbor]
+                v += [i] * (nb_neighbor + 1)
+                e += self._similarities[i, u] / self._similarities[i, u].sum()
 
         # We replace the idx with their node position
         u = [idx_map[n] for n in u]
         v = [idx_map[n] for n in v]
         u, v = tensor(u).long(), tensor(v).long()
 
-        # We build the graph and saves the original id
+        # We build the graph, saves the original ids and the edges weights
         g = graph((u, v))
         g.ndata['IDs'] = tensor(idx)
-
-        # We add self loops if required
-        if self._self_loop:
-            g = add_self_loop(g)
+        g.edata['w'] = tensor(e)
 
         # We return the graph and the mapping of each idx to its position in the graph
         return g, idx_map
@@ -270,7 +277,7 @@ class PetaleKGNNDataset(PetaleDataset):
         else:
             sim = self.compute_cosine_sim()
 
-        return sim - eye(self._n)
+        return sim
 
     def _get_features_importance(self) -> tensor:
         """
@@ -346,13 +353,13 @@ class PetaleKGNNDataset(PetaleDataset):
 
         # We turn some similarities to zeros if a conditional column was given
         filter_mat = self._build_neighbors_filter_mat()
-        similarities *= filter_mat
+        self._similarities = similarities * filter_mat
 
         # We count the number of ones in each row of the filter mat
         self._neighbors_count = (filter_mat == 1).sum(dim=1)
 
-        # We get the idx of the (n-1)-nearest neighbors of each item
-        _, self._nearest_neighbors_idx = topk(similarities, k=(self._n - 1), dim=1)
+        # We get the idx of the (n-1)-nearest neighbors of each item (excluding themselves)
+        _, self._nearest_neighbors_idx = topk((self._similarities - eye(self._n)), k=(self._n - 1), dim=1)
 
     def get_arbitrary_subgraph(self, idx: List[int]) -> Tuple[DGLGraph, Dict[int, int], List[int]]:
         """

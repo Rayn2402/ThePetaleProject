@@ -239,6 +239,9 @@ def warmup_experiment_parser():
 
     arguments = parser.parse_args()
 
+    # Print arguments
+    print_arguments(arguments)
+
     return arguments
 
 

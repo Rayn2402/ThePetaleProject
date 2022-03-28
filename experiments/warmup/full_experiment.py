@@ -6,113 +6,14 @@ Authors: Nicolas Raymond
 Description: This file is used to execute all the model comparisons
              made on the warmup dataset
 
-Date of last modification : 2022/02/22
+Date of last modification : 2022/03/28
 """
 import sys
-import argparse
 import time
 
 from os.path import dirname, realpath
 from copy import deepcopy
 from typing import Dict, List, Optional
-
-
-def argument_parser():
-    """
-    This function defines a parser that enables user to easily run different experiments
-    """
-    # Create a parser
-    parser = argparse.ArgumentParser(usage='\n python full_experiment.py',
-                                     description="Runs all the experiments associated to the warmup dataset")
-
-    # Nb inner split and nb outer split selection
-    parser.add_argument('-k', '--nb_outer_splits', type=int, default=10,
-                        help='Number of outer splits during the models evaluations')
-    parser.add_argument('-l', '--nb_inner_splits', type=int, default=10,
-                        help='Number of inner splits during the models evaluations')
-
-    # Features selection
-    parser.add_argument('-b', '--baselines', default=False, action='store_true',
-                        help='True if we want to include variables from the original equation')
-    parser.add_argument('-r_w', '--remove_walk_variables', default=False, action='store_true',
-                        help='True if we want to remove six minutes walk test variables from baselines'
-                             '(only applies if baselines are included')
-    parser.add_argument('-gen1', '--genes_subgroup', default=False, action='store_true',
-                        help='True if we want to include genes if features')
-    parser.add_argument('-gen2', '--all_genes', default=False, action='store_true',
-                        help='True if we want to include genes if features')
-    parser.add_argument('-f', '--feature_selection', default=False, action='store_true',
-                        help='True if we want to apply automatic feature selection')
-    parser.add_argument('-s', '--sex', default=False, action='store_true',
-                        help='True if we want to include sex in features')
-
-    # Genes encoding parameter
-    parser.add_argument('-share', '--embedding_sharing', default=False, action='store_true',
-                        help='True if we want to use a single entity embedding layer for all genes'
-                             ' (currently only applies with genomic signature creation')
-
-    # Models selection
-    parser.add_argument('-han_e', '--han_with_encoding', default=False, action='store_true',
-                        help='True if we want to run HAN experiment with single layered pre-encoder')
-    parser.add_argument('-han', '--han', default=False, action='store_true',
-                        help='True if we want to run heterogeneous graph attention network experiment')
-    parser.add_argument('-enet', '--enet', default=False, action='store_true',
-                        help='True if we want to enet experiment')
-    parser.add_argument('-mlp', '--mlp', default=False, action='store_true',
-                        help='True if we want to run mlp experiment')
-    parser.add_argument('-rf', '--random_forest', default=False, action='store_true',
-                        help='True if we want to run random forest experiment')
-    parser.add_argument('-xg', '--xg_boost', default=False, action='store_true',
-                        help='True if we want to run xgboost experiment')
-    parser.add_argument('-tab', '--tabnet', default=False, action='store_true',
-                        help='True if we want to run TabNet experiment')
-    parser.add_argument('-gat', '--gat', default=False, action='store_true',
-                        help='True if we want to run GraphAttentionNetwork experiment')
-    parser.add_argument('-gge', '--gge', default=False, action='store_true',
-                        help='True if we want to run GeneGraphEncoder with enet experiment')
-    parser.add_argument('-ggae', '--ggae', default=False, action='store_true',
-                        help='True if we want to run GeneGraphAttentionEncoder with enet experiment')
-
-    # GAT graph construction parameters
-    parser.add_argument('-w_sim', '--weighted_similarity', default=False, action='store_true',
-                        help='True if we want calculate patients similarities using weighted metrics')
-    parser.add_argument('-cond_col', '--conditional_column', default=False, action='store_true',
-                        help='True if we want calculate to use the sex as conditional column in GAT construction')
-    parser.add_argument('-deg', '--degree', nargs='*', type=str, default=[7],
-                        help="Maximum number of neighbors for each node in the graph")
-
-    # Gene encoding parameter
-    parser.add_argument('-sign_size', '--signature_size', type=int, default=8,
-                        help='Genomic signature size')
-
-    # Self supervised learning experiments
-    parser.add_argument('-ssl_ggae', '-ssl_ggae', default=False, action='store_true',
-                        help='True if we want to run self supervised learning with the GeneGraphAttentionEncoder')
-    parser.add_argument('-ssl_gge', '-ssl_gge', default=False, action='store_true',
-                        help='True if we want to run self supervised learning with the GeneGraphEncoder')
-
-    # Activation of sharpness-aware minimization
-    parser.add_argument('-sam', '--enable_sam', default=False, action='store_true',
-                        help='True if we want to use Sharpness-Aware Minimization Optimizer')
-
-
-    # Usage of predictions from another experiment
-    parser.add_argument('-p', '--path', type=str, default=None,
-                        help='Path leading to predictions of another model')
-
-    # Seed
-    parser.add_argument('-seed', '--seed', type=int, default=1010710, help='Seed used during model evaluations')
-
-    arguments = parser.parse_args()
-
-    # Print arguments
-    print("\nThe inputs are:")
-    for arg in vars(arguments):
-        print("{}: {}".format(arg, getattr(arguments, arg)))
-    print("\n")
-
-    return arguments
-
 
 if __name__ == '__main__':
 
@@ -135,10 +36,11 @@ if __name__ == '__main__':
     from src.data.extraction.constants import *
     from src.data.extraction.data_management import PetaleDataManager
     from src.utils.hyperparameters import Range
+    from src.utils.argparsers import warmup_experiment_parser
     from src.utils.score_metrics import AbsoluteError, Pearson, RootMeanSquaredError, SquaredError
 
     # Arguments parsing
-    args = argument_parser()
+    args = warmup_experiment_parser()
 
     # Initialization of DataManager and sampler
     manager = PetaleDataManager()

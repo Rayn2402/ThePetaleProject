@@ -209,7 +209,7 @@ class PetaleKGNNDataset(PetaleDataset):
         """
         # We extract data
         x = []
-        if len(self._cat_idx) > 0:
+        if len(self._cont_idx) > 0:
             x.append(self.x_cont)
         if len(self._cat_idx) > 0:
             x.append(self.get_one_hot_encodings(cat_cols=self._cat_cols))

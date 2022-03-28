@@ -5,10 +5,11 @@ Author: Nicolas Raymond
 
 Description: File used to store fixed hps for warmup experiments
 
-Date of last modification: 2022/03/01
+Date of last modification: 2022/03/28
 """
 
 from src.models.gat import GATHP
+from src.models.gcn import GCNHP
 from src.models.gge import GGEHP
 from src.models.mlp import MLPHP
 from src.models.random_forest import RandomForestHP
@@ -75,6 +76,14 @@ GATHPS = {
     GATHP.ATTN_DROPOUT.name: 0.25,
     GATHP.NUM_HEADS.name: 1,
     GATHP.RHO.name: 0,
+}
+
+GCNHPS = {
+    GCNHP.ALPHA.name: 0.0005,
+    GCNHP.BETA.name: 0.0005,
+    GCNHP.HIDDEN_SIZE.name: 1,
+    GCNHP.LR.name: 0.005,
+    GCNHP.RHO.name: 0,
 }
 
 GGEHPS = {

@@ -291,6 +291,9 @@ if __name__ == '__main__':
         if args.enable_sam:
             MLP_HPS[MLPHP.RHO.name] = sam_value
 
+        if genes and not args.single_gen:
+            MLP_HPS[MLPHP.ALPHA.name] = 0.0005
+
         # Creation of evaluator
         evaluator = Evaluator(model_constructor=PetaleMLPR,
                               dataset=dataset,
@@ -339,6 +342,9 @@ if __name__ == '__main__':
         # Update of hyperparameters
         if args.enable_sam:
             ENET_HPS[MLPHP.RHO.name] = sam_value
+
+        if genes and not args.single_gen:
+            MLP_HPS[MLPHP.ALPHA.name] = 0.0005
 
         # Creation of evaluator
         evaluator = Evaluator(model_constructor=PetaleMLPR,

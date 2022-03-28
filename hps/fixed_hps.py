@@ -23,7 +23,7 @@ RF_HPS = {
 }
 
 XGBOOST_HPS = {
-    XGBoostHP.ALPHA.name: 0,
+    XGBoostHP.ALPHA.name: .0005,
     XGBoostHP.BETA.name: .0005,
     XGBoostHP.LR.name: 0.1,
     XGBoostHP.MAX_DEPTH.name: 2,
@@ -32,7 +32,7 @@ XGBOOST_HPS = {
 
 MLP_HPS = {
     MLPHP.ACTIVATION.name: "PReLU",
-    MLPHP.ALPHA.name: 0,
+    MLPHP.ALPHA.name: 0.0005,
     MLPHP.BATCH_SIZE.name: 5,
     MLPHP.BETA.name: 0.0005,
     MLPHP.DROPOUT.name: 0.25,
@@ -44,7 +44,7 @@ MLP_HPS = {
 
 ENET_HPS = {
     MLPHP.ACTIVATION.name: "PReLU",
-    MLPHP.ALPHA.name: 0,
+    MLPHP.ALPHA.name: 0.0005,
     MLPHP.BATCH_SIZE.name: 5,
     MLPHP.BETA.name: 0.0005,
     MLPHP.DROPOUT.name: 0,
@@ -56,7 +56,7 @@ ENET_HPS = {
 
 ENET_GGE_HPS = {
     MLPHP.ACTIVATION.name: "PReLU",
-    MLPHP.ALPHA.name: 0,
+    MLPHP.ALPHA.name: 0.0005,
     MLPHP.BATCH_SIZE.name: 5,
     MLPHP.BETA.name: 0.0005,
     MLPHP.DROPOUT.name: 0.25,
@@ -67,7 +67,7 @@ ENET_GGE_HPS = {
 }
 
 GATHPS = {
-    GATHP.ALPHA.name: 0,
+    GATHP.ALPHA.name: 0.0005,
     GATHP.BETA.name: 0.0005,
     GATHP.FEAT_DROPOUT.name: 0.25,
     GATHP.HIDDEN_SIZE.name: 1,

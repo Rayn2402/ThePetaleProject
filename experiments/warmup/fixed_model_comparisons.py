@@ -126,7 +126,7 @@ if __name__ == '__main__':
     from src.models.gge import PetaleGGE
     from src.models.mlp import PetaleMLPR, MLPHP
     from src.models.random_forest import PetaleRFR
-    from src.models.xgboost_ import PetaleXGBR
+    from src.models.xgboost_ import PetaleXGBR, XGBoostHP
     from src.training.evaluation import Evaluator
     from src.data.extraction.constants import *
     from src.data.extraction.data_management import PetaleDataManager
@@ -243,6 +243,10 @@ if __name__ == '__main__':
         # Creation of dataset
         dataset = PetaleDataset(df, target, cont_cols, cat_cols, classification=False)
 
+        # Hyperparameters update
+        if genes and not args.single_gen:
+            XGBOOST_HPS[XGBoostHP.ALPHA.name] = 0
+
         # Creation of the evaluator
         evaluator = Evaluator(model_constructor=PetaleXGBR,
                               dataset=dataset,
@@ -290,9 +294,6 @@ if __name__ == '__main__':
         # Update of hyperparameters
         if args.enable_sam:
             MLP_HPS[MLPHP.RHO.name] = sam_value
-
-        if genes and not args.single_gen:
-            MLP_HPS[MLPHP.ALPHA.name] = 0.0005
 
         # Creation of evaluator
         evaluator = Evaluator(model_constructor=PetaleMLPR,
@@ -342,9 +343,8 @@ if __name__ == '__main__':
         # Update of hyperparameters
         if args.enable_sam:
             ENET_HPS[MLPHP.RHO.name] = sam_value
-
         if genes and not args.single_gen:
-            MLP_HPS[MLPHP.ALPHA.name] = 0.0005
+            ENET_HPS[MLPHP.ALPHA.name] = 0
 
         # Creation of evaluator
         evaluator = Evaluator(model_constructor=PetaleMLPR,

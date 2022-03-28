@@ -32,7 +32,6 @@ class PetaleKGNNDataset(PetaleDataset):
                  target: str,
                  k: int = 5,
                  self_loop: bool = True,
-                 similarity: str = EUCLIDEAN,
                  weighted_similarity: bool = False,
                  cont_cols: Optional[List[str]] = None,
                  cat_cols: Optional[List[str]] = None,
@@ -68,8 +67,13 @@ class PetaleKGNNDataset(PetaleDataset):
         self._feature_imp_extractor = None
         self._neighbors_count = None
         self._nearest_neighbors_idx = None
-        self._similarity_measure = similarity
         self._similarities = None
+
+        # We set the similarity measure
+        if cat_cols is None or (len(cat_cols) == 1 and cat_cols[0] == self._conditional_cat_col):
+            self._similarity_measure = PetaleKGNNDataset.EUCLIDEAN
+        else:
+            self._similarity_measure = PetaleKGNNDataset.COSINE
 
         if weighted_similarity:
             self._feature_imp_extractor = FeatureSelector(100, seed=1010710)

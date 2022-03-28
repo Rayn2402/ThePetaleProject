@@ -9,18 +9,16 @@ Date of last modification: 2022/02/28
 """
 from dgl import DGLGraph
 from dgl.nn.pytorch import GATConv
-from src.data.processing.gnn_datasets import MaskType, PetaleKGNNDataset
-from src.models.abstract_models.custom_torch_base import TorchCustomModel
-from src.training.early_stopping import EarlyStopper
+from src.data.processing.gnn_datasets import PetaleKGNNDataset
+from src.models.abstract_models.gnn_base_models import GNN
 from src.utils.score_metrics import Metric, RootMeanSquaredError
-from torch import cat, no_grad, ones, tensor
-from torch.nn import BatchNorm1d, Identity, Linear, MSELoss
+from torch import cat, no_grad, tensor
+from torch.nn import MSELoss
 from torch.nn.functional import relu
-from torch.utils.data import DataLoader
-from typing import Callable, List, Optional, Union, Tuple
+from typing import Callable, List, Optional
 
 
-class GAT(TorchCustomModel):
+class GAT(GNN):
     """
     Graph Attention Network model
     """
@@ -61,7 +59,8 @@ class GAT(TorchCustomModel):
             verbose: True if we want trace of the training progress
         """
         # We call parent's constructor
-        super().__init__(criterion=criterion,
+        super().__init__(hidden_size=hidden_size,
+                         criterion=criterion,
                          criterion_name=criterion_name,
                          eval_metric=eval_metric,
                          output_size=output_size,
@@ -83,128 +82,6 @@ class GAT(TorchCustomModel):
 
         # We save the number of attention heads
         self._num_att_heads = num_heads
-
-        # We save the linear layer and the batch norm layer
-        if hidden_size != output_size:
-            self._bn = BatchNorm1d(hidden_size)
-            self._linear_layer = Linear(hidden_size, output_size)
-        else:
-            self._bn = Identity()
-            self._linear_layer = Identity()
-
-    def _execute_train_step(self,
-                            train_data: Tuple[DataLoader, PetaleKGNNDataset],
-                            sample_weights: tensor) -> float:
-        """
-        Executes one training epoch
-
-        Args:
-            train_data: tuple (train loader, dataset)
-            sample_weights: weights of the samples in the loss
-
-        Returns: mean epoch loss
-        """
-
-        # We set the model for training
-        self.train()
-        epoch_loss, epoch_score = 0, 0
-
-        # We extract the training dataloader and the complete dataset
-        train_loader, dataset = train_data
-
-        # We extract train_subgraph, train_mask and train_idx_map
-        train_subgraph, train_idx_map, train_mask = dataset.train_subgraph
-
-        # We extract the features related to all the train mask
-        x, _, _ = dataset[train_mask]
-
-        # We execute one training step
-        for item in train_loader:
-
-            # We extract the data
-            _, y, idx = item
-
-            # We map the original idx to their position in the train mask
-            pos_idx = [train_idx_map[i.item()] for i in idx]
-
-            # We clear the gradients
-            self._optimizer.zero_grad()
-
-            # We perform the weight update
-            pred, loss = self._update_weights(sample_weights[idx], [train_subgraph, x], y, pos_idx)
-
-            # We update the metrics history
-            score = self._eval_metric(pred, y)
-            epoch_loss += loss
-            epoch_score += score
-
-        # We update evaluations history
-        mean_epoch_loss = self._update_evaluations_progress(epoch_loss, epoch_score,
-                                                            nb_batch=len(train_data),
-                                                            mask_type=MaskType.TRAIN)
-
-        return mean_epoch_loss
-
-    def _execute_valid_step(self,
-                            valid_data: Optional[Union[DataLoader, Tuple[DataLoader, PetaleKGNNDataset]]],
-                            early_stopper: Optional[EarlyStopper]) -> bool:
-        """
-        Executes an inference step on the validation data and apply early stopping if needed
-
-        Args:
-            valid_data: tuple (valid loader, dataset)
-            early_stopper: early stopper keeping track of validation loss
-
-        Returns: True if we need to early stop
-        """
-        # We check if there is validation to do
-        if valid_data is None:
-            return False
-
-        # We extract train loader, dataset
-        valid_loader, dataset = valid_data
-
-        # We extract valid_subgraph, mask (train + valid) and valid_idx_map
-        valid_subgraph, valid_idx_map, mask = dataset.valid_subgraph
-
-        # We extract the features related to all the train + valid
-        x, _, _ = dataset[mask]
-
-        # Set model for evaluation
-        self.eval()
-        epoch_loss, epoch_score = 0, 0
-
-        # We execute one inference step on validation set
-        with no_grad():
-
-            for item in valid_loader:
-
-                # We extract the data
-                _, y, idx = item
-
-                # We map original idx to their position in the train mask
-                pos_idx = [valid_idx_map[i.item()] for i in idx]
-
-                # We perform the forward pass
-                pred = self(valid_subgraph, x)
-
-                # We calculate the loss and the score
-                batch_size = len(idx)
-                sample_weights = ones(batch_size) / batch_size  # Sample weights are equal for validation (1/N)
-                epoch_loss += self.loss(sample_weights, pred[pos_idx], y).item()
-                epoch_score += self._eval_metric(pred[pos_idx], y)
-
-        # We update evaluations history
-        mean_epoch_score = self._update_evaluations_progress(epoch_loss, epoch_score,
-                                                             nb_batch=len(valid_loader),
-                                                             mask_type=MaskType.VALID)
-        # We check early stopping status
-        early_stopper(mean_epoch_score, self)
-
-        if early_stopper.early_stop:
-            return True
-
-        return False
 
     def forward(self,
                 g: DGLGraph,

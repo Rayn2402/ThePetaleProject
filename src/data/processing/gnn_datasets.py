@@ -46,7 +46,6 @@ class PetaleKGNNDataset(PetaleDataset):
             target: name of the column with the targets
             k: number of closest neighbors used to build the population graph
             self_loop: if True, self loop will be added to nodes in the graph
-            similarity: 'euclidean' or 'cosine'
             weighted_similarity: if True, the weights will assigned to features
                                  during similarities calculation
             cont_cols: list of column names associated with continuous data

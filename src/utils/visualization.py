@@ -5,17 +5,18 @@ Authors: Nicolas Raymond
 
 Description: This file contains all function related to data visualization
 
-Date of last modification : 2021/11/01
+Date of last modification : 2021/03/29
 """
 
 from matplotlib import pyplot as plt
-from numpy import array
+from numpy import arange, array
 from numpy import sum as npsum
 from os.path import join
 from sklearn.manifold import TSNE
 from src.data.processing.datasets import MaskType
+from src.recording.constants import MEAN, STD
 from torch import tensor
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 # Epochs progression figure name
 EPOCHS_PROGRESSION_FIG: str = "epochs_progression.png"
@@ -154,4 +155,45 @@ def visualize_epoch_progression(train_history: List[tensor],
 
     plt.tight_layout()
     plt.savefig(join(path, EPOCHS_PROGRESSION_FIG))
+    plt.close()
+
+
+def visualize_importance(data: Dict[str, Dict[str, float]],
+                         figure_title: str,
+                         filename: str) -> None:
+    """
+    Creates a bar plot with mean and standard deviations
+    of variable importance contained within the dictionary
+
+    Args:
+        data: dictionary with variable name as keys and "mean" and "std" as values
+        figure_title: name appearing over the plot
+        filename: name of the file in which the figure is saved
+
+    Returns: None
+    """
+    # We initialize three lists for the values, the errors, and the labels
+    means, stds, labels = [], [], []
+
+    # We collect the data of each hyperparameter importance
+    for key in data.keys():
+        means.append(data[key][MEAN])
+        stds.append(data[key][STD])
+        labels.append(key)
+
+    # We sort the list according values
+    sorted_means = sorted(means)
+    sorted_labels = sorted(labels, key=lambda x: means[labels.index(x)])
+    sorted_stds = sorted(stds, key=lambda x: means[stds.index(x)])
+
+    # We build the plot
+    x_pos = arange(len(labels))
+    fig, ax = plt.subplots(figsize=(10, 7))
+    ax.bar(x_pos, sorted_means, yerr=sorted_stds, capsize=5)
+    ax.set_xticks(x_pos)
+    ax.set_xticklabels(sorted_labels)
+    ax.set_title(figure_title)
+
+    # We save the plot
+    plt.savefig(filename)
     plt.close()

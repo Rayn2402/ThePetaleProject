@@ -23,6 +23,8 @@ class FeatureSelector:
     See the following source:
     Deep Learning for Coders with fastai & PyTorch : AI Applications Without a PhD (p.486-489)
     """
+    RECORDS_FILE = "feature_selection_records.csv"
+
     def __init__(self,
                  importance_threshold: float,
                  seed: Optional[int] = None):
@@ -67,7 +69,7 @@ class FeatureSelector:
 
         # Save records in a csv
         if records_path is not None:
-            fi_table.to_csv(join(records_path, "feature_selection_records.csv"), index=False)
+            fi_table.to_csv(join(records_path, FeatureSelector.RECORDS_FILE), index=False)
 
         return cont_cols, cat_cols
 

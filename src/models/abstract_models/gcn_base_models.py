@@ -98,7 +98,7 @@ class GCN(GNN):
         h = cat(new_x, 1)
 
         # We apply the graph convolutional layer
-        h = self._conv_layer(g, h, weight=g.edata['w'])
+        h = self._conv_layer(g, h, edge_weight=g.edata['w'])
 
         # We apply the linear layer
         return self._linear_layer(h).squeeze()

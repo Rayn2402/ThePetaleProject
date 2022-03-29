@@ -83,7 +83,7 @@ if __name__ == '__main__':
 
     # Initialization of feature selector
     if args.feature_selection:
-        feature_selector = FeatureSelector(importance_threshold=0.90, seed=args.seed)
+        feature_selector = FeatureSelector(importance_threshold=args.feature_imp_thresh, seed=args.seed)
     else:
         feature_selector = None
 
@@ -251,8 +251,8 @@ if __name__ == '__main__':
         # Update of hyperparameters
         if args.enable_sam:
             ENET_HPS[MLPHP.RHO.name] = sam_value
-        if genes and not args.single_gen:
-            ENET_HPS[MLPHP.ALPHA.name] = 0
+        #if genes and not args.single_gen:
+            #ENET_HPS[MLPHP.ALPHA.name] = 0
 
         # Creation of evaluator
         evaluator = Evaluator(model_constructor=PetaleMLPR,
@@ -419,7 +419,7 @@ if __name__ == '__main__':
     """
     GAT experiment
     """
-    if args.gat and args.baselines:
+    if args.gat:
 
         # Start timer
         start = time.time()
@@ -484,7 +484,7 @@ if __name__ == '__main__':
     """
     GCN experiment
     """
-    if args.gat and args.baselines:
+    if args.gcn:
 
         # Start timer
         start = time.time()

@@ -127,15 +127,17 @@ class PetaleKGNNDataset(PetaleDataset):
         if not self._self_loop:
             for i in idx:
                 nb_neighbor = min(len(top_n_neighbors[i]), self._k)
-                u += top_n_neighbors[i][:nb_neighbor]
+                neighbor_idx = top_n_neighbors[i][:nb_neighbor]
+                u += neighbor_idx
                 v += [i] * nb_neighbor
-                e += self._similarities[i, u]/self._similarities[i, u].sum()
+                e += self._similarities[i, neighbor_idx]/self._similarities[i, neighbor_idx].sum()
         else:
             for i in idx:
                 nb_neighbor = min(len(top_n_neighbors[i]), self._k)
-                u += [i] + top_n_neighbors[i][:nb_neighbor]
+                neighbor_idx = [i] + top_n_neighbors[i][:nb_neighbor]
+                u += neighbor_idx
                 v += [i] * (nb_neighbor + 1)
-                e += self._similarities[i, u] / self._similarities[i, u].sum()
+                e += self._similarities[i, neighbor_idx] / self._similarities[i, neighbor_idx].sum()
 
         # We replace the idx with their node position
         u = [idx_map[n] for n in u]
@@ -275,7 +277,7 @@ class PetaleKGNNDataset(PetaleDataset):
 
         Returns: (N, N) tensor
         """
-        if self._similarity == PetaleKGNNDataset.EUCLIDEAN:
+        if self._similarity_measure == PetaleKGNNDataset.EUCLIDEAN:
             sim = 1 / (self._compute_euclidean_dist() + eye(self._n))
         else:
             sim = self.compute_cosine_sim()

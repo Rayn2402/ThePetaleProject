@@ -5,7 +5,7 @@ Author: Nicolas Raymond
 
 Description: Defines feature selector object, that removes unimportant features
 
-Date of last modification : 2022/3/29
+Date of last modification : 2022/3/30
 """
 
 from os.path import join
@@ -56,7 +56,7 @@ class FeatureSelector:
         Returns: list of cont_cols preserved, list of cat_cols preserved
         """
         # Extract feature importance
-        fi_table, fi_dict = self.get_features_importance(dataset)
+        fi_table = self.get_features_importance(dataset)
 
         # Select the subset of selected feature
         selected_features = fi_table.loc[fi_table['status'] == 'selected', 'features'].values
@@ -77,11 +77,14 @@ class FeatureSelector:
             fi_table.to_csv(join(records_path, FeatureSelector.RECORDS_FILE), index=False)
 
         if return_imp:
+
+            # We modify fi_dict format
+            fi_dict = {row['features']: row['imp'] for _, row in fi_table.iterrows()}
             return cont_cols, cat_cols, fi_dict
 
         return cont_cols, cat_cols
 
-    def get_features_importance(self, dataset: PetaleDataset) -> Tuple[DataFrame, Dict]:
+    def get_features_importance(self, dataset: PetaleDataset) -> DataFrame:
         """
         Trains a random forest (with default sklearn hyperparameters) to solve the classification
         or regression problems and uses it to extract feature importance.
@@ -89,7 +92,7 @@ class FeatureSelector:
         Args:
             dataset: custom dataset
 
-        Returns: Dataframe with feature importance, feature importance dict
+        Returns: Dataframe with feature importance
         """
         # Extraction of current training mask
         mask = dataset.train_mask
@@ -106,9 +109,8 @@ class FeatureSelector:
 
         # Creation of feature importance table
         features = dataset.get_imputed_dataframe().columns
-        fi_dict = {'features': features,
-                   'imp': model.feature_importances_}
-        fi_table = DataFrame(fi_dict).sort_values('imp', ascending=False)
+        fi_table = DataFrame({'features': features,
+                              'imp': model.feature_importances_}).sort_values('imp', ascending=False)
 
         # Addition of a column that indicates if the feature is selected
         cumulative_imp = 0
@@ -125,4 +127,4 @@ class FeatureSelector:
         # Rounding of importance values
         fi_table['imp'] = fi_table['imp'].apply(lambda x: round(x, 4))
 
-        return fi_table, fi_dict
+        return fi_table

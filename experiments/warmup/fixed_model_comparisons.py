@@ -63,15 +63,23 @@ if __name__ == '__main__':
                                                       genes=genes_selection,
                                                       sex=args.sex)
     # We filter gene variables if needed
-    if args.single_gen:
-        removed_genes = [g for g in gene_cols if g != '7_45932669']
-        df.drop(removed_genes, axis=1, inplace=True)
-        cat_cols = [c for c in cat_cols if c not in removed_genes]
+    if genes and args.remove_low_imp_genes1:
+        df.drop(LOW_IMP_CHROM_POS_WARMUP1, axis=1, inplace=True)
+        cat_cols = [c for c in cat_cols if c not in LOW_IMP_CHROM_POS_WARMUP1]
+
+    elif genes and args.remove_low_imp_genes2:
+        df.drop(LOW_IMP_CHROM_POS_WARMUP2, axis=1, inplace=True)
+        cat_cols = [c for c in cat_cols if c not in LOW_IMP_CHROM_POS_WARMUP2]
 
     # We filter baselines variables if needed
     if args.baselines and args.remove_walk_variables:
         df.drop([TDM6_HR_END, TDM6_DIST], axis=1, inplace=True)
         cont_cols = [c for c in cont_cols if c not in [TDM6_HR_END, TDM6_DIST]]
+
+    # We filter baselines variables if needed
+    if args.baselines and args.remove_mvlpa:
+        df.drop([MVLPA], axis=1, inplace=True)
+        cont_cols = [c for c in cont_cols if c != MVLPA]
 
     # Extraction of masks
     masks = extract_masks(Paths.WARMUP_MASK, k=args.nb_outer_splits, l=args.nb_inner_splits)

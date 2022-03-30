@@ -11,44 +11,9 @@ Date of last modification: 2022/03/01
 from src.models.gat import GATHP
 from src.models.gge import GGEHP
 from src.models.mlp import MLPHP
-from src.models.han import HanHP
-from src.models.tabnet import TabNetHP
 from src.models.random_forest import RandomForestHP
 from src.models.xgboost_ import XGBoostHP
 from src.utils.hyperparameters import Range
-
-
-TAB_HPS = {
-    TabNetHP.BATCH_SIZE.name: {
-        Range.MIN: 15,
-        Range.MAX: 55,
-        Range.STEP: 10
-    },
-    TabNetHP.BETA.name: {
-        Range.MIN: 0,
-        Range.MAX: 2
-    },
-    TabNetHP.GAMMA.name: {
-        Range.MIN: 1,
-        Range.MAX: 2
-    },
-    TabNetHP.N_A.name: {
-        Range.MIN: 2,
-        Range.MAX: 10
-    },
-    TabNetHP.N_D.name: {
-        Range.MIN: 2,
-        Range.MAX: 10
-    },
-    TabNetHP.N_STEPS.name: {
-        Range.MIN: 1,
-        Range.MAX: 5
-    },
-    TabNetHP.LR.name: {
-        Range.MIN: 0.001,
-        Range.MAX: 0.1
-    },
-}
 
 RF_HPS = {
     RandomForestHP.MAX_LEAF_NODES.name: {
@@ -75,8 +40,7 @@ RF_HPS = {
 
 XGBOOST_HPS = {
     XGBoostHP.ALPHA.name: {
-        Range.MIN: 0.0005,
-        Range.MAX: 1,
+       Range.VALUE: 0
     },
     XGBoostHP.BETA.name: {
         Range.MIN: 0.0005,
@@ -101,8 +65,7 @@ MLP_HPS = {
         Range.VALUE: "PReLU"
     },
     MLPHP.ALPHA.name: {
-        Range.MIN: 0.0005,
-        Range.MAX: 1,
+        Range.VALUE: 0
     },
     MLPHP.BATCH_SIZE.name: {
         Range.MIN: 5,
@@ -137,8 +100,7 @@ ENET_HPS = {
         Range.VALUE: "PReLU"
     },
     MLPHP.ALPHA.name: {
-        Range.MIN: 0.0005,
-        Range.MAX: 1,
+        Range.VALUE: 0
     },
     MLPHP.BATCH_SIZE.name: {
         Range.MIN: 5,
@@ -172,8 +134,7 @@ ENET_GGE_HPS = {
         Range.VALUE: "PReLU"
     },
     MLPHP.ALPHA.name: {
-        Range.MIN: 0.0005,
-        Range.MAX: 1,
+        Range.VALUE: 0
     },
     MLPHP.BATCH_SIZE.name: {
         Range.MIN: 5,
@@ -205,8 +166,7 @@ ENET_GGE_HPS = {
 
 GATHPS = {
     GATHP.ALPHA.name: {
-        Range.MIN: 0.0005,
-        Range.MAX: 1,
+        Range.VALUE: 0
     },
     GATHP.BETA.name: {
         Range.MIN: 0.0005,

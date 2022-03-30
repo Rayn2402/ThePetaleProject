@@ -34,4 +34,5 @@ TARGET = "target"
 RECORDS_FILE = "records.json"
 SUMMARY_FILE = "summary.json"
 FEATURE_IMPORTANCE_CHART = 'feature_imp_recap.png'
+S_FEATURE_IMPORTANCE_CHART = "scaled_feature_imp_recap.png"
 HPS_IMPORTANCE_CHART = 'hps_imp_recap.png'

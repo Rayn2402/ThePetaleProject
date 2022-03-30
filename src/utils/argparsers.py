@@ -183,9 +183,9 @@ def warmup_experiment_parser():
                              '(only applies if the baselines are included')
     parser.add_argument('-gen1', '--genes_subgroup', default=False, action='store_true',
                         help='If true, includes the significant genes in the features')
-    parser.add_argument('-r_li_genes1', '--remove_low_imp_genes1', default=False, action='store true',
+    parser.add_argument('-r_li_genes1', '--remove_low_imp_genes1', default=False, action='store_true',
                         help=f"If true, removes {LOW_IMP_CHROM_POS_WARMUP1} from genes subgroup")
-    parser.add_argument('-r_li_genes2', '--remove_low_imp_genes2', default=False, action='store true',
+    parser.add_argument('-r_li_genes2', '--remove_low_imp_genes2', default=False, action='store_true',
                         help=f"If true, removes {LOW_IMP_CHROM_POS_WARMUP2} from genes subgroup")
     parser.add_argument('-gen2', '--all_genes', default=False, action='store_true',
                         help='If true, includes all the genes in the features')

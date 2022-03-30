@@ -95,7 +95,7 @@ def fixed_hps_lae_experiment_parser():
                         help='True if we want to include genes in features')
     parser.add_argument('-f', '--feature_selection', default=False, action='store_true',
                         help='True if we want to apply automatic feature selection')
-    parser.add_argument('-imp', '--feature_imp_thresh', type=float, default=0.95,
+    parser.add_argument('-imp', '--feature_imp_thresh', type=float, default=1,
                         help='Feature importance threshold to use if feature selection is activated')
 
     # Genes encoding parameter
@@ -186,7 +186,7 @@ def warmup_experiment_parser():
                         help='True if we want to include all the genes in the features')
     parser.add_argument('-f', '--feature_selection', default=False, action='store_true',
                         help='True if we want to apply automatic feature selection')
-    parser.add_argument('-imp', '--feature_imp_thresh', type=float, default=100,
+    parser.add_argument('-imp', '--feature_imp_thresh', type=float, default=1,
                         help='Feature importance threshold to use if feature selection is activated')
     parser.add_argument('-s', '--sex', default=False, action='store_true',
                         help='True if we want to include the sex in features')

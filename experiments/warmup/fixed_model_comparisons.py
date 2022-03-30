@@ -159,10 +159,6 @@ if __name__ == '__main__':
         # Creation of dataset
         dataset = PetaleDataset(df, target, cont_cols, cat_cols, classification=False)
 
-        # Hyperparameters update
-        if genes and not args.single_gen:
-            XGBOOST_HPS[XGBoostHP.ALPHA.name] = 0
-
         # Creation of the evaluator
         evaluator = Evaluator(model_constructor=PetaleXGBR,
                               dataset=dataset,
@@ -259,8 +255,6 @@ if __name__ == '__main__':
         # Update of hyperparameters
         if args.enable_sam:
             ENET_HPS[MLPHP.RHO.name] = sam_value
-        #if genes and not args.single_gen:
-            #ENET_HPS[MLPHP.ALPHA.name] = 0
 
         # Creation of evaluator
         evaluator = Evaluator(model_constructor=PetaleMLPR,

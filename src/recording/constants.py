@@ -6,7 +6,7 @@ Authors: Nicolas Raymond
 
 Description: This file is used to store useful constants related to the Recorder class
 
-Date of last modification : 2021/10/28
+Date of last modification : 2021/03/30
 """
 
 NAME = "name"

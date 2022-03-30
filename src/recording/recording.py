@@ -19,7 +19,7 @@ from numpy import max, mean, median, min, std
 from src.data.processing.datasets import MaskType
 from src.models.abstract_models.base_models import PetaleBinaryClassifier, PetaleRegressor
 from src.recording.constants import *
-from src.utils.visualization import visualize_importance
+from src.utils.visualization import visualize_importance, visualize_scaled_importance
 from torch import tensor, save, zeros
 from torch.nn import Module
 from typing import Any, Dict, List, Optional, Union
@@ -78,7 +78,7 @@ class Recorder:
         Returns: None
         """
         # We remove empty sections
-        self._data = {k: v for k, v in self._data.items() if len(v.keys()) != 0}
+        self._data = {k: v for k, v in self._data.items() if (k in [NAME, INDEX] or len(v) != 0)}
 
         # We save all the data collected in a json file
         filepath = os.path.join(self._path, RECORDS_FILE)
@@ -126,7 +126,7 @@ class Recorder:
         """
         # We save all the hyperparameters importance
         for key in feature_importance.keys():
-            self._data[HYPERPARAMETER_IMPORTANCE][key] = round(feature_importance[key], 4)
+            self._data[FEATURE_IMPORTANCE][key] = round(feature_importance[key], 4)
 
     def record_hyperparameters(self, hyperparameters: Dict[str, Any]) -> None:
         """
@@ -300,7 +300,7 @@ def get_evaluation_recap(evaluation_name: str,
         TRAIN_METRICS: {},
         TEST_METRICS: {},
         HYPERPARAMETER_IMPORTANCE: {},
-        FEATURE_IMPORTANCE_CHART: {},
+        FEATURE_IMPORTANCE: {},
         HYPERPARAMETERS: {},
         COEFFICIENT: {}
     }
@@ -333,7 +333,7 @@ def get_evaluation_recap(evaluation_name: str,
                     data[section][key][VALUES].append(split_data[section][key])
 
     # We remove empty sections
-    data = {k: v for k, v in data.items() if len(v.keys()) != 0}
+    data = {k: v for k, v in data.items() if len(v) != 0}
 
     # We add the info about the mean, the standard deviation, the median , the min, and the max
     set_info(data)
@@ -395,13 +395,14 @@ def plot_hps_importance_chart(evaluation_name: str,
         data = json.load(read_file)[HYPERPARAMETER_IMPORTANCE]
 
     # We create the bar plot
-    visualize_importance(data=data, figure_title='HPs importance', filename=HPS_IMPORTANCE_CHART)
+    visualize_importance(data=data, figure_title='HPs importance',
+                         filename=os.path.join(path, HPS_IMPORTANCE_CHART))
 
 
-def plot_feature_importance_chart(evaluation_name: str,
-                                  recordings_path: str) -> None:
+def plot_feature_importance_charts(evaluation_name: str,
+                                   recordings_path: str) -> None:
     """
-    Creates a bar plot containing information about the mean and standard deviation
+    Creates a bar plots containing information about the mean and standard deviation
     of each feature's importance.
 
     Args:
@@ -416,8 +417,11 @@ def plot_feature_importance_chart(evaluation_name: str,
     with open(os.path.join(path, SUMMARY_FILE), "r") as read_file:
         data = json.load(read_file)[FEATURE_IMPORTANCE]
 
-    # We create the bar plot
-    visualize_importance(data=data, figure_title='Features importance', filename=FEATURE_IMPORTANCE_CHART)
+    # We create the bar plots
+    visualize_importance(data=data, figure_title='Features importance',
+                         filename=os.path.join(path, FEATURE_IMPORTANCE_CHART))
+    visualize_scaled_importance(data=data, figure_title='Scaled feature importance',
+                                filename=os.path.join(path, S_FEATURE_IMPORTANCE_CHART))
 
 
 def compare_prediction_recordings(evaluations: List[str],

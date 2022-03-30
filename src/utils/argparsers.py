@@ -9,6 +9,7 @@ Date of last modification: 2022/02/08
 """
 
 import argparse
+from src.data.extraction.constants import LOW_IMP_CHROM_POS_WARMUP1, LOW_IMP_CHROM_POS_WARMUP2
 
 
 def apriori_argparser():
@@ -174,51 +175,55 @@ def warmup_experiment_parser():
 
     # Features selection
     parser.add_argument('-b', '--baselines', default=False, action='store_true',
-                        help='True if we want to include the variables from the original equation')
+                        help='If true, includes the variables from the original equation')
+    parser.add_argument('-r_mvlpa', '--remove_mvlpa', default=False, action='store_true',
+                        help='If true, excludes MVLPA variable from the baselines')
     parser.add_argument('-r_w', '--remove_walk_variables', default=False, action='store_true',
-                        help='True if we want to remove the six minutes walk test variables from the baselines'
+                        help='If true, removes the six minutes walk test variables from the baselines'
                              '(only applies if the baselines are included')
     parser.add_argument('-gen1', '--genes_subgroup', default=False, action='store_true',
-                        help='True if we want to include a group of selected genes in the features')
-    parser.add_argument('-s_gen', '--single_gen', default=False, action='store_true',
-                        help='True if we want to only keep gene 7_45932669 from gen1')
+                        help='If true, includes the significant genes in the features')
+    parser.add_argument('-r_li_genes1', '--remove_low_imp_genes1', default=False, action='store true',
+                        help=f"If true, removes {LOW_IMP_CHROM_POS_WARMUP1} from genes subgroup")
+    parser.add_argument('-r_li_genes2', '--remove_low_imp_genes2', default=False, action='store true',
+                        help=f"If true, removes {LOW_IMP_CHROM_POS_WARMUP2} from genes subgroup")
     parser.add_argument('-gen2', '--all_genes', default=False, action='store_true',
-                        help='True if we want to include all the genes in the features')
+                        help='If true, includes all the genes in the features')
     parser.add_argument('-f', '--feature_selection', default=False, action='store_true',
-                        help='True if we want to apply automatic feature selection')
+                        help='If true, applies automatic feature selection')
     parser.add_argument('-imp', '--feature_imp_thresh', type=float, default=1,
-                        help='Feature importance threshold to use if feature selection is activated')
+                        help='Feature importance threshold to use when feature selection is activated')
     parser.add_argument('-s', '--sex', default=False, action='store_true',
-                        help='True if we want to include the sex in features')
+                        help='If true, includes the sex in features')
 
     # Genes encoding parameter
     parser.add_argument('-share', '--embedding_sharing', default=False, action='store_true',
-                        help='True if we want to use a single entity embedding layer for all genes'
+                        help='If true, uses a single entity embedding layer for all genes'
                              ' (currently only applies with genomic signature creation')
 
     # Models selection
     parser.add_argument('-enet', '--enet', default=False, action='store_true',
-                        help='True if we want to run enet experiment')
+                        help='If true, runs enet experiment')
     parser.add_argument('-mlp', '--mlp', default=False, action='store_true',
-                        help='True if we want to run mlp experiment')
+                        help='If true, runs mlp experiment')
     parser.add_argument('-rf', '--random_forest', default=False, action='store_true',
-                        help='True if we want to run random forest experiment')
+                        help='If true, runs random forest experiment')
     parser.add_argument('-xg', '--xg_boost', default=False, action='store_true',
-                        help='True if we want to run xgboost experiment')
+                        help='If true, runs xgboost experiment')
     parser.add_argument('-gat', '--gat', default=False, action='store_true',
-                        help='True if we want to run GraphAttentionNetwork experiment')
+                        help='If true, runs GraphAttentionNetwork experiment')
     parser.add_argument('-gcn', '--gcn', default=False, action='store_true',
-                        help='True if we want to run GraphConvolutionalNetwork experiment')
+                        help='If true, runs GraphConvolutionalNetwork experiment')
     parser.add_argument('-gge', '--gge', default=False, action='store_true',
-                        help='True if we want to run GeneGraphEncoder with enet experiment')
+                        help='If true, runs GeneGraphEncoder with enet experiment')
     parser.add_argument('-ggae', '--ggae', default=False, action='store_true',
-                        help='True if we want to run GeneGraphAttentionEncoder with enet experiment')
+                        help='If true, runs GeneGraphAttentionEncoder with enet experiment')
 
     # GAT graph construction parameters
     parser.add_argument('-w_sim', '--weighted_similarity', default=False, action='store_true',
-                        help='True if we want to calculate patients similarities using weighted metrics')
+                        help='If true, calculates patients similarities using weighted metrics')
     parser.add_argument('-cond_col', '--conditional_column', default=False, action='store_true',
-                        help='True if we want to use the sex as a conditional column in GAT construction')
+                        help='If true, uses the sex as a conditional column in GAT construction')
     parser.add_argument('-deg', '--degree', nargs='*', type=str, default=[7],
                         help="Maximum number of neighbors for each node in the graph")
 
@@ -228,13 +233,13 @@ def warmup_experiment_parser():
 
     # Self supervised learning experiments
     parser.add_argument('-ssl_ggae', '-ssl_ggae', default=False, action='store_true',
-                        help='True if we want to run self supervised learning with the GeneGraphAttentionEncoder')
+                        help='If true, runs self supervised learning with the GeneGraphAttentionEncoder')
     parser.add_argument('-ssl_gge', '-ssl_gge', default=False, action='store_true',
-                        help='True if we want to run self supervised learning with the GeneGraphEncoder')
+                        help='If true, runs self supervised learning with the GeneGraphEncoder')
 
     # Activation of sharpness-aware minimization
     parser.add_argument('-sam', '--enable_sam', default=False, action='store_true',
-                        help='True if we want to use Sharpness-Aware Minimization Optimizer')
+                        help='If true, uses Sharpness-Aware Minimization Optimizer')
 
     # Usage of predictions from another experiment
     parser.add_argument('-p', '--path', type=str, default=None,

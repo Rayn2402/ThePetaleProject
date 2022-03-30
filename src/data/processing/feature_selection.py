@@ -35,6 +35,9 @@ class FeatureSelector:
             importance_threshold: cumulative importance of features selected
             seed: number used as a random state for the random forest doing feature selection
         """
+        if not 0 < importance_threshold <= 1:
+            raise ValueError('The importance threshold must be in range (0, 1]')
+
         self.__importance_thresh = importance_threshold
         self.__seed = seed
 

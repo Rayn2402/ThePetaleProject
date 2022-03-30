@@ -6,7 +6,7 @@ Authors: Nicolas Raymond
 
 Description: This file is used to define the Recorder class
 
-Date of last modification : 2022/02/15
+Date of last modification : 2022/03/30
 """
 
 import json
@@ -15,10 +15,11 @@ import os
 import pickle
 
 from collections import Counter
-from numpy import arange, max, mean, median, min, std
+from numpy import max, mean, median, min, std
 from src.data.processing.datasets import MaskType
 from src.models.abstract_models.base_models import PetaleBinaryClassifier, PetaleRegressor
 from src.recording.constants import *
+from src.utils.visualization import visualize_importance
 from torch import tensor, save, zeros
 from torch.nn import Module
 from typing import Any, Dict, List, Optional, Union
@@ -56,6 +57,7 @@ class Recorder:
                       DATA_INFO: {},
                       HYPERPARAMETERS: {},
                       HYPERPARAMETER_IMPORTANCE: {},
+                      FEATURE_IMPORTANCE: {},
                       TRAIN_METRICS: {},
                       TEST_METRICS: {},
                       VALID_METRICS: {},
@@ -75,6 +77,9 @@ class Recorder:
 
         Returns: None
         """
+        # We remove empty sections
+        self._data = {k: v for k, v in self._data.items() if len(v.keys()) != 0}
+
         # We save all the data collected in a json file
         filepath = os.path.join(self._path, RECORDS_FILE)
         with open(filepath, "w") as file:
@@ -109,6 +114,19 @@ class Recorder:
 
         """
         self._data[DATA_INFO][data_name] = data
+
+    def record_features_importance(self, feature_importance: Dict[str, float]) -> None:
+        """
+        Saves the hyperparameters' importance in the protected dictionary
+
+        Args:
+            feature_importance: dictionary of features and their importance
+
+        Returns: None
+        """
+        # We save all the hyperparameters importance
+        for key in feature_importance.keys():
+            self._data[HYPERPARAMETER_IMPORTANCE][key] = round(feature_importance[key], 4)
 
     def record_hyperparameters(self, hyperparameters: Dict[str, Any]) -> None:
         """
@@ -282,6 +300,7 @@ def get_evaluation_recap(evaluation_name: str,
         TRAIN_METRICS: {},
         TEST_METRICS: {},
         HYPERPARAMETER_IMPORTANCE: {},
+        FEATURE_IMPORTANCE_CHART: {},
         HYPERPARAMETERS: {},
         COEFFICIENT: {}
     }
@@ -312,6 +331,9 @@ def get_evaluation_recap(evaluation_name: str,
                 # We add values to each key associated to the current section
                 for key in key_lists[section]:
                     data[section][key][VALUES].append(split_data[section][key])
+
+    # We remove empty sections
+    data = {k: v for k, v in data.items() if len(v.keys()) != 0}
 
     # We add the info about the mean, the standard deviation, the median , the min, and the max
     set_info(data)
@@ -372,31 +394,30 @@ def plot_hps_importance_chart(evaluation_name: str,
     with open(os.path.join(path, SUMMARY_FILE), "r") as read_file:
         data = json.load(read_file)[HYPERPARAMETER_IMPORTANCE]
 
-    # We initialize three lists for the values, the errors, and the labels
-    values, errors, labels = [], [], []
+    # We create the bar plot
+    visualize_importance(data=data, figure_title='HPs importance', filename=HPS_IMPORTANCE_CHART)
 
-    # We collect the data of each hyperparameter importance
-    for key in data.keys():
-        values.append(data[key][MEAN])
-        errors.append(data[key][STD])
-        labels.append(key)
 
-    # We sort the list according values
-    sorted_values = sorted(values)
-    sorted_labels = sorted(labels, key=lambda x: values[labels.index(x)])
-    sorted_errors = sorted(errors, key=lambda x: values[errors.index(x)])
+def plot_feature_importance_chart(evaluation_name: str,
+                                  recordings_path: str) -> None:
+    """
+    Creates a bar plot containing information about the mean and standard deviation
+    of each feature's importance.
 
-    # We build the plot
-    x_pos = arange(len(labels))
-    fig, ax = plt.subplots(figsize=(10, 7))
-    ax.bar(x_pos, sorted_values, yerr=sorted_errors, capsize=5)
-    ax.set_xticks(x_pos)
-    ax.set_xticklabels(sorted_labels)
-    ax.set_title('Hyperparameters importance')
+    Args:
+        evaluation_name: name of the evaluation
+        recordings_path: directory where containing the folders with the results of each split
 
-    # We save the plot
-    plt.savefig(os.path.join(path, HPS_IMPORTANCE_CHART))
-    plt.close()
+    Returns: None
+
+    """
+    # We get the content of the json file
+    path = os.path.join(recordings_path, evaluation_name)
+    with open(os.path.join(path, SUMMARY_FILE), "r") as read_file:
+        data = json.load(read_file)[FEATURE_IMPORTANCE]
+
+    # We create the bar plot
+    visualize_importance(data=data, figure_title='Features importance', filename=FEATURE_IMPORTANCE_CHART)
 
 
 def compare_prediction_recordings(evaluations: List[str],

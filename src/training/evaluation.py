@@ -23,7 +23,7 @@ from src.data.processing.feature_selection import FeatureSelector
 from src.models.abstract_models.base_models import PetaleBinaryClassifier, PetaleRegressor
 from src.recording.constants import PREDICTION, RECORDS_FILE, TEST_RESULTS, TRAIN_RESULTS, VALID_RESULTS
 from src.recording.recording import Recorder, compare_prediction_recordings, \
-    get_evaluation_recap, plot_feature_importance_chart, plot_hps_importance_chart
+    get_evaluation_recap, plot_feature_importance_charts, plot_hps_importance_chart
 from src.training.tuning import Objective, Tuner
 from src.utils.score_metrics import Metric
 from time import strftime
@@ -240,10 +240,10 @@ class Evaluator:
         # We save the evaluation recap
         get_evaluation_recap(evaluation_name=self.evaluation_name, recordings_path=Paths.EXPERIMENTS_RECORDS)
 
-        # We save the features importance chart
+        # We save the features importance charts
         if self._feature_selector is not None:
-            plot_feature_importance_chart(evaluation_name=self.evaluation_name,
-                                          recordings_path=Paths.EXPERIMENTS_RECORDS)
+            plot_feature_importance_charts(evaluation_name=self.evaluation_name,
+                                           recordings_path=Paths.EXPERIMENTS_RECORDS)
 
         # We save the hyperparameters importance chart
         if self._hp_tuning:

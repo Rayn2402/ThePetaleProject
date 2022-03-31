@@ -9,7 +9,8 @@ Date of last modification: 2022/02/08
 """
 
 import argparse
-from src.data.extraction.constants import LOW_IMP_CHROM_POS_WARMUP1, LOW_IMP_CHROM_POS_WARMUP2
+from src.data.extraction.constants import LOW_IMP_CHROM_POS_WARMUP0,\
+    LOW_IMP_CHROM_POS_WARMUP1, LOW_IMP_CHROM_POS_WARMUP2
 
 
 def apriori_argparser():
@@ -98,6 +99,9 @@ def fixed_hps_lae_experiment_parser():
                         help='True if we want to apply automatic feature selection')
     parser.add_argument('-imp', '--feature_imp_thresh', type=float, default=1,
                         help='Feature importance threshold to use if feature selection is activated')
+    parser.add_argument('-c_imp', '--cumulative_imp', default=False, action='store_true',
+                        help='If true, uses cumulative importance to select features'
+                             ' when feature selection is activated')
 
     # Genes encoding parameter
     parser.add_argument('-share', '--embedding_sharing', default=False, action='store_true',
@@ -144,7 +148,6 @@ def fixed_hps_lae_experiment_parser():
     parser.add_argument('-sam', '--enable_sam', default=False, action='store_true',
                         help='True if we want to use Sharpness-Aware Minimization Optimizer')
 
-
     # Usage of predictions from another experiment
     parser.add_argument('-p', '--path', type=str, default=None,
                         help='Path leading to predictions of another model')
@@ -183,6 +186,8 @@ def warmup_experiment_parser():
                              '(only applies if the baselines are included')
     parser.add_argument('-gen1', '--genes_subgroup', default=False, action='store_true',
                         help='If true, includes the significant genes in the features')
+    parser.add_argument('-r_li_genes0', '--remove_low_imp_genes0', default=False, action='store_true',
+                        help=f"If true, removes {LOW_IMP_CHROM_POS_WARMUP0} from genes subgroup")
     parser.add_argument('-r_li_genes1', '--remove_low_imp_genes1', default=False, action='store_true',
                         help=f"If true, removes {LOW_IMP_CHROM_POS_WARMUP1} from genes subgroup")
     parser.add_argument('-r_li_genes2', '--remove_low_imp_genes2', default=False, action='store_true',
@@ -193,6 +198,9 @@ def warmup_experiment_parser():
                         help='If true, applies automatic feature selection')
     parser.add_argument('-imp', '--feature_imp_thresh', type=float, default=1,
                         help='Feature importance threshold to use when feature selection is activated')
+    parser.add_argument('-c_imp', '--cumulative_imp', default=False, action='store_true',
+                        help='If true, uses cumulative importance to select features'
+                             ' when feature selection is activated')
     parser.add_argument('-s', '--sex', default=False, action='store_true',
                         help='If true, includes the sex in features')
 
@@ -228,7 +236,7 @@ def warmup_experiment_parser():
                         help="Maximum number of neighbors for each node in the graph")
 
     # Gene encoding parameter
-    parser.add_argument('-sign_size', '--signature_size', type=int, default=8,
+    parser.add_argument('-sign_size', '--signature_size', type=int, default=4,
                         help='Genomic signature size')
 
     # Self supervised learning experiments

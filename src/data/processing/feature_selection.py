@@ -118,7 +118,7 @@ class FeatureSelector:
             # Random forest training
             model = model_constructor(n_jobs=-1,
                                       oob_score=True,
-                                      random_state=self.__seed).fit(dataset.x[mask], dataset.y[mask])
+                                      random_state=self.__seed + i).fit(dataset.x[mask], dataset.y[mask])
 
             imp += model.feature_importances_
 

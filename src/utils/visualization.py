@@ -177,9 +177,11 @@ def visualize_importance(data: Dict[str, Dict[str, float]],
 
     # We collect the data of each hyperparameter importance
     for key in data.keys():
-        means.append(data[key][MEAN])
-        stds.append(data[key][STD])
-        labels.append(key)
+        mean = data[key][MEAN]
+        if mean >= 0.01:
+            means.append(mean)
+            stds.append(data[key][STD])
+            labels.append(key)
 
     # We sort the list according to their values
     sorted_means = sorted(means)
@@ -219,8 +221,10 @@ def visualize_scaled_importance(data: Dict[str, Dict[str, float]],
 
     # We collect the data of each hyperparameter importance
     for key in data.keys():
-        scaled_imp.append(data[key][MEAN]/data[key][STD])
-        labels.append(key)
+        mean = data[key][MEAN]
+        if mean >= 0.01:
+            scaled_imp.append(mean/data[key][STD])
+            labels.append(key)
 
     # We sort the list according values
     sorted_scaled_imp = sorted(scaled_imp)

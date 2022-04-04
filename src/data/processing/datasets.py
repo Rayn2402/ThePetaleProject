@@ -218,7 +218,7 @@ class PetaleDataset(Dataset):
 
         self._x_cat = x_cat.to_numpy(dtype=int)
 
-    def _create_feature_selection_idx_groups(self, groups: Optional[List[List[str]]]) -> Optional[List[List[int]]]:
+    def _create_feature_selection_idx_groups(self, groups: Optional[List[List[str]]]) -> Dict:
         """
         Creates a list of lists with idx of features in the different groups.
         All the features not included in any group will be used to create
@@ -229,10 +229,9 @@ class PetaleDataset(Dataset):
 
         Returns: List of list
         """
-        if groups is None:
-            return None
 
         # We create an additional group with the features that are not already in a group
+        groups = [] if groups is None else groups
         cat_cols = [] if self._cat_cols is None else self._cat_cols
         cont_cols = [] if self._cont_cols is None else self._cont_cols
 
@@ -250,8 +249,8 @@ class PetaleDataset(Dataset):
             groups.append(last_group)
 
         # We associate each feature to its index when data is extracted using the item getter
-        feature_idx_groups = []
-        for group in groups:
+        feature_idx_groups = {}
+        for i, group in enumerate(groups):
             group_idx = []
             for f in group:
                 if f in cat_cols:
@@ -260,7 +259,7 @@ class PetaleDataset(Dataset):
                     group_idx.append(self._cont_idx[cont_cols.index(f)])
                 else:
                     raise ValueError(f"{f} is not part of cont_cols or cat_cols")
-            feature_idx_groups.append(group_idx)
+            feature_idx_groups[i] = {'features': group, 'idx': group_idx}
 
         return feature_idx_groups
 

@@ -10,7 +10,7 @@ Date of last modification : 2022/3/30
 
 from numpy import zeros
 from os.path import join
-from pandas import DataFrame
+from pandas import DataFrame, concat
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from src.data.processing.datasets import PetaleDataset
 from typing import Optional, Tuple
@@ -109,37 +109,50 @@ class FeatureSelector:
         # Classifier constructor
         model_constructor = RandomForestClassifier if dataset.classification else RandomForestRegressor
 
-        # Mean importance initialization
-        features = dataset.get_imputed_dataframe().columns
-        imp = zeros(len(features))
+        # List of dataframe to stack
+        fi_tables = []
 
-        for i in range(self.__nb_iter):
+        for group in dataset.feature_selection_idx_groups.values():
 
-            # Random forest training
-            model = model_constructor(n_jobs=-1,
-                                      oob_score=True,
-                                      random_state=self.__seed + i).fit(dataset.x[mask], dataset.y[mask])
+            features, idx = group['features'], group['idx']
 
-            imp += model.feature_importances_
+            # Mean importance initialization
+            imp = zeros(len(features))
 
-        # Creation of feature importance table
-        fi_table = DataFrame({'features': features,
-                              'imp': imp/self.__nb_iter}).sort_values('imp', ascending=False)
+            # Data extraction
+            x, y, _ = dataset[mask]
+            x = x[:, idx]
 
-        # Addition of a column that indicates if the features are selected
-        if self.__cumulative_imp:
-            cumulative_imp = 0
-            status_list = []
-            for index, row in fi_table.iterrows():
-                cumulative_imp += row['imp']
-                status_list.append('selected')
-                if cumulative_imp > self.__thresh:
-                    break
-            status_list += ['rejected']*(fi_table.shape[0] - len(status_list))
-            fi_table['status'] = status_list
-        else:
-            fi_table['status'] = ['rejected']*fi_table.shape[0]
-            fi_table.loc[fi_table['imp'] >= self.__thresh, 'status'] = 'selected'
+            for i in range(self.__nb_iter):
+
+                # Random forest training
+                model = model_constructor(n_jobs=-1, oob_score=True, random_state=self.__seed + i).fit(x, y)
+
+                imp += model.feature_importances_
+
+            # Creation of feature importance table
+            fi_table = DataFrame({'features': features,
+                                  'imp': imp/self.__nb_iter}).sort_values('imp', ascending=False)
+
+            # Addition of a column that indicates if the features are selected
+            if self.__cumulative_imp:
+                cumulative_imp = 0
+                status_list = []
+                for index, row in fi_table.iterrows():
+                    cumulative_imp += row['imp']
+                    status_list.append('selected')
+                    if cumulative_imp > self.__thresh:
+                        break
+                status_list += ['rejected']*(fi_table.shape[0] - len(status_list))
+                fi_table['status'] = status_list
+            else:
+                fi_table['status'] = ['rejected']*fi_table.shape[0]
+                fi_table.loc[fi_table['imp'] >= self.__thresh, 'status'] = 'selected'
+
+            fi_tables.append(fi_table)
+
+        # We stack the dataframes
+        fi_table = concat(fi_tables, axis=0, ignore_index=True)
 
         # Rounding of importance values
         fi_table['imp'] = fi_table['imp'].apply(lambda x: round(x, 4))

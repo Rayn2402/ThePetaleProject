@@ -13,7 +13,7 @@ from os.path import join
 from pandas import DataFrame, concat
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from src.data.processing.datasets import PetaleDataset
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 
 class FeatureSelector:
@@ -24,26 +24,30 @@ class FeatureSelector:
     See the following source:
     Deep Learning for Coders with fastai & PyTorch : AI Applications Without a PhD (p.486-489)
     """
+    CUMULATIVE: str = "cumulative"
+    FEATURES: str = "features"
+    THRESH: str = "threshold"
     RECORDS_FILE = "feature_selection_records.csv"
 
     def __init__(self,
-                 threshold: float,
-                 cumulative_imp: bool = True,
+                 threshold: List[float],
+                 cumulative_imp: List[bool],
                  nb_iter: int = 5,
                  seed: Optional[int] = None):
         """
         Sets protected attributes
 
         Args:
-            threshold: threshold value used to select features
-            cumulative_imp: if True, features will be selected until their cumulative importance
+            threshold: list of threshold values used to for each features group
+            cumulative_imp: list of bool for each features group. If True, features will be selected until their cumulative importance
                             reach the threshold. Otherwise, all features with an importance below
                             the threshold will be removed.
             nb_iter: number of times the feature importance must be calculated before taking the average
             seed: number used as a random state for the random forest doing feature selection
         """
-        if not 0 < threshold <= 1:
-            raise ValueError('The threshold must be in range (0, 1]')
+        for t in threshold:
+            if not 0 < t <= 1:
+                raise ValueError('The threshold must be in range (0, 1]')
 
         self.__cumulative_imp = cumulative_imp
         self.__nb_iter = nb_iter
@@ -112,8 +116,16 @@ class FeatureSelector:
         # List of dataframe to stack
         fi_tables = []
 
-        for group in dataset.feature_selection_idx_groups.values():
+        # Validation of attributes
+        nb_groups = len(dataset.feature_selection_idx_groups.keys())
+        if len(self.__thresh) != nb_groups:
+            raise ValueError('The number of given thresholds is not equal to the number of feature groups')
+        if len(self.__cumulative_imp) != nb_groups:
+            raise ValueError('The number of given cumulative imp. bool is not equal to the number of feature groups')
 
+        for i, group in enumerate(dataset.feature_selection_idx_groups.values()):
+
+            thresh, use_cumulative_imp = self.__thresh[i], self.__cumulative_imp[i]
             features, idx = group['features'], group['idx']
 
             # Mean importance initialization
@@ -135,13 +147,13 @@ class FeatureSelector:
                                   'imp': imp/self.__nb_iter}).sort_values('imp', ascending=False)
 
             # Addition of a column that indicates if the features are selected
-            if self.__cumulative_imp:
+            if use_cumulative_imp:
                 cumulative_imp = 0
                 status_list = []
                 for index, row in fi_table.iterrows():
                     cumulative_imp += row['imp']
                     status_list.append('selected')
-                    if cumulative_imp > self.__thresh:
+                    if cumulative_imp > thresh:
                         break
                 status_list += ['rejected']*(fi_table.shape[0] - len(status_list))
                 fi_table['status'] = status_list

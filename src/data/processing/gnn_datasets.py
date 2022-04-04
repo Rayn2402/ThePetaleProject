@@ -36,6 +36,7 @@ class PetaleKGNNDataset(PetaleDataset):
                  cont_cols: Optional[List[str]] = None,
                  cat_cols: Optional[List[str]] = None,
                  gene_cols: Optional[List[str]] = None,
+                 feature_selection_groups: Optional[List[List[str]]] = None,
                  conditional_cat_col: Optional[str] = None,
                  classification: bool = True):
         """
@@ -51,6 +52,8 @@ class PetaleKGNNDataset(PetaleDataset):
             cont_cols: list of column names associated with continuous data
             cat_cols: list of column names associated with categorical data
             gene_cols: list of categorical column names that must be considered as genes
+            feature_selection_groups: list with list of column names to consider together
+                                      in group-wise feature selection
             conditional_cat_col: name of column for which items need to share the same
                                  value in order to be allowed to be connected in the population graph
             classification: true for classification task, False for regression
@@ -90,6 +93,7 @@ class PetaleKGNNDataset(PetaleDataset):
                          cont_cols=cont_cols,
                          cat_cols=cat_cols,
                          gene_cols=gene_cols,
+                         feature_selection_groups=feature_selection_groups,
                          classification=classification,
                          to_tensor=True)
 

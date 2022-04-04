@@ -6,7 +6,7 @@ Author: Nicolas Raymond
 Description: This file is a script used to run warmup experiments using fixed
              hyperparameters.
 
-Date of last modification: 2022/03/28
+Date of last modification: 2022/04/04
 """
 
 import sys
@@ -33,7 +33,7 @@ if __name__ == '__main__':
     from src.models.gge import PetaleGGE
     from src.models.mlp import PetaleMLPR, MLPHP
     from src.models.random_forest import PetaleRFR
-    from src.models.xgboost_ import PetaleXGBR, XGBoostHP
+    from src.models.xgboost_ import PetaleXGBR
     from src.training.evaluation import Evaluator
     from src.data.extraction.constants import *
     from src.data.extraction.data_management import PetaleDataManager
@@ -63,6 +63,10 @@ if __name__ == '__main__':
                                                       genes=genes_selection,
                                                       sex=args.sex)
     # We filter gene variables if needed
+    if genes and args.remove_low_imp_genes0:
+        df.drop(LOW_IMP_CHROM_POS_WARMUP0, axis=1, inplace=True)
+        cat_cols = [c for c in cat_cols if c not in LOW_IMP_CHROM_POS_WARMUP0]
+
     if genes and args.remove_low_imp_genes1:
         df.drop(LOW_IMP_CHROM_POS_WARMUP1, axis=1, inplace=True)
         cat_cols = [c for c in cat_cols if c not in LOW_IMP_CHROM_POS_WARMUP1]
@@ -91,7 +95,9 @@ if __name__ == '__main__':
 
     # Initialization of feature selector
     if args.feature_selection:
-        feature_selector = FeatureSelector(importance_threshold=args.feature_imp_thresh, seed=args.seed)
+        feature_selector = FeatureSelector(threshold=args.feature_imp_thresh,
+                                           cumulative_imp=args.cumulative_imp,
+                                           seed=args.seed)
     else:
         feature_selector = None
 
@@ -126,7 +132,8 @@ if __name__ == '__main__':
         start = time.time()
 
         # Creation of dataset
-        dataset = PetaleDataset(df, target, cont_cols, cat_cols, classification=False)
+        dataset = PetaleDataset(df, target, cont_cols, cat_cols,
+                                classification=False, feature_selection_groups=[gene_cols])
 
         # Creation of the evaluator
         evaluator = Evaluator(model_constructor=PetaleRFR,
@@ -157,7 +164,8 @@ if __name__ == '__main__':
         start = time.time()
 
         # Creation of dataset
-        dataset = PetaleDataset(df, target, cont_cols, cat_cols, classification=False)
+        dataset = PetaleDataset(df, target, cont_cols, cat_cols,
+                                classification=False, feature_selection_groups=[gene_cols])
 
         # Creation of the evaluator
         evaluator = Evaluator(model_constructor=PetaleXGBR,
@@ -188,7 +196,8 @@ if __name__ == '__main__':
         start = time.time()
 
         # Creation of the dataset
-        dataset = PetaleDataset(df, target, cont_cols, cat_cols, to_tensor=True, classification=False)
+        dataset = PetaleDataset(df, target, cont_cols, cat_cols, to_tensor=True,
+                                classification=False, feature_selection_groups=[gene_cols])
 
         # Creation of function to update fixed params
         def update_fixed_params(dts):
@@ -238,7 +247,8 @@ if __name__ == '__main__':
 
         # Creation of the dataset
         dataset = PetaleDataset(df, target, cont_cols, cat_cols,
-                                to_tensor=True, classification=False)
+                                to_tensor=True, classification=False,
+                                feature_selection_groups=[gene_cols])
 
         def update_fixed_params(dts):
             return {'max_epochs': 500,
@@ -287,7 +297,8 @@ if __name__ == '__main__':
 
         # Creation of the dataset
         dataset = PetaleDataset(df, target, cont_cols, cat_cols,
-                                gene_cols=gene_cols, to_tensor=True, classification=False)
+                                gene_cols=gene_cols, to_tensor=True,
+                                classification=False, feature_selection_groups=[gene_cols])
 
         def gene_encoder_constructor(gene_idx_groups: Optional[Dict[str, List[int]]],
                                      dropout: float) -> GeneEncoder:
@@ -357,7 +368,8 @@ if __name__ == '__main__':
 
         # Creation of the dataset
         dataset = PetaleDataset(df, target, cont_cols, cat_cols,
-                                gene_cols=gene_cols, to_tensor=True, classification=False)
+                                gene_cols=gene_cols, to_tensor=True,
+                                classification=False, feature_selection_groups=[gene_cols])
 
 
         def gene_encoder_constructor(gene_idx_groups: Optional[Dict[str, List[int]]],
@@ -443,7 +455,8 @@ if __name__ == '__main__':
                 dataset = PetaleKGNNDataset(df, target, k=nb_neighbor,
                                             weighted_similarity=w_sim,
                                             cont_cols=cont_cols, cat_cols=cat_cols,
-                                            conditional_cat_col=cond_cat_col, classification=False)
+                                            conditional_cat_col=cond_cat_col,
+                                            classification=False, feature_selection_groups=[gene_cols])
 
                 # Creation of function to update fixed params
                 def update_fixed_params(dts):
@@ -508,7 +521,8 @@ if __name__ == '__main__':
                 dataset = PetaleKGNNDataset(df, target, k=nb_neighbor,
                                             weighted_similarity=w_sim,
                                             cont_cols=cont_cols, cat_cols=cat_cols,
-                                            conditional_cat_col=cond_cat_col, classification=False)
+                                            conditional_cat_col=cond_cat_col, classification=False,
+                                            feature_selection_groups=[gene_cols])
 
                 # Creation of function to update fixed params
                 def update_fixed_params(dts):
@@ -558,7 +572,8 @@ if __name__ == '__main__':
 
         # Creation of the dataset
         dataset = PetaleDataset(df, target, cont_cols, cat_cols,
-                                gene_cols=gene_cols, to_tensor=True, classification=False)
+                                gene_cols=gene_cols, to_tensor=True, classification=False,
+                                feature_selection_groups=[gene_cols])
 
         # Creation of a function to update fixed params
         def update_fixed_params(dts):
@@ -604,7 +619,8 @@ if __name__ == '__main__':
 
         # Creation of the dataset
         dataset = PetaleDataset(df, target, cont_cols, cat_cols,
-                                gene_cols=gene_cols, to_tensor=True, classification=False)
+                                gene_cols=gene_cols, to_tensor=True, classification=False,
+                                feature_selection_groups=[gene_cols])
 
         # Creation of a function to update fixed params
         def update_fixed_params(dts):

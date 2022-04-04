@@ -239,7 +239,9 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
 
     # Initialization of feature selector
     if args.feature_selection:
-        feature_selector = FeatureSelector(importance_threshold=args.feature_imp_thresh, seed=args.seed)
+        feature_selector = FeatureSelector(threshold=args.feature_imp_thresh,
+                                           cumulative_imp=args.cumulative_imp,
+                                           seed=args.seed)
     else:
         feature_selector = None
 
@@ -268,7 +270,8 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
         start = time()
 
         # Creation of dataset
-        dataset = PetaleDataset(df, target, cont_cols, cat_cols, classification=False)
+        dataset = PetaleDataset(df, target, cont_cols, cat_cols, classification=False,
+                                feature_selection_groups=[gene_cols])
 
         # Creation of the evaluator
         evaluator = Evaluator(model_constructor=PetaleRFR,
@@ -299,7 +302,8 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
         start = time()
 
         # Creation of dataset
-        dataset = PetaleDataset(df, target, cont_cols, cat_cols, classification=False)
+        dataset = PetaleDataset(df, target, cont_cols, cat_cols, classification=False,
+                                feature_selection_groups=[gene_cols])
 
         # Creation of the evaluator
         evaluator = Evaluator(model_constructor=PetaleXGBR,
@@ -330,7 +334,8 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
         start = time()
 
         # Creation of the dataset
-        dataset = PetaleDataset(df, target, cont_cols, cat_cols, to_tensor=True, classification=False)
+        dataset = PetaleDataset(df, target, cont_cols, cat_cols, to_tensor=True,
+                                classification=False, feature_selection_groups=[gene_cols])
 
         # Creation of function to update fixed params
         def update_fixed_params(dts):
@@ -383,7 +388,8 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
 
         # Creation of the dataset
         dataset = PetaleDataset(df, target, cont_cols, cat_cols,
-                                to_tensor=True, classification=False)
+                                to_tensor=True, classification=False,
+                                feature_selection_groups=[gene_cols])
 
         def update_fixed_params(dts):
             return {'max_epochs': 500,
@@ -432,7 +438,8 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
 
         # Creation of the dataset
         dataset = PetaleDataset(df, target, cont_cols, cat_cols,
-                                gene_cols=gene_cols, to_tensor=True, classification=False)
+                                gene_cols=gene_cols, to_tensor=True,
+                                classification=False, feature_selection_groups=[gene_cols])
 
         def gene_encoder_constructor(gene_idx_groups: Optional[Dict[str, List[int]]],
                                      dropout: float) -> GeneEncoder:
@@ -501,7 +508,8 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
 
         # Creation of the dataset
         dataset = PetaleDataset(df, target, cont_cols, cat_cols,
-                                gene_cols=gene_cols, to_tensor=True, classification=False)
+                                gene_cols=gene_cols, to_tensor=True,
+                                classification=False, feature_selection_groups=[gene_cols])
 
         def gene_encoder_constructor(gene_idx_groups: Optional[Dict[str, List[int]]],
                                      dropout: float) -> GeneEncoder:
@@ -584,7 +592,8 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
                 dataset = PetaleKGNNDataset(df, target, k=nb_neighbor,
                                             weighted_similarity=w_sim,
                                             cont_cols=cont_cols, cat_cols=cat_cols,
-                                            conditional_cat_col=cond_cat_col, classification=False)
+                                            conditional_cat_col=cond_cat_col,
+                                            classification=False, feature_selection_groups=[gene_cols])
 
                 # Creation of function to update fixed params
                 def update_fixed_params(dts):
@@ -649,7 +658,8 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
                 dataset = PetaleKGNNDataset(df, target, k=nb_neighbor,
                                             weighted_similarity=w_sim,
                                             cont_cols=cont_cols, cat_cols=cat_cols,
-                                            conditional_cat_col=cond_cat_col, classification=False)
+                                            conditional_cat_col=cond_cat_col,
+                                            classification=False, feature_selection_groups=[gene_cols])
 
                 # Creation of function to update fixed params
                 def update_fixed_params(dts):

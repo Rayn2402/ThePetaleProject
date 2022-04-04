@@ -42,6 +42,7 @@ class PetaleDataset(Dataset):
                  cont_cols: Optional[List[str]] = None,
                  cat_cols: Optional[List[str]] = None,
                  gene_cols: Optional[List[str]] = None,
+                 feature_selection_groups: Optional[List[List[str]]] = None,
                  classification: bool = True,
                  to_tensor: bool = False):
         """
@@ -57,7 +58,7 @@ class PetaleDataset(Dataset):
             to_tensor: true if we want the features and targets in tensors, false for numpy arrays
 
         """
-        # Validations of inputs
+        # Validation of inputs
         if PARTICIPANT not in df.columns:
             raise ValueError("Patients' ids missing from the dataframe")
 
@@ -95,6 +96,9 @@ class PetaleDataset(Dataset):
         self._gene_idx = {c: self._cat_idx[self.cat_cols.index(c)] for c in self._gene_cols}
         self._cat_idx_without_genes = [i for i in self._cat_idx if i not in self._gene_idx.values()]
         self._gene_idx_groups = self._create_genes_idx_group()
+
+        # We set feature selection idx groups
+        self._feature_selection_idx_groups = self._create_feature_selection_idx_groups(feature_selection_groups)
 
         # We set a "getter" method to get modes of categorical columns and we also extract encodings
         self._get_modes, self._encodings = self._define_categorical_stats_getter(cat_cols)
@@ -145,6 +149,10 @@ class PetaleDataset(Dataset):
     @property
     def encodings(self) -> Dict[str, Dict[str, int]]:
         return self._encodings
+
+    @property
+    def feature_selection_idx_groups(self) -> Optional[List[List[int]]]:
+        return self._feature_selection_idx_groups
 
     @property
     def gene_idx_groups(self) -> Dict[str, List[int]]:
@@ -209,6 +217,52 @@ class PetaleDataset(Dataset):
                                            mode=modes, encodings=self._encodings)
 
         self._x_cat = x_cat.to_numpy(dtype=int)
+
+    def _create_feature_selection_idx_groups(self, groups: Optional[List[List[str]]]) -> Optional[List[List[int]]]:
+        """
+        Creates a list of lists with idx of features in the different groups.
+        All the features not included in any group will be used to create
+        an additional group.
+
+        Args:
+            groups: List of list with name of columns to use in group for feature selection
+
+        Returns: List of list
+        """
+        if groups is None:
+            return None
+
+        # We create an additional group with the features that are not already in a group
+        cat_cols = [] if self._cat_cols is None else self._cat_cols
+        cont_cols = [] if self._cont_cols is None else self._cont_cols
+
+        last_group = []
+        for c in cat_cols + cont_cols:
+            included = False
+            for group in groups:
+                if c in group:
+                    included = True
+                    break
+            if not included:
+                last_group.append(c)
+
+        if len(last_group) > 0:
+            groups.append(last_group)
+
+        # We associate each feature to its index when data is extracted using the item getter
+        feature_idx_groups = []
+        for group in groups:
+            group_idx = []
+            for f in group:
+                if f in cat_cols:
+                    group_idx.append(self._cat_idx[cat_cols.index(f)])
+                elif f in cont_cols:
+                    group_idx.append(self._cont_idx[cont_cols.index(f)])
+                else:
+                    raise ValueError(f"{f} is not part of cont_cols or cat_cols")
+            feature_idx_groups.append(group_idx)
+
+        return feature_idx_groups
 
     def _define_categorical_data_setter(self,
                                         cat_cols: Optional[List[str]] = None,

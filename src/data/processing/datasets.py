@@ -54,6 +54,8 @@ class PetaleDataset(Dataset):
             cont_cols: list of column names associated with continuous data
             cat_cols: list of column names associated with categorical data
             gene_cols: list of categorical column names that must be considered as genes
+            feature_selection_groups: list with list of column names to consider together
+                                      in group-wise feature selection
             classification: true for classification task, false for regression
             to_tensor: true if we want the features and targets in tensors, false for numpy arrays
 

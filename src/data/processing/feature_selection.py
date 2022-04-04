@@ -24,9 +24,6 @@ class FeatureSelector:
     See the following source:
     Deep Learning for Coders with fastai & PyTorch : AI Applications Without a PhD (p.486-489)
     """
-    CUMULATIVE: str = "cumulative"
-    FEATURES: str = "features"
-    THRESH: str = "threshold"
     RECORDS_FILE = "feature_selection_records.csv"
 
     def __init__(self,
@@ -159,7 +156,7 @@ class FeatureSelector:
                 fi_table['status'] = status_list
             else:
                 fi_table['status'] = ['rejected']*fi_table.shape[0]
-                fi_table.loc[fi_table['imp'] >= self.__thresh, 'status'] = 'selected'
+                fi_table.loc[fi_table['imp'] >= thresh, 'status'] = 'selected'
 
             fi_tables.append(fi_table)
 

@@ -239,9 +239,14 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
 
     # Initialization of feature selector
     if args.feature_selection:
-        feature_selector = FeatureSelector(threshold=args.feature_imp_thresh,
-                                           cumulative_imp=args.cumulative_imp,
-                                           seed=args.seed)
+        if genes:
+            feature_selector = FeatureSelector(threshold=[0.01, 0.90],
+                                               cumulative_imp=[False, True],
+                                               seed=args.seed)
+        else:
+            feature_selector = FeatureSelector(threshold=[0.01],
+                                               cumulative_imp=[False],
+                                               seed=args.seed)
     else:
         feature_selector = None
 

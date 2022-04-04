@@ -153,7 +153,7 @@ class PetaleDataset(Dataset):
         return self._encodings
 
     @property
-    def feature_selection_idx_groups(self) -> Optional[List[List[int]]]:
+    def feature_selection_idx_groups(self) -> Dict[int, Dict[str, List]]:
         return self._feature_selection_idx_groups
 
     @property
@@ -233,7 +233,7 @@ class PetaleDataset(Dataset):
         """
 
         # We create an additional group with the features that are not already in a group
-        groups = [] if groups is None else groups
+        groups = [] if (groups is None or groups[0] is None) else groups
         cat_cols = [] if self._cat_cols is None else self._cat_cols
         cont_cols = [] if self._cont_cols is None else self._cont_cols
 

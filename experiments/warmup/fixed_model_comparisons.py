@@ -96,8 +96,8 @@ if __name__ == '__main__':
     # Initialization of feature selector
     if args.feature_selection:
         if genes:
-            feature_selector = FeatureSelector(threshold=[0.01, 0.90],
-                                               cumulative_imp=[False, True],
+            feature_selector = FeatureSelector(threshold=[0.90, 0.01],
+                                               cumulative_imp=[True, False],
                                                seed=args.seed)
         else:
             feature_selector = FeatureSelector(threshold=[0.01],

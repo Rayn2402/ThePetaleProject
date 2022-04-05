@@ -61,7 +61,7 @@ ENET_GGE_HPS = {
     MLPHP.BATCH_SIZE.name: 5,
     MLPHP.BETA.name: 0.0005,
     MLPHP.DROPOUT.name: 0.25,
-    MLPHP.LR.name: 0.001,
+    MLPHP.LR.name: 0.01,
     MLPHP.RHO.name: 0,
     MLPHP.N_LAYER.name: 0,
     MLPHP.N_UNIT.name: 5
@@ -89,6 +89,5 @@ GCNHPS = {
 GGEHPS = {
     GGEHP.BATCH_SIZE.name: 5,
     GGEHP.DROPOUT.name: 0.25,
-    GGEHP.LR.name: 0.001,
-    GGEHP.RHO.name: 0.05,
+    GGEHP.LR.name: 0.005,
 }

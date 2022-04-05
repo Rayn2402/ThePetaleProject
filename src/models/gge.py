@@ -11,10 +11,8 @@ import os
 
 from src.data.processing.datasets import PetaleDataset
 from src.models.abstract_models.base_models import PetaleEncoder
-from src.models.abstract_models.custom_torch_base import TorchCustomModel
 from src.models.blocks.genes_signature_block import GeneGraphAttentionEncoder, GeneGraphEncoder, GeneSignatureDecoder
 from src.training.early_stopping import EarlyStopper
-from src.training.sam import SAM
 from src.utils.hyperparameters import HP, NumericalContinuousHP, NumericalIntHP
 from src.utils.score_metrics import Direction
 from torch import abs, eye, mean, mm, no_grad, pow, save, sum, tensor, zeros
@@ -36,7 +34,6 @@ class PetaleGGE(PetaleEncoder, Module):
     def __init__(self,
                  gene_idx_groups: Dict[str, List[int]],
                  lr: float,
-                 rho: float = 0.5,
                  dropout: float = 0,
                  batch_size: int = 25,
                  valid_batch_size: Optional[int] = None,
@@ -54,8 +51,6 @@ class PetaleGGE(PetaleEncoder, Module):
                              are list of idx referring to columns of genes associated to
                              the chromosome
             lr: learning rate
-            rho: if >=0 will be used as neighborhood size in Sharpness-Aware Minimization optimizer,
-                 otherwise, standard SGD optimizer with momentum will be used
             dropout: dropout probability
             batch_size: size of the batches in the training loader
             valid_batch_size: size of the batches in the valid loader
@@ -70,7 +65,6 @@ class PetaleGGE(PetaleEncoder, Module):
         # We call parents' constructor
         Module.__init__(self)
         PetaleEncoder.__init__(self, train_params={'lr': lr,
-                                                   'rho': rho,
                                                    'batch_size': batch_size,
                                                    'valid_batch_size': valid_batch_size,
                                                    'patience': patience,
@@ -79,10 +73,6 @@ class PetaleGGE(PetaleEncoder, Module):
         # We validate and save the fuzzyness parameter
         if aggregation_method not in PetaleGGE.AGGREGATION_METHODS:
             raise ValueError(f'Aggregation method must be in {PetaleGGE.AGGREGATION_METHODS}')
-
-        # We validate the rho parameter
-        if rho <= 0:
-            raise ValueError('rho must be > 0')
 
         # We create the encoder
         if aggregation_method == PetaleGGE.AVG:
@@ -100,7 +90,6 @@ class PetaleGGE(PetaleEncoder, Module):
 
         # We create the decoder
         self.__dec = GeneSignatureDecoder(nb_genes=self.__enc.nb_genes,
-                                          hidden_size=hidden_size,
                                           signature_size=signature_size)
 
         # We initialize the optimizer
@@ -141,22 +130,6 @@ class PetaleGGE(PetaleEncoder, Module):
         # We create the dataloader
         return DataLoader(dataset, batch_size=batch_size, sampler=SubsetRandomSampler(mask), drop_last=drop_last)
 
-    def __disable_running_stats(self) -> None:
-        """
-        Disables batch norm momentum when executing SAM optimization step
-
-        Returns: None
-        """
-        self.apply(TorchCustomModel.disable_module_running_stats)
-
-    def __enable_running_stats(self) -> None:
-        """
-        Restores batch norm momentum when executing SAM optimization step
-
-        Returns: None
-        """
-        self.apply(TorchCustomModel.enable_module_running_stats)
-
     def __execute_train_step(self, train_data: DataLoader) -> None:
         """
         Executes one training epoch
@@ -179,8 +152,9 @@ class PetaleGGE(PetaleEncoder, Module):
             # We extract the data
             x, _, idx = item
 
-            # We update the weights (the gradient is cleared within this function)
-            self.__update_weights(x, idx)
+            # We update the weights
+            self.loss(self(x), idx).backward()
+            self.__optimizer.step()
 
     def __execute_valid_step(self, valid_data: DataLoader) -> float:
         """
@@ -209,35 +183,6 @@ class PetaleGGE(PetaleEncoder, Module):
 
         # We return the mean epoch loss
         return epoch_loss/len(valid_data)
-
-    def __update_weights(self, x: tensor, idx: List[int]) -> None:
-        """
-        Executes a weights update using Sharpness-Aware Minimization (SAM) optimizer
-
-        Note from https://github.com/davda54/sam :
-            The running statistics are computed in both forward passes, but they should
-            be computed only for the first one. A possible solution is to set BN momentum
-            to zero to bypass the running statistics during the second pass.
-
-        Args:
-            x: (N, D) tensor with D-dimensional samples
-            idx: list of idx associated to patients for which the encodings
-                 were calculated
-
-        Returns: None
-        """
-
-        # First forward-backward pass
-        self.loss(self(x), idx).backward()
-        self.__optimizer.first_step()
-
-        # Second forward-backward pass
-        self.__disable_running_stats()
-        self.loss(self(x), idx).backward()
-        self.__optimizer.second_step()
-
-        # We enable running stats again
-        self.__enable_running_stats()
 
     def __set_jaccard_similarities(self) -> None:
         """
@@ -310,7 +255,7 @@ class PetaleGGE(PetaleEncoder, Module):
         dec_loss = mean(sum(pow(self.__dec(x) - self.__one_hot[idx, :, :], 2), dim=(1, 2)))
 
         # We now calculate the loss
-        return (jacc_loss + dec_loss)/2
+        return jacc_loss + dec_loss
 
     def fit(self, dataset: PetaleDataset) -> None:
         """
@@ -336,7 +281,7 @@ class PetaleGGE(PetaleEncoder, Module):
         early_stopper = EarlyStopper(patience=self._train_params['patience'], direction=Direction.MINIMIZE)
 
         # Creation of the optimizer
-        self.__optimizer = SAM(self.parameters(), Adam, rho=self._train_params['rho'], lr=self._train_params['lr'])
+        self.__optimizer = Adam(params=self.parameters(), lr=self._train_params['lr'])
 
         # We set the one hot encodings matrix
         self.__set_one_hot_encodings(dataset)
@@ -453,7 +398,6 @@ class GGEHP:
     BATCH_SIZE = NumericalIntHP("batch_size")
     DROPOUT = NumericalContinuousHP("dropout")
     LR = NumericalContinuousHP("lr")
-    RHO = NumericalContinuousHP("rho")
 
     def __iter__(self):
-        return iter([self.BATCH_SIZE, self.DROPOUT, self.LR, self.RHO])
+        return iter([self.BATCH_SIZE, self.DROPOUT, self.LR])

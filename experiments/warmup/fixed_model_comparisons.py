@@ -50,30 +50,25 @@ if __name__ == '__main__':
     if args.genes_subgroup:
         genes_selection = GeneChoice.SIGNIFICANT
         gene_cols = SIGNIFICANT_CHROM_POS_WARMUP
+        genes = True
     elif args.all_genes:
         genes_selection = GeneChoice.ALL
         gene_cols = ALL_CHROM_POS_WARMUP
+        genes = True
     else:
-        genes_selection = None
+        genes_selection = None if not args.genes_pair else GeneChoice.ALL
         gene_cols = None
+        genes = False
 
-    genes = True if genes_selection is not None else False
     df, target, cont_cols, cat_cols = get_warmup_data(manager,
                                                       baselines=args.baselines,
                                                       genes=genes_selection,
                                                       sex=args.sex)
     # We filter gene variables if needed
-    if genes and args.remove_low_imp_genes0:
-        df.drop(LOW_IMP_CHROM_POS_WARMUP0, axis=1, inplace=True)
-        cat_cols = [c for c in cat_cols if c not in LOW_IMP_CHROM_POS_WARMUP0]
-
-    if genes and args.remove_low_imp_genes1:
-        df.drop(LOW_IMP_CHROM_POS_WARMUP1, axis=1, inplace=True)
-        cat_cols = [c for c in cat_cols if c not in LOW_IMP_CHROM_POS_WARMUP1]
-
-    elif genes and args.remove_low_imp_genes2:
-        df.drop(LOW_IMP_CHROM_POS_WARMUP2, axis=1, inplace=True)
-        cat_cols = [c for c in cat_cols if c not in LOW_IMP_CHROM_POS_WARMUP2]
+    if args.genes_pair:
+        genes_to_remove = [g for g in ALL_CHROM_POS_WARMUP if g not in ['7_45932669', '6_110760008']]
+        df.drop(genes_to_remove, axis=1, inplace=True)
+        cat_cols = [c for c in cat_cols if c not in genes_to_remove]
 
     # We filter baselines variables if needed
     if args.baselines and args.remove_walk_variables:
@@ -95,9 +90,9 @@ if __name__ == '__main__':
 
     # Initialization of feature selector
     if args.feature_selection:
-        if genes:
-            feature_selector = FeatureSelector(threshold=[0.90, 0.01],
-                                               cumulative_imp=[True, False],
+        if genes and args.baselines:
+            feature_selector = FeatureSelector(threshold=[0.01, 0.01],
+                                               cumulative_imp=[False, False],
                                                seed=args.seed)
         else:
             feature_selector = FeatureSelector(threshold=[0.01],
@@ -585,7 +580,7 @@ if __name__ == '__main__':
             return {'max_epochs': 500,
                     'patience': 50,
                     'gene_idx_groups': dts.gene_idx_groups,
-                    'hidden_size': 3,
+                    'hidden_size': 2,
                     'signature_size': args.signature_size,
                     'genes_emb_sharing': args.embedding_sharing,
                     'aggregation_method': 'att',
@@ -632,7 +627,7 @@ if __name__ == '__main__':
             return {'max_epochs': 500,
                     'patience': 50,
                     'gene_idx_groups': dts.gene_idx_groups,
-                    'hidden_size': 3,
+                    'hidden_size': 2,
                     'signature_size': args.signature_size,
                     'genes_emb_sharing': args.embedding_sharing,
                     'aggregation_method': 'avg',

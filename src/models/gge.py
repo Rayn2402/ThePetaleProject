@@ -5,7 +5,7 @@ Author: Nicolas Raymond
 
 Description: This file defines the Petale Gene Graph Encoder (GGE) model used for self supervised learning.
 
-Date of last modification: 2022/02/04
+Date of last modification: 2022/04/05
 """
 import os
 
@@ -34,6 +34,7 @@ class PetaleGGE(PetaleEncoder, Module):
     def __init__(self,
                  gene_idx_groups: Dict[str, List[int]],
                  lr: float,
+                 beta: float = 0,
                  dropout: float = 0,
                  batch_size: int = 25,
                  valid_batch_size: Optional[int] = None,
@@ -51,6 +52,7 @@ class PetaleGGE(PetaleEncoder, Module):
                              are list of idx referring to columns of genes associated to
                              the chromosome
             lr: learning rate
+            beta: L2 penalty coefficient
             dropout: dropout probability
             batch_size: size of the batches in the training loader
             valid_batch_size: size of the batches in the valid loader
@@ -66,6 +68,7 @@ class PetaleGGE(PetaleEncoder, Module):
         Module.__init__(self)
         PetaleEncoder.__init__(self, train_params={'lr': lr,
                                                    'batch_size': batch_size,
+                                                   'beta': beta,
                                                    'valid_batch_size': valid_batch_size,
                                                    'patience': patience,
                                                    'max_epochs': max_epochs})
@@ -281,7 +284,8 @@ class PetaleGGE(PetaleEncoder, Module):
         early_stopper = EarlyStopper(patience=self._train_params['patience'], direction=Direction.MINIMIZE)
 
         # Creation of the optimizer
-        self.__optimizer = Adam(params=self.parameters(), lr=self._train_params['lr'])
+        self.__optimizer = Adam(params=self.parameters(), lr=self._train_params['lr'],
+                                weight_decay=self._train_params['beta'])
 
         # We set the one hot encodings matrix
         self.__set_one_hot_encodings(dataset)
@@ -396,8 +400,9 @@ class GGEHP:
     GeneGraphEncoder's hyperparameters
     """
     BATCH_SIZE = NumericalIntHP("batch_size")
+    BETA = NumericalContinuousHP("beta")
     DROPOUT = NumericalContinuousHP("dropout")
     LR = NumericalContinuousHP("lr")
 
     def __iter__(self):
-        return iter([self.BATCH_SIZE, self.DROPOUT, self.LR])
+        return iter([self.BATCH_SIZE, self.BETA, self.DROPOUT, self.LR])

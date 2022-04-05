@@ -9,8 +9,6 @@ Date of last modification: 2022/02/08
 """
 
 import argparse
-from src.data.extraction.constants import LOW_IMP_CHROM_POS_WARMUP0,\
-    LOW_IMP_CHROM_POS_WARMUP1, LOW_IMP_CHROM_POS_WARMUP2
 
 
 def apriori_argparser():
@@ -179,14 +177,10 @@ def warmup_experiment_parser():
     parser.add_argument('-r_w', '--remove_walk_variables', default=False, action='store_true',
                         help='If true, removes the six minutes walk test variables from the baselines'
                              '(only applies if the baselines are included')
+    parser.add_argument('-gen0', '--genes_pair', default=False, action='store_true',
+                        help='If true, includes the pair of most impactful genes')
     parser.add_argument('-gen1', '--genes_subgroup', default=False, action='store_true',
                         help='If true, includes the significant genes in the features')
-    parser.add_argument('-r_li_genes0', '--remove_low_imp_genes0', default=False, action='store_true',
-                        help=f"If true, removes {LOW_IMP_CHROM_POS_WARMUP0} from genes subgroup")
-    parser.add_argument('-r_li_genes1', '--remove_low_imp_genes1', default=False, action='store_true',
-                        help=f"If true, removes {LOW_IMP_CHROM_POS_WARMUP1} from genes subgroup")
-    parser.add_argument('-r_li_genes2', '--remove_low_imp_genes2', default=False, action='store_true',
-                        help=f"If true, removes {LOW_IMP_CHROM_POS_WARMUP2} from genes subgroup")
     parser.add_argument('-gen2', '--all_genes', default=False, action='store_true',
                         help='If true, includes all the genes in the features')
     parser.add_argument('-f', '--feature_selection', default=False, action='store_true',

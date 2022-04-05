@@ -88,6 +88,7 @@ GCNHPS = {
 
 GGEHPS = {
     GGEHP.BATCH_SIZE.name: 5,
+    GGEHP.BETA.name: 0.0005,
     GGEHP.DROPOUT.name: 0.25,
     GGEHP.LR.name: 0.005,
 }

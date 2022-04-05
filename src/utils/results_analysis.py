@@ -72,11 +72,12 @@ def get_classification_metrics(target_table_name: str,
             # We save the predictions of every participant
             pred = {PARTICIPANT: [], SECTION: [], REG_PRED: [], CLASS_PRED: []}
             for section in [TRAIN_RESULTS, TEST_RESULTS, VALID_RESULTS]:
-                for k in data[section].keys():
-                    pred[PARTICIPANT].append(k)
-                    pred[SECTION].append(section)
-                    pred[REG_PRED].append(float(data[section][k][PREDICTION]))
-                    pred[CLASS_PRED].append(0)
+                if data.get(section) is not None:
+                    for k in data[section].keys():
+                        pred[PARTICIPANT].append(k)
+                        pred[SECTION].append(section)
+                        pred[REG_PRED].append(float(data[section][k][PREDICTION]))
+                        pred[CLASS_PRED].append(0)
 
             # We save the predictions in a dataframe
             pred_df = DataFrame(data=pred)
@@ -89,12 +90,13 @@ def get_classification_metrics(target_table_name: str,
 
             # We calculate the metrics
             for s1, s2 in [(TRAIN_RESULTS, TRAIN_METRICS), (TEST_RESULTS, TEST_METRICS), (VALID_RESULTS, VALID_METRICS)]:
-                subset_df = pred_df.loc[pred_df[SECTION] == s1, :]
-                pred = tensor(subset_df[CLASS_PRED].to_numpy())
-                target = tensor(subset_df[target_column_name].astype('float').to_numpy()).long()
+                if data.get(s2) is not None:
+                    subset_df = pred_df.loc[pred_df[SECTION] == s1, :]
+                    pred = tensor(subset_df[CLASS_PRED].to_numpy())
+                    target = tensor(subset_df[target_column_name].astype('float').to_numpy()).long()
 
-                for metric in metrics:
-                    data[s2][metric.name] = metric(pred=pred, targets=target)
+                    for metric in metrics:
+                        data[s2][metric.name] = metric(pred=pred, targets=target)
 
             # We update the json records file
             with open(join(sub_path, f2, RECORDS_FILE), "w") as file:

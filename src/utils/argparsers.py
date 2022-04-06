@@ -89,6 +89,8 @@ def fixed_hps_lae_experiment_parser():
                         help='Number of inner splits during the models evaluations')
 
     # Features selection
+    parser.add_argument('-b', '--baselines', default=False, action='store_true',
+                        help='True if we want to include baselines in features')
     parser.add_argument('-gen1', '--genes_subgroup', default=False, action='store_true',
                         help='True if we want to include genes in features')
     parser.add_argument('-gen2', '--all_genes', default=False, action='store_true',

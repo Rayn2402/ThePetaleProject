@@ -366,6 +366,7 @@ def push_valid_to_train(masks: Dict[int, Dict[str, Union[List[int], Dict[str, Li
 
 def get_learning_one_data(data_manager: PetaleDataManager,
                           genes: Optional[str],
+                          baselines: bool = True,
                           dummy: bool = False) -> Tuple[DataFrame, str, List[str], List[str]]:
     """
     Extracts dataframe needed to proceed to "learning one" experiments and turn it into a dataset
@@ -373,6 +374,7 @@ def get_learning_one_data(data_manager: PetaleDataManager,
     Args:
         data_manager: data manager to communicate with the database
         genes: One choice among ("None", "significant", "all")
+        baselines: if True, baselines variables are included
         dummy: true if we want to include dummy variable combining sex and VO2 quantile
 
     Returns: dataframe, target, continuous columns, categorical columns
@@ -382,8 +384,9 @@ def get_learning_one_data(data_manager: PetaleDataManager,
     cont_cols, cat_cols = [], []
 
     # We add baselines
-    cont_cols += [AGE_AT_DIAGNOSIS, DT, DOX, METHO, CORTICO]
-    cat_cols += [SEX, RADIOTHERAPY_DOSE, DEX, BIRTH_AGE]
+    if baselines:
+        cont_cols += [AGE_AT_DIAGNOSIS, DT, DOX, METHO, CORTICO]
+        cat_cols += [SEX, RADIOTHERAPY_DOSE, DEX, BIRTH_AGE]
 
     # We check for genes
     if genes is not None:
@@ -404,15 +407,21 @@ def get_learning_one_data(data_manager: PetaleDataManager,
     df = data_manager.get_table(LEARNING_1, columns=[PARTICIPANT, TOTAL_BODY_FAT] + cont_cols + cat_cols)
 
     # We replace wrong categorical values
-    df.loc[(df[DEX] != "0"), [DEX]] = ">0"
-    df.replace("0/2", "0/1", inplace=True)
-    df.replace("1/2", "1/1", inplace=True)
+    if baselines:
+        df.loc[(df[DEX] != "0"), [DEX]] = ">0"
+    else:
+        cont_cols = None
+
+    if genes is not None:
+        df.replace("0/2", "0/1", inplace=True)
+        df.replace("1/2", "1/1", inplace=True)
 
     return df, TOTAL_BODY_FAT, cont_cols, cat_cols
 
 
 def get_learning_two_data(data_manager: PetaleDataManager,
-                          genes: Optional[str]
+                          genes: Optional[str],
+                          baselines: bool = True,
                           ) -> Tuple[DataFrame, str, List[str], List[str]]:
     """
     Extracts dataframe needed to proceed to "learning two" experiments and turn it into a dataset
@@ -420,6 +429,7 @@ def get_learning_two_data(data_manager: PetaleDataManager,
     Args:
         data_manager: data manager to communicate with the database
         genes: One choice among ("None", "significant", "all")
+        baselines: if True, baselines variables are included
 
     Returns: dataframe, target, continuous columns, categorical columns
     """
@@ -428,8 +438,9 @@ def get_learning_two_data(data_manager: PetaleDataManager,
     cont_cols, cat_cols = [], []
 
     # We add baselines
-    cont_cols += [AGE_AT_DIAGNOSIS, DT, DOX, METHO, CORTICO]
-    cat_cols += [SEX, RADIOTHERAPY_DOSE, DEX, BIRTH_AGE]
+    if baselines:
+        cont_cols += [AGE_AT_DIAGNOSIS, DT, DOX, METHO, CORTICO]
+        cat_cols += [SEX, RADIOTHERAPY_DOSE, DEX, BIRTH_AGE]
 
     # We check for genes
     if genes is not None:
@@ -447,9 +458,14 @@ def get_learning_two_data(data_manager: PetaleDataManager,
     df = data_manager.get_table(LEARNING_2, columns=[PARTICIPANT, EF] + cont_cols + cat_cols)
 
     # We replace wrong categorical values
-    df.loc[(df[DEX] != "0"), [DEX]] = ">0"
-    df.replace("0/2", "0/1", inplace=True)
-    df.replace("1/2", "1/1", inplace=True)
+    if baselines:
+        df.loc[(df[DEX] != "0"), [DEX]] = ">0"
+    else:
+        cont_cols = None
+
+    if genes is not None:
+        df.replace("0/2", "0/1", inplace=True)
+        df.replace("1/2", "1/1", inplace=True)
 
     return df, EF, cont_cols, cat_cols
 

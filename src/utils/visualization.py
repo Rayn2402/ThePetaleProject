@@ -223,7 +223,7 @@ def visualize_scaled_importance(data: Dict[str, Dict[str, float]],
     for key in data.keys():
         mean = data[key][MEAN]
         if mean >= 0.01:
-            scaled_imp.append(mean/data[key][STD])
+            scaled_imp.append(mean/(data[key][STD] + 0.001))
             labels.append(key)
 
     # We sort the list according values

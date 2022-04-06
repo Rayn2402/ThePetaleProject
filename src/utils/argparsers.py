@@ -91,6 +91,8 @@ def fixed_hps_lae_experiment_parser():
     # Features selection
     parser.add_argument('-b', '--baselines', default=False, action='store_true',
                         help='True if we want to include baselines in features')
+    parser.add_argument('-gen0', '--custom_genes', nargs='*', type=str, default=[],
+                        help="Custom selection of genes to include.")
     parser.add_argument('-gen1', '--genes_subgroup', default=False, action='store_true',
                         help='True if we want to include genes in features')
     parser.add_argument('-gen2', '--all_genes', default=False, action='store_true',

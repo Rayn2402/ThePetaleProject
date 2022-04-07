@@ -20,7 +20,6 @@ class PetaleGCNR(TorchRegressorWrapper):
     Graph Attention Network regression model wrapper for the Petale framework
     """
     def __init__(self,
-                 hidden_size: int,
                  eval_metric: Optional[RegressionMetric] = None,
                  lr: float = 0.05,
                  rho: float = 0,
@@ -28,6 +27,7 @@ class PetaleGCNR(TorchRegressorWrapper):
                  patience: int = 15,
                  alpha: float = 0,
                  beta: float = 0,
+                 hidden_size: Optional[int] = None,
                  num_cont_col: Optional[int] = None,
                  cat_idx: Optional[List[int]] = None,
                  cat_sizes: Optional[List[int]] = None,
@@ -37,7 +37,6 @@ class PetaleGCNR(TorchRegressorWrapper):
         Creates the regression model and sets protected attributes using parent's constructor
 
         Args:
-            hidden_size: size of the hidden states after the graph convolution
             eval_metric: evaluation metric
             attention dropout probability
             lr: learning rate
@@ -47,6 +46,7 @@ class PetaleGCNR(TorchRegressorWrapper):
             patience: number of consecutive epochs without improvement
             alpha: L1 penalty coefficient
             beta: L2 penalty coefficient
+            hidden_size: size of the hidden states after the graph convolution
             num_cont_col:
             cat_idx: idx of categorical columns in the dataset
             cat_sizes: list of integer representing the size of each categorical column

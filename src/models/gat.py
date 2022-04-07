@@ -5,7 +5,7 @@ Author: Nicolas Raymond
 
 Description: This file is used to define the wrapper for the GATRegressor
 
-Date of last modification: 2022/03/25
+Date of last modification: 2022/04/07
 """
 
 from src.models.abstract_models.gat_base_models import GATRegressor
@@ -20,7 +20,6 @@ class PetaleGATR(TorchRegressorWrapper):
     Graph Attention Network regression model wrapper for the Petale framework
     """
     def __init__(self,
-                 hidden_size: int,
                  num_heads: int,
                  eval_metric: Optional[RegressionMetric] = None,
                  feat_dropout: float = 0,
@@ -31,6 +30,7 @@ class PetaleGATR(TorchRegressorWrapper):
                  patience: int = 15,
                  alpha: float = 0,
                  beta: float = 0,
+                 hidden_size: Optional[int] = None,
                  num_cont_col: Optional[int] = None,
                  cat_idx: Optional[List[int]] = None,
                  cat_sizes: Optional[List[int]] = None,
@@ -40,11 +40,10 @@ class PetaleGATR(TorchRegressorWrapper):
         Creates the regression model and sets protected attributes using parent's constructor
 
         Args:
-            hidden_size: size of the hidden states after the graph convolution
             num_heads: number of attention heads
             eval_metric: evaluation metric
             feat_dropout: features dropout probability
-            attention dropout probability
+            attn_dropout: attention dropout probability
             lr: learning rate
             rho: if >=0 will be used as neighborhood size in Sharpness-Aware Minimization optimizer,
                  otherwise, standard Adam optimizer will be used
@@ -52,7 +51,8 @@ class PetaleGATR(TorchRegressorWrapper):
             patience: number of consecutive epochs without improvement
             alpha: L1 penalty coefficient
             beta: L2 penalty coefficient
-            num_cont_col:
+            hidden_size: size of the hidden states after the graph convolution
+            num_cont_col: number of continuous columns
             cat_idx: idx of categorical columns in the dataset
             cat_sizes: list of integer representing the size of each categorical column
             cat_emb_sizes: list of integer representing the size of each categorical embedding

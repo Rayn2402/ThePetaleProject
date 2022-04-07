@@ -5,7 +5,7 @@ Author: Nicolas Raymond
 
 Description: This file defines the Graph Convolutional Network model
 
-Date of last modification: 2022/02/22
+Date of last modification: 2022/04/07
 """
 from dgl import DGLGraph
 from dgl.nn.pytorch import GraphConv
@@ -23,12 +23,12 @@ class GCN(GNN):
     """
     def __init__(self,
                  output_size: int,
-                 hidden_size: int,
                  criterion: Callable,
                  criterion_name: str,
                  eval_metric: Metric,
                  alpha: float = 0,
                  beta: float = 0,
+                 hidden_size: Optional[int] = None,
                  num_cont_col: Optional[int] = None,
                  cat_idx: Optional[List[int]] = None,
                  cat_sizes: Optional[List[int]] = None,
@@ -39,12 +39,12 @@ class GCN(GNN):
         Builds the layers of the model and sets other protected attributes
 
         Args:
-            hidden_size: size of the hidden states after the graph convolution
             criterion: loss function of our model
             criterion_name: name of the loss function
             eval_metric: evaluation metric
             alpha: L1 penalty coefficient
             beta: L2 penalty coefficient
+            hidden_size: size of the hidden states after the graph convolution
             num_cont_col: number of numerical continuous columns in the dataset
             cat_idx: idx of categorical columns in the dataset
             cat_sizes: list of integer representing the size of each categorical column
@@ -95,10 +95,13 @@ class GCN(GNN):
             new_x.append(self._embedding_block(x))
 
         # We concatenate all inputs
-        h = cat(new_x, 1)
+        x = cat(new_x, 1)
 
         # We apply the graph convolutional layer
-        h = self._conv_layer(g, h, edge_weight=g.edata['w'])
+        h = self._bn(self._conv_layer(g, x, edge_weight=g.edata['w']))
+
+        # We apply the residual connection
+        h = h + x
 
         # We apply the linear layer
         return self._linear_layer(h).squeeze()
@@ -109,10 +112,10 @@ class GCNRegressor(GCN):
     Graph Convolutional Network regression model
     """
     def __init__(self,
-                 hidden_size: int,
                  eval_metric: Metric,
                  alpha: float = 0,
                  beta: float = 0,
+                 hidden_size: Optional[int] = None,
                  num_cont_col: Optional[int] = None,
                  cat_idx: Optional[List[int]] = None,
                  cat_sizes: Optional[List[int]] = None,
@@ -122,10 +125,10 @@ class GCNRegressor(GCN):
         Sets the attributes using the parent constructor
 
         Args:
-            hidden_size: size of the hidden states after the graph convolution
             eval_metric: evaluation metric
             alpha: L1 penalty coefficient
             beta: L2 penalty coefficient
+            hidden_size: size of the hidden states after the graph convolution
             num_cont_col: number of numerical continuous columns in the dataset
             cat_idx: idx of categorical columns in the dataset
             cat_sizes: list of integer representing the size of each categorical column

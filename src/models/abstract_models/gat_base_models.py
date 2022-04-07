@@ -5,7 +5,7 @@ Author: Nicolas Raymond
 
 Description: This file defines the Graph Attention Network model
 
-Date of last modification: 2022/02/28
+Date of last modification: 2022/04/07
 """
 from dgl import DGLGraph
 from dgl.nn.pytorch import GATConv
@@ -24,7 +24,6 @@ class GAT(GNN):
     """
     def __init__(self,
                  output_size: int,
-                 hidden_size: int,
                  num_heads: int,
                  criterion: Callable,
                  criterion_name: str,
@@ -33,6 +32,7 @@ class GAT(GNN):
                  attn_dropout: float = 0,
                  alpha: float = 0,
                  beta: float = 0,
+                 hidden_size: Optional[int] = None,
                  num_cont_col: Optional[int] = None,
                  cat_idx: Optional[List[int]] = None,
                  cat_sizes: Optional[List[int]] = None,
@@ -43,7 +43,6 @@ class GAT(GNN):
         Builds the layers of the model and sets other protected attributes
 
         Args:
-            hidden_size: size of the hidden states after the graph convolution
             num_heads: number of attention heads
             criterion: loss function of our model
             criterion_name: name of the loss function
@@ -52,6 +51,7 @@ class GAT(GNN):
             attn_dropout: attention dropout probability
             alpha: L1 penalty coefficient
             beta: L2 penalty coefficient
+            hidden_size: size of the hidden states after the graph convolution
             num_cont_col: number of numerical continuous columns in the dataset
             cat_idx: idx of categorical columns in the dataset
             cat_sizes: list of integer representing the size of each categorical column
@@ -107,13 +107,16 @@ class GAT(GNN):
             new_x.append(self._embedding_block(x))
 
         # We concatenate all inputs
-        h = cat(new_x, 1)
+        x = cat(new_x, 1)
 
         # We apply the graph convolutional layer
-        h = self._conv_layer(g, h)
+        h = self._conv_layer(g, x)
 
         # We take the average of all the attention heads and apply batch norm
         h = self._bn(h.sum(dim=1)/self._num_att_heads)
+
+        # We apply a residual connection
+        h = h + x
 
         # We apply the linear layer
         return self._linear_layer(h).squeeze()
@@ -124,13 +127,13 @@ class GATRegressor(GAT):
     Graph Attention Network regression model
     """
     def __init__(self,
-                 hidden_size: int,
                  num_heads: int,
                  eval_metric: Metric,
                  feat_dropout: float = 0,
                  attn_dropout: float = 0,
                  alpha: float = 0,
                  beta: float = 0,
+                 hidden_size: Optional[int] = None,
                  num_cont_col: Optional[int] = None,
                  cat_idx: Optional[List[int]] = None,
                  cat_sizes: Optional[List[int]] = None,
@@ -140,13 +143,13 @@ class GATRegressor(GAT):
         Sets the attributes using the parent constructor
 
         Args:
-            hidden_size: size of the hidden states after the graph convolution
             num_heads: number of attention heads
             eval_metric: evaluation metric
             feat_dropout: features dropout probability
             attn_dropout: attention dropout probability
             alpha: L1 penalty coefficient
             beta: L2 penalty coefficient
+            hidden_size: size of the hidden states after the graph convolution
             num_cont_col: number of numerical continuous columns in the dataset
             cat_idx: idx of categorical columns in the dataset
             cat_sizes: list of integer representing the size of each categorical column

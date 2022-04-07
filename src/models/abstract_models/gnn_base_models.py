@@ -6,7 +6,7 @@ Author: Nicolas Raymond
 Description: This file defines the GNN class which implements common training routine
              methods for GNN models
 
-Date of last modification: 2022/02/28
+Date of last modification: 2022/04/07
 """
 
 from src.data.processing.gnn_datasets import MaskType, PetaleKGNNDataset
@@ -25,12 +25,12 @@ class GNN(TorchCustomModel):
     """
     def __init__(self,
                  output_size: int,
-                 hidden_size: int,
                  criterion: Callable,
                  criterion_name: str,
                  eval_metric: Metric,
                  alpha: float = 0,
                  beta: float = 0,
+                 hidden_size: Optional[int] = None,
                  num_cont_col: Optional[int] = None,
                  cat_idx: Optional[List[int]] = None,
                  cat_sizes: Optional[List[int]] = None,
@@ -41,12 +41,12 @@ class GNN(TorchCustomModel):
        Sets some protected attributes
 
         Args:
-            hidden_size: size of the hidden states after the graph convolution
             criterion: loss function of our model
             criterion_name: name of the loss function
             eval_metric: evaluation metric
             alpha: L1 penalty coefficient
             beta: L2 penalty coefficient
+            hidden_size: size of the hidden states after the graph convolution
             num_cont_col: number of numerical continuous columns in the dataset
             cat_idx: idx of categorical columns in the dataset
             cat_sizes: list of integer representing the size of each categorical column
@@ -66,12 +66,16 @@ class GNN(TorchCustomModel):
                          cat_emb_sizes=cat_emb_sizes,
                          verbose=verbose)
 
+        # We save the hidden size
+        self._hidden_size = hidden_size if hidden_size is not None else self._input_size
+
+        # We save the batch norm layer
+        self._bn = BatchNorm1d(hidden_size)
+
         # We save the linear layer and the batch norm layer
-        if hidden_size != output_size:
-            self._bn = BatchNorm1d(hidden_size)
-            self._linear_layer = Linear(hidden_size, output_size)
+        if hidden_size != self._input_size:
+            self._linear_layer = Linear(hidden_size, self._input_size)
         else:
-            self._bn = Identity()
             self._linear_layer = Identity()
 
     def _execute_train_step(self,

@@ -204,7 +204,9 @@ def run_correct_and_smooth_experiment(dataset: PetaleDataset,
 
 def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
                                          mask_path: str,
-                                         experiment_id: str) -> None:
+                                         experiment_id: str,
+                                         all_chrom_pos: List[str],
+                                         significant_chrom_pos: List[str]) -> None:
     """
     Run all the model comparisons over a dataset using fixed hps
 
@@ -219,10 +221,10 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
     # We extract needed data
     if args.genes_subgroup:
         genes_selection = GeneChoice.SIGNIFICANT
-        gene_cols = SIGNIFICANT_CHROM_POS_OBESITY
+        gene_cols = significant_chrom_pos
     elif args.all_genes:
         genes_selection = GeneChoice.ALL
-        gene_cols = ALL_CHROM_POS_OBESITY
+        gene_cols = all_chrom_pos
     elif len(args.custom_genes) != 0:
         genes_selection = GeneChoice.ALL
         gene_cols = args.custom_genes
@@ -236,7 +238,7 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
                                                                baselines=args.baselines)
     # We filter gene variables if needed
     if len(args.custom_genes) != 0:
-        genes_to_remove = [g for g in ALL_CHROM_POS_OBESITY if g not in args.custom_genes]
+        genes_to_remove = [g for g in all_chrom_pos if g not in args.custom_genes]
         df.drop(genes_to_remove, axis=1, inplace=True)
         cat_cols = [c for c in cat_cols if c not in genes_to_remove]
 

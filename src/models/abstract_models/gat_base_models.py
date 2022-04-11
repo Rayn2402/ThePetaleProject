@@ -5,7 +5,7 @@ Author: Nicolas Raymond
 
 Description: This file defines the Graph Attention Network model
 
-Date of last modification: 2022/04/07
+Date of last modification: 2022/04/11
 """
 from dgl import DGLGraph
 from dgl.nn.pytorch import GATConv
@@ -13,7 +13,7 @@ from src.data.processing.gnn_datasets import PetaleKGNNDataset
 from src.models.abstract_models.gnn_base_models import GNN
 from src.utils.score_metrics import Metric, RootMeanSquaredError
 from torch import cat, no_grad, tensor
-from torch.nn import MSELoss
+from torch.nn import MSELoss, Dropout
 from torch.nn.functional import relu
 from typing import Callable, List, Optional
 
@@ -74,7 +74,7 @@ class GAT(GNN):
 
         # We build the main layer
         self._conv_layer = GATConv(in_feats=self._input_size,
-                                   out_feats=hidden_size,
+                                   out_feats=self._hidden_size,
                                    num_heads=num_heads,
                                    feat_drop=feat_dropout,
                                    attn_drop=attn_dropout,
@@ -113,10 +113,10 @@ class GAT(GNN):
         h = self._conv_layer(g, x)
 
         # We take the average of all the attention heads and apply batch norm
-        h = self._bn(h.sum(dim=1)/self._num_att_heads)
+        h = h.sum(dim=1)/self._num_att_heads
 
-        # We apply a residual connection
-        h = h + x
+        # We apply the residual connection
+        h = self._dropout(self._bn(cat([h, x], dim=1)))
 
         # We apply the linear layer
         return self._linear_layer(h).squeeze()

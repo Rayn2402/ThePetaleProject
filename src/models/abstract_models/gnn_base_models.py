@@ -6,7 +6,7 @@ Author: Nicolas Raymond
 Description: This file defines the GNN class which implements common training routine
              methods for GNN models
 
-Date of last modification: 2022/04/07
+Date of last modification: 2022/04/11
 """
 
 from src.data.processing.gnn_datasets import MaskType, PetaleKGNNDataset
@@ -14,7 +14,7 @@ from src.models.abstract_models.custom_torch_base import TorchCustomModel
 from src.training.early_stopping import EarlyStopper
 from src.utils.score_metrics import Metric
 from torch import no_grad, ones, tensor
-from torch.nn import BatchNorm1d, Identity, Linear
+from torch.nn import BatchNorm1d, Dropout, Linear
 from torch.utils.data import DataLoader
 from typing import Callable, List, Optional, Union, Tuple
 
@@ -70,13 +70,13 @@ class GNN(TorchCustomModel):
         self._hidden_size = hidden_size if hidden_size is not None else self._input_size
 
         # We save the batch norm layer
-        self._bn = BatchNorm1d(hidden_size)
+        self._bn = BatchNorm1d(self._hidden_size + self._input_size)
 
-        # We save the linear layer and the batch norm layer
-        if hidden_size != self._input_size:
-            self._linear_layer = Linear(hidden_size, self._input_size)
-        else:
-            self._linear_layer = Identity()
+        # We save the dropout layer
+        self._dropout = Dropout(0.25)
+
+        # We save the linear layer for the final output
+        self._linear_layer = Linear(self._hidden_size + self._input_size, output_size)
 
     def _execute_train_step(self,
                             train_data: Tuple[DataLoader, PetaleKGNNDataset],

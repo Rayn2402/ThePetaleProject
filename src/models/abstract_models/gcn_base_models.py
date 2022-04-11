@@ -5,7 +5,7 @@ Author: Nicolas Raymond
 
 Description: This file defines the Graph Convolutional Network model
 
-Date of last modification: 2022/04/07
+Date of last modification: 2022/04/11
 """
 from dgl import DGLGraph
 from dgl.nn.pytorch import GraphConv
@@ -13,7 +13,7 @@ from src.data.processing.gnn_datasets import PetaleKGNNDataset
 from src.models.abstract_models.gnn_base_models import GNN
 from src.utils.score_metrics import Metric, RootMeanSquaredError
 from torch import cat, no_grad, tensor
-from torch.nn import MSELoss
+from torch.nn import MSELoss, Dropout
 from typing import Callable, List, Optional
 
 
@@ -67,7 +67,7 @@ class GCN(GNN):
 
         # We build the main layer
         self._conv_layer = GraphConv(in_feats=self._input_size,
-                                     out_feats=hidden_size,
+                                     out_feats=self._hidden_size,
                                      norm='none',
                                      allow_zero_in_degree=False)
 
@@ -98,10 +98,10 @@ class GCN(GNN):
         x = cat(new_x, 1)
 
         # We apply the graph convolutional layer
-        h = self._bn(self._conv_layer(g, x, edge_weight=g.edata['w']))
+        h = self._conv_layer(g, x, edge_weight=g.edata['w'])
 
         # We apply the residual connection
-        h = h + x
+        h = self._dropout(self._bn(cat([h, x], dim=1)))
 
         # We apply the linear layer
         return self._linear_layer(h).squeeze()

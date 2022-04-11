@@ -441,7 +441,7 @@ if __name__ == '__main__':
         for nb_neighbor in args.degree:
 
             # We change the type from str to int
-            nb_neighbor = int(nb_neighbor)
+            nb_neigh = int(nb_neighbor)
 
             # We set the conditional column
             cond_cat_col = SEX if args.conditional_column else None
@@ -452,7 +452,7 @@ if __name__ == '__main__':
             for prefix, w_sim in GAT_options:
 
                 # Creation of the dataset
-                dataset = PetaleKGNNDataset(df, target, k=nb_neighbor,
+                dataset = PetaleKGNNDataset(df, target, k=nb_neigh,
                                             weighted_similarity=w_sim,
                                             cont_cols=cont_cols, cat_cols=cat_cols,
                                             conditional_cat_col=cond_cat_col,
@@ -507,7 +507,7 @@ if __name__ == '__main__':
         for nb_neighbor in args.degree:
 
             # We change the type from str to int
-            nb_neighbor = int(nb_neighbor)
+            nb_neigh = int(nb_neighbor)
 
             # We set the conditional column
             cond_cat_col = SEX if args.conditional_column else None
@@ -518,7 +518,7 @@ if __name__ == '__main__':
             for prefix, w_sim in GCN_options:
 
                 # Creation of the dataset
-                dataset = PetaleKGNNDataset(df, target, k=nb_neighbor,
+                dataset = PetaleKGNNDataset(df, target, k=nb_neigh,
                                             weighted_similarity=w_sim,
                                             cont_cols=cont_cols, cat_cols=cat_cols,
                                             conditional_cat_col=cond_cat_col, classification=False,

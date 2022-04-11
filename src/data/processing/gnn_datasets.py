@@ -78,7 +78,7 @@ class PetaleKGNNDataset(PetaleDataset):
             self._similarity_measure = PetaleKGNNDataset.COSINE
 
         if weighted_similarity:
-            self._feature_imp_extractor = FeatureSelector(100, seed=1010710)
+            self._feature_imp_extractor = FeatureSelector(threshold=[1], cumulative_imp=[True], seed=1010710)
 
         # We save the number of k-nearest neighbors and the self-loop attribute
         self._self_loop = self_loop
@@ -282,7 +282,7 @@ class PetaleKGNNDataset(PetaleDataset):
         Returns: (N, N) tensor
         """
         if self._similarity_measure == PetaleKGNNDataset.EUCLIDEAN:
-            sim = 1 / (self._compute_euclidean_dist() + eye(self._n))
+            sim = 1 / (self._compute_euclidean_dist() + ones(self._n, self._n))
         else:
             sim = self.compute_cosine_sim()
 
@@ -368,7 +368,7 @@ class PetaleKGNNDataset(PetaleDataset):
         self._neighbors_count = (filter_mat == 1).sum(dim=1)
 
         # We get the idx of the (n-1)-nearest neighbors of each item (excluding themselves)
-        _, self._nearest_neighbors_idx = topk((self._similarities - eye(self._n)), k=(self._n - 1), dim=1)
+        _, self._nearest_neighbors_idx = topk(self._similarities, k=(self._n - 1), dim=1)
 
     def get_arbitrary_subgraph(self, idx: List[int]) -> Tuple[DGLGraph, Dict[int, int], List[int]]:
         """

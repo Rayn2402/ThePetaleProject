@@ -13,7 +13,7 @@ from src.data.processing.gnn_datasets import PetaleKGNNDataset
 from src.models.abstract_models.gnn_base_models import GNN
 from src.utils.score_metrics import Metric, RootMeanSquaredError
 from torch import cat, no_grad, tensor
-from torch.nn import MSELoss, Dropout
+from torch.nn import MSELoss
 from torch.nn.functional import relu
 from typing import Callable, List, Optional
 

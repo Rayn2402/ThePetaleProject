@@ -38,7 +38,7 @@ if __name__ == '__main__':
     from src.data.extraction.constants import *
     from src.data.extraction.data_management import PetaleDataManager
     from src.utils.argparsers import warmup_experiment_parser
-    from src.utils.score_metrics import AbsoluteError, Pearson, RootMeanSquaredError, SquaredError
+    from src.utils.score_metrics import AbsoluteError, ConcordanceIndex, Pearson, RootMeanSquaredError, SquaredError
 
     # Arguments parsing
     args = warmup_experiment_parser()
@@ -86,7 +86,7 @@ if __name__ == '__main__':
     push_valid_to_train(masks_without_val)
 
     # Initialization of the dictionary containing the evaluation metrics
-    evaluation_metrics = [AbsoluteError(), Pearson(), SquaredError(), RootMeanSquaredError()]
+    evaluation_metrics = [AbsoluteError(), ConcordanceIndex(), Pearson(), SquaredError(), RootMeanSquaredError()]
 
     # Initialization of feature selector
     if args.feature_selection:

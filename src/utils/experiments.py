@@ -36,8 +36,8 @@ from src.training.evaluation import Evaluator
 from src.utils.argparsers import fixed_hps_lae_experiment_parser
 from src.utils.graph import PetaleGraph, correct_and_smooth
 from src.utils.results_analysis import get_apriori_statistics, print_and_save_apriori_rules
-from src.utils.score_metrics import RegressionMetric, BinaryClassificationMetric, AbsoluteError, Pearson,\
-    RootMeanSquaredError, SquaredError
+from src.utils.score_metrics import RegressionMetric, BinaryClassificationMetric, AbsoluteError, ConcordanceIndex,\
+    Pearson, RootMeanSquaredError, SquaredError
 from time import time
 from torch import zeros
 from tqdm import tqdm
@@ -248,7 +248,7 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
     push_valid_to_train(masks_without_val)
 
     # Initialization of the dictionary containing the evaluation metrics
-    evaluation_metrics = [AbsoluteError(), Pearson(), SquaredError(), RootMeanSquaredError()]
+    evaluation_metrics = [AbsoluteError(), ConcordanceIndex(), Pearson(), SquaredError(), RootMeanSquaredError()]
 
     # Initialization of feature selector
     if args.feature_selection:

@@ -56,7 +56,7 @@ if __name__ == '__main__':
         gene_cols = ALL_CHROM_POS_WARMUP
         genes = True
     else:
-        genes_selection = None if not args.genes_pair else GeneChoice.ALL
+        genes_selection = None if not args.single_gene else GeneChoice.ALL
         gene_cols = None
         genes = False
 

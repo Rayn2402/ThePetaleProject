@@ -32,11 +32,11 @@ class PetaleKGNNDataset(PetaleDataset):
                  target: str,
                  k: int = 5,
                  self_loop: bool = True,
-                 similarity: str = EUCLIDEAN,
                  weighted_similarity: bool = False,
                  cont_cols: Optional[List[str]] = None,
                  cat_cols: Optional[List[str]] = None,
                  gene_cols: Optional[List[str]] = None,
+                 feature_selection_groups: Optional[List[List[str]]] = None,
                  conditional_cat_col: Optional[str] = None,
                  classification: bool = True):
         """
@@ -47,12 +47,13 @@ class PetaleKGNNDataset(PetaleDataset):
             target: name of the column with the targets
             k: number of closest neighbors used to build the population graph
             self_loop: if True, self loop will be added to nodes in the graph
-            similarity: 'euclidean' or 'cosine'
             weighted_similarity: if True, the weights will assigned to features
                                  during similarities calculation
             cont_cols: list of column names associated with continuous data
             cat_cols: list of column names associated with categorical data
             gene_cols: list of categorical column names that must be considered as genes
+            feature_selection_groups: list with list of column names to consider together
+                                      in group-wise feature selection
             conditional_cat_col: name of column for which items need to share the same
                                  value in order to be allowed to be connected in the population graph
             classification: true for classification task, False for regression
@@ -68,10 +69,19 @@ class PetaleKGNNDataset(PetaleDataset):
         self._feature_imp_extractor = None
         self._neighbors_count = None
         self._nearest_neighbors_idx = None
-        self._similarity = similarity
+        self._similarities = None
+
+        # We set the similarity measure
+        if cat_cols is None or (len(cat_cols) == 1 and cat_cols[0] == self._conditional_cat_col):
+            self._similarity_measure = PetaleKGNNDataset.EUCLIDEAN
+        else:
+            self._similarity_measure = PetaleKGNNDataset.COSINE
 
         if weighted_similarity:
-            self._feature_imp_extractor = FeatureSelector(100, seed=1010710)
+            self._w_sim = True
+            self._feature_imp_extractor = FeatureSelector(threshold=[1], cumulative_imp=[True], seed=1010710)
+        else:
+            self._w_sim = False
 
         # We save the number of k-nearest neighbors and the self-loop attribute
         self._self_loop = self_loop
@@ -86,6 +96,7 @@ class PetaleKGNNDataset(PetaleDataset):
                          cont_cols=cont_cols,
                          cat_cols=cat_cols,
                          gene_cols=gene_cols,
+                         feature_selection_groups=feature_selection_groups,
                          classification=classification,
                          to_tensor=True)
 
@@ -118,24 +129,32 @@ class PetaleKGNNDataset(PetaleDataset):
         idx_map = self._create_idx_map(idx)
 
         # We build the edges of the graph using the original idx
-        u, v = [], []
-        for i in idx:
-            nb_neighbor = min(len(top_n_neighbors[i]), self._k)
-            u += top_n_neighbors[i][:nb_neighbor]
-            v += [i] * nb_neighbor
+        u, v = [], []  # Node ids
+        e = []  # Edges weights
+        if not self._self_loop:
+            for i in idx:
+                nb_neighbor = min(len(top_n_neighbors[i]), self._k)
+                neighbor_idx = top_n_neighbors[i][:nb_neighbor]
+                u += neighbor_idx
+                v += [i] * nb_neighbor
+                e += self._similarities[i, neighbor_idx]/self._similarities[i, neighbor_idx].sum()
+        else:
+            for i in idx:
+                nb_neighbor = min(len(top_n_neighbors[i]), self._k)
+                neighbor_idx = [i] + top_n_neighbors[i][:nb_neighbor]
+                u += neighbor_idx
+                v += [i] * (nb_neighbor + 1)
+                e += self._similarities[i, neighbor_idx] / self._similarities[i, neighbor_idx].sum()
 
         # We replace the idx with their node position
         u = [idx_map[n] for n in u]
         v = [idx_map[n] for n in v]
         u, v = tensor(u).long(), tensor(v).long()
 
-        # We build the graph and saves the original id
+        # We build the graph, saves the original ids and the edges weights
         g = graph((u, v))
         g.ndata['IDs'] = tensor(idx)
-
-        # We add self loops if required
-        if self._self_loop:
-            g = add_self_loop(g)
+        g.edata['w'] = tensor(e)
 
         # We return the graph and the mapping of each idx to its position in the graph
         return g, idx_map
@@ -187,7 +206,7 @@ class PetaleKGNNDataset(PetaleDataset):
         Returns: DGLgraph, dictionary mapping each idx to its position the graph, list with all the idx
         """
         # We extract the nearest neighbors idx list
-        nn_idx = self._nearest_neighbors_idx.tolist()
+        nn_idx = self._nearest_neighbors_idx.clone().detach().tolist()
 
         # We filter nodes possible neighbors
         added_node_idx = [] if added_node_idx is None else added_node_idx
@@ -209,7 +228,7 @@ class PetaleKGNNDataset(PetaleDataset):
         """
         # We extract data
         x = []
-        if len(self._cat_idx) > 0:
+        if len(self._cont_idx) > 0:
             x.append(self.x_cont)
         if len(self._cat_idx) > 0:
             x.append(self.get_one_hot_encodings(cat_cols=self._cat_cols))
@@ -265,12 +284,12 @@ class PetaleKGNNDataset(PetaleDataset):
 
         Returns: (N, N) tensor
         """
-        if self._similarity == PetaleKGNNDataset.EUCLIDEAN:
-            sim = 1 / (self._compute_euclidean_dist() + eye(self._n))
+        if self._similarity_measure == PetaleKGNNDataset.EUCLIDEAN:
+            sim = 1 / (self._compute_euclidean_dist() + ones(self._n, self._n))
         else:
             sim = self.compute_cosine_sim()
 
-        return sim - eye(self._n)
+        return sim
 
     def _get_features_importance(self) -> tensor:
         """
@@ -346,13 +365,13 @@ class PetaleKGNNDataset(PetaleDataset):
 
         # We turn some similarities to zeros if a conditional column was given
         filter_mat = self._build_neighbors_filter_mat()
-        similarities *= filter_mat
+        self._similarities = similarities * filter_mat
 
         # We count the number of ones in each row of the filter mat
         self._neighbors_count = (filter_mat == 1).sum(dim=1)
 
-        # We get the idx of the (n-1)-nearest neighbors of each item
-        _, self._nearest_neighbors_idx = topk(similarities, k=(self._n - 1), dim=1)
+        # We get the idx of the (n-1)-nearest neighbors of each item (excluding themselves)
+        _, self._nearest_neighbors_idx = topk(self._similarities, k=(self._n - 1), dim=1)
 
     def get_arbitrary_subgraph(self, idx: List[int]) -> Tuple[DGLGraph, Dict[int, int], List[int]]:
         """
@@ -415,6 +434,9 @@ class PetaleKGNNDataset(PetaleDataset):
         subset = self._retrieve_subset_from_original(cont_cols, cat_cols)
         gene_cols = None if len(self._gene_cols) == 0 else [c for c in self._gene_cols if c in cat_cols]
         return PetaleKGNNDataset(df=subset,
+                                 k=self._k,
+                                 self_loop=self._self_loop,
+                                 weighted_similarity=self._w_sim,
                                  target=self.target,
                                  cont_cols=cont_cols,
                                  cat_cols=cat_cols,
@@ -443,6 +465,9 @@ class PetaleKGNNDataset(PetaleDataset):
 
         return PetaleKGNNDataset(df=df,
                                  target=self.target,
+                                 k=self._k,
+                                 self_loop=self._self_loop,
+                                 weighted_similarity=self._w_sim,
                                  cont_cols=cont_cols,
                                  cat_cols=cat_cols,
                                  gene_cols=gene_cols,

@@ -6,10 +6,11 @@ Authors: Nicolas Raymond
 Description: This file is used to define classes related metrics
              measuring models' performance
 
-Date of last modification : 2021/11/01
+Date of last modification : 2021/04/11
 """
 
 from abc import ABC, abstractmethod
+from lifelines.utils import concordance_index
 from numpy import array
 from sklearn.metrics import roc_auc_score
 from torch import abs, from_numpy, is_tensor, mean, pow, prod, sqrt, sum, tensor, zeros
@@ -350,6 +351,34 @@ class AbsoluteError(RegressionMetric):
 
         """
         return self._reduction(abs(pred - targets)).item()
+
+
+class ConcordanceIndex(RegressionMetric):
+    """
+    Callable class that computes Harrell's C-index
+    """
+    def __init__(self, n_digits: int = 5):
+        """
+        Calls parents constructor
+
+        Args:
+            n_digits: number of digits kept for the score
+        """
+        super().__init__(direction=Direction.MAXIMIZE, name="C-Index", n_digits=n_digits)
+
+    def compute_metric(self,
+                       pred: tensor,
+                       targets: tensor) -> float:
+        """
+        Computes the c-index between predictions and targets
+
+        Args:
+            pred: (N,) tensor with predicted labels
+            targets: (N,) tensor with ground truth
+
+        Returns: float
+        """
+        return concordance_index(event_times=pred, predicted_scores=targets)
 
 
 class SquaredError(RegressionMetric):

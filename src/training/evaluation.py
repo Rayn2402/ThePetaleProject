@@ -7,7 +7,7 @@ Authors: Nicolas Raymond
 Description: This file is used to define the Evaluator class in charge
              of comparing models against each other
 
-Date of last modification : 2022/02/15
+Date of last modification : 2022/03/30
 """
 import ray
 
@@ -23,7 +23,7 @@ from src.data.processing.feature_selection import FeatureSelector
 from src.models.abstract_models.base_models import PetaleBinaryClassifier, PetaleRegressor
 from src.recording.constants import PREDICTION, RECORDS_FILE, TEST_RESULTS, TRAIN_RESULTS, VALID_RESULTS
 from src.recording.recording import Recorder, compare_prediction_recordings, \
-    get_evaluation_recap, plot_hps_importance_chart
+    get_evaluation_recap, plot_feature_importance_charts, plot_hps_importance_chart
 from src.training.tuning import Objective, Tuner
 from src.utils.score_metrics import Metric
 from time import strftime
@@ -113,7 +113,9 @@ class Evaluator:
         else:
             self._update_fixed_params = lambda _: self._fixed_params
 
-    def _extract_subset(self, records_path: str) -> PetaleDataset:
+    def _extract_subset(self,
+                        records_path: str,
+                        recorder: Recorder) -> PetaleDataset:
         """
         Executes the feature selection process and save a record of
         the procedure at the "records_path".
@@ -125,7 +127,8 @@ class Evaluator:
         """
         # Creation of subset using feature selection
         if self._feature_selector is not None:
-            cont_cols, cat_cols = self._feature_selector(self._dataset, records_path)
+            cont_cols, cat_cols, fi_dict = self._feature_selector(self._dataset, records_path, return_imp=True)
+            recorder.record_features_importance(fi_dict)
             subset = self._dataset.create_subset(cont_cols=cont_cols, cat_cols=cat_cols)
         else:
             subset = deepcopy(self._dataset)
@@ -171,7 +174,7 @@ class Evaluator:
             saving_path = path.join(Paths.EXPERIMENTS_RECORDS, self.evaluation_name, f"Split_{k}")
 
             # We proceed to feature selection
-            subset = self._extract_subset(records_path=saving_path)
+            subset = self._extract_subset(records_path=saving_path, recorder=recorder)
 
             # We include predictions from another experiment if needed
             if self._pred_path is not None:
@@ -237,10 +240,15 @@ class Evaluator:
         # We save the evaluation recap
         get_evaluation_recap(evaluation_name=self.evaluation_name, recordings_path=Paths.EXPERIMENTS_RECORDS)
 
-        # We save the hyperparameters importance chart
-        plot_hps_importance_chart(evaluation_name=self.evaluation_name,
-                                  recordings_path=Paths.EXPERIMENTS_RECORDS)
+        # We save the features importance charts
+        if self._feature_selector is not None:
+            plot_feature_importance_charts(evaluation_name=self.evaluation_name,
+                                           recordings_path=Paths.EXPERIMENTS_RECORDS)
 
+        # We save the hyperparameters importance chart
+        if self._hp_tuning:
+            plot_hps_importance_chart(evaluation_name=self.evaluation_name,
+                                      recordings_path=Paths.EXPERIMENTS_RECORDS)
         # We shutdown ray
         ray.shutdown()
 

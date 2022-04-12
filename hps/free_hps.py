@@ -5,50 +5,16 @@ Author: Nicolas Raymond
 
 Description: File used to store hps search spaces for warmup experiments
 
-Date of last modification: 2022/03/01
+Date of last modification: 2022/04/12
 """
 
 from src.models.gat import GATHP
+from src.models.gcn import GCNHP
 from src.models.gge import GGEHP
 from src.models.mlp import MLPHP
-from src.models.han import HanHP
-from src.models.tabnet import TabNetHP
 from src.models.random_forest import RandomForestHP
 from src.models.xgboost_ import XGBoostHP
 from src.utils.hyperparameters import Range
-
-
-TAB_HPS = {
-    TabNetHP.BATCH_SIZE.name: {
-        Range.MIN: 15,
-        Range.MAX: 55,
-        Range.STEP: 10
-    },
-    TabNetHP.BETA.name: {
-        Range.MIN: 0,
-        Range.MAX: 2
-    },
-    TabNetHP.GAMMA.name: {
-        Range.MIN: 1,
-        Range.MAX: 2
-    },
-    TabNetHP.N_A.name: {
-        Range.MIN: 2,
-        Range.MAX: 10
-    },
-    TabNetHP.N_D.name: {
-        Range.MIN: 2,
-        Range.MAX: 10
-    },
-    TabNetHP.N_STEPS.name: {
-        Range.MIN: 1,
-        Range.MAX: 5
-    },
-    TabNetHP.LR.name: {
-        Range.MIN: 0.001,
-        Range.MAX: 0.1
-    },
-}
 
 RF_HPS = {
     RandomForestHP.MAX_LEAF_NODES.name: {
@@ -75,14 +41,14 @@ RF_HPS = {
 
 XGBOOST_HPS = {
     XGBoostHP.ALPHA.name: {
-        Range.VALUE: 0,
+       Range.VALUE: 0
     },
     XGBoostHP.BETA.name: {
-        Range.MIN: 0,
-        Range.MAX: 0.001
+        Range.MIN: 0.0005,
+        Range.MAX: 1,
     },
     XGBoostHP.LR.name: {
-        Range.MIN: 0.001,
+        Range.MIN: 0.005,
         Range.MAX: 0.1
     },
     XGBoostHP.MAX_DEPTH.name: {
@@ -95,46 +61,12 @@ XGBOOST_HPS = {
     },
 }
 
-HAN_HPS = {
-    HanHP.ALPHA.name: {
-        Range.VALUE: 0,
-    },
-    HanHP.BATCH_SIZE.name: {
-        Range.MIN: 5,
-        Range.MAX: 25,
-        Range.STEP: 5
-    },
-    HanHP.BETA.name: {
-        Range.MIN: 0,
-        Range.MAX: 0.001
-    },
-    HanHP.DROPOUT.name: {
-        Range.VALUE: 0,
-    },
-    HanHP.HIDDEN_SIZE.name: {
-        Range.MIN: 2,
-        Range.MAX: 10,
-        Range.STEP: 2
-    },
-    HanHP.LR.name: {
-        Range.MIN: 0.001,
-        Range.MAX: 0.5
-    },
-    HanHP.RHO.name: {
-        Range.VALUE: 0
-    },
-    HanHP.NUM_HEADS.name: {
-        Range.MIN: 5,
-        Range.MAX: 20
-    },
-}
-
 MLP_HPS = {
     MLPHP.ACTIVATION.name: {
         Range.VALUE: "PReLU"
     },
     MLPHP.ALPHA.name: {
-        Range.VALUE: 0,
+        Range.VALUE: 0
     },
     MLPHP.BATCH_SIZE.name: {
         Range.MIN: 5,
@@ -142,8 +74,8 @@ MLP_HPS = {
         Range.STEP: 5
     },
     MLPHP.BETA.name: {
-        Range.MIN: 0,
-        Range.MAX: 0.001
+        Range.MIN: 0.0005,
+        Range.MAX: 1,
     },
     MLPHP.DROPOUT.name: {
         Range.MIN: 0,
@@ -169,7 +101,7 @@ ENET_HPS = {
         Range.VALUE: "PReLU"
     },
     MLPHP.ALPHA.name: {
-        Range.VALUE: 0,
+        Range.VALUE: 0
     },
     MLPHP.BATCH_SIZE.name: {
         Range.MIN: 5,
@@ -177,14 +109,14 @@ ENET_HPS = {
         Range.STEP: 5
     },
     MLPHP.BETA.name: {
-        Range.MIN: 0,
-        Range.MAX: 0.001
+        Range.MIN: 0.0005,
+        Range.MAX: 1,
     },
     MLPHP.DROPOUT.name: {
         Range.VALUE: 0,
     },
     MLPHP.LR.name: {
-        Range.MIN: 0.001,
+        Range.MIN: 0.005,
         Range.MAX: 0.1
     },
     MLPHP.RHO.name: {
@@ -203,7 +135,7 @@ ENET_GGE_HPS = {
         Range.VALUE: "PReLU"
     },
     MLPHP.ALPHA.name: {
-        Range.VALUE: 0,
+        Range.VALUE: 0
     },
     MLPHP.BATCH_SIZE.name: {
         Range.MIN: 5,
@@ -211,15 +143,15 @@ ENET_GGE_HPS = {
         Range.STEP: 5
     },
     MLPHP.BETA.name: {
-        Range.MIN: 0,
-        Range.MAX: 0.001
+        Range.MIN: 0.0005,
+        Range.MAX: 1,
     },
     MLPHP.DROPOUT.name: {
         Range.MIN: 0,
         Range.MAX: 0.25
     },
     MLPHP.LR.name: {
-        Range.MIN: 0.001,
+        Range.MIN: 0.005,
         Range.MAX: 0.1
     },
     MLPHP.RHO.name: {
@@ -235,22 +167,22 @@ ENET_GGE_HPS = {
 
 GATHPS = {
     GATHP.ALPHA.name: {
-        Range.VALUE: 0,
+        Range.VALUE: 0
     },
     GATHP.BETA.name: {
-        Range.MIN: 0,
-        Range.MAX: 0.001
+        Range.MIN: 0.0005,
+        Range.MAX: 1,
     },
     GATHP.FEAT_DROPOUT.name: {
         Range.MIN: 0,
         Range.MAX: 0.25
     },
     GATHP.HIDDEN_SIZE.name: {
-        Range.VALUE: 8,
+        Range.VALUE: None,
     },
     GATHP.LR.name: {
-        Range.MIN: 0.001,
-        Range.MAX: 0.01
+        Range.MIN: 0.005,
+        Range.MAX: 0.1
     },
     GATHP.ATTN_DROPOUT.name: {
         Range.VALUE: 0.5
@@ -259,6 +191,26 @@ GATHPS = {
         Range.VALUE: 1,
     },
     GATHP.RHO.name: {
+        Range.VALUE: 0
+    },
+}
+
+GCNHPS = {
+    GCNHP.ALPHA.name: {
+        Range.VALUE: 0
+    },
+    GCNHP.BETA.name: {
+        Range.MIN: 0.0005,
+        Range.MAX: 1,
+    },
+    GCNHP.HIDDEN_SIZE.name: {
+        Range.VALUE: None,
+    },
+    GCNHP.LR.name: {
+        Range.MIN: 0.005,
+        Range.MAX: 0.1
+    },
+    GCNHP.RHO.name: {
         Range.VALUE: 0
     },
 }
@@ -273,11 +225,7 @@ GGEHPS = {
         Range.MAX: 0.25,
     },
     GGEHP.LR.name: {
-        Range.MIN: 0.001,
+        Range.MIN: 0.005,
         Range.MAX: 0.1
     },
-    GGEHP.RHO.name: {
-        Range.MIN: 0.05,
-        Range.MAX: 2
-    }
 }

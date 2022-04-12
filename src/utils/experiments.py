@@ -5,13 +5,13 @@ Author: Nicolas Raymond
 
 Description: This file stores experiment functions that can be used with different datasets
 
-Date of last modification: 2022/02/03
+Date of last modification: 2022/04/06
 """
 import json
 
 from apyori import apriori
 from copy import deepcopy
-from hps.fixed_hps import ENET_HPS, ENET_GGE_HPS, GATHPS, MLP_HPS, RF_HPS, XGBOOST_HPS
+from hps.fixed_hps import ENET_HPS, ENET_GGE_HPS, GATHPS, GCNHPS, GGEHPS, MLP_HPS, RF_HPS, XGBOOST_HPS
 from os import mkdir
 from os.path import exists, join
 from pandas import DataFrame
@@ -25,6 +25,8 @@ from src.data.processing.preprocessing import preprocess_for_apriori
 from src.data.processing.sampling import extract_masks, GeneChoice, push_valid_to_train
 from src.models.blocks.genes_signature_block import GeneEncoder, GeneGraphEncoder, GeneGraphAttentionEncoder
 from src.models.gat import PetaleGATR, GATHP
+from src.models.gge import PetaleGGE
+from src.models.gcn import PetaleGCNR, GCNHP
 from src.models.mlp import PetaleMLPR, MLPHP
 from src.models.random_forest import PetaleRFR
 from src.models.xgboost_ import PetaleXGBR
@@ -34,8 +36,8 @@ from src.training.evaluation import Evaluator
 from src.utils.argparsers import fixed_hps_lae_experiment_parser
 from src.utils.graph import PetaleGraph, correct_and_smooth
 from src.utils.results_analysis import get_apriori_statistics, print_and_save_apriori_rules
-from src.utils.score_metrics import RegressionMetric, BinaryClassificationMetric, AbsoluteError, Pearson,\
-    RootMeanSquaredError, SquaredError
+from src.utils.score_metrics import RegressionMetric, BinaryClassificationMetric, AbsoluteError, ConcordanceIndex,\
+    Pearson, RootMeanSquaredError, SquaredError
 from time import time
 from torch import zeros
 from tqdm import tqdm
@@ -202,7 +204,9 @@ def run_correct_and_smooth_experiment(dataset: PetaleDataset,
 
 def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
                                          mask_path: str,
-                                         experiment_id: str) -> None:
+                                         experiment_id: str,
+                                         all_chrom_pos: List[str],
+                                         significant_chrom_pos: List[str]) -> None:
     """
     Run all the model comparisons over a dataset using fixed hps
 
@@ -217,16 +221,26 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
     # We extract needed data
     if args.genes_subgroup:
         genes_selection = GeneChoice.SIGNIFICANT
-        gene_cols = SIGNIFICANT_CHROM_POS_OBESITY
+        gene_cols = significant_chrom_pos
     elif args.all_genes:
         genes_selection = GeneChoice.ALL
-        gene_cols = ALL_CHROM_POS_OBESITY
+        gene_cols = all_chrom_pos
+    elif len(args.custom_genes) != 0:
+        genes_selection = GeneChoice.ALL
+        gene_cols = args.custom_genes
     else:
         genes_selection = None
         gene_cols = None
 
     genes = True if genes_selection is not None else False
-    df, target, cont_cols, cat_cols = data_extraction_function(data_manager=manager, genes=genes_selection)
+    df, target, cont_cols, cat_cols = data_extraction_function(data_manager=manager,
+                                                               genes=genes_selection,
+                                                               baselines=args.baselines)
+    # We filter gene variables if needed
+    if len(args.custom_genes) != 0:
+        genes_to_remove = [g for g in all_chrom_pos if g not in args.custom_genes]
+        df.drop(genes_to_remove, axis=1, inplace=True)
+        cat_cols = [c for c in cat_cols if c not in genes_to_remove]
 
     # Extraction of masks
     masks = extract_masks(mask_path, k=args.nb_outer_splits, l=args.nb_inner_splits)
@@ -234,11 +248,18 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
     push_valid_to_train(masks_without_val)
 
     # Initialization of the dictionary containing the evaluation metrics
-    evaluation_metrics = [AbsoluteError(), Pearson(), SquaredError(), RootMeanSquaredError()]
+    evaluation_metrics = [AbsoluteError(), ConcordanceIndex(), Pearson(), SquaredError(), RootMeanSquaredError()]
 
     # Initialization of feature selector
     if args.feature_selection:
-        feature_selector = FeatureSelector(importance_threshold=args.feature_imp_thresh, seed=args.seed)
+        if args.baselines and genes:
+            feature_selector = FeatureSelector(threshold=[0.01, 0.01],
+                                               cumulative_imp=[False, False],
+                                               seed=args.seed)
+        else:
+            feature_selector = FeatureSelector(threshold=[0.01],
+                                               cumulative_imp=[False],
+                                               seed=args.seed)
     else:
         feature_selector = None
 
@@ -267,7 +288,8 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
         start = time()
 
         # Creation of dataset
-        dataset = PetaleDataset(df, target, cont_cols, cat_cols, classification=False)
+        dataset = PetaleDataset(df, target, cont_cols, cat_cols, classification=False,
+                                feature_selection_groups=[gene_cols])
 
         # Creation of the evaluator
         evaluator = Evaluator(model_constructor=PetaleRFR,
@@ -298,7 +320,8 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
         start = time()
 
         # Creation of dataset
-        dataset = PetaleDataset(df, target, cont_cols, cat_cols, classification=False)
+        dataset = PetaleDataset(df, target, cont_cols, cat_cols, classification=False,
+                                feature_selection_groups=[gene_cols])
 
         # Creation of the evaluator
         evaluator = Evaluator(model_constructor=PetaleXGBR,
@@ -329,7 +352,8 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
         start = time()
 
         # Creation of the dataset
-        dataset = PetaleDataset(df, target, cont_cols, cat_cols, to_tensor=True, classification=False)
+        dataset = PetaleDataset(df, target, cont_cols, cat_cols, to_tensor=True,
+                                classification=False, feature_selection_groups=[gene_cols])
 
         # Creation of function to update fixed params
         def update_fixed_params(dts):
@@ -382,7 +406,8 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
 
         # Creation of the dataset
         dataset = PetaleDataset(df, target, cont_cols, cat_cols,
-                                to_tensor=True, classification=False)
+                                to_tensor=True, classification=False,
+                                feature_selection_groups=[gene_cols])
 
         def update_fixed_params(dts):
             return {'max_epochs': 500,
@@ -431,7 +456,8 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
 
         # Creation of the dataset
         dataset = PetaleDataset(df, target, cont_cols, cat_cols,
-                                gene_cols=gene_cols, to_tensor=True, classification=False)
+                                gene_cols=gene_cols, to_tensor=True,
+                                classification=False, feature_selection_groups=[gene_cols])
 
         def gene_encoder_constructor(gene_idx_groups: Optional[Dict[str, List[int]]],
                                      dropout: float) -> GeneEncoder:
@@ -500,7 +526,8 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
 
         # Creation of the dataset
         dataset = PetaleDataset(df, target, cont_cols, cat_cols,
-                                gene_cols=gene_cols, to_tensor=True, classification=False)
+                                gene_cols=gene_cols, to_tensor=True,
+                                classification=False, feature_selection_groups=[gene_cols])
 
         def gene_encoder_constructor(gene_idx_groups: Optional[Dict[str, List[int]]],
                                      dropout: float) -> GeneEncoder:
@@ -569,22 +596,22 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
 
         for nb_neighbor in args.degree:
 
-            nb_neighbor = int(nb_neighbor)
+            # We change the type from str to int
+            nb_neigh = int(nb_neighbor)
 
-            if args.conditional_column:
-                cond_cat_col = SEX
-                nb_neighbor = int(nb_neighbor / 2)
-            else:
-                cond_cat_col = None
+            # We set the conditional column
+            cond_cat_col = SEX if args.conditional_column else None
 
+            # We set the distance computations options
             GAT_options = [("", False)] if not args.weighted_similarity else [("", False), ("w", True)]
 
             for prefix, w_sim in GAT_options:
 
-                dataset = PetaleKGNNDataset(df, target, k=nb_neighbor, similarity=PetaleKGNNDataset.COSINE,
+                dataset = PetaleKGNNDataset(df, target, k=nb_neigh,
                                             weighted_similarity=w_sim,
                                             cont_cols=cont_cols, cat_cols=cat_cols,
-                                            conditional_cat_col=cond_cat_col, classification=False)
+                                            conditional_cat_col=cond_cat_col,
+                                            classification=False, feature_selection_groups=[gene_cols])
 
                 # Creation of function to update fixed params
                 def update_fixed_params(dts):
@@ -596,7 +623,7 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
                             'patience': 50,
                             **GATHPS}
 
-                # Saving of original fixed params for HAN
+                # Saving of original fixed params for GAT
                 fixed_params = update_fixed_params(dataset)
 
                 # Update of hyperparameters
@@ -623,5 +650,258 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
                 evaluator.evaluate()
 
         print("Time Taken for GAT (minutes): ", round((time() - start) / 60, 2))
+
+    """
+    GCN experiment
+    """
+    if args.gcn:
+
+        # Start timer
+        start = time()
+
+        for nb_neighbor in args.degree:
+
+            # We change the type from str to int
+            nb_neigh = int(nb_neighbor)
+
+            # We set the conditional column
+            cond_cat_col = SEX if args.conditional_column else None
+
+            # We set the distance computations options
+            GCN_options = [("", False)] if not args.weighted_similarity else [("", False), ("w", True)]
+
+            for prefix, w_sim in GCN_options:
+
+                # Creation of the dataset
+                dataset = PetaleKGNNDataset(df, target, k=nb_neigh,
+                                            weighted_similarity=w_sim,
+                                            cont_cols=cont_cols, cat_cols=cat_cols,
+                                            conditional_cat_col=cond_cat_col,
+                                            classification=False, feature_selection_groups=[gene_cols])
+
+                # Creation of function to update fixed params
+                def update_fixed_params(dts):
+                    return {'num_cont_col': len(dts.cont_idx),
+                            'cat_idx': dts.cat_idx,
+                            'cat_sizes': dts.cat_sizes,
+                            'cat_emb_sizes': dts.cat_sizes,
+                            'max_epochs': 500,
+                            'patience': 50,
+                            **GCNHPS}
+
+                # Saving of original fixed params for GCN
+                fixed_params = update_fixed_params(dataset)
+
+                # Update of hyperparameters
+                if args.enable_sam:
+                    GCNHPS[GCNHP.RHO.name] = sam_value
+
+                # Creation of the evaluator
+                evaluator = Evaluator(model_constructor=PetaleGCNR,
+                                      dataset=dataset,
+                                      masks=masks,
+                                      evaluation_name=f"{prefix}GCN{nb_neighbor}_{experiment_id}",
+                                      hps=GCNHPS,
+                                      n_trials=0,
+                                      evaluation_metrics=evaluation_metrics,
+                                      fixed_params=fixed_params,
+                                      fixed_params_update_function=update_fixed_params,
+                                      feature_selector=feature_selector,
+                                      save_hps_importance=True,
+                                      save_optimization_history=True,
+                                      seed=args.seed,
+                                      pred_path=args.path)
+
+                # Evaluation
+                evaluator.evaluate()
+
+        print("Time Taken for GCN (minutes): ", round((time() - start) / 60, 2))
+
+    """
+    GGE experiment
+    """
+    if args.gge and genes:
+
+        # Start timer
+        start = time()
+
+        # Creation of the dataset
+        dataset = PetaleDataset(df, target, cont_cols, cat_cols,
+                                gene_cols=gene_cols, to_tensor=True,
+                                classification=False, feature_selection_groups=[gene_cols])
+
+        def gene_encoder_constructor(gene_idx_groups: Optional[Dict[str, List[int]]],
+                                     dropout: float) -> GeneEncoder:
+            """
+            Builds a GeneGraphEncoder
+
+            Args:
+                gene_idx_groups: dictionary where keys are names of chromosomes and values
+                                 are list of idx referring to columns of genes associated to
+                                 the chromosome
+                dropout: dropout probability
+
+            Returns: GeneEncoder
+            """
+
+            return GeneGraphEncoder(gene_idx_groups=gene_idx_groups,
+                                    genes_emb_sharing=args.embedding_sharing,
+                                    dropout=dropout,
+                                    signature_size=args.signature_size)
+
+        def update_fixed_params(dts):
+            return {'max_epochs': 500,
+                    'patience': 50,
+                    'num_cont_col': len(dts.cont_idx),
+                    'cat_idx': dts.cat_idx,
+                    'cat_sizes': dts.cat_sizes,
+                    'cat_emb_sizes': dts.cat_sizes,
+                    'gene_idx_groups': dts.gene_idx_groups,
+                    'gene_encoder_constructor': gene_encoder_constructor,
+                    **ENET_GGE_HPS}
+
+        # Saving of fixed_params for GGE + ENET
+        fixed_params = update_fixed_params(dataset)
+
+        # Update of hyperparameters
+        if args.enable_sam:
+            ENET_GGE_HPS[MLPHP.RHO.name] = sam_value
+
+        # Creation of evaluator
+        evaluator = Evaluator(model_constructor=PetaleMLPR,
+                              dataset=dataset,
+                              masks=masks,
+                              evaluation_name=f"ggeEnet_{experiment_id}",
+                              hps={},
+                              n_trials=0,
+                              evaluation_metrics=evaluation_metrics,
+                              feature_selector=feature_selector,
+                              fixed_params=fixed_params,
+                              fixed_params_update_function=update_fixed_params,
+                              save_hps_importance=True,
+                              save_optimization_history=True,
+                              seed=args.seed)
+
+        # Evaluation
+        evaluator.evaluate()
+
+        print("Time Taken for GGE (minutes): ", round((time() - start) / 60, 2))
+
+    """
+    GGAE experiment
+    """
+    if args.ggae and genes:
+
+        # Start timer
+        start = time()
+
+        # Creation of the dataset
+        dataset = PetaleDataset(df, target, cont_cols, cat_cols,
+                                gene_cols=gene_cols, to_tensor=True,
+                                classification=False, feature_selection_groups=[gene_cols])
+
+        def gene_encoder_constructor(gene_idx_groups: Optional[Dict[str, List[int]]],
+                                     dropout: float) -> GeneEncoder:
+            """
+            Builds a GeneGraphAttentionEncoder
+
+            Args:
+                gene_idx_groups: dictionary where keys are names of chromosomes and values
+                                 are list of idx referring to columns of genes associated to
+                                 the chromosome
+                dropout: dropout probability
+
+            Returns: GeneEncoder
+            """
+
+            return GeneGraphAttentionEncoder(gene_idx_groups=gene_idx_groups,
+                                             genes_emb_sharing=args.embedding_sharing,
+                                             dropout=dropout,
+                                             signature_size=args.signature_size)
+
+        def update_fixed_params(dts):
+            return {'max_epochs': 500,
+                    'patience': 50,
+                    'num_cont_col': len(dts.cont_idx),
+                    'cat_idx': dts.cat_idx,
+                    'cat_sizes': dts.cat_sizes,
+                    'cat_emb_sizes': dts.cat_sizes,
+                    'gene_idx_groups': dts.gene_idx_groups,
+                    'gene_encoder_constructor': gene_encoder_constructor,
+                    **ENET_GGE_HPS}
+
+        # Saving of fixed_params for GGAE + ENET
+        fixed_params = update_fixed_params(dataset)
+
+        # Update of hyperparameters
+        if args.enable_sam:
+            ENET_GGE_HPS[MLPHP.RHO.name] = sam_value
+
+        # Creation of evaluator
+        evaluator = Evaluator(model_constructor=PetaleMLPR,
+                              dataset=dataset,
+                              masks=masks,
+                              evaluation_name=f"ggaeEnet_{experiment_id}",
+                              hps={},
+                              n_trials=0,
+                              evaluation_metrics=evaluation_metrics,
+                              feature_selector=feature_selector,
+                              fixed_params=fixed_params,
+                              fixed_params_update_function=update_fixed_params,
+                              save_hps_importance=True,
+                              save_optimization_history=True,
+                              seed=args.seed)
+
+        # Evaluation
+        evaluator.evaluate()
+
+        print("Time Taken for GGAE (minutes): ", round((time() - start) / 60, 2))
+
+    """
+    Self supervised learning experiment with GGE
+    """
+    if args.ssl_gge and genes:
+
+        # Start timer
+        start = time()
+
+        # Creation of the dataset
+        dataset = PetaleDataset(df, target, cont_cols, cat_cols,
+                                gene_cols=gene_cols, to_tensor=True, classification=False,
+                                feature_selection_groups=[gene_cols])
+
+        # Creation of a function to update fixed params
+        def update_fixed_params(dts):
+            return {'max_epochs': 500,
+                    'patience': 50,
+                    'gene_idx_groups': dts.gene_idx_groups,
+                    'hidden_size': 2,
+                    'signature_size': args.signature_size,
+                    'genes_emb_sharing': args.embedding_sharing,
+                    'aggregation_method': 'avg',
+                    **GGEHPS}
+
+        # Saving of original fixed params for GGAE
+        fixed_params = update_fixed_params(dataset)
+
+        # Creation of the evaluator
+        evaluator = Evaluator(model_constructor=PetaleGGE,
+                              dataset=dataset,
+                              masks=masks,
+                              evaluation_name=f"gge_{experiment_id}",
+                              hps={},
+                              n_trials=0,
+                              evaluation_metrics=[],
+                              fixed_params=fixed_params,
+                              fixed_params_update_function=update_fixed_params,
+                              feature_selector=feature_selector,
+                              save_hps_importance=True,
+                              save_optimization_history=True,
+                              seed=args.seed)
+
+        # Evaluation
+        evaluator.evaluate()
+
+        print("Time Taken for Self Supervised GGE (minutes): ", round((time() - start) / 60, 2))
 
     print("Overall time (minutes): ", round((time() - first_start) / 60, 2))

@@ -1,35 +1,31 @@
 """
-Filename: gat_base_models.py
+Filename: gcn_base_models.py
 
 Author: Nicolas Raymond
 
-Description: This file defines the Graph Attention Network model
+Description: This file defines the Graph Convolutional Network model
 
 Date of last modification: 2022/04/11
 """
 from dgl import DGLGraph
-from dgl.nn.pytorch import GATConv
+from dgl.nn.pytorch import GraphConv
 from src.data.processing.gnn_datasets import PetaleKGNNDataset
 from src.models.abstract_models.gnn_base_models import GNN
 from src.utils.score_metrics import Metric, RootMeanSquaredError
 from torch import cat, no_grad, tensor
 from torch.nn import MSELoss
-from torch.nn.functional import relu
 from typing import Callable, List, Optional
 
 
-class GAT(GNN):
+class GCN(GNN):
     """
     Graph Attention Network model
     """
     def __init__(self,
                  output_size: int,
-                 num_heads: int,
                  criterion: Callable,
                  criterion_name: str,
                  eval_metric: Metric,
-                 feat_dropout: float = 0,
-                 attn_dropout: float = 0,
                  alpha: float = 0,
                  beta: float = 0,
                  hidden_size: Optional[int] = None,
@@ -43,12 +39,9 @@ class GAT(GNN):
         Builds the layers of the model and sets other protected attributes
 
         Args:
-            num_heads: number of attention heads
             criterion: loss function of our model
             criterion_name: name of the loss function
             eval_metric: evaluation metric
-            feat_dropout: features dropout probability
-            attn_dropout: attention dropout probability
             alpha: L1 penalty coefficient
             beta: L2 penalty coefficient
             hidden_size: size of the hidden states after the graph convolution
@@ -73,15 +66,10 @@ class GAT(GNN):
                          verbose=verbose)
 
         # We build the main layer
-        self._conv_layer = GATConv(in_feats=self._input_size,
-                                   out_feats=self._hidden_size,
-                                   num_heads=num_heads,
-                                   feat_drop=feat_dropout,
-                                   attn_drop=attn_dropout,
-                                   activation=relu)
-
-        # We save the number of attention heads
-        self._num_att_heads = num_heads
+        self._conv_layer = GraphConv(in_feats=self._input_size,
+                                     out_feats=self._hidden_size,
+                                     norm='none',
+                                     allow_zero_in_degree=False)
 
     def forward(self,
                 g: DGLGraph,
@@ -110,10 +98,7 @@ class GAT(GNN):
         x = cat(new_x, 1)
 
         # We apply the graph convolutional layer
-        h = self._conv_layer(g, x)
-
-        # We take the average of all the attention heads and apply batch norm
-        h = h.sum(dim=1)/self._num_att_heads
+        h = self._conv_layer(g, x, edge_weight=g.edata['w'])
 
         # We apply the residual connection
         h = self._dropout(self._bn(cat([h, x], dim=1)))
@@ -122,15 +107,12 @@ class GAT(GNN):
         return self._linear_layer(h).squeeze()
 
 
-class GATRegressor(GAT):
+class GCNRegressor(GCN):
     """
-    Graph Attention Network regression model
+    Graph Convolutional Network regression model
     """
     def __init__(self,
-                 num_heads: int,
                  eval_metric: Metric,
-                 feat_dropout: float = 0,
-                 attn_dropout: float = 0,
                  alpha: float = 0,
                  beta: float = 0,
                  hidden_size: Optional[int] = None,
@@ -143,10 +125,7 @@ class GATRegressor(GAT):
         Sets the attributes using the parent constructor
 
         Args:
-            num_heads: number of attention heads
             eval_metric: evaluation metric
-            feat_dropout: features dropout probability
-            attn_dropout: attention dropout probability
             alpha: L1 penalty coefficient
             beta: L2 penalty coefficient
             hidden_size: size of the hidden states after the graph convolution
@@ -160,12 +139,9 @@ class GATRegressor(GAT):
         eval_metric = eval_metric if eval_metric is not None else RootMeanSquaredError()
         super().__init__(output_size=1,
                          hidden_size=hidden_size,
-                         num_heads=num_heads,
                          criterion=MSELoss(reduction='none'),
                          criterion_name='MSE',
                          eval_metric=eval_metric,
-                         feat_dropout=feat_dropout,
-                         attn_dropout=attn_dropout,
                          alpha=alpha,
                          beta=beta,
                          num_cont_col=num_cont_col,

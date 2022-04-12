@@ -6,13 +6,13 @@ Author: Nicolas Raymond
 Description: Defines the modules in charge of encoding
              and decoding the genomic signature associated to patients.
 
-Date of last modification: 2022/02/08
+Date of last modification: 2022/04/05
 """
 
 from src.models.abstract_models.encoder import Encoder
 from src.models.blocks.mlp_blocks import BaseBlock, EntityEmbeddingBlock
 from torch import bmm, einsum, exp, normal, sigmoid, tensor, zeros
-from torch.nn import BatchNorm1d, Conv1d, Dropout, Linear, Module, Parameter
+from torch.nn import AvgPool1d, BatchNorm1d, Conv1d, Dropout, Linear, Module, Parameter
 from torch.nn.functional import leaky_relu, relu
 from typing import Dict, List
 
@@ -23,7 +23,7 @@ class GeneEncoder(Encoder, Module):
     """
     def __init__(self,
                  gene_idx_groups: Dict[str, List[int]],
-                 hidden_size: int = 3,
+                 hidden_size: int = 2,
                  signature_size: int = 10,
                  genes_emb_sharing: bool = False):
         """
@@ -237,7 +237,6 @@ class GeneSignatureDecoder(Module):
     """
     def __init__(self,
                  nb_genes: int,
-                 hidden_size: int,
                  signature_size: int = 10):
 
         """
@@ -246,8 +245,6 @@ class GeneSignatureDecoder(Module):
 
         Args:
             nb_genes: number of genes in patient genes data
-            hidden_size: embedding size of each genes during intermediate
-                         signature creation procedure
             signature_size: genomic signature size (input size)
         """
 
@@ -259,14 +256,25 @@ class GeneSignatureDecoder(Module):
                                         output_size=nb_genes,
                                         activation='ReLU')
 
-        # Creation of convolutional layer
-        self.__conv_layer = Conv1d(in_channels=1,
-                                   out_channels=3,
-                                   kernel_size=(1,),
-                                   stride=(1,))
+        # Creation of first convolutional layer
+        self.__conv_layer1 = Conv1d(in_channels=1,
+                                    out_channels=nb_genes,
+                                    kernel_size=(1,),
+                                    stride=(1,))
 
-        # Batch norm layer to apply after convolution
-        self._bn = BatchNorm1d(hidden_size)
+        # Creation of second convolutional layer
+        self.__conv_layer2 = Conv1d(in_channels=1,
+                                    out_channels=3,
+                                    kernel_size=(1,),
+                                    stride=(1,))
+
+        # Batch norm layers to apply after convolution
+        self._bn1 = BatchNorm1d(nb_genes)
+        self._bn2 = BatchNorm1d(3)
+
+        # Average pooling layer
+        self._avg_pooling = AvgPool1d(kernel_size=signature_size,
+                                      stride=(1,))
 
     def forward(self, x: tensor) -> tensor:
         """
@@ -282,14 +290,20 @@ class GeneSignatureDecoder(Module):
 
         Returns: (N, NB_GENES, HIDDEN_SIZE) tensor with genes' embeddings
         """
-        # Apply (linear layer -> batch norm -> activation) to signatures
-        h = self.__linear_layer(x)  # (N, SIGNATURE_SIZE) -> (N, NB_GENES)
-
         # Addition of a dummy dimension for convolutional layer
-        h.unsqueeze_(dim=1)  # (N, NB_GENES) -> (N, 1, NB_GENES)
+        x.unsqueeze_(dim=1)  # (N, SIGNATURE_SIZE) -> (N, 1, SIGNATURE_SIZE)
+
+        # Apply conv -> batch norm -> relu to signatures
+        h = relu(self._bn1(self.__conv_layer1(x)))  # (N, SIGNATURE_SIZE) -> (N, NB_GENES, SIGNATURE_SIZE)
+
+        # Apply mean pooling
+        h = self._avg_pooling(h)  # (N, NB_GENES, SIGNATURE_SIZE) -> (N, NB_GENES, 1)
+
+        # Transposition of last dimensions
+        h = h.transpose(1, 2)  # (N, NB_GENES, 1) -> (N, 1, NB_GENES)
 
         # Apply convolutional layer, batch norm and sigmoid
-        h = sigmoid(self._bn(self.__conv_layer(h)))  # (N, 1, NB_GENES) -> (N, 3, NB_GENES)
+        h = sigmoid(self._bn2(self.__conv_layer2(h)))  # (N, 1, NB_GENES) -> (N, 3, NB_GENES)
 
         # Transposition of last dimensions
         h = h.transpose(1, 2)  # (N, 3, NB_GENES) -> (N, NB_GENES, 3)
@@ -412,7 +426,7 @@ class GeneAttentionLayer(Module):
           embeddings within each chromosome. The weights are the attention coefficients.
 
         Args:
-            x: (N, NB_GENES, NB_GENES, HIDDEN_SIZE) tensor
+            x: (N, NB_GENES, HIDDEN_SIZE) tensor
 
         Returns: (N, NB_CHROM, HIDDEN_SIZE) tensor with chromosome embeddings
         """

@@ -95,8 +95,11 @@ class TorchCustomModel(Module, ABC):
         # We set the embedding layers
         if len(cat_idx) != 0 and cat_sizes is not None:
 
-            # We check embedding sizes (if nothing provided -> emb_sizes = cat_sizes)
-            cat_emb_sizes = cat_emb_sizes if cat_emb_sizes is not None else cat_sizes
+            # We check embedding sizes (if nothing provided -> emb_sizes = cat_sizes - 1)
+            if cat_emb_sizes is None:
+                cat_emb_sizes = [s - 1 for s in cat_sizes]
+                if 0 in cat_emb_sizes:
+                    raise ValueError('One categorical variable as a single modality')
 
             # We create the embedding layers
             self._embedding_block = EntityEmbeddingBlock(cat_sizes, cat_emb_sizes, cat_idx)

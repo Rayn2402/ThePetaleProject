@@ -5,10 +5,11 @@ Author: Nicolas Raymond
 
 Description: File used to store hps search spaces for warmup experiments
 
-Date of last modification: 2022/03/01
+Date of last modification: 2022/04/12
 """
 
 from src.models.gat import GATHP
+from src.models.gcn import GCNHP
 from src.models.gge import GGEHP
 from src.models.mlp import MLPHP
 from src.models.random_forest import RandomForestHP
@@ -47,7 +48,7 @@ XGBOOST_HPS = {
         Range.MAX: 1,
     },
     XGBoostHP.LR.name: {
-        Range.MIN: 0.001,
+        Range.MIN: 0.005,
         Range.MAX: 0.1
     },
     XGBoostHP.MAX_DEPTH.name: {
@@ -115,7 +116,7 @@ ENET_HPS = {
         Range.VALUE: 0,
     },
     MLPHP.LR.name: {
-        Range.MIN: 0.001,
+        Range.MIN: 0.005,
         Range.MAX: 0.1
     },
     MLPHP.RHO.name: {
@@ -150,7 +151,7 @@ ENET_GGE_HPS = {
         Range.MAX: 0.25
     },
     MLPHP.LR.name: {
-        Range.MIN: 0.001,
+        Range.MIN: 0.005,
         Range.MAX: 0.1
     },
     MLPHP.RHO.name: {
@@ -177,10 +178,10 @@ GATHPS = {
         Range.MAX: 0.25
     },
     GATHP.HIDDEN_SIZE.name: {
-        Range.VALUE: 8,
+        Range.VALUE: None,
     },
     GATHP.LR.name: {
-        Range.MIN: 0.001,
+        Range.MIN: 0.005,
         Range.MAX: 0.1
     },
     GATHP.ATTN_DROPOUT.name: {
@@ -190,6 +191,26 @@ GATHPS = {
         Range.VALUE: 1,
     },
     GATHP.RHO.name: {
+        Range.VALUE: 0
+    },
+}
+
+GCNHPS = {
+    GCNHP.ALPHA.name: {
+        Range.VALUE: 0
+    },
+    GCNHP.BETA.name: {
+        Range.MIN: 0.0005,
+        Range.MAX: 1,
+    },
+    GCNHP.HIDDEN_SIZE.name: {
+        Range.VALUE: None,
+    },
+    GCNHP.LR.name: {
+        Range.MIN: 0.005,
+        Range.MAX: 0.1
+    },
+    GCNHP.RHO.name: {
         Range.VALUE: 0
     },
 }
@@ -204,11 +225,7 @@ GGEHPS = {
         Range.MAX: 0.25,
     },
     GGEHP.LR.name: {
-        Range.MIN: 0.001,
+        Range.MIN: 0.005,
         Range.MAX: 0.1
     },
-    GGEHP.RHO.name: {
-        Range.MIN: 0.05,
-        Range.MAX: 2
-    }
 }

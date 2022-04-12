@@ -563,53 +563,6 @@ if __name__ == '__main__':
         print("Time Taken for GCN (minutes): ", round((time.time() - start) / 60, 2))
 
     """
-    Self supervised learning experiment with GGAE
-    """
-    if args.ssl_ggae and genes:
-
-        # Start timer
-        start = time.time()
-
-        # Creation of the dataset
-        dataset = PetaleDataset(df, target, cont_cols, cat_cols,
-                                gene_cols=gene_cols, to_tensor=True, classification=False,
-                                feature_selection_groups=[gene_cols])
-
-        # Creation of a function to update fixed params
-        def update_fixed_params(dts):
-            return {'max_epochs': 500,
-                    'patience': 50,
-                    'gene_idx_groups': dts.gene_idx_groups,
-                    'hidden_size': 2,
-                    'signature_size': args.signature_size,
-                    'genes_emb_sharing': args.embedding_sharing,
-                    'aggregation_method': 'att',
-                    **GGEHPS}
-
-        # Saving of original fixed params for GGAE
-        fixed_params = update_fixed_params(dataset)
-
-        # Creation of the evaluator
-        evaluator = Evaluator(model_constructor=PetaleGGE,
-                              dataset=dataset,
-                              masks=masks,
-                              evaluation_name=f"ggae_warmup{eval_id}",
-                              hps={},
-                              n_trials=0,
-                              evaluation_metrics=[],
-                              fixed_params=fixed_params,
-                              fixed_params_update_function=update_fixed_params,
-                              feature_selector=feature_selector,
-                              save_hps_importance=True,
-                              save_optimization_history=True,
-                              seed=args.seed)
-
-        # Evaluation
-        evaluator.evaluate()
-
-        print("Time Taken for Self Supervised GGAE (minutes): ", round((time.time() - start) / 60, 2))
-
-    """
     Self supervised learning experiment with GGE
     """
     if args.ssl_gge and genes:

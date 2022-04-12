@@ -16,6 +16,7 @@ from numpy import array
 from src.data.processing.datasets import PetaleDataset
 from src.models.abstract_models.base_models import PetaleBinaryClassifier, PetaleRegressor
 from typing import Any, Callable, List, Dict, Optional
+from xgboost import XGBClassifier
 
 
 class SklearnBinaryClassifierWrapper(PetaleBinaryClassifier):
@@ -57,11 +58,15 @@ class SklearnBinaryClassifierWrapper(PetaleBinaryClassifier):
         # We extract train set
         x_train, y_train, _ = dataset[dataset.train_mask]
 
-        # We get the sample weights
-        sample_weights = self.get_sample_weights(y_train)
+        if isinstance(self._model, XGBClassifier):
+            self._model.fit(x_train, y_train, **self.train_params)
 
-        # Call the fit method
-        self._model.fit(x_train, y_train, sample_weight=sample_weights, **self.train_params)
+        else:
+            # We get the sample weights
+            sample_weights = self.get_sample_weights(y_train)
+
+            # Call the fit method
+            self._model.fit(x_train, y_train, sample_weight=sample_weights, **self.train_params)
 
     def predict_proba(self,
                       dataset: PetaleDataset,

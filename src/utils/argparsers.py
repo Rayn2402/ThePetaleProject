@@ -181,8 +181,8 @@ def warmup_experiment_parser():
     parser.add_argument('-r_w', '--remove_walk_variables', default=False, action='store_true',
                         help='If true, removes the six minutes walk test variables from the baselines'
                              '(only applies if the baselines are included')
-    parser.add_argument('-gen0', '--genes_pair', default=False, action='store_true',
-                        help='If true, includes the pair of most impactful genes')
+    parser.add_argument('-gen0', '--single_gene', default=False, action='store_true',
+                        help='If true, includes the most impactful gene')
     parser.add_argument('-gen1', '--genes_subgroup', default=False, action='store_true',
                         help='If true, includes the significant genes in the features')
     parser.add_argument('-gen2', '--all_genes', default=False, action='store_true',

@@ -65,8 +65,8 @@ if __name__ == '__main__':
                                                       genes=genes_selection,
                                                       sex=args.sex)
     # We filter gene variables if needed
-    if args.genes_pair:
-        genes_to_remove = [g for g in ALL_CHROM_POS_WARMUP if g not in ['7_45932669', '6_110760008']]
+    if args.single_gene:
+        genes_to_remove = [g for g in ALL_CHROM_POS_WARMUP if g != '7_45932669']
         df.drop(genes_to_remove, axis=1, inplace=True)
         cat_cols = [c for c in cat_cols if c not in genes_to_remove]
 

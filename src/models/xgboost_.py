@@ -49,7 +49,8 @@ class PetaleBinaryXGBC(SklearnBinaryClassifierWrapper):
                                              reg_lambda=beta,
                                              use_label_encoder=False,
                                              objective="binary:logistic",
-                                             eval_metric="logloss"),
+                                             eval_metric="logloss",
+                                             scale_pos_weight=1 if weight is None else weight/(1-weight)),
                          classification_threshold=classification_threshold,
                          weight=weight)
 

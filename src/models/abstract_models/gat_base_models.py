@@ -5,15 +5,15 @@ Author: Nicolas Raymond
 
 Description: This file defines the Graph Attention Network model
 
-Date of last modification: 2022/04/11
+Date of last modification: 2022/04/12
 """
 from dgl import DGLGraph
 from dgl.nn.pytorch import GATConv
 from src.data.processing.gnn_datasets import PetaleKGNNDataset
 from src.models.abstract_models.gnn_base_models import GNN
-from src.utils.score_metrics import Metric, RootMeanSquaredError
-from torch import cat, no_grad, tensor
-from torch.nn import MSELoss
+from src.utils.score_metrics import BinaryCrossEntropy, Metric, RootMeanSquaredError
+from torch import cat, no_grad, sigmoid, tensor
+from torch.nn import BCEWithLogitsLoss, MSELoss
 from torch.nn.functional import relu
 from typing import Callable, List, Optional
 
@@ -120,6 +120,92 @@ class GAT(GNN):
 
         # We apply the linear layer
         return self._linear_layer(h).squeeze()
+
+
+class GATClassifier(GAT):
+    """
+    Graph Attention Network classification model
+    """
+    def __init__(self,
+                 num_heads: int,
+                 eval_metric: Metric,
+                 feat_dropout: float = 0,
+                 attn_dropout: float = 0,
+                 alpha: float = 0,
+                 beta: float = 0,
+                 hidden_size: Optional[int] = None,
+                 num_cont_col: Optional[int] = None,
+                 cat_idx: Optional[List[int]] = None,
+                 cat_sizes: Optional[List[int]] = None,
+                 cat_emb_sizes: Optional[List[int]] = None,
+                 verbose: bool = False):
+        """
+        Sets the attributes using the parent constructor
+
+        Args:
+            num_heads: number of attention heads
+            eval_metric: evaluation metric
+            feat_dropout: features dropout probability
+            attn_dropout: attention dropout probability
+            alpha: L1 penalty coefficient
+            beta: L2 penalty coefficient
+            hidden_size: size of the hidden states after the graph convolution
+            num_cont_col: number of numerical continuous columns in the dataset
+            cat_idx: idx of categorical columns in the dataset
+            cat_sizes: list of integer representing the size of each categorical column
+            cat_emb_sizes: list of integer representing the size of each categorical embedding
+            verbose: True if we want trace of the training progress
+        """
+        # We call parent's constructor
+        eval_metric = eval_metric if eval_metric is not None else BinaryCrossEntropy()
+        super().__init__(output_size=1,
+                         hidden_size=hidden_size,
+                         num_heads=num_heads,
+                         criterion=BCEWithLogitsLoss(reduction='none'),
+                         criterion_name='WBCE',
+                         eval_metric=eval_metric,
+                         feat_dropout=feat_dropout,
+                         attn_dropout=attn_dropout,
+                         alpha=alpha,
+                         beta=beta,
+                         num_cont_col=num_cont_col,
+                         cat_idx=cat_idx,
+                         cat_sizes=cat_sizes,
+                         cat_emb_sizes=cat_emb_sizes,
+                         verbose=verbose)
+
+    def predict_proba(self,
+                      dataset: PetaleKGNNDataset,
+                      mask: Optional[List[int]] = None) -> tensor:
+        """
+        Returns the real-valued predictions for all samples
+        in a particular set (default = test)
+
+        Args:
+            dataset: PetaleDatasets which its items are tuples (x, y, idx) where
+                     - x : (N,D) tensor with D-dimensional samples
+                     - y : (N,) tensor with classification labels
+                     - idx : (N,) tensor with idx of samples according to the whole dataset
+            mask: list of dataset idx for which we want to predict target
+
+        Returns: (N,) tensor
+        """
+        if mask is None or all([i in dataset.test_mask for i in mask]):
+            mask = dataset.test_mask
+            g, idx_map, mask_with_remaining_idx = dataset.test_subgraph
+
+        # We extract subgraph data (we add training data for graph convolution)
+        else:
+            g, idx_map, mask_with_remaining_idx = dataset.get_arbitrary_subgraph(mask)
+
+        # Set model for evaluation
+        self.eval()
+
+        # Execute a forward pass and apply a softmax
+        with no_grad():
+            pos_idx = [idx_map[i] for i in mask]
+            x, _, _ = dataset[mask_with_remaining_idx]
+            return sigmoid(self(g, x)[pos_idx])
 
 
 class GATRegressor(GAT):

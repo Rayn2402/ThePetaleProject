@@ -7,13 +7,13 @@ Description: Defines the abstract class TorchCustomModel from which all custom p
              implemented for the project must inherit. This class allows to store common
              function of all pytorch models.
 
-Date of last modification: 2021/11/18
+Date of last modification: 2022/04/12
 
 """
 
 from abc import ABC, abstractmethod
-from dgl import DGLHeteroGraph
-from src.data.processing.datasets import MaskType, PetaleDataset, PetaleStaticGNNDataset
+from dgl import DGLGraph
+from src.data.processing.datasets import MaskType, PetaleDataset
 from src.data.processing.gnn_datasets import PetaleKGNNDataset
 from src.models.blocks.mlp_blocks import EntityEmbeddingBlock
 from src.training.early_stopping import EarlyStopper
@@ -162,7 +162,7 @@ class TorchCustomModel(Module, ABC):
         self.apply(self.enable_module_running_stats)
 
     def _sam_weight_update(self, sample_weights: tensor,
-                           x: List[Union[DGLHeteroGraph, tensor]],
+                           x: List[Union[DGLGraph, tensor]],
                            y: tensor,
                            pos_idx: Optional[List[int]] = None) -> Tuple[tensor, float]:
         """
@@ -175,7 +175,7 @@ class TorchCustomModel(Module, ABC):
 
         Args:
             sample_weights: weights of each sample associated to a batch
-            x: list of arguments taken for the forward pass (HeteroGraph and (N', D) tensor with batch inputs)
+            x: list of arguments taken for the forward pass (DGLGraph and (N', D) tensor with batch inputs)
             y: (N',) ground truth associated to a batch
             pos_idx: dictionary that maps the original dataset's idx to their current
                      position in the mask used for the forward pass (used only with GNNs)
@@ -204,7 +204,7 @@ class TorchCustomModel(Module, ABC):
         return pred, loss.item()
 
     def _basic_weight_update(self, sample_weights: tensor,
-                             x: List[Union[DGLHeteroGraph, tensor]],
+                             x: List[Union[DGLGraph, tensor]],
                              y: tensor,
                              pos_idx: Optional[List[int]] = None) -> Tuple[tensor, float]:
         """
@@ -212,7 +212,7 @@ class TorchCustomModel(Module, ABC):
 
         Args:
             sample_weights: weights of each sample associated to a batch
-            x: list of arguments taken for the forward pass (HeteroGraph and (N', D) tensor with batch inputs)
+            x: list of arguments taken for the forward pass (DGLGraph and (N', D) tensor with batch inputs)
             y: (N',) ground truth associated to a batch
             pos_idx: dictionary that maps the original dataset's idx to their current
                      position in the mask used for the forward pass (used only with GNNs)
@@ -343,7 +343,7 @@ class TorchCustomModel(Module, ABC):
             self._optimizer = Adam(self.parameters(), lr=lr)
 
         # We add the dataset to train_data and valid_data if it is a GNN dataset
-        if isinstance(dataset, PetaleStaticGNNDataset) or isinstance(dataset, PetaleKGNNDataset):
+        if isinstance(dataset, PetaleKGNNDataset):
             train_data = (train_data, dataset)
             valid_data = (valid_data, dataset)
 
@@ -484,7 +484,7 @@ class TorchCustomModel(Module, ABC):
 
     @abstractmethod
     def _execute_train_step(self,
-                            train_data: Union[DataLoader, Tuple[DataLoader, PetaleStaticGNNDataset]],
+                            train_data: Union[DataLoader, Tuple[DataLoader, PetaleDataset]],
                             sample_weights: tensor) -> float:
         """
         Executes one training epoch

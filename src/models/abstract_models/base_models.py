@@ -7,7 +7,7 @@ Description: Defines the abstract PetaleRegressor and PetaleBinaryClassifier
              classes that must be used to build every other model in the project.
              It ensures consistency will all hyperparameter tuning functions.
 
-Date of last modification : 2021/10/19
+Date of last modification : 2022/04/12
 """
 from abc import ABC, abstractmethod
 from numpy import array, argmin, argmax, linspace
@@ -40,7 +40,7 @@ class PetaleBinaryClassifier(ABC):
                           from this class and that will be using when calling fit method
         """
         if weight is not None:
-            if not (0 <= weight <= 1):
+            if not (0 < weight < 1):
                 raise ValueError("weight must be included in range [0, 1]")
 
         self._thresh = classification_threshold

@@ -78,7 +78,10 @@ class PetaleKGNNDataset(PetaleDataset):
             self._similarity_measure = PetaleKGNNDataset.COSINE
 
         if weighted_similarity:
+            self._w_sim = True
             self._feature_imp_extractor = FeatureSelector(threshold=[1], cumulative_imp=[True], seed=1010710)
+        else:
+            self._w_sim = False
 
         # We save the number of k-nearest neighbors and the self-loop attribute
         self._self_loop = self_loop
@@ -203,7 +206,7 @@ class PetaleKGNNDataset(PetaleDataset):
         Returns: DGLgraph, dictionary mapping each idx to its position the graph, list with all the idx
         """
         # We extract the nearest neighbors idx list
-        nn_idx = self._nearest_neighbors_idx.tolist()
+        nn_idx = self._nearest_neighbors_idx.clone().detach().tolist()
 
         # We filter nodes possible neighbors
         added_node_idx = [] if added_node_idx is None else added_node_idx
@@ -431,6 +434,9 @@ class PetaleKGNNDataset(PetaleDataset):
         subset = self._retrieve_subset_from_original(cont_cols, cat_cols)
         gene_cols = None if len(self._gene_cols) == 0 else [c for c in self._gene_cols if c in cat_cols]
         return PetaleKGNNDataset(df=subset,
+                                 k=self._k,
+                                 self_loop=self._self_loop,
+                                 weighted_similarity=self._w_sim,
                                  target=self.target,
                                  cont_cols=cont_cols,
                                  cat_cols=cat_cols,
@@ -459,6 +465,9 @@ class PetaleKGNNDataset(PetaleDataset):
 
         return PetaleKGNNDataset(df=df,
                                  target=self.target,
+                                 k=self._k,
+                                 self_loop=self._self_loop,
+                                 weighted_similarity=self._w_sim,
                                  cont_cols=cont_cols,
                                  cat_cols=cat_cols,
                                  gene_cols=gene_cols,

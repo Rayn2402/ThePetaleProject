@@ -69,20 +69,20 @@ ENET_GGE_HPS = {
 
 GATHPS = {
     GATHP.ALPHA.name: 0,
-    GATHP.BETA.name: 0.0005,
-    GATHP.FEAT_DROPOUT.name: 0.25,
-    GATHP.HIDDEN_SIZE.name: 1,
-    GATHP.LR.name: 0.005,
-    GATHP.ATTN_DROPOUT.name: 0.25,
+    GATHP.BETA.name: 0.005,
+    GATHP.FEAT_DROPOUT.name: 0,
+    GATHP.HIDDEN_SIZE.name: None,
+    GATHP.LR.name: 0.01,
+    GATHP.ATTN_DROPOUT.name: 0.50,
     GATHP.NUM_HEADS.name: 1,
     GATHP.RHO.name: 0,
 }
 
 GCNHPS = {
     GCNHP.ALPHA.name: 0,
-    GCNHP.BETA.name: 0.0005,
-    GCNHP.HIDDEN_SIZE.name: 1,
-    GCNHP.LR.name: 0.005,
+    GCNHP.BETA.name: 0.005,
+    GCNHP.HIDDEN_SIZE.name: None,
+    GCNHP.LR.name: 0.01,
     GCNHP.RHO.name: 0,
 }
 

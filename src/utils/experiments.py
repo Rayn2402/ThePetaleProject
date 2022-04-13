@@ -38,7 +38,7 @@ from src.utils.graph import PetaleGraph, correct_and_smooth
 from src.utils.results_analysis import get_apriori_statistics, print_and_save_apriori_rules
 from src.utils.score_metrics import RegressionMetric, BinaryClassificationMetric, AbsoluteError, ConcordanceIndex,\
     Pearson, RootMeanSquaredError, SquaredError, AUC, BinaryCrossEntropy, BinaryBalancedAccuracy,\
-    Sensitivity, Specificity
+    Sensitivity, Specificity, BalancedAccuracyEntropyRatio, Reduction
 from time import time
 from torch import zeros
 from tqdm import tqdm
@@ -251,7 +251,9 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
 
     # Initialization of the dictionary containing the evaluation metrics
     if args.classification:
-        evaluation_metrics = [AUC(), BinaryBalancedAccuracy(), Sensitivity(), Specificity(), BinaryCrossEntropy()]
+        evaluation_metrics = [AUC(), BinaryBalancedAccuracy(), Sensitivity(),
+                              Specificity(), BinaryCrossEntropy(),
+                              BalancedAccuracyEntropyRatio(reduction=Reduction.GEO_MEAN)]
     else:
         evaluation_metrics = [AbsoluteError(), ConcordanceIndex(), Pearson(), SquaredError(), RootMeanSquaredError()]
 

@@ -358,7 +358,7 @@ class MLPRegressor(MLP):
         super().__init__(output_size=1,
                          layers=layers,
                          activation=activation,
-                         criterion=MSELoss(reduction='none'),
+                         criterion=MSELoss(),
                          criterion_name='MSE',
                          eval_metric=eval_metric,
                          dropout=dropout,

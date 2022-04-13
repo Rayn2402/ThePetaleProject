@@ -222,7 +222,7 @@ class GCNRegressor(GCN):
         eval_metric = eval_metric if eval_metric is not None else RootMeanSquaredError()
         super().__init__(output_size=1,
                          hidden_size=hidden_size,
-                         criterion=MSELoss(reduction='none'),
+                         criterion=MSELoss(),
                          criterion_name='MSE',
                          eval_metric=eval_metric,
                          alpha=alpha,

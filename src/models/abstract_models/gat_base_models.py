@@ -254,7 +254,7 @@ class GATRegressor(GAT):
         super().__init__(output_size=1,
                          hidden_size=hidden_size,
                          num_heads=num_heads,
-                         criterion=MSELoss(reduction='none'),
+                         criterion=MSELoss(),
                          criterion_name='MSE',
                          eval_metric=eval_metric,
                          feat_dropout=feat_dropout,

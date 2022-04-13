@@ -15,7 +15,7 @@ from numpy import array
 from sklearn.metrics import roc_auc_score
 from torch import abs, from_numpy, is_tensor, mean, pow, prod, sqrt, sum, tensor, zeros
 from torch.nn.functional import binary_cross_entropy_with_logits
-from typing import Tuple, Union
+from typing import Optional, Tuple, Union
 
 
 class TaskType:
@@ -563,13 +563,15 @@ class BinaryCrossEntropy(BinaryClassificationMetric):
     """
     Callable class that computes binary cross entropy
     """
-    def __init__(self, n_digits: int = 5):
+    def __init__(self, pos_weight: Optional[float], n_digits: int = 5):
         """
         Sets protected attributes using parent's constructor
 
         Args:
+            pos_weight: scaling factor applied to positive samples
             n_digits: number of digits kept for the score
         """
+        self._pos_weight = pos_weight
         super().__init__(direction=Direction.MINIMIZE, name="BCE", n_digits=n_digits)
 
     def compute_metric(self,
@@ -586,42 +588,7 @@ class BinaryCrossEntropy(BinaryClassificationMetric):
 
         Returns: float
         """
-        return binary_cross_entropy_with_logits(pred, targets.float()).item()
-
-
-class BalancedAccuracyEntropyRatio(BinaryClassificationMetric):
-    """
-    Callable class that computes the ratio between binary balanced accuracy and binary cross entropy
-    """
-    def __init__(self,
-                 reduction: str = Reduction.MEAN,
-                 n_digits: int = 5):
-        """
-         Builds two metric and sets other protected attributes using parent's constructor
-
-        Args:
-            reduction: "mean" for (TPR + TNR)/2 or "geometric_mean" for sqrt(TPR*TNR)
-            n_digits: number of digits kept for the score
-        """
-        self.bce = BinaryCrossEntropy(n_digits=10)
-        self.bbacc = BinaryBalancedAccuracy(reduction=reduction, n_digits=10)
-        super().__init__(direction=Direction.MAXIMIZE, name=f"{self.bbacc.name}/{self.bce.name}", n_digits=n_digits)
-
-    def compute_metric(self,
-                       pred: tensor,
-                       targets: tensor,
-                       thresh: float) -> float:
-        """
-        Computes the ratio between binary balanced accuracy and binary cross entropy
-
-        Args:
-            pred: (N,) tensor with predicted labels
-            targets: (N,) tensor with ground truth
-            thresh: probability threshold that must be reach by a sample to be classified into class 1
-
-        Returns: float
-        """
-        return self.bbacc(pred, targets, thresh)/self.bce(pred, targets)
+        return binary_cross_entropy_with_logits(pred, targets.float(), pos_weight=self._pos_weight).item()
 
 
 class Sensitivity(BinaryClassificationMetric):

@@ -7,7 +7,7 @@ Description: Defines the abstract class TorchCustomModel from which all custom p
              implemented for the project must inherit. This class allows to store common
              function of all pytorch models.
 
-Date of last modification: 2022/04/12
+Date of last modification: 2022/04/13
 
 """
 
@@ -161,7 +161,7 @@ class TorchCustomModel(Module, ABC):
         """
         self.apply(self.enable_module_running_stats)
 
-    def _sam_weight_update(self, sample_weights: tensor,
+    def _sam_weight_update(self,
                            x: List[Union[DGLGraph, tensor]],
                            y: tensor,
                            pos_idx: Optional[List[int]] = None) -> Tuple[tensor, float]:
@@ -174,7 +174,6 @@ class TorchCustomModel(Module, ABC):
             to zero to bypass the running statistics during the second pass.
 
         Args:
-            sample_weights: weights of each sample associated to a batch
             x: list of arguments taken for the forward pass (DGLGraph and (N', D) tensor with batch inputs)
             y: (N',) ground truth associated to a batch
             pos_idx: dictionary that maps the original dataset's idx to their current
@@ -187,7 +186,7 @@ class TorchCustomModel(Module, ABC):
         pred = pred if pos_idx is None else pred[pos_idx]
 
         # First forward-backward pass
-        loss = self.loss(sample_weights, pred, y)
+        loss = self.loss(pred, y)
         loss.backward()
         self._optimizer.first_step()
 
@@ -195,7 +194,7 @@ class TorchCustomModel(Module, ABC):
         self._disable_running_stats()
         second_pred = self(*x)
         second_pred = second_pred if pos_idx is None else second_pred[pos_idx]
-        self.loss(sample_weights, second_pred, y).backward()
+        self.loss(second_pred, y).backward()
         self._optimizer.second_step()
 
         # We enable running stats again
@@ -203,7 +202,7 @@ class TorchCustomModel(Module, ABC):
 
         return pred, loss.item()
 
-    def _basic_weight_update(self, sample_weights: tensor,
+    def _basic_weight_update(self,
                              x: List[Union[DGLGraph, tensor]],
                              y: tensor,
                              pos_idx: Optional[List[int]] = None) -> Tuple[tensor, float]:
@@ -211,7 +210,6 @@ class TorchCustomModel(Module, ABC):
         Executes a weights update without using Sharpness-Aware Minimization (SAM)
 
         Args:
-            sample_weights: weights of each sample associated to a batch
             x: list of arguments taken for the forward pass (DGLGraph and (N', D) tensor with batch inputs)
             y: (N',) ground truth associated to a batch
             pos_idx: dictionary that maps the original dataset's idx to their current
@@ -224,7 +222,7 @@ class TorchCustomModel(Module, ABC):
         pred = pred if pos_idx is None else pred[pos_idx]
 
         # We execute a single forward-backward pass
-        loss = self.loss(sample_weights, pred, y)
+        loss = self.loss(pred, y)
         loss.backward()
         self._optimizer.step()
 
@@ -304,8 +302,7 @@ class TorchCustomModel(Module, ABC):
             batch_size: Optional[int] = 55,
             valid_batch_size: Optional[int] = None,
             max_epochs: int = 200,
-            patience: int = 15,
-            sample_weights: Optional[tensor] = None) -> None:
+            patience: int = 15) -> None:
         """
         Fits the model to the training data
 
@@ -318,13 +315,9 @@ class TorchCustomModel(Module, ABC):
             valid_batch_size: size of the batches in the valid loader (None = one single batch)
             max_epochs: Maximum number of epochs for training
             patience: Number of consecutive epochs without improvement allowed
-            sample_weights: (N,) tensor with weights of the samples in the dataset
 
         Returns: None
         """
-        # We check the validity of the samples' weights
-        sample_weights = self._validate_sample_weights(dataset, sample_weights)
-
         # We create the training objects
         train_data = self._create_train_dataloader(dataset, batch_size)
 
@@ -351,7 +344,7 @@ class TorchCustomModel(Module, ABC):
         for epoch in range(max_epochs):
 
             # We calculate training loss
-            train_loss = self._execute_train_step(train_data, sample_weights)
+            train_loss = self._execute_train_step(train_data)
             update_progress(epoch, train_loss)
 
             # We calculate valid score and apply early stopping if needed
@@ -366,14 +359,12 @@ class TorchCustomModel(Module, ABC):
             early_stopper.remove_checkpoint()
 
     def loss(self,
-             sample_weights: tensor,
              pred: tensor,
              y: tensor) -> tensor:
         """
         Calls the criterion and add the elastic penalty
 
         Args:
-            sample_weights: (N,) tensor with weights of samples on which we calculate the loss
             pred: (N, C) tensor if classification with C classes, (N,) tensor for regression
             y: (N,) tensor with targets
 
@@ -385,11 +376,8 @@ class TorchCustomModel(Module, ABC):
             l1_penalty = l1_penalty + w.abs().sum()
             l2_penalty = l2_penalty + w.pow(2).sum()
 
-        # Computation of loss without reduction
-        loss = self._criterion(pred, y.float())  # (N,) tensor
-
         # Computation of loss reduction + elastic penalty
-        return (loss * sample_weights / sample_weights.sum()).sum() + self._alpha * l1_penalty + self._beta * l2_penalty
+        return self._criterion(pred, y.float()) + self._alpha * l1_penalty + self._beta * l2_penalty
 
     def plot_evaluations(self, save_path: Optional[str] = None) -> None:
         """
@@ -456,42 +444,13 @@ class TorchCustomModel(Module, ABC):
         if not valid:
             raise ValueError("There must be continuous columns or categorical columns")
 
-    @staticmethod
-    def _validate_sample_weights(dataset: PetaleDataset,
-                                 sample_weights: Optional[tensor]) -> tensor:
-        """
-        Validates the provided sample weights and return them.
-        If None are provided, each sample as the same weights of 1/n in the training loss,
-        where n is the number of elements in the dataset.
-
-        Args:
-            dataset: PetaleDataset used to feed the dataloaders
-            sample_weights: (N,) tensor with weights of the samples in the training set
-
-        Returns:
-
-        """
-        # We check the validity of the samples' weights
-        dataset_size = len(dataset)
-        if sample_weights is not None:
-            if sample_weights.shape[0] != dataset_size:
-                raise ValueError(f"sample_weights as length {sample_weights.shape[0]}"
-                                 f" while dataset as length {dataset_size}")
-        else:
-            sample_weights = ones(dataset_size) / dataset_size
-
-        return sample_weights
-
     @abstractmethod
-    def _execute_train_step(self,
-                            train_data: Union[DataLoader, Tuple[DataLoader, PetaleDataset]],
-                            sample_weights: tensor) -> float:
+    def _execute_train_step(self, train_data: Union[DataLoader, Tuple[DataLoader, PetaleDataset]]) -> float:
         """
         Executes one training epoch
 
         Args:
             train_data: training dataloader or tuple (train loader, dataset)
-            sample_weights: weights of the samples in the loss
 
         Returns: mean epoch loss
         """

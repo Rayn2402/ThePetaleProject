@@ -365,7 +365,7 @@ def set_info(data: Dict[str, Dict[str, Union[List[Union[str, float]], str]]]) ->
             # We extract the list of values
             values = data[section][key][VALUES]
 
-            if not isinstance(values[0], str):
+            if not (isinstance(values[0], str) or values[0] is None):
                 mean_, std_ = round(mean(values), 4), round(std(values), 4)
                 med_, min_, max_ = round(median(values), 4), round(min(values), 4), round(max(values), 4)
                 data[section][key][INFO] = f"{mean_} +- {std_} [{med_}; {min_}-{max_}]"

@@ -73,30 +73,27 @@ class PetaleBinaryMLPC(TorchBinaryClassifierWrapper):
             classification_threshold: threshold used to classify a sample in class 1
             weight: weight attributed to class 1
         """
-        # Model creation
-        model = MLPBinaryClassifier(layers=[n_unit]*n_layer,
-                                    activation=activation,
-                                    eval_metric=eval_metric,
-                                    dropout=dropout,
-                                    alpha=alpha,
-                                    beta=beta,
-                                    num_cont_col=num_cont_col,
-                                    cat_idx=cat_idx,
-                                    cat_sizes=cat_sizes,
-                                    cat_emb_sizes=cat_emb_sizes,
-                                    gene_idx_groups=gene_idx_groups,
-                                    gene_encoder_constructor=gene_encoder_constructor,
-                                    verbose=verbose)
-
-        super().__init__(model=model,
+        super().__init__(model_params=dict(layers=[n_unit]*n_layer,
+                                           activation=activation,
+                                           eval_metric=eval_metric,
+                                           dropout=dropout,
+                                           alpha=alpha,
+                                           beta=beta,
+                                           num_cont_col=num_cont_col,
+                                           cat_idx=cat_idx,
+                                           cat_sizes=cat_sizes,
+                                           cat_emb_sizes=cat_emb_sizes,
+                                           gene_idx_groups=gene_idx_groups,
+                                           gene_encoder_constructor=gene_encoder_constructor,
+                                           verbose=verbose),
                          classification_threshold=classification_threshold,
                          weight=weight,
-                         train_params={'lr': lr,
-                                       'rho': rho,
-                                       'batch_size': batch_size,
-                                       'valid_batch_size': valid_batch_size,
-                                       'patience': patience,
-                                       'max_epochs': max_epochs})
+                         train_params=dict(lr=lr,
+                                           rho=rho,
+                                           batch_size=batch_size,
+                                           valid_batch_size=valid_batch_size,
+                                           patience=patience,
+                                           max_epochs=max_epochs))
 
     @staticmethod
     def get_hps() -> List[HP]:
@@ -178,12 +175,12 @@ class PetaleMLPR(TorchRegressorWrapper):
 
         # Call of parent's constructor
         super().__init__(model=model,
-                         train_params={'lr': lr,
-                                       'rho': rho,
-                                       'batch_size': batch_size,
-                                       'valid_batch_size': valid_batch_size,
-                                       'patience': patience,
-                                       'max_epochs': max_epochs})
+                         train_params=dict(lr=lr,
+                                           rho=rho,
+                                           batch_size=batch_size,
+                                           valid_batch_size=valid_batch_size,
+                                           patience=patience,
+                                           max_epochs=max_epochs))
 
     @staticmethod
     def get_hps() -> List[HP]:

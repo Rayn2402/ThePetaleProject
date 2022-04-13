@@ -69,6 +69,8 @@ class PetaleGCNC(TorchBinaryClassifierWrapper):
                                            cat_sizes=cat_sizes,
                                            cat_emb_sizes=cat_emb_sizes,
                                            verbose=verbose),
+                         classification_threshold=classification_threshold,
+                         weight=weight,
                          train_params=dict(lr=lr,
                                            rho=rho,
                                            batch_size=None,

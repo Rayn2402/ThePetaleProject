@@ -119,9 +119,10 @@ class GCNClassifier(GCN):
                  cat_idx: Optional[List[int]] = None,
                  cat_sizes: Optional[List[int]] = None,
                  cat_emb_sizes: Optional[List[int]] = None,
+                 pos_weight: Optional[float] = None,
                  verbose: bool = False):
         """
-        Sets the attributes using the parent constructor
+        Sets the eval metric and the other attributes using the parent constructor
 
         Args:
             eval_metric: evaluation metric
@@ -132,14 +133,20 @@ class GCNClassifier(GCN):
             cat_idx: idx of categorical columns in the dataset
             cat_sizes: list of integer representing the size of each categorical column
             cat_emb_sizes: list of integer representing the size of each categorical embedding
+            pos_weight: scaling factor attributed to positive samples (samples in class 1)
             verbose: True if we want trace of the training progress
         """
-        # We call parent's constructor
-        eval_metric = eval_metric if eval_metric is not None else BinaryCrossEntropy()
+        # We set the eval metric
+        if eval_metric is None:
+            eval_metric = BinaryCrossEntropy(pos_weight=pos_weight)
+        else:
+            if hasattr(eval_metric, 'pos_weight'):
+                eval_metric.pos_weight = pos_weight
+
         super().__init__(output_size=1,
                          hidden_size=hidden_size,
-                         criterion=BCEWithLogitsLoss(reduction='none'),
-                         criterion_name='WBCE',
+                         criterion=BCEWithLogitsLoss(pos_weight=pos_weight),
+                         criterion_name='BCE',
                          eval_metric=eval_metric,
                          alpha=alpha,
                          beta=beta,

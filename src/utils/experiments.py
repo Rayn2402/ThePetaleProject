@@ -301,7 +301,7 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
         # Constructor selection
         if args.classification:
             constructor = PetaleBinaryRFC
-            RF_HPS[RandomForestHP.WEIGHT] = 0.5
+            RF_HPS[RandomForestHP.WEIGHT.name] = 0.5
         else:
             constructor = PetaleRFR
 
@@ -340,7 +340,7 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
         # Constructor selection
         if args.classification:
             constructor = PetaleBinaryXGBC
-            XGBOOST_HPS[XGBoostHP.WEIGHT] = 0.5
+            XGBOOST_HPS[XGBoostHP.WEIGHT.name] = 0.5
         else:
             constructor = PetaleXGBR
 
@@ -379,7 +379,7 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
         # Constructor selection
         if args.classification:
             constructor = PetaleBinaryMLPC
-            MLP_HPS[MLPHP.WEIGHT] = 0.5
+            MLP_HPS[MLPHP.WEIGHT.name] = 0.5
         else:
             constructor = PetaleMLPR
 
@@ -440,7 +440,7 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
         # Constructor selection
         if args.classification:
             constructor = PetaleBinaryMLPC
-            MLP_HPS[MLPHP.WEIGHT] = 0.5
+            MLP_HPS[MLPHP.WEIGHT.name] = 0.5
         else:
             constructor = PetaleMLPR
 
@@ -516,7 +516,7 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
         # Constructor selection
         if args.classification:
             constructor = PetaleBinaryMLPC
-            MLP_HPS[MLPHP.WEIGHT] = 0.5
+            MLP_HPS[MLPHP.WEIGHT.name] = 0.5
         else:
             constructor = PetaleMLPR
 
@@ -592,7 +592,7 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
         # Constructor selection
         if args.classification:
             constructor = PetaleBinaryMLPC
-            MLP_HPS[MLPHP.WEIGHT] = 0.5
+            MLP_HPS[MLPHP.WEIGHT.name] = 0.5
         else:
             constructor = PetaleMLPR
 
@@ -645,7 +645,7 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
         # Constructor selection
         if args.classification:
             constructor = PetaleBinaryGATC
-            GATHPS[GATHP.WEIGHT] = 0.5
+            GATHPS[GATHP.WEIGHT.name] = 0.5
         else:
             constructor = PetaleGATR
 
@@ -717,7 +717,7 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
         # Constructor selection
         if args.classification:
             constructor = PetaleBinaryGCNC
-            GCNHPS[GCNHP.WEIGHT] = 0.5
+            GCNHPS[GCNHP.WEIGHT.name] = 0.5
         else:
             constructor = PetaleGCNR
 

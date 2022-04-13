@@ -6,7 +6,7 @@ Authors: Nicolas Raymond
 Description: This file is used to define the regression and classification
              wrappers for MLP models
 
-Date of last modification : 2022/01/19
+Date of last modification : 2022/04/13
 """
 
 from src.models.wrappers.torch_wrappers import TorchBinaryClassifierWrapper, TorchRegressorWrapper
@@ -40,7 +40,6 @@ class PetaleBinaryMLPC(TorchBinaryClassifierWrapper):
                  cat_emb_sizes: Optional[List[int]] = None,
                  gene_idx_groups: Optional[Dict[str, List[int]]] = None,
                  gene_encoder_constructor: Optional[Callable] = None,
-                 pre_training: bool = False,
                  verbose: bool = False,
                  classification_threshold: float = 0.5,
                  weight:  Optional[float] = None):
@@ -70,8 +69,6 @@ class PetaleBinaryMLPC(TorchBinaryClassifierWrapper):
                              are list of idx referring to columns of genes associated to
                              the chromosome
             gene_encoder_constructor: function that generates a GeneEncoder from gene_idx_groups
-            pre_training: if True and gene_idx_groups is not None, GeneGraphEncoder will
-                          be pretrained with self supervised learning
             verbose: if True, training progress will be printed
             classification_threshold: threshold used to classify a sample in class 1
             weight: weight attributed to class 1
@@ -89,7 +86,6 @@ class PetaleBinaryMLPC(TorchBinaryClassifierWrapper):
                                     cat_emb_sizes=cat_emb_sizes,
                                     gene_idx_groups=gene_idx_groups,
                                     gene_encoder_constructor=gene_encoder_constructor,
-                                    pre_training=pre_training,
                                     verbose=verbose)
 
         super().__init__(model=model,
@@ -136,7 +132,6 @@ class PetaleMLPR(TorchRegressorWrapper):
                  cat_emb_sizes: Optional[List[int]] = None,
                  gene_idx_groups: Optional[Dict[str, List[int]]] = None,
                  gene_encoder_constructor: Optional[Callable] = None,
-                 pre_training: bool = False,
                  verbose: bool = False):
         """
         Builds and MLP regression model and sets the protected attributes using parent's constructor
@@ -164,8 +159,6 @@ class PetaleMLPR(TorchRegressorWrapper):
                              are list of idx referring to columns of genes associated to
                              the chromosome
             gene_encoder_constructor: function that generates a GeneEncoder from gene_idx_groups
-            pre_training: if True and gene_idx_groups is not None, GeneGraphEncoder will
-                          be pretrained with self supervised learning
             verbose: if True, training progress will be printed
         """
         # Creation of the model
@@ -181,7 +174,6 @@ class PetaleMLPR(TorchRegressorWrapper):
                              cat_emb_sizes=cat_emb_sizes,
                              gene_idx_groups=gene_idx_groups,
                              gene_encoder_constructor=gene_encoder_constructor,
-                             pre_training=pre_training,
                              verbose=verbose)
 
         # Call of parent's constructor

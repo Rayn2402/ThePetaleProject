@@ -139,12 +139,12 @@ class PetaleGCNR(TorchRegressorWrapper):
                              verbose=verbose)
 
         super().__init__(model=model,
-                         train_params={'lr': lr,
-                                       'rho': rho,
-                                       'batch_size': None,
-                                       'valid_batch_size': None,
-                                       'patience': patience,
-                                       'max_epochs': max_epochs})
+                         train_params=dict(lr=lr,
+                                           rho=rho,
+                                           batch_size=None,
+                                           valid_batch_size=None,
+                                           patience=patience,
+                                           max_epochs=max_epochs))
 
     @staticmethod
     def get_hps() -> List[HP]:

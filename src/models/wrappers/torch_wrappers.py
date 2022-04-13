@@ -24,6 +24,7 @@ class TorchBinaryClassifierWrapper(PetaleBinaryClassifier):
     Class used as a wrapper for binary classifier inheriting from TorchCustomModel
     """
     def __init__(self,
+                 model_constructor: Callable,
                  model_params: Dict[str, Any],
                  classification_threshold: float = 0.5,
                  weight: Optional[float] = None,
@@ -33,12 +34,14 @@ class TorchBinaryClassifierWrapper(PetaleBinaryClassifier):
         Sets the model protected attribute and other protected attributes via parent's constructor
 
         Args:
+            model_constructor: function used to create the classification model inheriting from TorchCustomModel
             model_params: parameters used to initialize the classification model inheriting from TorchCustomModel
             classification_threshold: threshold used to classify a sample in class 1
             weight: weight attributed to class 1
             train_params: training parameters proper to model for fit function
         """
         # Initialization of model
+        self._model_constructor = model_constructor
         self._model_params = model_params
         self._model = None
 
@@ -55,7 +58,9 @@ class TorchBinaryClassifierWrapper(PetaleBinaryClassifier):
 
         Returns: None
         """
-        raise NotImplementedError
+
+        self._model = self._model_constructor(**self._model_params,
+                                              pos_weight=self._get_scaling_factor(y_train))
 
     def fit(self, dataset: PetaleDataset) -> None:
         """

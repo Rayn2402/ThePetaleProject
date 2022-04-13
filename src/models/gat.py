@@ -16,7 +16,7 @@ from src.utils.score_metrics import RegressionMetric
 from typing import List, Optional
 
 
-class PetaleGATC(TorchBinaryClassifierWrapper):
+class PetaleBinaryGATC(TorchBinaryClassifierWrapper):
     """
     Graph Attention Network binary classification model wrapper for the Petale framework
     """

@@ -9,6 +9,7 @@ Description: This file is used to define the regression and classification
 Date of last modification : 2021/10/25
 """
 
+from numpy import array
 from src.models.wrappers.sklearn_wrappers import SklearnBinaryClassifierWrapper, SklearnRegressorWrapper
 from src.utils.hyperparameters import HP, NumericalContinuousHP, NumericalIntHP
 from typing import List, Optional
@@ -42,17 +43,28 @@ class PetaleBinaryXGBC(SklearnBinaryClassifierWrapper):
             classification_threshold: threshold used to classify a sample in class 1
             weight: weight attributed to class 1
         """
-        super().__init__(model=XGBClassifier(learning_rate=lr,
-                                             max_depth=max_depth,
-                                             subsample=subsample,
-                                             reg_alpha=alpha,
-                                             reg_lambda=beta,
-                                             use_label_encoder=False,
-                                             objective="binary:logistic",
-                                             eval_metric="logloss",
-                                             scale_pos_weight=1 if weight is None else weight/(1-weight)),
+        super().__init__(model_params=dict(learning_rate=lr,
+                                           max_depth=max_depth,
+                                           subsample=subsample,
+                                           reg_alpha=alpha,
+                                           reg_lambda=beta,
+                                           use_label_encoder=False,
+                                           objective="binary:logistic",
+                                           eval_metric="logloss"),
                          classification_threshold=classification_threshold,
                          weight=weight)
+
+    def _update_pos_scaling_factor(self, y_train: array) -> None:
+        """
+        Calculates the positive scaling factor and creates a new model
+
+        Args:
+            y_train: (N, 1) array with labels
+
+        Returns: None
+        """
+        self._model = XGBClassifier(**self._model_params,
+                                    scale_pos_weight=self._get_scaling_factor(y_train))
 
     @staticmethod
     def get_hps() -> List[HP]:

@@ -18,7 +18,7 @@ from typing import List, Optional
 
 class PetaleGCNC(TorchBinaryClassifierWrapper):
     """
-    Graph Attention Network regression model wrapper for the Petale framework
+    Graph Attention Network binary classification model wrapper for the Petale framework
     """
     def __init__(self,
                  eval_metric: Optional[RegressionMetric] = None,

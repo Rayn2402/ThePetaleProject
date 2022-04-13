@@ -24,21 +24,25 @@ class SklearnBinaryClassifierWrapper(PetaleBinaryClassifier):
     Class used as a wrapper for binary classifier with sklearn API
     """
     def __init__(self,
-                 model: Callable,
+                 model_params: Dict[str, Any],
                  classification_threshold: float = 0.5,
                  weight: Optional[float] = None,
                  train_params: Optional[Dict[str, Any]] = None):
 
         """
-        Sets the model protected attribute and other protected attributes via parent's constructor
+        Sets the model protected attributes and other protected attributes via parent's constructor
 
         Args:
-            model: classification model with sklearn API
+            model_params: parameters use to initialize classification model with sklearn API
             classification_threshold: threshold used to classify a sample in class 1
             weight: weight attributed to class 1
             train_params: training parameters proper to model for fit function
         """
-        self._model = model
+        # Initialization of model
+        self._model_params = model_params
+        self._model = None
+
+        # Call of parent's constructor
         super().__init__(classification_threshold=classification_threshold,
                          weight=weight,
                          train_params=train_params)

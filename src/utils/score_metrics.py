@@ -563,7 +563,7 @@ class BinaryCrossEntropy(BinaryClassificationMetric):
     """
     Callable class that computes binary cross entropy
     """
-    def __init__(self, pos_weight: Optional[float], n_digits: int = 5):
+    def __init__(self, pos_weight: Optional[float] = None, n_digits: int = 5):
         """
         Sets protected attributes using parent's constructor
 
@@ -571,7 +571,7 @@ class BinaryCrossEntropy(BinaryClassificationMetric):
             pos_weight: scaling factor applied to positive samples
             n_digits: number of digits kept for the score
         """
-        self._pos_weight = pos_weight
+        self.pos_weight = pos_weight
         super().__init__(direction=Direction.MINIMIZE, name="BCE", n_digits=n_digits)
 
     def compute_metric(self,
@@ -588,7 +588,7 @@ class BinaryCrossEntropy(BinaryClassificationMetric):
 
         Returns: float
         """
-        return binary_cross_entropy_with_logits(pred, targets.float(), pos_weight=self._pos_weight).item()
+        return binary_cross_entropy_with_logits(pred, targets.float(), pos_weight=self.pos_weight).item()
 
 
 class Sensitivity(BinaryClassificationMetric):

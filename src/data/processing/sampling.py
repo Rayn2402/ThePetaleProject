@@ -4,17 +4,17 @@ Filename: sampling.py
 Author: Nicolas Raymond
 
 Description: Defines the RandomStratifiedSampler class used to separate test sets and
-             valid sets from train sets. Also contains few function to extract some
+             valid sets from train sets. Also contains few functions used to extract
              specific datasets
 
-Date of last modification : 2021/11/02
+Date of last modification : 2022/04/13
 """
 
 from itertools import product
 from json import load
 from numpy import array
 from numpy.random import seed
-from pandas import qcut, DataFrame
+from pandas import DataFrame, merge, qcut
 from sklearn.model_selection import train_test_split
 from src.data.extraction.constants import *
 from src.data.extraction.data_management import PetaleDataManager
@@ -367,6 +367,7 @@ def push_valid_to_train(masks: Dict[int, Dict[str, Union[List[int], Dict[str, Li
 def get_learning_one_data(data_manager: PetaleDataManager,
                           genes: Optional[str],
                           baselines: bool = True,
+                          classification: bool = False,
                           dummy: bool = False) -> Tuple[DataFrame, str, List[str], List[str]]:
     """
     Extracts dataframe needed to proceed to "learning one" experiments and turn it into a dataset
@@ -375,7 +376,8 @@ def get_learning_one_data(data_manager: PetaleDataManager,
         data_manager: data manager to communicate with the database
         genes: One choice among ("None", "significant", "all")
         baselines: if True, baselines variables are included
-        dummy: true if we want to include dummy variable combining sex and VO2 quantile
+        classification: if True, targets returned are obesity classes instead of Total Body Fat values
+        dummy: true if we want to include dummy variable combining sex and Total Body Fat quantile
 
     Returns: dataframe, target, continuous columns, categorical columns
     """
@@ -404,7 +406,14 @@ def get_learning_one_data(data_manager: PetaleDataManager,
         cat_cols.append(WARMUP_DUMMY)
 
     # We extract the dataframe
+    target = TOTAL_BODY_FAT
     df = data_manager.get_table(LEARNING_1, columns=[PARTICIPANT, TOTAL_BODY_FAT] + cont_cols + cat_cols)
+
+    if classification:
+        target = OBESITY
+        ob_df = data_manager.get_table(OBESITY_TARGET, columns=[PARTICIPANT, OBESITY])
+        df = merge(df, ob_df, on=[PARTICIPANT], how=INNER)
+        df.drop([TOTAL_BODY_FAT], axis=1, inplace=True)
 
     # We replace wrong categorical values
     if baselines:
@@ -416,7 +425,7 @@ def get_learning_one_data(data_manager: PetaleDataManager,
         df.replace("0/2", "0/1", inplace=True)
         df.replace("1/2", "1/1", inplace=True)
 
-    return df, TOTAL_BODY_FAT, cont_cols, cat_cols
+    return df, target, cont_cols, cat_cols
 
 
 def get_learning_two_data(data_manager: PetaleDataManager,

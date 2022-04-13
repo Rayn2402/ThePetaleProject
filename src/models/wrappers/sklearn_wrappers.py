@@ -33,7 +33,7 @@ class SklearnBinaryClassifierWrapper(PetaleBinaryClassifier):
         Sets the model protected attributes and other protected attributes via parent's constructor
 
         Args:
-            model_params: parameters use to initialize classification model with sklearn API
+            model_params: parameters used to initialize the classification model with sklearn API
             classification_threshold: threshold used to classify a sample in class 1
             weight: weight attributed to class 1
             train_params: training parameters proper to model for fit function

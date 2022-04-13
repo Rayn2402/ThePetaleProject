@@ -20,7 +20,7 @@ from src.training.early_stopping import EarlyStopper
 from src.training.sam import SAM
 from src.utils.score_metrics import Metric
 from src.utils.visualization import visualize_epoch_progression
-from torch import ones, tensor
+from torch import tensor
 from torch.nn import BatchNorm1d, Module
 from torch.optim import Adam
 from torch.utils.data import DataLoader, SubsetRandomSampler

@@ -73,7 +73,8 @@ class PetaleBinaryMLPC(TorchBinaryClassifierWrapper):
             classification_threshold: threshold used to classify a sample in class 1
             weight: weight attributed to class 1
         """
-        super().__init__(model_params=dict(layers=[n_unit]*n_layer,
+        super().__init__(model_constructor=MLPBinaryClassifier,
+                         model_params=dict(layers=[n_unit]*n_layer,
                                            activation=activation,
                                            eval_metric=eval_metric,
                                            dropout=dropout,

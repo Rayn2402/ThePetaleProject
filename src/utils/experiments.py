@@ -5,7 +5,7 @@ Author: Nicolas Raymond
 
 Description: This file stores experiment functions that can be used with different datasets
 
-Date of last modification: 2022/04/06
+Date of last modification: 2022/04/13
 """
 import json
 
@@ -24,12 +24,12 @@ from src.data.processing.gnn_datasets import PetaleKGNNDataset
 from src.data.processing.preprocessing import preprocess_for_apriori
 from src.data.processing.sampling import extract_masks, GeneChoice, push_valid_to_train
 from src.models.blocks.genes_signature_block import GeneEncoder, GeneGraphEncoder, GeneGraphAttentionEncoder
-from src.models.gat import PetaleGATR, GATHP
+from src.models.gat import PetaleBinaryGATC, PetaleGATR, GATHP
 from src.models.gge import PetaleGGE
-from src.models.gcn import PetaleGCNR, GCNHP
-from src.models.mlp import PetaleMLPR, MLPHP
-from src.models.random_forest import PetaleRFR
-from src.models.xgboost_ import PetaleXGBR
+from src.models.gcn import PetaleBinaryGCNC, PetaleGCNR, GCNHP
+from src.models.mlp import PetaleBinaryMLPC, PetaleMLPR, MLPHP
+from src.models.random_forest import PetaleBinaryRFC, PetaleRFR, RandomForestHP
+from src.models.xgboost_ import PetaleBinaryXGBC, PetaleXGBR, XGBoostHP
 from src.recording.constants import PREDICTION, RECORDS_FILE, TRAIN_RESULTS, TEST_RESULTS, VALID_RESULTS
 from src.recording.recording import Recorder, compare_prediction_recordings, get_evaluation_recap
 from src.training.evaluation import Evaluator
@@ -37,7 +37,8 @@ from src.utils.argparsers import fixed_hps_lae_experiment_parser
 from src.utils.graph import PetaleGraph, correct_and_smooth
 from src.utils.results_analysis import get_apriori_statistics, print_and_save_apriori_rules
 from src.utils.score_metrics import RegressionMetric, BinaryClassificationMetric, AbsoluteError, ConcordanceIndex,\
-    Pearson, RootMeanSquaredError, SquaredError
+    Pearson, RootMeanSquaredError, SquaredError, AUC, BinaryCrossEntropy, BinaryBalancedAccuracy,\
+    Sensitivity, Specificity
 from time import time
 from torch import zeros
 from tqdm import tqdm
@@ -235,7 +236,8 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
     genes = True if genes_selection is not None else False
     df, target, cont_cols, cat_cols = data_extraction_function(data_manager=manager,
                                                                genes=genes_selection,
-                                                               baselines=args.baselines)
+                                                               baselines=args.baselines,
+                                                               classification=args.classification)
     # We filter gene variables if needed
     if len(args.custom_genes) != 0:
         genes_to_remove = [g for g in all_chrom_pos if g not in args.custom_genes]
@@ -248,7 +250,10 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
     push_valid_to_train(masks_without_val)
 
     # Initialization of the dictionary containing the evaluation metrics
-    evaluation_metrics = [AbsoluteError(), ConcordanceIndex(), Pearson(), SquaredError(), RootMeanSquaredError()]
+    if args.classification:
+        evaluation_metrics = [AUC(), BinaryBalancedAccuracy(), Sensitivity(), Specificity(), BinaryCrossEntropy()]
+    else:
+        evaluation_metrics = [AbsoluteError(), ConcordanceIndex(), Pearson(), SquaredError(), RootMeanSquaredError()]
 
     # Initialization of feature selector
     if args.feature_selection:
@@ -265,6 +270,8 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
 
     # We save the string that will help identify evaluations
     experiment_id = f"{experiment_id}_fixedhps"
+    if args.classification:
+        experiment_id += "_classif"
     if genes:
         if args.all_genes:
             experiment_id += "_gen2"
@@ -288,11 +295,18 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
         start = time()
 
         # Creation of dataset
-        dataset = PetaleDataset(df, target, cont_cols, cat_cols, classification=False,
+        dataset = PetaleDataset(df, target, cont_cols, cat_cols, classification=args.classification,
                                 feature_selection_groups=[gene_cols])
 
+        # Constructor selection
+        if args.classification:
+            constructor = PetaleBinaryRFC
+            RF_HPS[RandomForestHP.WEIGHT] = 0.5
+        else:
+            constructor = PetaleRFR
+
         # Creation of the evaluator
-        evaluator = Evaluator(model_constructor=PetaleRFR,
+        evaluator = Evaluator(model_constructor=constructor,
                               dataset=dataset,
                               masks=masks_without_val,
                               evaluation_name=f"RandomForest_{experiment_id}",
@@ -320,11 +334,18 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
         start = time()
 
         # Creation of dataset
-        dataset = PetaleDataset(df, target, cont_cols, cat_cols, classification=False,
+        dataset = PetaleDataset(df, target, cont_cols, cat_cols, classification=args.classification,
                                 feature_selection_groups=[gene_cols])
 
+        # Constructor selection
+        if args.classification:
+            constructor = PetaleBinaryXGBC
+            XGBOOST_HPS[XGBoostHP.WEIGHT] = 0.5
+        else:
+            constructor = PetaleXGBR
+
         # Creation of the evaluator
-        evaluator = Evaluator(model_constructor=PetaleXGBR,
+        evaluator = Evaluator(model_constructor=constructor,
                               dataset=dataset,
                               masks=masks_without_val,
                               evaluation_name=f"XGBoost_{experiment_id}",
@@ -353,7 +374,21 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
 
         # Creation of the dataset
         dataset = PetaleDataset(df, target, cont_cols, cat_cols, to_tensor=True,
-                                classification=False, feature_selection_groups=[gene_cols])
+                                classification=args.classification, feature_selection_groups=[gene_cols])
+
+        # Constructor selection
+        if args.classification:
+            constructor = PetaleBinaryMLPC
+            MLP_HPS[MLPHP.WEIGHT] = 0.5
+        else:
+            constructor = PetaleMLPR
+
+        # Update of hyperparameters
+        if args.enable_sam:
+            MLP_HPS[MLPHP.RHO.name] = sam_value
+
+        cat_sizes_sum = sum(dataset.cat_sizes) if dataset.cat_sizes is not None else 0
+        MLP_HPS[MLPHP.N_UNIT.name] = int((len(cont_cols) + cat_sizes_sum)/2)
 
         # Creation of function to update fixed params
         def update_fixed_params(dts):
@@ -368,15 +403,8 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
         # Saving of fixed_params for MLP
         fixed_params = update_fixed_params(dataset)
 
-        # Update of hyperparameters
-        if args.enable_sam:
-            MLP_HPS[MLPHP.RHO.name] = sam_value
-
-        cat_sizes_sum = sum(dataset.cat_sizes) if dataset.cat_sizes is not None else 0
-        MLP_HPS[MLPHP.N_UNIT.name] = int((len(cont_cols) + cat_sizes_sum)/2)
-
         # Creation of evaluator
-        evaluator = Evaluator(model_constructor=PetaleMLPR,
+        evaluator = Evaluator(model_constructor=constructor,
                               dataset=dataset,
                               masks=masks,
                               evaluation_name=f"MLP_{experiment_id}",
@@ -406,8 +434,19 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
 
         # Creation of the dataset
         dataset = PetaleDataset(df, target, cont_cols, cat_cols,
-                                to_tensor=True, classification=False,
+                                to_tensor=True, classification=args.classification,
                                 feature_selection_groups=[gene_cols])
+
+        # Constructor selection
+        if args.classification:
+            constructor = PetaleBinaryMLPC
+            MLP_HPS[MLPHP.WEIGHT] = 0.5
+        else:
+            constructor = PetaleMLPR
+
+        # Update of hyperparameters
+        if args.enable_sam:
+            ENET_HPS[MLPHP.RHO.name] = sam_value
 
         def update_fixed_params(dts):
             return {'max_epochs': 500,
@@ -421,12 +460,8 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
         # Saving of fixed_params for ENET
         fixed_params = update_fixed_params(dataset)
 
-        # Update of hyperparameters
-        if args.enable_sam:
-            ENET_HPS[MLPHP.RHO.name] = sam_value
-
         # Creation of evaluator
-        evaluator = Evaluator(model_constructor=PetaleMLPR,
+        evaluator = Evaluator(model_constructor=constructor,
                               dataset=dataset,
                               masks=masks,
                               evaluation_name=f"enet_{experiment_id}",
@@ -457,7 +492,7 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
         # Creation of the dataset
         dataset = PetaleDataset(df, target, cont_cols, cat_cols,
                                 gene_cols=gene_cols, to_tensor=True,
-                                classification=False, feature_selection_groups=[gene_cols])
+                                classification=args.classification, feature_selection_groups=[gene_cols])
 
         def gene_encoder_constructor(gene_idx_groups: Optional[Dict[str, List[int]]],
                                      dropout: float) -> GeneEncoder:
@@ -478,6 +513,17 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
                                     dropout=dropout,
                                     signature_size=args.signature_size)
 
+        # Constructor selection
+        if args.classification:
+            constructor = PetaleBinaryMLPC
+            MLP_HPS[MLPHP.WEIGHT] = 0.5
+        else:
+            constructor = PetaleMLPR
+
+        # Update of hyperparameters
+        if args.enable_sam:
+            ENET_GGE_HPS[MLPHP.RHO.name] = sam_value
+
         def update_fixed_params(dts):
             return {'max_epochs': 500,
                     'patience': 50,
@@ -492,12 +538,8 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
         # Saving of fixed_params for GGE + ENET
         fixed_params = update_fixed_params(dataset)
 
-        # Update of hyperparameters
-        if args.enable_sam:
-            ENET_GGE_HPS[MLPHP.RHO.name] = sam_value
-
         # Creation of evaluator
-        evaluator = Evaluator(model_constructor=PetaleMLPR,
+        evaluator = Evaluator(model_constructor=constructor,
                               dataset=dataset,
                               masks=masks,
                               evaluation_name=f"ggeEnet_{experiment_id}",
@@ -527,7 +569,7 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
         # Creation of the dataset
         dataset = PetaleDataset(df, target, cont_cols, cat_cols,
                                 gene_cols=gene_cols, to_tensor=True,
-                                classification=False, feature_selection_groups=[gene_cols])
+                                classification=args.classification, feature_selection_groups=[gene_cols])
 
         def gene_encoder_constructor(gene_idx_groups: Optional[Dict[str, List[int]]],
                                      dropout: float) -> GeneEncoder:
@@ -547,6 +589,16 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
                                              genes_emb_sharing=args.embedding_sharing,
                                              dropout=dropout,
                                              signature_size=args.signature_size)
+        # Constructor selection
+        if args.classification:
+            constructor = PetaleBinaryMLPC
+            MLP_HPS[MLPHP.WEIGHT] = 0.5
+        else:
+            constructor = PetaleMLPR
+
+        # Update of hyperparameters
+        if args.enable_sam:
+            ENET_GGE_HPS[MLPHP.RHO.name] = sam_value
 
         def update_fixed_params(dts):
             return {'max_epochs': 500,
@@ -562,12 +614,8 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
         # Saving of fixed_params for GGAE + ENET
         fixed_params = update_fixed_params(dataset)
 
-        # Update of hyperparameters
-        if args.enable_sam:
-            ENET_GGE_HPS[MLPHP.RHO.name] = sam_value
-
         # Creation of evaluator
-        evaluator = Evaluator(model_constructor=PetaleMLPR,
+        evaluator = Evaluator(model_constructor=constructor,
                               dataset=dataset,
                               masks=masks,
                               evaluation_name=f"ggaeEnet_{experiment_id}",
@@ -594,6 +642,27 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
         # Start timer
         start = time()
 
+        # Constructor selection
+        if args.classification:
+            constructor = PetaleBinaryGATC
+            GATHPS[GATHP.WEIGHT] = 0.5
+        else:
+            constructor = PetaleGATR
+
+        # Update of hyperparameters
+        if args.enable_sam:
+            GATHPS[GATHP.RHO.name] = sam_value
+
+        # Creation of function to update fixed params
+        def update_fixed_params(dts):
+            return {'num_cont_col': len(dts.cont_idx),
+                    'cat_idx': dts.cat_idx,
+                    'cat_sizes': dts.cat_sizes,
+                    'cat_emb_sizes': dts.cat_sizes,
+                    'max_epochs': 500,
+                    'patience': 50,
+                    **GATHPS}
+
         for nb_neighbor in args.degree:
 
             # We change the type from str to int
@@ -611,27 +680,13 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
                                             weighted_similarity=w_sim,
                                             cont_cols=cont_cols, cat_cols=cat_cols,
                                             conditional_cat_col=cond_cat_col,
-                                            classification=False, feature_selection_groups=[gene_cols])
-
-                # Creation of function to update fixed params
-                def update_fixed_params(dts):
-                    return {'num_cont_col': len(dts.cont_idx),
-                            'cat_idx': dts.cat_idx,
-                            'cat_sizes': dts.cat_sizes,
-                            'cat_emb_sizes': dts.cat_sizes,
-                            'max_epochs': 500,
-                            'patience': 50,
-                            **GATHPS}
+                                            classification=args.classification, feature_selection_groups=[gene_cols])
 
                 # Saving of original fixed params for GAT
                 fixed_params = update_fixed_params(dataset)
 
-                # Update of hyperparameters
-                if args.enable_sam:
-                    GATHPS[GATHP.RHO.name] = sam_value
-
                 # Creation of the evaluator
-                evaluator = Evaluator(model_constructor=PetaleGATR,
+                evaluator = Evaluator(model_constructor=constructor,
                                       dataset=dataset,
                                       masks=masks,
                                       evaluation_name=f"{prefix}GAT{nb_neighbor}_{experiment_id}",
@@ -659,6 +714,27 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
         # Start timer
         start = time()
 
+        # Constructor selection
+        if args.classification:
+            constructor = PetaleBinaryGCNC
+            GCNHPS[GCNHP.WEIGHT] = 0.5
+        else:
+            constructor = PetaleGCNR
+
+        # Update of hyperparameters
+        if args.enable_sam:
+            GCNHPS[GCNHP.RHO.name] = sam_value
+
+        # Creation of function to update fixed params
+        def update_fixed_params(dts):
+            return {'num_cont_col': len(dts.cont_idx),
+                    'cat_idx': dts.cat_idx,
+                    'cat_sizes': dts.cat_sizes,
+                    'cat_emb_sizes': dts.cat_sizes,
+                    'max_epochs': 500,
+                    'patience': 50,
+                    **GCNHPS}
+
         for nb_neighbor in args.degree:
 
             # We change the type from str to int
@@ -677,27 +753,13 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
                                             weighted_similarity=w_sim,
                                             cont_cols=cont_cols, cat_cols=cat_cols,
                                             conditional_cat_col=cond_cat_col,
-                                            classification=False, feature_selection_groups=[gene_cols])
-
-                # Creation of function to update fixed params
-                def update_fixed_params(dts):
-                    return {'num_cont_col': len(dts.cont_idx),
-                            'cat_idx': dts.cat_idx,
-                            'cat_sizes': dts.cat_sizes,
-                            'cat_emb_sizes': dts.cat_sizes,
-                            'max_epochs': 500,
-                            'patience': 50,
-                            **GCNHPS}
+                                            classification=args.classification, feature_selection_groups=[gene_cols])
 
                 # Saving of original fixed params for GCN
                 fixed_params = update_fixed_params(dataset)
 
-                # Update of hyperparameters
-                if args.enable_sam:
-                    GCNHPS[GCNHP.RHO.name] = sam_value
-
                 # Creation of the evaluator
-                evaluator = Evaluator(model_constructor=PetaleGCNR,
+                evaluator = Evaluator(model_constructor=constructor,
                                       dataset=dataset,
                                       masks=masks,
                                       evaluation_name=f"{prefix}GCN{nb_neighbor}_{experiment_id}",
@@ -716,146 +778,6 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
                 evaluator.evaluate()
 
         print("Time Taken for GCN (minutes): ", round((time() - start) / 60, 2))
-
-    """
-    GGE experiment
-    """
-    if args.gge and genes:
-
-        # Start timer
-        start = time()
-
-        # Creation of the dataset
-        dataset = PetaleDataset(df, target, cont_cols, cat_cols,
-                                gene_cols=gene_cols, to_tensor=True,
-                                classification=False, feature_selection_groups=[gene_cols])
-
-        def gene_encoder_constructor(gene_idx_groups: Optional[Dict[str, List[int]]],
-                                     dropout: float) -> GeneEncoder:
-            """
-            Builds a GeneGraphEncoder
-
-            Args:
-                gene_idx_groups: dictionary where keys are names of chromosomes and values
-                                 are list of idx referring to columns of genes associated to
-                                 the chromosome
-                dropout: dropout probability
-
-            Returns: GeneEncoder
-            """
-
-            return GeneGraphEncoder(gene_idx_groups=gene_idx_groups,
-                                    genes_emb_sharing=args.embedding_sharing,
-                                    dropout=dropout,
-                                    signature_size=args.signature_size)
-
-        def update_fixed_params(dts):
-            return {'max_epochs': 500,
-                    'patience': 50,
-                    'num_cont_col': len(dts.cont_idx),
-                    'cat_idx': dts.cat_idx,
-                    'cat_sizes': dts.cat_sizes,
-                    'cat_emb_sizes': dts.cat_sizes,
-                    'gene_idx_groups': dts.gene_idx_groups,
-                    'gene_encoder_constructor': gene_encoder_constructor,
-                    **ENET_GGE_HPS}
-
-        # Saving of fixed_params for GGE + ENET
-        fixed_params = update_fixed_params(dataset)
-
-        # Update of hyperparameters
-        if args.enable_sam:
-            ENET_GGE_HPS[MLPHP.RHO.name] = sam_value
-
-        # Creation of evaluator
-        evaluator = Evaluator(model_constructor=PetaleMLPR,
-                              dataset=dataset,
-                              masks=masks,
-                              evaluation_name=f"ggeEnet_{experiment_id}",
-                              hps={},
-                              n_trials=0,
-                              evaluation_metrics=evaluation_metrics,
-                              feature_selector=feature_selector,
-                              fixed_params=fixed_params,
-                              fixed_params_update_function=update_fixed_params,
-                              save_hps_importance=True,
-                              save_optimization_history=True,
-                              seed=args.seed)
-
-        # Evaluation
-        evaluator.evaluate()
-
-        print("Time Taken for GGE (minutes): ", round((time() - start) / 60, 2))
-
-    """
-    GGAE experiment
-    """
-    if args.ggae and genes:
-
-        # Start timer
-        start = time()
-
-        # Creation of the dataset
-        dataset = PetaleDataset(df, target, cont_cols, cat_cols,
-                                gene_cols=gene_cols, to_tensor=True,
-                                classification=False, feature_selection_groups=[gene_cols])
-
-        def gene_encoder_constructor(gene_idx_groups: Optional[Dict[str, List[int]]],
-                                     dropout: float) -> GeneEncoder:
-            """
-            Builds a GeneGraphAttentionEncoder
-
-            Args:
-                gene_idx_groups: dictionary where keys are names of chromosomes and values
-                                 are list of idx referring to columns of genes associated to
-                                 the chromosome
-                dropout: dropout probability
-
-            Returns: GeneEncoder
-            """
-
-            return GeneGraphAttentionEncoder(gene_idx_groups=gene_idx_groups,
-                                             genes_emb_sharing=args.embedding_sharing,
-                                             dropout=dropout,
-                                             signature_size=args.signature_size)
-
-        def update_fixed_params(dts):
-            return {'max_epochs': 500,
-                    'patience': 50,
-                    'num_cont_col': len(dts.cont_idx),
-                    'cat_idx': dts.cat_idx,
-                    'cat_sizes': dts.cat_sizes,
-                    'cat_emb_sizes': dts.cat_sizes,
-                    'gene_idx_groups': dts.gene_idx_groups,
-                    'gene_encoder_constructor': gene_encoder_constructor,
-                    **ENET_GGE_HPS}
-
-        # Saving of fixed_params for GGAE + ENET
-        fixed_params = update_fixed_params(dataset)
-
-        # Update of hyperparameters
-        if args.enable_sam:
-            ENET_GGE_HPS[MLPHP.RHO.name] = sam_value
-
-        # Creation of evaluator
-        evaluator = Evaluator(model_constructor=PetaleMLPR,
-                              dataset=dataset,
-                              masks=masks,
-                              evaluation_name=f"ggaeEnet_{experiment_id}",
-                              hps={},
-                              n_trials=0,
-                              evaluation_metrics=evaluation_metrics,
-                              feature_selector=feature_selector,
-                              fixed_params=fixed_params,
-                              fixed_params_update_function=update_fixed_params,
-                              save_hps_importance=True,
-                              save_optimization_history=True,
-                              seed=args.seed)
-
-        # Evaluation
-        evaluator.evaluate()
-
-        print("Time Taken for GGAE (minutes): ", round((time() - start) / 60, 2))
 
     """
     Self supervised learning experiment with GGE

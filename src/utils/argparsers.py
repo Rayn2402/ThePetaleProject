@@ -89,45 +89,47 @@ def fixed_hps_lae_experiment_parser():
                         help='Number of inner splits during the models evaluations')
 
     # Features selection
+    parser.add_argument('-class', '--classification', default=False, action='store_true',
+                        help='If true, runs classification task instead of regression')
     parser.add_argument('-b', '--baselines', default=False, action='store_true',
-                        help='True if we want to include baselines in features')
+                        help='If true, includes baselines in the features')
     parser.add_argument('-gen0', '--custom_genes', nargs='*', type=str, default=[],
                         help="Custom selection of genes to include.")
     parser.add_argument('-gen1', '--genes_subgroup', default=False, action='store_true',
-                        help='True if we want to include genes in features')
+                        help='If true, includes significant genes group in the features')
     parser.add_argument('-gen2', '--all_genes', default=False, action='store_true',
-                        help='True if we want to include genes in features')
+                        help='If true, includes genes in the features')
     parser.add_argument('-f', '--feature_selection', default=False, action='store_true',
-                        help='True if we want to apply automatic feature selection')
+                        help='If true, applies automatic feature selection')
 
     # Genes encoding parameter
     parser.add_argument('-share', '--embedding_sharing', default=False, action='store_true',
-                        help='True if we want to use a single entity embedding layer for all genes'
+                        help='If true, uses a single entity embedding layer for all genes'
                              ' (currently only applies with genomic signature creation')
 
     # Models selection
     parser.add_argument('-enet', '--enet', default=False, action='store_true',
-                        help='True if we want to run enet experiment')
+                        help='If true, runs the enet experiment')
     parser.add_argument('-mlp', '--mlp', default=False, action='store_true',
-                        help='True if we want to run mlp experiment')
+                        help='If true, runs the mlp experiment')
     parser.add_argument('-rf', '--random_forest', default=False, action='store_true',
-                        help='True if we want to run random forest experiment')
+                        help='If true, runs the random forest experiment')
     parser.add_argument('-xg', '--xg_boost', default=False, action='store_true',
-                        help='True if we want to run xgboost experiment')
+                        help='If true, runs the xgboost experiment')
     parser.add_argument('-gat', '--gat', default=False, action='store_true',
-                        help='True if we want to run GraphAttentionNetwork experiment')
+                        help='If true, runs the GraphAttentionNetwork experiment')
     parser.add_argument('-gcn', '--gcn', default=False, action='store_true',
-                        help='True if we want to run GraphConvolutionalNetwork experiment')
+                        help='If true, runs the GraphConvolutionalNetwork experiment')
     parser.add_argument('-gge', '--gge', default=False, action='store_true',
-                        help='True if we want to run GeneGraphEncoder with enet experiment')
+                        help='If true, runs the GeneGraphEncoder with enet experiment')
     parser.add_argument('-ggae', '--ggae', default=False, action='store_true',
-                        help='True if we want to run GeneGraphAttentionEncoder with enet experiment')
+                        help='If true, runs the GeneGraphAttentionEncoder with enet experiment')
 
     # GAT graph construction parameters
     parser.add_argument('-w_sim', '--weighted_similarity', default=False, action='store_true',
-                        help='True if we want to calculate patients similarities using weighted metrics')
+                        help='If true, calculates patients similarities using weighted metrics')
     parser.add_argument('-cond_col', '--conditional_column', default=False, action='store_true',
-                        help='True if we want to use the sex as conditional column in GAT construction')
+                        help='If true, uses the sex as conditional column in GAT construction')
     parser.add_argument('-deg', '--degree', nargs='*', type=str, default=[7],
                         help="Maximum number of neighbors for each node in the graph")
 
@@ -137,13 +139,13 @@ def fixed_hps_lae_experiment_parser():
 
     # Self supervised learning experiments
     parser.add_argument('-ssl_ggae', '-ssl_ggae', default=False, action='store_true',
-                        help='True if we want to run self supervised learning with the GeneGraphAttentionEncoder')
+                        help='If true, runs the self supervised learning with the GeneGraphAttentionEncoder')
     parser.add_argument('-ssl_gge', '-ssl_gge', default=False, action='store_true',
-                        help='True if we want to run self supervised learning with the GeneGraphEncoder')
+                        help='If true, runs the self supervised learning with the GeneGraphEncoder')
 
     # Activation of sharpness-aware minimization
     parser.add_argument('-sam', '--enable_sam', default=False, action='store_true',
-                        help='True if we want to use Sharpness-Aware Minimization Optimizer')
+                        help='If true, uses Sharpness-Aware Minimization Optimizer')
 
     # Usage of predictions from another experiment
     parser.add_argument('-p', '--path', type=str, default=None,

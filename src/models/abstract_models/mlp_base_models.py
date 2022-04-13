@@ -242,7 +242,7 @@ class MLPBinaryClassifier(MLP):
                  pos_weight: Optional[float] = None,
                  verbose: bool = False):
         """
-        Sets protected attributes using parent's constructor
+        Sets the evaluation metric and then other protected attributes using parent's constructor
 
         Args:
             layers: list with number of units in each hidden layer
@@ -262,7 +262,13 @@ class MLPBinaryClassifier(MLP):
             pos_weight: scaling factor attributed to positive samples (samples in class 1)
             verbose: true to print training progress when fit is called
         """
-        eval_metric = eval_metric if eval_metric is not None else BinaryCrossEntropy()
+        # We set the eval metric
+        if eval_metric is None:
+            eval_metric = BinaryCrossEntropy(pos_weight=pos_weight)
+        else:
+            if hasattr(eval_metric, 'pos_weight'):
+                eval_metric.pos_weight = pos_weight
+
         super().__init__(output_size=1,
                          layers=layers,
                          activation=activation,

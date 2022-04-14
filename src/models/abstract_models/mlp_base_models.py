@@ -10,7 +10,7 @@ Description: This file is used to define the MLP model with entity embeddings
              and PetaleBinaryClassifier classes. However, two wrapper classes for torch models
              are provided to enable the use of these mlp models with hyperparameter tuning functions.
 
-Date of last modification : 2022/02/21
+Date of last modification : 2022/04/13
 """
 
 from src.models.abstract_models.custom_torch_base import TorchCustomModel
@@ -45,7 +45,6 @@ class MLP(TorchCustomModel):
                  cat_emb_sizes: Optional[List[int]] = None,
                  gene_idx_groups: Optional[Dict[str, List[int]]] = None,
                  gene_encoder_constructor: Optional[Callable] = None,
-                 pre_training: bool = False,
                  verbose: bool = False):
 
         """
@@ -69,8 +68,6 @@ class MLP(TorchCustomModel):
                              are list of idx referring to columns of genes associated to
                              the chromosome
             gene_encoder_constructor: function that generates a GeneEncoder from gene_idx_groups
-            pre_training: if True and gene_idx_groups is not None, GeneEncoder will
-                          be pretrained with self supervised learning
             verbose: True if we want trace of the training progress
         """
 
@@ -92,7 +89,6 @@ class MLP(TorchCustomModel):
             self._genes_encoding_block = gene_encoder_constructor(gene_idx_groups=gene_idx_groups, dropout=dropout)
             self._genes_dropout_layer = Identity() if dropout <= 0 else Dropout(p=dropout)
             self._genes_available = True
-            self._pre_training = pre_training
             self._input_size += self._genes_encoding_block.output_size
         else:
             self._genes_encoding_block = None
@@ -113,15 +109,12 @@ class MLP(TorchCustomModel):
         # We add a linear layer to complete the layers
         self._linear_layer = Linear(layers[-1], output_size)
 
-    def _execute_train_step(self,
-                            train_data: DataLoader,
-                            sample_weights: tensor) -> float:
+    def _execute_train_step(self, train_data: DataLoader) -> float:
         """
         Executes one training epoch
 
         Args:
             train_data: training dataloader
-            sample_weights: weights of the samples in the loss
 
         Returns: mean epoch loss
         """
@@ -133,13 +126,13 @@ class MLP(TorchCustomModel):
         for item in train_data:
 
             # We extract the data
-            x, y, idx = item
+            x, y, _ = item
 
             # We clear the gradients
             self._optimizer.zero_grad()
 
             # We perform the weight update
-            pred, loss = self._update_weights(sample_weights[idx], [x], y)
+            pred, loss = self._update_weights([x], y)
 
             # We update the metrics history
             score = self._eval_metric(pred, y)
@@ -176,15 +169,13 @@ class MLP(TorchCustomModel):
             for item in valid_loader:
 
                 # We extract the data
-                x, y, idx = item
+                x, y, _ = item
 
                 # We perform the forward pass
                 output = self(x)
 
                 # We calculate the loss and the score
-                batch_size = len(idx)
-                sample_weights = ones(batch_size)/batch_size
-                epoch_loss += self.loss(sample_weights, output, y).item()  # Sample weights are equal for val (1/N)
+                epoch_loss += self.loss(output, y).item()
                 epoch_score += self._eval_metric(output, y)
 
         # We update evaluations history
@@ -248,10 +239,10 @@ class MLPBinaryClassifier(MLP):
                  cat_emb_sizes: Optional[List[int]] = None,
                  gene_idx_groups: Optional[Dict[str, List[int]]] = None,
                  gene_encoder_constructor: Optional[Callable] = None,
-                 pre_training: bool = False,
+                 pos_weight: Optional[float] = None,
                  verbose: bool = False):
         """
-        Sets protected attributes using parent's constructor
+        Sets the evaluation metric and then other protected attributes using parent's constructor
 
         Args:
             layers: list with number of units in each hidden layer
@@ -268,16 +259,21 @@ class MLPBinaryClassifier(MLP):
                              are list of idx referring to columns of genes associated to
                              the chromosome
             gene_encoder_constructor: function that generates a GeneEncoder from gene_idx_groups
-            pre_training: if True and gene_idx_groups is not None, GeneGraphEncoder will
-                          be pretrained with self supervised learning
+            pos_weight: scaling factor attributed to positive samples (samples in class 1)
             verbose: true to print training progress when fit is called
         """
-        eval_metric = eval_metric if eval_metric is not None else BinaryCrossEntropy()
+        # We set the eval metric
+        if eval_metric is None:
+            eval_metric = BinaryCrossEntropy(pos_weight=pos_weight)
+        else:
+            if hasattr(eval_metric, 'pos_weight'):
+                eval_metric.pos_weight = pos_weight
+
         super().__init__(output_size=1,
                          layers=layers,
                          activation=activation,
-                         criterion=BCEWithLogitsLoss(reduction='none'),
-                         criterion_name='WBCE',
+                         criterion=BCEWithLogitsLoss(pos_weight=pos_weight),
+                         criterion_name='BCE',
                          eval_metric=eval_metric,
                          dropout=dropout,
                          alpha=alpha,
@@ -288,7 +284,6 @@ class MLPBinaryClassifier(MLP):
                          cat_emb_sizes=cat_emb_sizes,
                          gene_idx_groups=gene_idx_groups,
                          gene_encoder_constructor=gene_encoder_constructor,
-                         pre_training=pre_training,
                          verbose=verbose)
 
     def predict_proba(self,
@@ -338,7 +333,6 @@ class MLPRegressor(MLP):
                  cat_emb_sizes: Optional[List[int]] = None,
                  gene_idx_groups: Optional[Dict[str, List[int]]] = None,
                  gene_encoder_constructor: Optional[Callable] = None,
-                 pre_training: bool = False,
                  verbose: bool = False):
         """
         Sets protected attributes using parent's constructor
@@ -358,15 +352,13 @@ class MLPRegressor(MLP):
                              are list of idx referring to columns of genes associated to
                              the chromosome
             gene_encoder_constructor: function that generates a GeneEncoder from gene_idx_groups
-            pre_training: if True and gene_idx_groups is not None, GeneGraphEncoder will
-                          be pretrained with self supervised learning
             verbose: true to print training progress when fit is called
         """
         eval_metric = eval_metric if eval_metric is not None else RootMeanSquaredError()
         super().__init__(output_size=1,
                          layers=layers,
                          activation=activation,
-                         criterion=MSELoss(reduction='none'),
+                         criterion=MSELoss(),
                          criterion_name='MSE',
                          eval_metric=eval_metric,
                          dropout=dropout,
@@ -378,7 +370,6 @@ class MLPRegressor(MLP):
                          cat_emb_sizes=cat_emb_sizes,
                          gene_idx_groups=gene_idx_groups,
                          gene_encoder_constructor=gene_encoder_constructor,
-                         pre_training=pre_training,
                          verbose=verbose)
 
     def predict(self,

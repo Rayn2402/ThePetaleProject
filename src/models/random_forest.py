@@ -6,9 +6,10 @@ Authors: Nicolas Raymond
 Description: This file is used to define the regression and classification
              wrappers for the sklearn random forest models
 
-Date of last modification : 2021/10/25
+Date of last modification : 2022/04/13
 """
 
+from numpy import array
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from src.models.wrappers.sklearn_wrappers import SklearnBinaryClassifierWrapper, SklearnRegressorWrapper
 from src.utils.hyperparameters import CategoricalHP, HP, NumericalContinuousHP, NumericalIntHP
@@ -40,14 +41,26 @@ class PetaleBinaryRFC(SklearnBinaryClassifierWrapper):
             classification_threshold: threshold used to classify a sample in class 1
             weight: weight attributed to class 1
         """
-        super().__init__(model=RandomForestClassifier(n_estimators=n_estimators,
-                                                      min_samples_split=min_samples_split,
-                                                      max_features=max_features,
-                                                      max_samples=max_samples,
-                                                      max_leaf_nodes=max_leaf_nodes,
-                                                      criterion="entropy"),
+        super().__init__(model_params=dict(n_estimators=n_estimators,
+                                           min_samples_split=min_samples_split,
+                                           max_features=max_features,
+                                           max_samples=max_samples,
+                                           max_leaf_nodes=max_leaf_nodes,
+                                           criterion="entropy"),
                          classification_threshold=classification_threshold,
                          weight=weight)
+
+    def _update_pos_scaling_factor(self, y_train: array) -> None:
+        """
+        Calculates the positive scaling factor and creates a new model
+
+        Args:
+            y_train: (N, 1) array with labels
+
+        Returns: None
+        """
+        self._model = RandomForestClassifier(**self._model_params,
+                                             class_weight={0: 1, 1: self._get_scaling_factor(y_train)})
 
     @staticmethod
     def get_hps() -> List[HP]:

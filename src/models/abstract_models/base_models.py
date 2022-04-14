@@ -7,7 +7,7 @@ Description: Defines the abstract PetaleRegressor and PetaleBinaryClassifier
              classes that must be used to build every other model in the project.
              It ensures consistency will all hyperparameter tuning functions.
 
-Date of last modification : 2021/10/19
+Date of last modification : 2022/04/13
 """
 from abc import ABC, abstractmethod
 from numpy import array, argmin, argmax, linspace
@@ -40,7 +40,7 @@ class PetaleBinaryClassifier(ABC):
                           from this class and that will be using when calling fit method
         """
         if weight is not None:
-            if not (0 <= weight <= 1):
+            if not (0 < weight < 1):
                 raise ValueError("weight must be included in range [0, 1]")
 
         self._thresh = classification_threshold
@@ -58,6 +58,44 @@ class PetaleBinaryClassifier(ABC):
     @property
     def weight(self) -> Optional[float]:
         return self._weight
+
+    def _get_scaling_factor(self, y_train: Union[tensor, array]) -> Optional[float]:
+        """
+        Computes the scaling factor that needs to be apply to the weight of samples
+        in the class 1
+
+        We need to find alpha that satisfies :
+            (alpha*n1)/n0 = w/(1-w)
+
+        Which gives the solution:
+            alpha = w*n0/(1-w)*n1
+
+        Args:
+            y_train: (N, 1) tensor or array with labels
+
+        Returns: positive scaling factor
+        """
+        # If no weight was provided we return None
+        if self.weight is None:
+            return None
+
+        # Otherwise we return samples' weights in the appropriate format
+        n1 = y_train.sum()              # number of samples with label 1
+        n0 = y_train.shape[0] - n1      # number of samples with label 0
+
+        return (n0/n1)*(self._weight/(1-self._weight))
+
+    @abstractmethod
+    def _update_pos_scaling_factor(self, y_train: Union[tensor, array]) -> None:
+        """
+        Updates the scaling factor that needs to be apply to samples in class 1
+
+        Args:
+            y_train: y_train: (N, 1) tensor or array with labels
+
+        Returns: None
+        """
+        raise NotImplementedError
 
     def find_optimal_threshold(self,
                                dataset: PetaleDataset,
@@ -86,44 +124,6 @@ class PetaleBinaryClassifier(ABC):
             self._thresh = thresholds[argmin(scores)]
         else:
             self._thresh = thresholds[argmax(scores)]
-
-    def get_sample_weights(self, y_train: Union[tensor, array]) -> Union[tensor, array]:
-        """
-        Computes the weight associated to each sample
-
-        We need to solve the following equation:
-            - n1 * w1 = self.weight
-            - n0 * w0 = 1 - self.weight
-
-        where n0 is the number of samples with label 0
-        and n1 is the number of samples with label 1
-
-        Args:
-            y_train: (N, 1) tensor or array with labels
-
-        Returns: sample weights
-        """
-        # If no weight was provided we return None
-        if self.weight is None:
-            return None
-
-        # Otherwise we return samples' weights in the appropriate format
-        n1 = y_train.sum()              # number of samples with label 1
-        n0 = y_train.shape[0] - n1      # number of samples with label 0
-        w0, w1 = (1 - self.weight) / n0, self.weight / n1  # sample weight for C0, sample weight for C1
-
-        # We save the weights in the appropriate format
-        if not is_tensor(y_train):
-            sample_weights = npzeros(y_train.shape)
-            sample_weights[npwhere(y_train == 0)] = w0
-            sample_weights[npwhere(y_train == 1)] = w1
-
-        else:
-            sample_weights = thzeros(y_train.shape)
-            sample_weights[thwhere(y_train == 0)] = w0
-            sample_weights[thwhere(y_train == 1)] = w1
-
-        return sample_weights
 
     @staticmethod
     def is_encoder() -> bool:

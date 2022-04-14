@@ -6,7 +6,7 @@ Authors: Nicolas Raymond
 Description: This file is used to define the regression and classification
              wrappers TabNet models
 
-Date of last modification : 2021/10/25
+Date of last modification : 2022/04/13
 """
 
 
@@ -81,21 +81,29 @@ class PetaleBinaryTNC(PetaleBinaryClassifier):
                                         optimizer_params=dict(lr=lr, weight_decay=beta),
                                         verbose=int(verbose))
 
+        # Class weights attribute initialization
+        self.__class_weights = None
+
         # Call of parent's constructor
         super().__init__(classification_threshold=classification_threshold,
                          weight=weight,
-                         train_params={'batch_size': batch_size,
-                                       'max_epochs': max_epochs,
-                                       'patience': patience})
+                         train_params=dict(batch_size=batch_size,
+                                           max_epochs=max_epochs,
+                                           patience=patience))
 
-    @staticmethod
-    def get_hps() -> List[HP]:
+    def _update_pos_scaling_factor(self, y_train: array) -> None:
         """
-        Returns a list with the hyperparameters associated to the model
+        Sets the class_weights protected attribute
 
-        Returns: list of hyperparameters
+        Args:
+            y_train: (N, 1) array with labels
+
+        Returns: None
         """
-        return list(TabNetHP()) + [TabNetHP.WEIGHT]
+        # We get positive samples scaling factor
+        pos_weight = self._get_scaling_factor(y_train)
+
+        self.__class_weights = {0: 1, 1: pos_weight} if pos_weight is not None else None
 
     def fit(self, dataset: PetaleDataset) -> None:
         """
@@ -116,12 +124,11 @@ class PetaleBinaryTNC(PetaleBinaryClassifier):
             x_valid, y_valid, _ = dataset[dataset.valid_mask]
             eval_set = [(x_valid, y_valid)]
 
-        # We get sample weights
-        sample_weights = self.get_sample_weights(y_train)
-        if sample_weights is None:
-            sample_weights = ones(len(y_train))/len(y_train)
+        # We update class weights
+        self._update_pos_scaling_factor(y_train)
 
-        self.__model.fit(x_train, y_train, weights=sample_weights,
+        # We fit the model to the training data
+        self.__model.fit(x_train, y_train, weights=self.__class_weights,
                          eval_set=eval_set, eval_metric=["logloss"],
                          **self.train_params)
 
@@ -141,7 +148,7 @@ class PetaleBinaryTNC(PetaleBinaryClassifier):
         # Figure construction
         visualize_epoch_progression(train_history=[train_loss],
                                     valid_history=[valid_loss],
-                                    progression_type=['WBCE'],
+                                    progression_type=['BCE'],
                                     path=save_path)
 
     def predict_proba(self,
@@ -178,6 +185,15 @@ class PetaleBinaryTNC(PetaleBinaryClassifier):
         Returns: None
         """
         self.__model.save_model(os.path.join(path, "model"))
+
+    @staticmethod
+    def get_hps() -> List[HP]:
+        """
+        Returns a list with the hyperparameters associated to the model
+
+        Returns: list of hyperparameters
+        """
+        return list(TabNetHP()) + [TabNetHP.WEIGHT]
 
 
 class PetaleTNR(PetaleRegressor):
@@ -235,18 +251,9 @@ class PetaleTNR(PetaleRegressor):
                                        optimizer_params=dict(lr=lr, weight_decay=beta),
                                        verbose=int(verbose))
 
-        super().__init__(train_params={'batch_size': batch_size,
-                                       'max_epochs': max_epochs,
-                                       'patience': patience})
-
-    @staticmethod
-    def get_hps() -> List[HP]:
-        """
-        Returns a list with the hyperparameters associated to the model
-
-        Returns: list of hyperparameters
-        """
-        return list(TabNetHP())
+        super().__init__(train_params=dict(batch_size=batch_size,
+                                           max_epochs=max_epochs,
+                                           patience=patience))
 
     def fit(self, dataset: PetaleDataset) -> None:
         """
@@ -322,6 +329,15 @@ class PetaleTNR(PetaleRegressor):
         Returns: None
         """
         self.__model.save_model(os.path.join(path, "model"))
+
+    @staticmethod
+    def get_hps() -> List[HP]:
+        """
+        Returns a list with the hyperparameters associated to the model
+
+        Returns: list of hyperparameters
+        """
+        return list(TabNetHP())
 
 
 class TabNetHP:

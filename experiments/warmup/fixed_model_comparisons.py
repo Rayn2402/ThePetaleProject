@@ -6,7 +6,7 @@ Author: Nicolas Raymond
 Description: This file is a script used to run warmup experiments using fixed
              hyperparameters.
 
-Date of last modification: 2022/04/04
+Date of last modification: 2022/04/13
 """
 
 import sys
@@ -199,6 +199,13 @@ if __name__ == '__main__':
         dataset = PetaleDataset(df, target, cont_cols, cat_cols, to_tensor=True,
                                 classification=False, feature_selection_groups=[gene_cols])
 
+        # Update of hyperparameters
+        if args.enable_sam:
+            MLP_HPS[MLPHP.RHO.name] = sam_value
+
+        cat_sizes_sum = sum(dataset.cat_sizes) if dataset.cat_sizes is not None else 0
+        MLP_HPS[MLPHP.N_UNIT.name] = int((len(cont_cols) + cat_sizes_sum)/2)
+
         # Creation of function to update fixed params
         def update_fixed_params(dts):
             return {'max_epochs': 500,
@@ -211,10 +218,6 @@ if __name__ == '__main__':
 
         # Saving of fixed_params for MLP
         fixed_params = update_fixed_params(dataset)
-
-        # Update of hyperparameters
-        if args.enable_sam:
-            MLP_HPS[MLPHP.RHO.name] = sam_value
 
         # Creation of evaluator
         evaluator = Evaluator(model_constructor=PetaleMLPR,
@@ -250,6 +253,10 @@ if __name__ == '__main__':
                                 to_tensor=True, classification=False,
                                 feature_selection_groups=[gene_cols])
 
+        # Update of hyperparameters
+        if args.enable_sam:
+            ENET_HPS[MLPHP.RHO.name] = sam_value
+
         def update_fixed_params(dts):
             return {'max_epochs': 500,
                     'patience': 50,
@@ -261,10 +268,6 @@ if __name__ == '__main__':
 
         # Saving of fixed_params for ENET
         fixed_params = update_fixed_params(dataset)
-
-        # Update of hyperparameters
-        if args.enable_sam:
-            ENET_HPS[MLPHP.RHO.name] = sam_value
 
         # Creation of evaluator
         evaluator = Evaluator(model_constructor=PetaleMLPR,
@@ -319,6 +322,10 @@ if __name__ == '__main__':
                                     dropout=dropout,
                                     signature_size=args.signature_size)
 
+        # Update of hyperparameters
+        if args.enable_sam:
+            ENET_GGE_HPS[MLPHP.RHO.name] = sam_value
+
         def update_fixed_params(dts):
             return {'max_epochs': 500,
                     'patience': 50,
@@ -333,10 +340,6 @@ if __name__ == '__main__':
 
         # Saving of fixed_params for GGE + ENET
         fixed_params = update_fixed_params(dataset)
-
-        # Update of hyperparameters
-        if args.enable_sam:
-            ENET_GGE_HPS[MLPHP.RHO.name] = sam_value
 
         # Creation of evaluator
         evaluator = Evaluator(model_constructor=PetaleMLPR,
@@ -391,6 +394,10 @@ if __name__ == '__main__':
                                              dropout=dropout,
                                              signature_size=args.signature_size)
 
+        # Update of hyperparameters
+        if args.enable_sam:
+            ENET_GGE_HPS[MLPHP.RHO.name] = sam_value
+
         def update_fixed_params(dts):
             return {'max_epochs': 500,
                     'patience': 50,
@@ -405,10 +412,6 @@ if __name__ == '__main__':
 
         # Saving of fixed_params for GGAE + ENET
         fixed_params = update_fixed_params(dataset)
-
-        # Update of hyperparameters
-        if args.enable_sam:
-            ENET_GGE_HPS[MLPHP.RHO.name] = sam_value
 
         # Creation of evaluator
         evaluator = Evaluator(model_constructor=PetaleMLPR,
@@ -438,6 +441,20 @@ if __name__ == '__main__':
         # Start timer
         start = time.time()
 
+        # Update of hyperparameters
+        if args.enable_sam:
+            GATHPS[GATHP.RHO.name] = sam_value
+
+        # Creation of function to update fixed params
+        def update_fixed_params(dts):
+            return {'num_cont_col': len(dts.cont_idx),
+                    'cat_idx': dts.cat_idx,
+                    'cat_sizes': dts.cat_sizes,
+                    'cat_emb_sizes': dts.cat_sizes,
+                    'max_epochs': 500,
+                    'patience': 50,
+                    **GATHPS}
+
         for nb_neighbor in args.degree:
 
             # We change the type from str to int
@@ -458,22 +475,8 @@ if __name__ == '__main__':
                                             conditional_cat_col=cond_cat_col,
                                             classification=False, feature_selection_groups=[gene_cols])
 
-                # Creation of function to update fixed params
-                def update_fixed_params(dts):
-                    return {'num_cont_col': len(dts.cont_idx),
-                            'cat_idx': dts.cat_idx,
-                            'cat_sizes': dts.cat_sizes,
-                            'cat_emb_sizes': dts.cat_sizes,
-                            'max_epochs': 500,
-                            'patience': 50,
-                            **GATHPS}
-
                 # Saving of original fixed params for GAT
                 fixed_params = update_fixed_params(dataset)
-
-                # Update of hyperparameters
-                if args.enable_sam:
-                    GATHPS[GATHP.RHO.name] = sam_value
 
                 # Creation of the evaluator
                 evaluator = Evaluator(model_constructor=PetaleGATR,
@@ -504,6 +507,20 @@ if __name__ == '__main__':
         # Start timer
         start = time.time()
 
+        # Update of hyperparameters
+        if args.enable_sam:
+            GCNHPS[GCNHP.RHO.name] = sam_value
+
+        # Creation of function to update fixed params
+        def update_fixed_params(dts):
+            return {'num_cont_col': len(dts.cont_idx),
+                    'cat_idx': dts.cat_idx,
+                    'cat_sizes': dts.cat_sizes,
+                    'cat_emb_sizes': dts.cat_sizes,
+                    'max_epochs': 500,
+                    'patience': 50,
+                    **GCNHPS}
+
         for nb_neighbor in args.degree:
 
             # We change the type from str to int
@@ -524,22 +541,8 @@ if __name__ == '__main__':
                                             conditional_cat_col=cond_cat_col, classification=False,
                                             feature_selection_groups=[gene_cols])
 
-                # Creation of function to update fixed params
-                def update_fixed_params(dts):
-                    return {'num_cont_col': len(dts.cont_idx),
-                            'cat_idx': dts.cat_idx,
-                            'cat_sizes': dts.cat_sizes,
-                            'cat_emb_sizes': dts.cat_sizes,
-                            'max_epochs': 500,
-                            'patience': 50,
-                            **GCNHPS}
-
                 # Saving of original fixed params for GCN
                 fixed_params = update_fixed_params(dataset)
-
-                # Update of hyperparameters
-                if args.enable_sam:
-                    GCNHPS[GCNHP.RHO.name] = sam_value
 
                 # Creation of the evaluator
                 evaluator = Evaluator(model_constructor=PetaleGCNR,

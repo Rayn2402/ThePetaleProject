@@ -6,7 +6,7 @@ Author: Nicolas Raymond
 Description: This file defines the GNN class which implements common training routine
              methods for GNN models
 
-Date of last modification: 2022/04/11
+Date of last modification: 2022/04/13
 """
 
 from src.data.processing.gnn_datasets import MaskType, PetaleKGNNDataset
@@ -78,15 +78,12 @@ class GNN(TorchCustomModel):
         # We save the linear layer for the final output
         self._linear_layer = Linear(self._hidden_size + self._input_size, output_size)
 
-    def _execute_train_step(self,
-                            train_data: Tuple[DataLoader, PetaleKGNNDataset],
-                            sample_weights: tensor) -> float:
+    def _execute_train_step(self, train_data: Tuple[DataLoader, PetaleKGNNDataset]) -> float:
         """
         Executes one training epoch
 
         Args:
             train_data: tuple (train loader, dataset)
-            sample_weights: weights of the samples in the loss
 
         Returns: mean epoch loss
         """
@@ -117,7 +114,7 @@ class GNN(TorchCustomModel):
             self._optimizer.zero_grad()
 
             # We perform the weight update
-            pred, loss = self._update_weights(sample_weights[idx], [train_subgraph, x], y, pos_idx)
+            pred, loss = self._update_weights([train_subgraph, x], y, pos_idx)
 
             # We update the metrics history
             score = self._eval_metric(pred, y)
@@ -175,9 +172,7 @@ class GNN(TorchCustomModel):
                 pred = self(valid_subgraph, x)
 
                 # We calculate the loss and the score
-                batch_size = len(idx)
-                sample_weights = ones(batch_size) / batch_size  # Sample weights are equal for validation (1/N)
-                epoch_loss += self.loss(sample_weights, pred[pos_idx], y).item()
+                epoch_loss += self.loss(pred[pos_idx], y).item()
                 epoch_score += self._eval_metric(pred[pos_idx], y)
 
         # We update evaluations history

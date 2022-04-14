@@ -6,7 +6,7 @@ Authors: Nicolas Raymond
 Description: This file is used to execute all the model comparisons
              made on the warmup dataset
 
-Date of last modification : 2022/03/28
+Date of last modification : 2022/04/13
 """
 import sys
 import time
@@ -212,6 +212,9 @@ if __name__ == '__main__':
         # Update of hyperparameters
         if args.enable_sam:
             MLP_HPS[MLPHP.RHO.name] = sam_search_space
+
+        cat_sizes_sum = sum(dataset.cat_sizes) if dataset.cat_sizes is not None else 0
+        MLP_HPS[MLPHP.N_UNIT.name] = {Range.VALUE: int((len(cont_cols) + cat_sizes_sum)/2)}
 
         # Creation of evaluator
         evaluator = Evaluator(model_constructor=PetaleMLPR,

@@ -7,7 +7,7 @@ Author: Nicolas Raymond
 Description: This file is used to define the abstract classes
              used as wrappers for models with the sklearn API
 
-Date of last modification : 2021/10/22
+Date of last modification : 2022/04/13
 """
 import os
 import pickle
@@ -15,6 +15,7 @@ import pickle
 from numpy import array
 from src.data.processing.datasets import PetaleDataset
 from src.models.abstract_models.base_models import PetaleBinaryClassifier, PetaleRegressor
+from src.utils.hyperparameters import HP
 from typing import Any, Callable, List, Dict, Optional
 
 
@@ -23,24 +24,39 @@ class SklearnBinaryClassifierWrapper(PetaleBinaryClassifier):
     Class used as a wrapper for binary classifier with sklearn API
     """
     def __init__(self,
-                 model: Callable,
+                 model_params: Dict[str, Any],
                  classification_threshold: float = 0.5,
                  weight: Optional[float] = None,
                  train_params: Optional[Dict[str, Any]] = None):
 
         """
-        Sets the model protected attribute and other protected attributes via parent's constructor
+        Sets the model protected attributes and other protected attributes via parent's constructor
 
         Args:
-            model: classification model with sklearn API
+            model_params: parameters used to initialize the classification model with sklearn API
             classification_threshold: threshold used to classify a sample in class 1
             weight: weight attributed to class 1
             train_params: training parameters proper to model for fit function
         """
-        self._model = model
+        # Initialization of model
+        self._model_params = model_params
+        self._model = None
+
+        # Call of parent's constructor
         super().__init__(classification_threshold=classification_threshold,
                          weight=weight,
                          train_params=train_params)
+
+    def _update_pos_scaling_factor(self, y_train: array) -> None:
+        """
+        Updates the scaling factor that needs to be apply to samples in class 1
+
+        Args:
+            y_train: y_train: (N, 1) array with labels
+
+        Returns: None
+        """
+        raise NotImplementedError
 
     def fit(self, dataset: PetaleDataset) -> None:
         """
@@ -57,11 +73,11 @@ class SklearnBinaryClassifierWrapper(PetaleBinaryClassifier):
         # We extract train set
         x_train, y_train, _ = dataset[dataset.train_mask]
 
-        # We get the sample weights
-        sample_weights = self.get_sample_weights(y_train)
+        # We update the positive scaling factor
+        self._update_pos_scaling_factor(y_train=y_train)
 
         # Call the fit method
-        self._model.fit(x_train, y_train, sample_weight=sample_weights, **self.train_params)
+        self._model.fit(x_train, y_train, **self.train_params)
 
     def predict_proba(self,
                       dataset: PetaleDataset,
@@ -102,6 +118,15 @@ class SklearnBinaryClassifierWrapper(PetaleBinaryClassifier):
         # We save the model with pickle
         filepath = os.path.join(path, "sklearn_model.sav")
         pickle.dump(self._model, open(filepath, "wb"))
+
+    @staticmethod
+    def get_hps() -> List[HP]:
+        """
+        Returns a list with the hyperparameters associated to the model
+
+        Returns: list of hyperparameters
+        """
+        raise NotImplementedError
 
 
 class SklearnRegressorWrapper(PetaleRegressor):
@@ -176,3 +201,12 @@ class SklearnRegressorWrapper(PetaleRegressor):
         # We save the model with pickle
         filepath = os.path.join(path, "sklearn_model.sav")
         pickle.dump(self._model, open(filepath, "wb"))
+
+    @staticmethod
+    def get_hps() -> List[HP]:
+        """
+        Returns a list with the hyperparameters associated to the model
+
+        Returns: list of hyperparameters
+        """
+        raise NotImplementedError

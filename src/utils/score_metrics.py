@@ -3,10 +3,10 @@ Filename: score_metrics.py
 
 Authors: Nicolas Raymond
 
-Description: This file is used to define classes related metrics
+Description: This file is used to define the metrics used
              measuring models' performance
 
-Date of last modification : 2021/04/11
+Date of last modification : 2021/04/14
 """
 
 from abc import ABC, abstractmethod

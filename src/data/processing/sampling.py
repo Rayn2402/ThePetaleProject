@@ -438,7 +438,7 @@ def get_learning_one_data(data_manager: PetaleDataManager,
 def get_learning_two_data(data_manager: PetaleDataManager,
                           genes: Optional[str],
                           baselines: bool = True,
-                          ) -> Tuple[DataFrame, str, List[str], List[str]]:
+                          **kwargs) -> Tuple[DataFrame, str, List[str], List[str]]:
     """
     Extracts dataframe needed to proceed to "learning two" experiments and turn it into a dataset
 

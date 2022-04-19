@@ -22,7 +22,7 @@ if __name__ == '__main__':
 
     # Run the experiments
     run_fixed_hps_regression_experiments(data_extraction_function=get_learning_two_data,
-                                         mask_path=Paths.REF_MASK,
+                                         mask_paths=[Paths.REF_MASK],
                                          experiment_id='ref',
                                          all_chrom_pos=ALL_CHROM_POS_REF,
                                          significant_chrom_pos=SIGNIFICANT_CHROM_POS_REF)

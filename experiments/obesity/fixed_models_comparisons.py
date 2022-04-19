@@ -22,7 +22,7 @@ if __name__ == '__main__':
 
     # Run the experiments
     run_fixed_hps_regression_experiments(data_extraction_function=get_learning_one_data,
-                                         mask_path=Paths.OBESITY_MASK,
+                                         mask_paths=[Paths.OBESITY_MASK, Paths.OBESITY_HOLDOUT_MASK],
                                          experiment_id='obesity',
                                          all_chrom_pos=ALL_CHROM_POS_OBESITY,
                                          significant_chrom_pos=SIGNIFICANT_CHROM_POS_OBESITY)

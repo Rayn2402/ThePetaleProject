@@ -174,6 +174,8 @@ def warmup_experiment_parser():
                         help='Number of outer splits used during the models evaluations')
     parser.add_argument('-l', '--nb_inner_splits', type=int, default=10,
                         help='Number of inner splits used during the models evaluations')
+    parser.add_argument('-h', '--holdout', default=False, action='store_true',
+                        help='If true, includes the holdout set data')
 
     # Features selection
     parser.add_argument('-b', '--baselines', default=False, action='store_true',

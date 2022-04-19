@@ -204,10 +204,10 @@ def run_correct_and_smooth_experiment(dataset: PetaleDataset,
 
 
 def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
-                                         mask_path: str,
+                                         mask_paths: List[str],
                                          experiment_id: str,
                                          all_chrom_pos: List[str],
-                                         significant_chrom_pos: List[str]) -> None:
+                                         significant_chrom_pos: List[str],) -> None:
     """
     Run all the model comparisons over a dataset using fixed hps
 
@@ -237,7 +237,8 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
     df, target, cont_cols, cat_cols = data_extraction_function(data_manager=manager,
                                                                genes=genes_selection,
                                                                baselines=args.baselines,
-                                                               classification=args.classification)
+                                                               classification=args.classification,
+                                                               holdout=args.holdout)
     # We filter gene variables if needed
     if len(args.custom_genes) != 0:
         genes_to_remove = [g for g in all_chrom_pos if g not in args.custom_genes]
@@ -245,7 +246,11 @@ def run_fixed_hps_regression_experiments(data_extraction_function: Callable,
         cat_cols = [c for c in cat_cols if c not in genes_to_remove]
 
     # Extraction of masks
-    masks = extract_masks(mask_path, k=args.nb_outer_splits, l=args.nb_inner_splits)
+    if args.holdout:
+        masks = extract_masks(mask_paths[1], k=1, l=10)
+    else:
+        masks = extract_masks(mask_paths[0], k=args.nb_outer_splits, l=args.nb_inner_splits)
+
     masks_without_val = deepcopy(masks)
     push_valid_to_train(masks_without_val)
 

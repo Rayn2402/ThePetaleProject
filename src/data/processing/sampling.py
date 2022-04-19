@@ -368,7 +368,8 @@ def get_learning_one_data(data_manager: PetaleDataManager,
                           genes: Optional[str],
                           baselines: bool = True,
                           classification: bool = False,
-                          dummy: bool = False) -> Tuple[DataFrame, str, List[str], List[str]]:
+                          dummy: bool = False,
+                          holdout: bool = False) -> Tuple[DataFrame, str, List[str], List[str]]:
     """
     Extracts dataframe needed to proceed to "learning one" experiments and turn it into a dataset
 
@@ -377,7 +378,8 @@ def get_learning_one_data(data_manager: PetaleDataManager,
         genes: One choice among ("None", "significant", "all")
         baselines: if True, baselines variables are included
         classification: if True, targets returned are obesity classes instead of Total Body Fat values
-        dummy: true if we want to include dummy variable combining sex and Total Body Fat quantile
+        dummy: if True, includes dummy variable combining sex and Total Body Fat quantile
+        holdout: if True, holdout data is included at the bottom of the dataframe
 
     Returns: dataframe, target, continuous columns, categorical columns
     """
@@ -408,6 +410,11 @@ def get_learning_one_data(data_manager: PetaleDataManager,
     # We extract the dataframe
     target = TOTAL_BODY_FAT
     df = data_manager.get_table(LEARNING_1, columns=[PARTICIPANT, TOTAL_BODY_FAT] + cont_cols + cat_cols)
+
+    if holdout:
+        h_df = data_manager.get_table(LEARNING_1_HOLDOUT,
+                                      columns=[PARTICIPANT, TOTAL_BODY_FAT] + cont_cols + cat_cols)
+        df.append(h_df, ignore_index=True)
 
     if classification:
         target = OBESITY

@@ -514,7 +514,8 @@ def get_warmup_data(data_manager: PetaleDataManager,
                     baselines: bool = True,
                     genes: Optional[str] = None,
                     sex: bool = False,
-                    dummy: bool = False) -> Tuple[DataFrame, str, Optional[List[str]], Optional[List[str]]]:
+                    dummy: bool = False,
+                    holdout: bool = False) -> Tuple[DataFrame, str, Optional[List[str]], Optional[List[str]]]:
     """
     Extracts dataframe needed to proceed to warmup experiments
 
@@ -524,6 +525,7 @@ def get_warmup_data(data_manager: PetaleDataManager,
         genes: One choice among ("None", "significant", "all")
         sex: true if we want to include sex variable
         dummy: true if we want to include dummy variable combining sex and VO2 quantile
+        holdout: if true, holdout data is included at the bottom of the dataframe
 
     Returns: dataframe, target, continuous columns, categorical columns
     """
@@ -565,6 +567,11 @@ def get_warmup_data(data_manager: PetaleDataManager,
 
     # We extract the dataframe
     df = data_manager.get_table(LEARNING_0_GENES, columns=all_columns)
+
+    # We add the holdout data
+    if holdout:
+        h_df = data_manager.get_table(LEARNING_0_GENES_HOLDOUT, columns=all_columns)
+        df.append(h_df, ignore_index=True)
 
     return df, VO2R_MAX, cont_cols, cat_cols
 

@@ -81,7 +81,11 @@ if __name__ == '__main__':
         cont_cols = [c for c in cont_cols if c != MVLPA]
 
     # Extraction of masks
-    masks = extract_masks(Paths.WARMUP_MASK, k=args.nb_outer_splits, l=args.nb_inner_splits)
+    if args.holdout:
+        masks = extract_masks(Paths.WARMUP_HOLDOUT_MASK, k=1, l=10)
+    else:
+        masks = extract_masks(Paths.WARMUP_MASK, k=args.nb_outer_splits, l=args.nb_inner_splits)
+
     masks_without_val = deepcopy(masks)
     push_valid_to_train(masks_without_val)
 

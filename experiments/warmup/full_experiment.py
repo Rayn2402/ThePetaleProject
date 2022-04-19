@@ -66,9 +66,9 @@ if __name__ == '__main__':
                                                       sex=args.sex)
     # We filter gene variables if needed
     if args.single_gene:
-        genes_to_remove = [g for g in ALL_CHROM_POS_WARMUP if g != '7_45932669']
-        df.drop(genes_to_remove, axis=1, inplace=True)
-        cat_cols = [c for c in cat_cols if c not in genes_to_remove]
+        ALL_CHROM_POS_WARMUP.remove('7_45932669')
+        df.drop(ALL_CHROM_POS_WARMUP, axis=1, inplace=True)
+        cat_cols = [c for c in cat_cols if c not in ALL_CHROM_POS_WARMUP]
 
     # We filter baselines variables if needed
     if args.baselines and args.remove_walk_variables:
@@ -78,7 +78,7 @@ if __name__ == '__main__':
     # We filter baselines variables if needed
     if args.baselines and args.remove_mvlpa:
         df.drop([MVLPA], axis=1, inplace=True)
-        cont_cols = [c for c in cont_cols if c != MVLPA]
+        cont_cols.remove(MVLPA)
 
     # Extraction of masks
     if args.holdout:

@@ -23,10 +23,11 @@ if __name__ == '__main__':
     sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
     from hps.fixed_hps import ENET_HPS, ENET_GGE_HPS, GATHPS, GCNHPS, GGEHPS, MLP_HPS, RF_HPS,XGBOOST_HPS
     from settings.paths import Paths
-    from src.data.processing.datasets import PetaleDataset
+    from src.data.processing.datasets import MaskType, PetaleDataset
     from src.data.processing.gnn_datasets import PetaleKGNNDataset
     from src.data.processing.feature_selection import FeatureSelector
-    from src.data.processing.sampling import extract_masks, GeneChoice, get_warmup_data, push_valid_to_train
+    from src.data.processing.sampling import extract_masks, GeneChoice, get_warmup_data,\
+        push_valid_to_train, RandomStratifiedSampler
     from src.models.blocks.genes_signature_block import GeneEncoder, GeneGraphEncoder, GeneGraphAttentionEncoder
     from src.models.gcn import PetaleGCNR, GCNHP
     from src.models.gat import PetaleGATR, GATHP
@@ -63,12 +64,13 @@ if __name__ == '__main__':
     df, target, cont_cols, cat_cols = get_warmup_data(manager,
                                                       baselines=args.baselines,
                                                       genes=genes_selection,
-                                                      sex=args.sex)
+                                                      sex=args.sex,
+                                                      holdout=args.holdout)
     # We filter gene variables if needed
     if args.single_gene:
-        genes_to_remove = [g for g in ALL_CHROM_POS_WARMUP if g != '7_45932669']
-        df.drop(genes_to_remove, axis=1, inplace=True)
-        cat_cols = [c for c in cat_cols if c not in genes_to_remove]
+        ALL_CHROM_POS_WARMUP.remove('7_45932669')
+        df.drop(ALL_CHROM_POS_WARMUP, axis=1, inplace=True)
+        cat_cols = [c for c in cat_cols if c not in ALL_CHROM_POS_WARMUP]
 
     # We filter baselines variables if needed
     if args.baselines and args.remove_walk_variables:
@@ -78,10 +80,14 @@ if __name__ == '__main__':
     # We filter baselines variables if needed
     if args.baselines and args.remove_mvlpa:
         df.drop([MVLPA], axis=1, inplace=True)
-        cont_cols = [c for c in cont_cols if c != MVLPA]
+        cont_cols.remove(MVLPA)
 
     # Extraction of masks
-    masks = extract_masks(Paths.WARMUP_MASK, k=args.nb_outer_splits, l=args.nb_inner_splits)
+    if args.holdout:
+        masks = extract_masks(Paths.WARMUP_HOLDOUT_MASK, k=args.nb_outer_splits, l=args.nb_inner_splits)
+    else:
+        masks = extract_masks(Paths.WARMUP_MASK, k=args.nb_outer_splits, l=args.nb_inner_splits)
+
     masks_without_val = deepcopy(masks)
     push_valid_to_train(masks_without_val)
 

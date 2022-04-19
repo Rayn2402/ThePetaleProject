@@ -84,7 +84,7 @@ if __name__ == '__main__':
 
     # Extraction of masks
     if args.holdout:
-        masks = extract_masks(Paths.WARMUP_HOLDOUT_MASK, k=args.nb_outer_splits, l=args.nb_inner_splits)
+        masks = extract_masks(Paths.WARMUP_HOLDOUT_MASK, k=1, l=10)
     else:
         masks = extract_masks(Paths.WARMUP_MASK, k=args.nb_outer_splits, l=args.nb_inner_splits)
 

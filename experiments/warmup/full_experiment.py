@@ -63,7 +63,8 @@ if __name__ == '__main__':
     df, target, cont_cols, cat_cols = get_warmup_data(manager,
                                                       baselines=args.baselines,
                                                       genes=genes_selection,
-                                                      sex=args.sex)
+                                                      sex=args.sex,
+                                                      holdout=args.holdout)
     # We filter gene variables if needed
     if args.single_gene:
         ALL_CHROM_POS_WARMUP.remove('7_45932669')

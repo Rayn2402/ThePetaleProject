@@ -125,7 +125,7 @@ class TorchBinaryClassifierWrapper(PetaleBinaryClassifier):
         Returns: None
         """
 
-        save(self._model, os.path.join(path, "torch_model.pt"))
+        save(self._model.state_dict(), os.path.join(path, "torch_model.pt"))
 
     @staticmethod
     def get_hps() -> List[HP]:

@@ -15,7 +15,7 @@ import sys
 
 sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
 from src.data.extraction.data_management import PetaleDataManager
-from src.data.processing.datasets import PetaleDataset
+from src.data.processing.datasets import MaskType, PetaleDataset
 from src.data.processing.transforms import ContinuousTransform
 from src.data.processing.sampling import extract_masks, get_warmup_data, MaskType
 from src.utils.score_metrics import AbsoluteError, Pearson, RootMeanSquaredError, SquaredError
@@ -42,6 +42,9 @@ def argument_parser():
 
     parser.add_argument('-k', '--nb_outer_splits', type=int, default=5,
                         help="Number of outer splits (default = 5)")
+
+    parser.add_argument('-holdout', '--holdout', default=False, action='store_true',
+                        help='If true, includes the holdout set data')
 
     arguments = parser.parse_args()
 
@@ -89,7 +92,7 @@ def execute_original_equation_experiment(dts: PetaleDataset,
                             index=k, recordings_path=Paths.EXPERIMENTS_RECORDS)
 
         # Prediction calculations and recording
-        for mask, test in [(train_mask, False), (test_mask, True)]:
+        for mask, m_type in [(train_mask, MaskType.TRAIN), (test_mask, MaskType.TEST)]:
 
             # Data extraction
             x = x_copy.iloc[mask]
@@ -101,11 +104,11 @@ def execute_original_equation_experiment(dts: PetaleDataset,
                 predictions.append(original_equation(row))
 
             predictions = tensor(predictions)
-            recorder.record_predictions([dataset.ids[i] for i in mask], predictions, y, test)
+            recorder.record_predictions([dataset.ids[i] for i in mask], predictions, y, mask_type=m_type)
 
             # Score calculation and recording
             for metric in eval_metrics:
-                recorder.record_scores(score=metric(predictions, y), metric=metric.name, test=test)
+                recorder.record_scores(score=metric(predictions, y), metric=metric.name, mask_type=m_type)
 
         # Generation of the file with the results
         recorder.generate_file()
@@ -125,15 +128,19 @@ if __name__ == '__main__':
 
     # Generation of dataset
     data_manager = PetaleDataManager()
-    df, target, cont_cols, cat_cols = get_warmup_data(data_manager)
+    df, target, cont_cols, cat_cols = get_warmup_data(data_manager, holdout=args.holdout)
 
     # Creation of the dataset
     dataset = PetaleDataset(df, target, cont_cols, cat_cols=cat_cols,
                             classification=False, to_tensor=True)
 
     # Extraction of masks
-    masks = extract_masks(Paths.WARMUP_MASK, k=k, l=0)
+    if args.holdout:
+        masks = extract_masks(Paths.WARMUP_HOLDOUT_MASK, k=1, l=0)
+        evaluation_name = f"original_equation_holdout"
+    else:
+        masks = extract_masks(Paths.WARMUP_MASK, k=k, l=0)
+        evaluation_name = f"original_equation"
 
     # Execution of the experiment
-    evaluation_name = f"original_equation"
     execute_original_equation_experiment(dts=dataset, m=masks, eval_name=evaluation_name)

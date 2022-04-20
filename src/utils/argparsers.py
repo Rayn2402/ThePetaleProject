@@ -87,7 +87,7 @@ def fixed_hps_lae_experiment_parser():
                         help='Number of outer splits during the models evaluations')
     parser.add_argument('-l', '--nb_inner_splits', type=int, default=10,
                         help='Number of inner splits during the models evaluations')
-    parser.add_argument('-h', '--holdout', default=False, action='store_true',
+    parser.add_argument('-holdout', '--holdout', default=False, action='store_true',
                         help='If true, includes the holdout set data')
 
     # Features selection
@@ -176,7 +176,7 @@ def warmup_experiment_parser():
                         help='Number of outer splits used during the models evaluations')
     parser.add_argument('-l', '--nb_inner_splits', type=int, default=10,
                         help='Number of inner splits used during the models evaluations')
-    parser.add_argument('-h', '--holdout', default=False, action='store_true',
+    parser.add_argument('-holdout', '--holdout', default=False, action='store_true',
                         help='If true, includes the holdout set data')
 
     # Features selection

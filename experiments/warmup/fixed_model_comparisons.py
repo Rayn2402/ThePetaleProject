@@ -23,11 +23,11 @@ if __name__ == '__main__':
     sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
     from hps.fixed_hps import ENET_HPS, ENET_GGE_HPS, GATHPS, GCNHPS, GGEHPS, MLP_HPS, RF_HPS,XGBOOST_HPS
     from settings.paths import Paths
-    from src.data.processing.datasets import MaskType, PetaleDataset
+    from src.data.processing.datasets import PetaleDataset
     from src.data.processing.gnn_datasets import PetaleKGNNDataset
     from src.data.processing.feature_selection import FeatureSelector
     from src.data.processing.sampling import extract_masks, GeneChoice, get_warmup_data,\
-        push_valid_to_train, RandomStratifiedSampler
+        push_valid_to_train
     from src.models.blocks.genes_signature_block import GeneEncoder, GeneGraphEncoder, GeneGraphAttentionEncoder
     from src.models.gcn import PetaleGCNR, GCNHP
     from src.models.gat import PetaleGATR, GATHP

@@ -17,8 +17,8 @@ sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
 from src.data.extraction.data_management import PetaleDataManager
 from src.data.processing.datasets import MaskType, PetaleDataset
 from src.data.processing.transforms import ContinuousTransform
-from src.data.processing.sampling import extract_masks, get_warmup_data, MaskType
-from src.utils.score_metrics import AbsoluteError, Pearson, RootMeanSquaredError, SquaredError
+from src.data.processing.sampling import extract_masks, get_warmup_data
+from src.utils.score_metrics import AbsoluteError, ConcordanceIndex, Pearson, RootMeanSquaredError, SquaredError
 from src.data.extraction.constants import *
 from torch import tensor
 from src.recording.recording import Recorder, get_evaluation_recap, compare_prediction_recordings
@@ -73,7 +73,7 @@ def execute_original_equation_experiment(dts: PetaleDataset,
 
          """
     # We save the evaluation metrics
-    eval_metrics = [AbsoluteError(), Pearson(), SquaredError(), RootMeanSquaredError()]
+    eval_metrics = [AbsoluteError(), ConcordanceIndex(), Pearson(), SquaredError(), RootMeanSquaredError()]
 
     # We run tests for each masks
     for k, v in m.items():

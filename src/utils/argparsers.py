@@ -136,7 +136,7 @@ def fixed_hps_lae_experiment_parser():
                         help="Maximum number of neighbors for each node in the graph")
 
     # Gene encoding parameter
-    parser.add_argument('-sign_size', '--signature_size', type=int, default=8,
+    parser.add_argument('-sign_size', '--signature_size', type=int, default=4,
                         help='Genomic signature size')
 
     # Self supervised learning experiments

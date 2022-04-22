@@ -87,6 +87,8 @@ def fixed_hps_lae_experiment_parser():
                         help='Number of outer splits during the models evaluations')
     parser.add_argument('-l', '--nb_inner_splits', type=int, default=10,
                         help='Number of inner splits during the models evaluations')
+    parser.add_argument('-holdout', '--holdout', default=False, action='store_true',
+                        help='If true, includes the holdout set data')
 
     # Features selection
     parser.add_argument('-class', '--classification', default=False, action='store_true',
@@ -134,7 +136,7 @@ def fixed_hps_lae_experiment_parser():
                         help="Maximum number of neighbors for each node in the graph")
 
     # Gene encoding parameter
-    parser.add_argument('-sign_size', '--signature_size', type=int, default=8,
+    parser.add_argument('-sign_size', '--signature_size', type=int, default=4,
                         help='Genomic signature size')
 
     # Self supervised learning experiments
@@ -174,6 +176,8 @@ def warmup_experiment_parser():
                         help='Number of outer splits used during the models evaluations')
     parser.add_argument('-l', '--nb_inner_splits', type=int, default=10,
                         help='Number of inner splits used during the models evaluations')
+    parser.add_argument('-holdout', '--holdout', default=False, action='store_true',
+                        help='If true, includes the holdout set data')
 
     # Features selection
     parser.add_argument('-b', '--baselines', default=False, action='store_true',

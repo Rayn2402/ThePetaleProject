@@ -220,6 +220,10 @@ GGEHPS = {
         Range.MAX: 25,
         Range.STEP: 5
     },
+    GGEHP.BETA.name: {
+        Range.MIN: 0.0005,
+        Range.MAX: 1
+    },
     GGEHP.DROPOUT.name: {
         Range.MIN: 0,
         Range.MAX: 0.25,

@@ -63,12 +63,13 @@ if __name__ == '__main__':
     df, target, cont_cols, cat_cols = get_warmup_data(manager,
                                                       baselines=args.baselines,
                                                       genes=genes_selection,
-                                                      sex=args.sex)
+                                                      sex=args.sex,
+                                                      holdout=args.holdout)
     # We filter gene variables if needed
     if args.single_gene:
-        genes_to_remove = [g for g in ALL_CHROM_POS_WARMUP if g != '7_45932669']
-        df.drop(genes_to_remove, axis=1, inplace=True)
-        cat_cols = [c for c in cat_cols if c not in genes_to_remove]
+        ALL_CHROM_POS_WARMUP.remove('7_45932669')
+        df.drop(ALL_CHROM_POS_WARMUP, axis=1, inplace=True)
+        cat_cols = [c for c in cat_cols if c not in ALL_CHROM_POS_WARMUP]
 
     # We filter baselines variables if needed
     if args.baselines and args.remove_walk_variables:
@@ -78,10 +79,14 @@ if __name__ == '__main__':
     # We filter baselines variables if needed
     if args.baselines and args.remove_mvlpa:
         df.drop([MVLPA], axis=1, inplace=True)
-        cont_cols = [c for c in cont_cols if c != MVLPA]
+        cont_cols.remove(MVLPA)
 
     # Extraction of masks
-    masks = extract_masks(Paths.WARMUP_MASK, k=args.nb_outer_splits, l=args.nb_inner_splits)
+    if args.holdout:
+        masks = extract_masks(Paths.WARMUP_HOLDOUT_MASK, k=1, l=10)
+    else:
+        masks = extract_masks(Paths.WARMUP_MASK, k=args.nb_outer_splits, l=args.nb_inner_splits)
+
     masks_without_val = deepcopy(masks)
     push_valid_to_train(masks_without_val)
 

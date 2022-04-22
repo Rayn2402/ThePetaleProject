@@ -414,7 +414,7 @@ def get_learning_one_data(data_manager: PetaleDataManager,
     if holdout:
         h_df = data_manager.get_table(LEARNING_1_HOLDOUT,
                                       columns=[PARTICIPANT, TOTAL_BODY_FAT] + cont_cols + cat_cols)
-        df.append(h_df, ignore_index=True)
+        df = df.append(h_df, ignore_index=True)
 
     if classification:
         target = OBESITY
@@ -578,7 +578,7 @@ def get_warmup_data(data_manager: PetaleDataManager,
     # We add the holdout data
     if holdout:
         h_df = data_manager.get_table(LEARNING_0_GENES_HOLDOUT, columns=all_columns)
-        df.append(h_df, ignore_index=True)
+        df = df.append(h_df, ignore_index=True)
 
     return df, VO2R_MAX, cont_cols, cat_cols
 

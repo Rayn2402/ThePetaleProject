@@ -409,12 +409,11 @@ class DataManager:
                                   columns=[c for c in self.get_column_names(table_name) if c not in excluded_cols])
 
         # We count the number of missing values per column
-        missing_df = df_table.isnull().sum()
+        missing_df = df_table.isnull()
 
         # We get the counts we need from the dataframe
-        missing_count = missing_df.sum()
+        missing_count_by_col = missing_df.sum()
         complete_row_count = len([complete for complete in missing_df.sum(axis=1) if complete == 0])
-        total_rows = df_table.shape[0]
 
         # We save the csv with the results if required
         if directory is not None:
@@ -423,10 +422,11 @@ class DataManager:
             missing_df.to_csv(file_path, index=True, header=False)
 
         # Returning a dictionary containing the data needed
-        return missing_df, {"table_name": table_name,
-                            "missing_count": missing_count,
-                            "complete_row_count": complete_row_count,
-                            "total_rows": total_rows}
+        return missing_count_by_col, {"table_name": table_name,
+                                      "missing_count": missing_df.sum().sum(),
+                                      "complete_row_count": complete_row_count,
+                                      "nb_rows": df_table.shape[0],
+                                      "nb_columns": df_table.shape[1]}
 
     def get_numerical_var_analysis(self,
                                    df: pd.DataFrame,
@@ -737,8 +737,8 @@ class PetaleDataManager(DataManager):
             sex_df = sex_df.drop([TAG], axis=1)
 
         # We retrieve categorical and numerical data
-        categorical_df = helpers.retrieve_categorical_var(table_df, ids=[PARTICIPANT])
-        numerical_df = helpers.retrieve_numerical_var(table_df, ids=[PARTICIPANT])
+        categorical_df = helpers.retrieve_categorical_var(table_df, to_keep=[PARTICIPANT])
+        numerical_df = helpers.retrieve_numerical_var(table_df, to_keep=[PARTICIPANT])
 
         # We merge the the categorical dataframe with the sex dataframe by the column PARTICIPANT
         categorical_df = pd.merge(sex_df, categorical_df, on=PARTICIPANT, how=INNER)

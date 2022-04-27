@@ -55,7 +55,7 @@ class DataManager:
             port: connection port number
             schema: schema we want to access in the database
         """
-        self.__conn, self.__cur = DataManager._connect(user, password, database, host, port)
+        self.__conn = DataManager._connect(user, password, database, host, port)
         self.__schema = schema
         self.__database = database
 
@@ -65,7 +65,7 @@ class DataManager:
                       primary_key: Optional[List[str]] = None) -> None:
         """
         Creates a table named "table_name" that has the columns with the types indicated
-        in the dictionary types.
+        in the dictionary "types".
 
         Args:
             table_name: name of the table
@@ -88,23 +88,13 @@ class DataManager:
             query += ");"
 
         # We execute the query
-        try:
-            self.__cur.execute(query)
-            self.__conn.commit()
+        with self.__conn.cursor() as curs:
+            try:
+                curs.execute(query)
+                self.__conn.commit()
 
-        except psycopg2.Error as e:
-            print(e.pgerror)
-            raise
-
-        # We reset the cursor
-        self._reset_cursor()
-
-    def _reset_cursor(self) -> None:
-        """
-        Resets the cursor
-        """
-        self.__cur.close()
-        self.__cur = self.__conn.cursor()
+            except psycopg2.Error as e:
+                raise Exception(e.pgerror)
 
     def create_and_fill_table(self,
                               df: pd.DataFrame,
@@ -136,18 +126,15 @@ class DataManager:
         file.readline()
 
         # We copy the data to the table
-        try:
-            self.__cur.copy_from(file, f"{self.__schema}.\"{table_name}\"", sep="!", null=" ")
-            self.__conn.commit()
-            os.remove(DataManager.TEMP)
+        with self.__conn.cursor() as curs:
+            try:
+                curs.copy_from(file, f"{self.__schema}.\"{table_name}\"", sep="!", null=" ")
+                self.__conn.commit()
+                os.remove(DataManager.TEMP)
 
-        except psycopg2.Error as e:
-            print(e.pgerror)
-            os.remove(DataManager.TEMP)
-            raise
-
-        # We reset the cursor
-        self._reset_cursor()
+            except psycopg2.Error as e:
+                os.remove(DataManager.TEMP)
+                raise Exception(e.pgerror)
 
     def get_all_missing_data_count(self,
                                    directory: Optional[str] = None,
@@ -190,21 +177,18 @@ class DataManager:
         Returns: list of table names
         """
         # We execute the query
-        try:
-            self.__cur.execute(
-                f"SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE"
-                f" TABLE_TYPE = 'BASE TABLE' AND TABLE_CATALOG='{self.__database}'"
-                f" AND table_schema = '{self.__schema}' ")
+        with self.__conn.cursor() as curs:
+            try:
+                curs.execute(
+                    f"SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE"
+                    f" TABLE_TYPE = 'BASE TABLE' AND TABLE_CATALOG='{self.__database}'"
+                    f" AND table_schema = '{self.__schema}' ")
 
-        except psycopg2.Error as e:
-            print(e.pgerror)
-            raise
+                # We extract the tables' names
+                tables_names = list(map(lambda t: t[0], curs.fetchall()))
 
-        # We extract the tables' names
-        tables_names = list(map(lambda t: t[0], self.__cur.fetchall()))
-
-        # We reset the cursor
-        self._reset_cursor()
+            except psycopg2.Error as e:
+                raise Exception(e.pgerror)
 
         # We return the names of the tables in the database
         return tables_names
@@ -280,20 +264,15 @@ class DataManager:
         Returns: list of column names
         """
         table_name = table_name.replace("'", "''")
+        with self.__conn.cursor() as curs:
+            try:
+                curs.execute(
+                    f"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME= \'{table_name}\'")
 
-        try:
-            self.__cur.execute(
-                f"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME= \'{table_name}\'")
-
-        except psycopg2.Error as e:
-            print(e.pgerror)
-            raise
-
-        # We extract the columns' names
-        columns_names = list(map(lambda c: c[0], self.__cur.fetchall()))
-
-        # We reset the cursor
-        self._reset_cursor()
+                # We extract the columns' names
+                columns_names = list(map(lambda c: c[0], curs.fetchall()))
+            except psycopg2.Error as e:
+                raise Exception(e.pgerror)
 
         return columns_names
 
@@ -324,17 +303,17 @@ class DataManager:
                 query += f' INTERSECT (SELECT {cols_in_query} FROM \"{table}\")'
         query += ') l'
 
-        # We execute the query
-        try:
-            self.__cur.execute(query)
-        except psycopg2.Error as e:
-            print(e.pgerror)
+        with self.__conn.cursor() as curs:
+            try:
 
-        # We extract the common count
-        count = self.__cur.fetchall()[0][0]
+                # We execute the query
+                curs.execute(query)
 
-        # We add the csv extension to the filename
-        filename += ".csv"
+                # We extract the common count
+                count = curs.fetchall()[0][0]
+
+            except psycopg2.Error as e:
+                print(e.pgerror)
 
         if filename is not None:
 
@@ -350,13 +329,13 @@ class DataManager:
 
             # We try to write the results
             try:
-                with open(filename, mode, newline='') as csv_file:
+                with open(f"{filename}.csv", mode, newline='') as csv_file:
                     writer = csv.DictWriter(csv_file, [DataManager.TABLES, DataManager.COMMON_ELEMENTS])
                     if write_header:
                         writer.writeheader()
                     writer.writerow({DataManager.TABLES: " & ".join(tables), DataManager.COMMON_ELEMENTS: count})
             except IOError:
-                print("I/O error")
+                raise Exception("I/O error")
 
         return count
 
@@ -485,22 +464,20 @@ class DataManager:
         # We add the table name to the query
         query = f"{query} FROM {self.__schema}.\"{table_name}\""
 
-        # We execute the query
-        try:
-            self.__cur.execute(query)
+        with self.__conn.cursor() as curs:
+            try:
+                # We execute the query
+                curs.execute(query)
 
-        except psycopg2.Error as e:
-            print(e.pgerror)
+                # We retrieve the column names and the data
+                columns = [desc[0] for desc in curs.description]
+                data = curs.fetchall()
 
-        # We retrieve the column names and the data
-        columns = [desc[0] for desc in self.__cur.description]
-        data = self.__cur.fetchall()
+            except psycopg2.Error as e:
+                raise Exception(e.pgerror)
 
         # We create a pandas dataframe
         df = pd.DataFrame(data=data, columns=columns)
-
-        # We reset the cursor
-        self._reset_cursor()
 
         return df
 
@@ -509,7 +486,7 @@ class DataManager:
                  password: str,
                  database: str,
                  host: str,
-                 port: str) -> Tuple[Any, Any]:
+                 port: str) -> Any:
         """
         Creates a connection with a database
 
@@ -528,13 +505,11 @@ class DataManager:
                                     host=host,
                                     password=password,
                                     port=port)
-            cur = conn.cursor()
 
         except psycopg2.Error as e:
-            print(e.pgerror)
-            raise
+            raise Exception(e.pgerror)
 
-        return conn, cur
+        return conn
 
     @staticmethod
     def _initialize_results_dict(df: pd.DataFrame,
@@ -629,7 +604,7 @@ class DataManager:
                     writer.writerow(item)
 
         except IOError:
-            print("I/O error")
+            raise Exception("I/O error")
 
 
 class PetaleDataManager(DataManager):

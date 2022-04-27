@@ -5,7 +5,7 @@ Author: Nicolas Raymond
 
 Description: Contains function to help analyses results from different experiments
 
-Date of last modification: 2021/12/01
+Date of last modification: 2022/04/27
 """
 
 from json import dump, load
@@ -28,6 +28,38 @@ APRIORI_KEYS = ['Support', 'Lift', 'Confidence']
 SECTION = 'Section'
 CLASS_PRED = 'CP'
 REG_PRED = 'RP'
+
+
+def extract_predictions(paths: List[str],
+                        model_ids: List[str],
+                        filename: str) -> None:
+    """
+    Extracts the predictions of different models and store them in a csv file
+
+    Args:
+        paths: list of paths where the records are stored
+        model_ids: list of names to identify models from which the predictions are retrieved
+        filename: name of the file in which the predictions will be stored
+
+    Returns: None
+    """
+    predictions = {}
+    for i, m, p in zip(range(len(model_ids)), model_ids, paths):
+
+        # We load the data from the records
+        with open(join(p, RECORDS_FILE), "r") as read_file:
+            data = load(read_file)
+
+        if i == 0:
+            for k, v in data[TEST_RESULTS].items():
+                predictions[k] = {TARGET: v[TARGET], m: v[PREDICTION]}
+        else:
+            for k, v in data[TEST_RESULTS].items():
+                predictions[k][m] = v[PREDICTION]
+
+    # We save the predictions
+    with open(f"{filename}.json", "w") as file:
+        dump(predictions, file, indent=True)
 
 
 def get_classification_metrics(target_table_name: str,
@@ -269,6 +301,7 @@ def print_and_save_apriori_rules(rules: List[Any],
     filepath = join(folder_path, f"{json_filename}.json")
     with open(filepath, "w") as file:
         dump(rules_dictionary, file, indent=True)
+
 
 
 

@@ -57,9 +57,12 @@ def extract_predictions(paths: List[str],
             for k, v in data[TEST_RESULTS].items():
                 predictions[k][m] = v[PREDICTION]
 
-    # We save the predictions
-    with open(f"{filename}.json", "w") as file:
-        dump(predictions, file, indent=True)
+    # We use the dict to create a dataframe
+    df = DataFrame.from_dict(data=predictions, orient='index')
+    df.sort_values(TARGET, inplace=True)
+
+    # We save the dataframe in a csv
+    df.to_csv(path_or_buf=f"{filename}.csv")
 
 
 def get_classification_metrics(target_table_name: str,

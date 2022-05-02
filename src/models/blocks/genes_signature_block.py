@@ -6,12 +6,12 @@ Author: Nicolas Raymond
 Description: Defines the modules in charge of encoding
              and decoding the genomic signature associated to patients.
 
-Date of last modification: 2022/04/05
+Date of last modification: 2022/05/02
 """
 
 from src.models.abstract_models.encoder import Encoder
 from src.models.blocks.mlp_blocks import BaseBlock, EntityEmbeddingBlock
-from torch import bmm, einsum, exp, normal, sigmoid, tensor, zeros
+from torch import bmm, einsum, exp, max, normal, sigmoid, tensor, zeros
 from torch.nn import AvgPool1d, BatchNorm1d, Conv1d, Dropout, Linear, Module, Parameter
 from torch.nn.functional import leaky_relu, relu
 from typing import Dict, List, Optional
@@ -452,7 +452,7 @@ class GeneAttentionLayer(Module):
         att = einsum('ij,kijm->kim', self.__attention, h)
         mask = att.clone().detach().bool().byte()
         att = exp(leaky_relu(att, negative_slope=0.2))*mask
-        att = att/att.sum(dim=2, keepdim=True)
+        att = att/max(att.sum(dim=2, keepdim=True), tensor(1e-10).float())
 
         # We save the attention scores
         if att_dict is not None:

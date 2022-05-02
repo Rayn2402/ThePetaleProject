@@ -1,5 +1,5 @@
 """
-Filename: attention_heat_map.py
+Filename: obesity_attention_heat_map.py
 
 Author: Nicolas Raymond
 

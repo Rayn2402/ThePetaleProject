@@ -15,7 +15,7 @@ import os
 from src.data.processing.datasets import PetaleDataset
 from src.models.abstract_models.base_models import PetaleBinaryClassifier, PetaleRegressor
 from src.utils.hyperparameters import HP
-from torch import tensor, save
+from torch import save, tensor
 from typing import Any, Callable, Dict, List, Optional
 
 
@@ -48,6 +48,10 @@ class TorchBinaryClassifierWrapper(PetaleBinaryClassifier):
         super().__init__(classification_threshold=classification_threshold,
                          weight=weight,
                          train_params=train_params)
+
+    @property
+    def model(self) -> Callable:
+        return self._model
 
     def _update_pos_scaling_factor(self, y_train: tensor) -> None:
         """
@@ -154,6 +158,10 @@ class TorchRegressorWrapper(PetaleRegressor):
         self._model = model
         super().__init__(train_params=train_params)
 
+    @property
+    def model(self) -> Callable:
+        return self._model
+
     def fit(self, dataset: PetaleDataset) -> None:
         """
         Fits the model to the training data
@@ -207,7 +215,7 @@ class TorchRegressorWrapper(PetaleRegressor):
 
         Returns: None
         """
-        save(self._model, os.path.join(path, "torch_model.pt"))
+        save(self._model.state_dict(), os.path.join(path, "torch_model.pt"))
 
     @staticmethod
     def get_hps() -> List[HP]:

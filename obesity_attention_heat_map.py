@@ -110,7 +110,6 @@ if __name__ == '__main__':
 
     heat_map_df = DataFrame.from_dict(data, orient='index')
 
-
     # Heatmap creation
     genes_df = dts.get_imputed_dataframe(include_ids_column=True, include_target_column=True).set_index(PARTICIPANT)
     genes_df = genes_df.iloc[test_mask]

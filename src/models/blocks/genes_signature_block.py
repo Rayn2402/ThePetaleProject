@@ -360,7 +360,14 @@ class GeneGraphAttentionEncoder(GeneEncoder):
         self._dropout1 = Dropout(p=dropout)
         self._dropout2 = Dropout(p=dropout)
 
-    def forward(self, x: tensor, att_dict: Optional[dict] = None) -> tensor:
+        # Attention cache
+        self._att_dict = {}
+
+    @property
+    def att_dict(self) -> Dict[str, tensor]:
+        return self._att_dict
+
+    def forward(self, x: tensor) -> tensor:
         """
         Executes the following actions on each element in the batch:
 
@@ -372,7 +379,6 @@ class GeneGraphAttentionEncoder(GeneEncoder):
 
         Args:
             x: (N, D) tensor with D-dimensional samples
-            att_dict: empty dict in which attention scores will be stored
 
         Returns: (N, D') tensor where D' is the signature size
         """
@@ -381,13 +387,14 @@ class GeneGraphAttentionEncoder(GeneEncoder):
         h = self._compute_genes_emb(x)  # (N, D) -> (N, NB_GENES, HIDDEN_SIZE)
 
         # Gene attention layer
-        h = relu(self._gene_attention_layer(h, att_dict))  # (N, NB_GENES, HIDDEN_SIZE) -> (N, NB_CHROM, HIDDEN_SIZE)
+        # (N, NB_GENES, HIDDEN_SIZE) -> (N, NB_CHROM, HIDDEN_SIZE)
+        h = relu(self._gene_attention_layer(h, self.att_dict))
 
         # Second dropout layer
         h = self._dropout1(h)
 
         # Chromosome attention layer
-        h = relu(self._chrom_attention_layer(h, att_dict))  # (N, NB_CHROM, HIDDEN_SIZE) -> (N, HIDDEN_SIZE)
+        h = relu(self._chrom_attention_layer(h, self.att_dict))  # (N, NB_CHROM, HIDDEN_SIZE) -> (N, HIDDEN_SIZE)
 
         # Third dropout layer
         h = self._dropout2(h)

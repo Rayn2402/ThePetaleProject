@@ -18,7 +18,6 @@ if __name__ == '__main__':
 
     # We read the data
     df = read_csv(join(Paths.CSV_FILES, "warmup_predictions.csv"), index_col=0)
-    x = range(df.shape[0])
 
     # Enable LaTeX
     plt.rc('text', usetex=True)

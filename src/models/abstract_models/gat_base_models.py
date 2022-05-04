@@ -5,7 +5,7 @@ Author: Nicolas Raymond
 
 Description: This file defines the Graph Attention Network model
 
-Date of last modification: 2022/04/13
+Date of last modification: 2022/05/04
 """
 from dgl import DGLGraph
 from dgl.nn.pytorch import GATConv
@@ -83,6 +83,13 @@ class GAT(GNN):
         # We save the number of attention heads
         self._num_att_heads = num_heads
 
+        # Attention cache
+        self._att_cache = None
+
+    @property
+    def att_cache(self) -> tensor:
+        return self._att_cache
+
     def forward(self,
                 g: DGLGraph,
                 x: tensor) -> tensor:
@@ -110,7 +117,7 @@ class GAT(GNN):
         x = cat(new_x, 1)
 
         # We apply the graph convolutional layer
-        h = self._conv_layer(g, x)
+        h, self._att_cache = self._conv_layer(g, x, get_attention=True)
 
         # We take the average of all the attention heads and apply batch norm
         h = h.sum(dim=1)/self._num_att_heads

@@ -89,8 +89,6 @@ if __name__ == '__main__':
     heatmap(heat_map_df)
     plt.ylabel(None)
     plt.tight_layout()
-    plt.show()
-    plt.close()
     for f in ['pdf', 'svg']:
         plt.savefig(f'warmup_genes_att_heatmap.{f}')
 

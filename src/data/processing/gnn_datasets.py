@@ -5,12 +5,10 @@ Author: Nicolas Raymond
 
 Description: File used to store datasets associated to GNNs
 
-Date of last modification: 2022/02/23
+Date of last modification: 2022/05/12
 """
-import matplotlib.pyplot as plt
 
-from dgl import add_self_loop, DGLGraph, graph, node_subgraph
-from networkx import draw, connected_components
+from dgl import DGLGraph, graph
 from pandas import DataFrame
 from src.data.processing.datasets import MaskType, PetaleDataset
 from src.data.processing.feature_selection import FeatureSelector
@@ -342,16 +340,6 @@ class PetaleKGNNDataset(PetaleDataset):
             # index to its physical position in the train + valid mask
             self._subgraphs[MaskType.VALID] = self._build_pop_subgraph(native_node_idx=self.train_mask,
                                                                        added_node_idx=self.valid_mask)
-
-    # def draw_train_graph(self) -> None:
-    #     """
-    #     Draws the training graph using NetworkX
-    #
-    #     Returns: None
-    #     """
-    #     g, _, idx = self.train_subgraph
-    #     draw(g.to_networkx(), node_color=self.y[idx])
-    #     plt.show()
 
     def _set_nearest_neighbors(self) -> None:
         """

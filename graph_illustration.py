@@ -37,7 +37,7 @@ if __name__ == '__main__':
     y = (dts.y - dts.y.min()) / (dts.y.max() - dts.y.min())
     print(f'Min: {dts.y.min()}')
     print(f'Max: {dts.y.max()}')
-    c_map = get_cmap('Blues', len(g.nodes()))
+    c_map = get_cmap('viridis', len(g.nodes()))
     g = to_networkx(g).to_undirected()
     node_to_idx = {v: k for k, v in idx_map.items()}
     sex = ['Men', 'Women']

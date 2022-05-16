@@ -47,4 +47,4 @@ if __name__ == '__main__':
     coeff = coeff[:5] + coeff[7:]
 
     for v, c in zip(variables, coeff + biases):
-        print(f'{v} : {round(c, 2)}')
+        print(f'{v} : {c:.2f}')

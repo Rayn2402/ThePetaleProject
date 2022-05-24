@@ -86,9 +86,16 @@ class GAT(GNN):
         # Attention cache
         self._att_cache = None
 
+        # Embeddings cache
+        self._emb_cache = None
+
     @property
     def att_cache(self) -> tensor:
         return self._att_cache
+
+    @property
+    def emb_cache(self) -> tensor:
+        return self._emb_cache
 
     def forward(self,
                 g: DGLGraph,
@@ -123,7 +130,8 @@ class GAT(GNN):
         h = h.sum(dim=1)/self._num_att_heads
 
         # We apply the residual connection
-        h = self._dropout(self._bn(cat([h, x], dim=1)))
+        self._emb_cache = h = self._bn(cat([h, x], dim=1))
+        h = self._dropout(h)
 
         # We apply the linear layer
         return self._linear_layer(h).squeeze()

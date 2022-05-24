@@ -35,8 +35,6 @@ if __name__ == '__main__':
     fig, axes = plt.subplots(nrows=1, ncols=2)
     g, idx_map, idx = dts.test_subgraph
     y = (dts.y - dts.y.min()) / (dts.y.max() - dts.y.min())
-    print(f'Min: {dts.y.min()}')
-    print(f'Max: {dts.y.max()}')
     c_map = get_cmap('viridis', len(g.nodes()))
     g = to_networkx(g).to_undirected()
     node_to_idx = {v: k for k, v in idx_map.items()}
@@ -44,13 +42,17 @@ if __name__ == '__main__':
     for i, sg in enumerate([g.subgraph(c) for c in connected_components(g)]):
         original_idx = [node_to_idx[n] for n in sg.nodes()]
         color_map = c_map(y[original_idx])
-        draw(sg, node_color=color_map, ax=axes[i])
+        n_shape = 'D' if sex[i] == 'Men' else 'o'
+        draw(sg, node_color=color_map, ax=axes[i], node_shape=n_shape)
         axes[i].collections[0].set_edgecolor('black')
         axes[i].set_title(sex[i])
 
     fig.subplots_adjust(right=0.75)
     cbar_ax = fig.add_axes([0.85, 0.15, 0.02, 0.7])
-    fig.colorbar(ScalarMappable(cmap=c_map), cax=cbar_ax)
+    cbar = fig.colorbar(ScalarMappable(cmap=c_map), cax=cbar_ax, ticks=[0, 1])
+    cbar.set_label('VO$_2$ peak')
+    min, max = dts.y.min(), dts.y.max()
+    cbar.ax.set_yticklabels([f'{min:.0f}', f'{max:.0f}'])
     for f in ['pdf', 'svg']:
         plt.savefig(f'graphs.{f}')
     plt.show()

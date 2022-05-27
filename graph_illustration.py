@@ -50,7 +50,7 @@ if __name__ == '__main__':
     fig.subplots_adjust(right=0.75)
     cbar_ax = fig.add_axes([0.85, 0.15, 0.02, 0.7])
     cbar = fig.colorbar(ScalarMappable(cmap=c_map), cax=cbar_ax, ticks=[0, 1])
-    cbar.set_label('VO$_2$ peak')
+    cbar.set_label('VO$_2$ peak (ml/kg/min)')
     min, max = dts.y.min(), dts.y.max()
     cbar.ax.set_yticklabels([f'{min:.0f}', f'{max:.0f}'])
     for f in ['pdf', 'svg']:

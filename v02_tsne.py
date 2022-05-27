@@ -89,7 +89,7 @@ if __name__ == '__main__':
     x = TSNE(n_components=2, perplexity=10).fit_transform(emb.numpy())
     axes[0].scatter(x[men_pos, 0], x[men_pos, 1], c=dts.y[men_idx].numpy(), cmap='viridis', marker='D')
     axes[0].scatter(x[women_pos, 0], x[women_pos, 1], c=dts.y[women_idx].numpy(), cmap='viridis', marker='o')
-    axes[0].set_title('GAT embeddings projection')
+    axes[0].set_title('Embeddings projection')
 
     men_pos, women_pos = [], []
     for i in range(len(dts)):
@@ -108,7 +108,7 @@ if __name__ == '__main__':
     fig.subplots_adjust(right=0.75)
     cbar_ax = fig.add_axes([0.85, 0.15, 0.02, 0.7])
     cbar = fig.colorbar(ScalarMappable(cmap='viridis'), cax=cbar_ax, ticks=[0, 1])
-    cbar.set_label('VO$_2$ peak')
+    cbar.set_label('VO$_2$ peak (ml/kg/min)')
     min, max = dts.y.min(), dts.y.max()
     cbar.ax.set_yticklabels([f'{min:.0f}', f'{max:.0f}'])
 

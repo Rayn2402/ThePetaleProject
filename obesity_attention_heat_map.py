@@ -126,6 +126,9 @@ if __name__ == '__main__':
     genes_df.replace("1/1", 2, inplace=True)
     genes_df = genes_df.astype(int)
 
+    heat_map_df.rename(columns={c: c.replace("_", ":") for c in heat_map_df.columns}, inplace=True)
+    genes_df.rename(columns={c: c.replace("_", ":") for c in genes_df.columns}, inplace=True)
+
     heatmap(heat_map_df, annot=genes_df, annot_kws={"fontsize": 8}, xticklabels=True)
     plt.tight_layout()
     for f in ['pdf', 'svg']:

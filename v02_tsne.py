@@ -73,7 +73,7 @@ if __name__ == '__main__':
 
     # TSNE Subplots creation
     plt.rc('text', usetex=True)
-    fig, axes = plt.subplots(nrows=2, ncols=1, sharex=True, sharey=True)
+    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 4))
 
     men_idx, men_pos, women_idx, women_pos = [], [], [], []
     for i, id_ in enumerate(idx):
@@ -86,24 +86,10 @@ if __name__ == '__main__':
         else:
             raise Exception('Missing sex')
 
-    x = TSNE(n_components=2, perplexity=10).fit_transform(emb.numpy())
-    axes[0].scatter(x[men_pos, 0], x[men_pos, 1], c=dts.y[men_idx].numpy(), cmap='viridis', marker='D')
-    axes[0].scatter(x[women_pos, 0], x[women_pos, 1], c=dts.y[women_idx].numpy(), cmap='viridis', marker='o')
-    axes[0].set_title('Embeddings projection')
-
-    men_pos, women_pos = [], []
-    for i in range(len(dts)):
-        if dts.original_data.iloc[i][SEX] == 'Men':
-            men_pos.append(i)
-        elif dts.original_data.iloc[i][SEX] == 'Women':
-            women_pos.append(i)
-        else:
-            raise Exception('Missing sex')
-
-    x = TSNE(n_components=2, perplexity=10).fit_transform(dts.x_cont.numpy())
-    axes[1].scatter(x[men_pos, 0], x[men_pos, 1], c=dts.y[men_pos].numpy(), cmap='viridis', marker='D')
-    axes[1].scatter(x[women_pos, 0], x[women_pos, 1], c=dts.y[women_pos].numpy(), cmap='viridis', marker='o')
-    axes[1].set_title('Original features projection')
+    x = TSNE(n_components=2, perplexity=10, random_state=1010710).fit_transform(emb.numpy())
+    ax.scatter(x[men_pos, 0], x[men_pos, 1], c=dts.y[men_idx].numpy(), cmap='viridis', marker='D')
+    ax.scatter(x[women_pos, 0], x[women_pos, 1], c=dts.y[women_idx].numpy(), cmap='viridis', marker='o')
+    ax.set_title('Embeddings projection')
 
     fig.subplots_adjust(right=0.75)
     cbar_ax = fig.add_axes([0.85, 0.15, 0.02, 0.7])
@@ -111,7 +97,6 @@ if __name__ == '__main__':
     cbar.set_label('VO$_2$ peak (ml/kg/min)')
     min, max = dts.y.min(), dts.y.max()
     cbar.ax.set_yticklabels([f'{min:.0f}', f'{max:.0f}'])
-
 
     # Figure saving
     for f in ['pdf', 'svg']:

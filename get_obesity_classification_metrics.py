@@ -7,7 +7,7 @@ Description: Adds the sensitivity, specificity and bAcc scores to obesity experi
              at a given path.
 """
 from pandas import DataFrame
-from src.data.extraction.constants import AGE, OBESITY, OBESITY_PERCENTILE, OBESITY_TARGET, SEX, TOTAL_BODY_FAT
+from src.data.extraction.constants import AGE, CHILDREN_OBESITY_PERCENTILE, OBESITY, OBESITY_TARGET, SEX
 from src.utils.results_analysis import CLASS_PRED, get_classification_metrics, REG_PRED
 
 if __name__ == '__main__':
@@ -23,9 +23,13 @@ if __name__ == '__main__':
         Returns: df
 
         """
-        df.loc[(df[SEX] == 'Women') & (df[AGE] > 18) & (df[REG_PRED] > 35), [CLASS_PRED]] = 1
-        df.loc[(df[SEX] == 'Men') & (df[AGE] > 18) & (df[REG_PRED] > 25), [CLASS_PRED]] = 1
-        df.loc[(df[AGE] < 18) & (df[REG_PRED] >= OBESITY_PERCENTILE), [CLASS_PRED]] = 1
+        df.loc[(df[SEX] == 'Women') & (df[AGE] >= 18) & (df[REG_PRED] > 35), [CLASS_PRED]] = 1
+        df.loc[(df[SEX] == 'Men') & (df[AGE] >= 18) & (df[REG_PRED] > 25), [CLASS_PRED]] = 1
+
+        for sex, val in CHILDREN_OBESITY_PERCENTILE.items():
+            for age, percentile in val.items():
+                filter = (df[SEX] == sex) & (df[AGE] >= age) & (df[AGE] < age + 0.5) & (df[REG_PRED] >= percentile)
+                df.loc[filter, [OBESITY]] = 1
 
         return df
 

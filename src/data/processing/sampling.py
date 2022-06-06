@@ -389,7 +389,7 @@ def get_learning_one_data(data_manager: PetaleDataManager,
 
     # We add baselines
     if baselines:
-        cont_cols += [AGE_AT_DIAGNOSIS, DT, DOX, METHO, CORTICO]
+        cont_cols += [AGE_AT_DIAGNOSIS, DT, DOX, EOT_BMI, METHO, CORTICO]
         cat_cols += [SEX, RADIOTHERAPY_DOSE, DEX, BIRTH_AGE]
 
     # We check for genes
@@ -409,16 +409,16 @@ def get_learning_one_data(data_manager: PetaleDataManager,
 
     # We extract the dataframe
     target = TOTAL_BODY_FAT
-    df = data_manager.get_table(LEARNING_1, columns=[PARTICIPANT, TOTAL_BODY_FAT] + cont_cols + cat_cols)
+    df = data_manager.get_table(LEARNING_1_2, columns=[PARTICIPANT, TOTAL_BODY_FAT] + cont_cols + cat_cols)
 
     if holdout:
-        h_df = data_manager.get_table(LEARNING_1_HOLDOUT,
+        h_df = data_manager.get_table(LEARNING_1_2_HOLDOUT,
                                       columns=[PARTICIPANT, TOTAL_BODY_FAT] + cont_cols + cat_cols)
         df = df.append(h_df, ignore_index=True)
 
     if classification:
         target = OBESITY
-        ob_df = data_manager.get_table(OBESITY_TARGET, columns=[PARTICIPANT, OBESITY])
+        ob_df = data_manager.get_table(OBESITY_TARGET_2, columns=[PARTICIPANT, OBESITY])
         df = merge(df, ob_df, on=[PARTICIPANT], how=INNER)
         df.drop([TOTAL_BODY_FAT], axis=1, inplace=True)
 

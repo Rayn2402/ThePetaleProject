@@ -22,8 +22,49 @@ MAX_CAT_PERCENTAGE = 0.95
 # DATA SAMPLING TRESHOLDS
 SAMPLING_OUTLIER_ALPHA = 6
 
-# CHILDHOOD OBESITY 95 percentile
+# CHILDHOOD OBESITY 95 percentiles
 OBESITY_PERCENTILE = 42.695
+CHILDREN_OBESITY_PERCENTILE = {'Men': {8: 41.1,
+                                       8.5: 41.6,
+                                       9: 42.2,
+                                       9.5: 42.8,
+                                       10: 43.2,
+                                       10.5: 43.4,
+                                       11: 43.6,
+                                       11.5: 43.7,
+                                       12: 43.6,
+                                       12.5: 43.3,
+                                       13: 42.5,
+                                       13.5: 41.5,
+                                       14: 40.5,
+                                       14.5: 39.5,
+                                       15: 38.7,
+                                       15.5: 38.2,
+                                       16: 37.8,
+                                       16.5: 37.6,
+                                       17: 37.3,
+                                       17.5: 37.2},
+                               'Women': {8: 43.3,
+                                         8.5: 43.7,
+                                         9: 44.1,
+                                         9.5: 44.4,
+                                         10: 44.5,
+                                         10.5: 44.4,
+                                         11: 44.2,
+                                         11.5: 44,
+                                         12: 44.1,
+                                         12.5: 44.4,
+                                         13: 44.7,
+                                         13.5: 45.0,
+                                         14: 45.2,
+                                         14.5: 45.3,
+                                         15: 45.5,
+                                         15.5: 45.8,
+                                         16: 46,
+                                         16.5: 46.3,
+                                         17: 46.6,
+                                         17.5: 47.1}
+                               }
 
 # TABLE NAMES
 GEN_1 = "General_1_Demographic Questionnaire"
@@ -35,6 +76,7 @@ CARDIO_4 = "Cardio_4_Test de Marche de 6 Minutes (TDM6)"
 VO2_ID_TABLE = "VO2_ID"
 INVALID_ID_TABLE = "INVALID_ID"
 DEX_DOX_TABLE = "DEX_DOX"
+EOT_BMI_TABLE = "EOT_BMI"
 METHO_CORTICO_TABLE = "METHO_CORTICO"
 PETALE_PANDORA = "PETALE_PANDORA"
 SNPS_RARE = "SNPS_RARE"
@@ -301,11 +343,12 @@ COMPLICATIONS = "Complications?"
 TOTAL_BODY_FAT = "Total body fat (%)"
 OBESITY = "Obesity"
 REDUCED_EF = "Reduced Ejection Fraction"
+EOT_BMI = "EOT BMI"
 WARMUP_DUMMY = "Dummy"
 
 # WARMUP DUMMY VARIABLE DICTIONARY
 WARMUP_DUMMY_DICT_INT = {"Women0": 0, "Women1": 1, "Men0": 2, "Men1": 3}
-WARMUP_DUMMY_DICT_NAME = {0: "Women - q0", 1: "Women - q1", 2: "Men - q0", 3: "Men - q1"}
+WARMUP_DUMMY_DICT_NAME = {0: "Women - <=q2", 1: "Women - >q2", 2: "Men - <=q2", 3: "Men - >q2"}
 
 # TYPE DICT
 TYPES = {PARTICIPANT: CATEGORICAL_TYPE,
@@ -363,5 +406,6 @@ TYPES = {PARTICIPANT: CATEGORICAL_TYPE,
          REDUCED_EF: NUMERIC_TYPE,
          METHO: NUMERIC_TYPE,
          CORTICO: NUMERIC_TYPE,
+         EOT_BMI: NUMERIC_TYPE
          }
 

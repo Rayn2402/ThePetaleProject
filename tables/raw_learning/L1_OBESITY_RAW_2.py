@@ -106,8 +106,8 @@ if __name__ == '__main__':
     # We create the obesity table
     obesity_df = pd.merge(intermediate_df, body_fat_df, on=[PARTICIPANT], how=INNER)
     obesity_df[OBESITY] = zeros(obesity_df.shape[0])
-    obesity_df.loc[(obesity_df[SEX] == 'Women') & (obesity_df[AGE] > 18) & (obesity_df[TOTAL_BODY_FAT] > 35), [OBESITY]] = 1
-    obesity_df.loc[(obesity_df[SEX] == 'Men') & (obesity_df[AGE] > 18) & (obesity_df[TOTAL_BODY_FAT] > 25), [OBESITY]] = 1
+    obesity_df.loc[(obesity_df[SEX] == 'Women') & (obesity_df[AGE] >= 18) & (obesity_df[TOTAL_BODY_FAT] > 35), [OBESITY]] = 1
+    obesity_df.loc[(obesity_df[SEX] == 'Men') & (obesity_df[AGE] >= 18) & (obesity_df[TOTAL_BODY_FAT] > 25), [OBESITY]] = 1
 
     for sex, val in CHILDREN_OBESITY_PERCENTILE.items():
         for age, percentile in val.items():

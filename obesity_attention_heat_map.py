@@ -14,7 +14,7 @@ from os.path import join
 from pandas import DataFrame
 from seaborn import heatmap
 from settings.paths import Paths
-from src.data.extraction.constants import PARTICIPANT
+from src.data.extraction.constants import AGE_AT_DIAGNOSIS, CORTICO, DOX, DT, EOT_BMI, METHO, PARTICIPANT, SEX
 from src.data.extraction.data_management import PetaleDataManager
 from src.data.processing.datasets import MaskType, PetaleDataset
 from src.data.processing.sampling import extract_masks, GeneChoice, get_learning_one_data
@@ -25,18 +25,16 @@ from typing import Dict, List, Optional
 
 
 # Selected genes
-SELECTED_GENES = ['6_110760008', '17_26096597', '17_37884037', '17_4856580',
-                  '1_66036441', '21_44324365', '17_38545824', '13_23824818',
-                  '1_161182208', '6_29912280', '12_48272895', '6_29912386',
-                  '22_42486723', '7_45932669', '7_87160618', '21_37518706',
-                  '1_226019633', '16_88713236', '15_58838010', '6_29912333',
-                  '7_20762646', '13_95863008', '2_46611678', '17_48712711',
-                  '7_94946084', '2_240946766', '4_120241902', '6_12296255',
-                  '16_69745145']
+SELECTED_GENES = ['6_110760008', '17_26096597', '17_37884037', '21_44324365',
+                  '1_66036441', '17_4856580', '13_23824818', '17_38545824',
+                  '1_161182208', '22_42486723', '6_29912386', '16_88713236',
+                  '6_29912280', '21_37518706', '12_48272895', '7_87160618',
+                  '1_226019633', '7_45932669', '2_46611678', '6_29912333',
+                  '15_58838010', '7_20762646', '17_48712711', '13_95863008',
+                  '7_94946084', '4_120241902', '16_69745145', '6_12296255',
+                  '2_240946766', '2_179650408']
 
-SELECTED_FEATURES = ['34500 Sex', 'Methotrexate', 'DOX (mg/m2)',
-                     'Effective corticosteroid cumulative dose (mg/m2)',  '34472 Age at diagnosis',
-                     'Duration of treatment']
+SELECTED_FEATURES = [SEX, EOT_BMI, METHO, CORTICO, DOX, DT, AGE_AT_DIAGNOSIS]
 
 if __name__ == '__main__':
 
@@ -85,7 +83,7 @@ if __name__ == '__main__':
                               **ENET_GGE_HPS)
 
     # Model parameters loading
-    ggae_wrapper.model.load_state_dict(load(join(Paths.MODELS, 'obesity_ggae.pt')))
+    ggae_wrapper.model.load_state_dict(load(join(Paths.MODELS, 'obesity_ggae_2.pt')))
 
     # Forward pass
     y = ggae_wrapper.predict(dts)

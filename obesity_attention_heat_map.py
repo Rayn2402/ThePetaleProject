@@ -109,6 +109,7 @@ if __name__ == '__main__':
     heat_map_df = DataFrame.from_dict(data, orient='index')
 
     # Heatmap creation
+    plt.rc('text', usetex=True)
     genes_df = dts.get_imputed_dataframe(include_ids_column=True, include_target_column=True).set_index(PARTICIPANT)
     genes_df = genes_df.iloc[test_mask]
     genes_df.sort_values(target, inplace=True)
@@ -127,7 +128,9 @@ if __name__ == '__main__':
     heat_map_df.rename(columns={c: c.replace("_", ":") for c in heat_map_df.columns}, inplace=True)
     genes_df.rename(columns={c: c.replace("_", ":") for c in genes_df.columns}, inplace=True)
 
-    heatmap(heat_map_df, annot=genes_df, annot_kws={"fontsize": 8}, xticklabels=True)
+    heatmap(heat_map_df, annot=genes_df, annot_kws={"fontsize": 8}, xticklabels=True,)
+    plt.ylabel('Survivors in the holdout set')
+    plt.xlabel('SNPs')
     plt.tight_layout()
     for f in ['pdf', 'svg']:
         plt.savefig(f'obesity_genes_att_heatmap.{f}')

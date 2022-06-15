@@ -10,6 +10,8 @@ Date of last modification: 2022/05/02
 
 from hps.fixed_hps import ENET_GGE_HPS
 from matplotlib import pyplot as plt
+from matplotlib import ticker
+from numpy import isclose
 from os.path import join
 from pandas import DataFrame
 from seaborn import heatmap
@@ -128,9 +130,22 @@ if __name__ == '__main__':
     heat_map_df.rename(columns={c: c.replace("_", ":") for c in heat_map_df.columns}, inplace=True)
     genes_df.rename(columns={c: c.replace("_", ":") for c in genes_df.columns}, inplace=True)
 
-    heatmap(heat_map_df, annot=genes_df, annot_kws={"fontsize": 8}, xticklabels=True,)
-    plt.ylabel('Survivors in the holdout set')
-    plt.xlabel('SNPs')
+    fig, ((ax0, dummy_ax), (ax1, cbar_ax)) = plt.subplots(nrows=2, ncols=2, sharex='col',
+                                                          gridspec_kw={'height_ratios': [1, 10], 'width_ratios': [20, 1]})
+    heatmap(heat_map_df, annot=genes_df, annot_kws={"fontsize": 8}, cbar_ax=cbar_ax, xticklabels=True, ax=ax1)
+    ax1.set_ylabel('Survivors in the holdout set')
+    ax1.set_xlabel('SNPs')
+
+    # Histogram creation
+    att_means = heat_map_df.mean().to_numpy()
+    ax0.bar([i + 0.5 for i in range(len(att_means))], att_means, width=0.8, color='grey')
+    func = lambda x, pos: "" if isclose(x, 0) else x
+    ax0.spines.right.set_visible(False)
+    ax0.spines.top.set_visible(False)
+    ax0.xaxis.set_visible(False)
+    ax0.yaxis.set_major_formatter(ticker.FuncFormatter(func))
+    dummy_ax.axis('off')
+
     plt.tight_layout()
     for f in ['pdf', 'svg']:
         plt.savefig(f'obesity_genes_att_heatmap.{f}')

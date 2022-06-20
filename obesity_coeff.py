@@ -25,7 +25,7 @@ if __name__ == '__main__':
     variables = cont_col + [f's{i}' for i in range(4)] + ['sex_bias_w', 'sex_bias_m']
 
     # Parameter loading
-    params = load(join(Paths.MODELS, 'obesity_ggae.pt'))
+    params = load(join(Paths.MODELS, 'obesity_ggae_2.pt'))
 
     # Sex categorical embedding
     men_sex_coeff = params['_embedding_block._EntityEmbeddingBlock__embedding_layer.0.weight'][0, ]
@@ -35,8 +35,8 @@ if __name__ == '__main__':
     coeff = params['_linear_layer.weight'].squeeze()
 
     # Sex coefficient in layer parameters
-    men_sex_coeff = (men_sex_coeff*coeff[[5, 6]]).sum().item()
-    women_sex_coeff = (women_sex_coeff*coeff[[5, 6]]).sum().item()
+    men_sex_coeff = (men_sex_coeff*coeff[[6, 7]]).sum().item()
+    women_sex_coeff = (women_sex_coeff*coeff[[6, 7]]).sum().item()
 
     # All biases
     bias = params['_linear_layer.bias'].item()
@@ -44,7 +44,8 @@ if __name__ == '__main__':
 
     # Coefficient corrections
     coeff = coeff.tolist()
-    coeff = coeff[:5] + coeff[7:]
+    coeff = coeff[:6] + coeff[8:]
+    print(coeff)
 
     for v, c in zip(variables, coeff + biases):
         print(f'{v} : {c:.2f}')

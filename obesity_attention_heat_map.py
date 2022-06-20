@@ -133,6 +133,7 @@ if __name__ == '__main__':
     fig, ((ax0, dummy_ax), (ax1, cbar_ax)) = plt.subplots(nrows=2, ncols=2, sharex='col',
                                                           gridspec_kw={'height_ratios': [1, 10], 'width_ratios': [20, 1]})
     heatmap(heat_map_df, annot=genes_df, annot_kws={"fontsize": 8}, cbar_ax=cbar_ax, xticklabels=True, ax=ax1)
+    cbar_ax.set_ylabel('Attention')
     ax1.set_ylabel('Survivors in the holdout set')
     ax1.set_xlabel('SNPs')
 

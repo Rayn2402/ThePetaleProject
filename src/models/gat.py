@@ -171,6 +171,10 @@ class PetaleGATR(TorchRegressorWrapper):
     def att_cache(self) -> tensor:
         return self._model.att_cache
 
+    @property
+    def emb_cache(self) -> tensor:
+        return self._model.emb_cache
+
     @staticmethod
     def get_hps() -> List[HP]:
         """

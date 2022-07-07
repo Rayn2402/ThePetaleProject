@@ -4,9 +4,9 @@ Filename: L1_OBESITY.py
 Authors: Nicolas Raymond
 
 Description: This file stores the procedure to execute in order to obtain
-             "L1_OBESITY_RAW" and "OBESITY_TARGET" tables in the database.
+             "OBESITY_DATASET" and "OBESITY_TARGET" tables in the database.
 
-         L1_OBESITY_RAW contains :
+         OBESITY_DATASET contains :
 
             Features:
              - SEX
@@ -150,4 +150,4 @@ if __name__ == '__main__':
     types[TOTAL_BODY_FAT] = TYPES[TOTAL_BODY_FAT]
 
     # We create the RAW learning table
-    data_manager.create_and_fill_table(complete_df, f"{LEARNING_1}_{RAW}", types, primary_key=[PARTICIPANT])
+    data_manager.create_and_fill_table(complete_df, OBESITY_DATASET, types, primary_key=[PARTICIPANT])

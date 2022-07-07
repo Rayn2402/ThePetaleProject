@@ -4,9 +4,9 @@ Filename: L0_WARMUP_GENES.py
 Authors: Nicolas Raymond
 
 Description: This file contains the procedure to execute in order
-             to obtain "L0_WARMUP_GENES_RAW".
+             to obtain "VO2_DATASET".
 
-Date of last modification : 2021/11/05
+Date of last modification : 2022/07/07
 """
 import pandas as pd
 import sys
@@ -28,7 +28,7 @@ if __name__ == '__main__':
     data_manager = PetaleDataManager()
 
     # We build a data cleaner
-    data_cleaner = DataCleaner(join(Paths.CLEANING_RECORDS, "WARMUP_GENES"), column_thresh=COLUMN_REMOVAL_THRESHOLD,
+    data_cleaner = DataCleaner(join(Paths.CLEANING_RECORDS, "VO2"), column_thresh=COLUMN_REMOVAL_THRESHOLD,
                                row_thresh=ROW_REMOVAL_THRESHOLD, outlier_alpha=OUTLIER_ALPHA,
                                min_n_per_cat=MIN_N_PER_CAT, max_cat_percentage=MAX_CAT_PERCENTAGE)
 
@@ -71,9 +71,9 @@ if __name__ == '__main__':
     complete_df = data_cleaner(complete_df)
 
     # We create a dummy column that combines sex and VO2 quartiles
-    complete_df[WARMUP_DUMMY] = pd.qcut(complete_df[VO2R_MAX].astype(float).values, 2, labels=False)
-    complete_df[WARMUP_DUMMY] = complete_df[SEX] + complete_df[WARMUP_DUMMY].astype(str)
-    complete_df[WARMUP_DUMMY] = complete_df[WARMUP_DUMMY].apply(func=lambda x: WARMUP_DUMMY_DICT_INT[x])
+    complete_df[DUMMY] = pd.qcut(complete_df[VO2R_MAX].astype(float).values, 2, labels=False)
+    complete_df[DUMMY] = complete_df[SEX] + complete_df[DUMMY].astype(str)
+    complete_df[DUMMY] = complete_df[DUMMY].apply(func=lambda x: DUMMY_DICT_INT[x])
     # visualize_class_distribution(complete_df[WARMUP_DUMMY].values, WARMUP_DUMMY_DICT_NAME)
 
     # We look at the missing data
@@ -88,4 +88,4 @@ if __name__ == '__main__':
     types[VO2R_MAX] = TYPES[VO2R_MAX]
 
     # We create the RAW learning table
-    data_manager.create_and_fill_table(complete_df, f"{LEARNING_0_GENES}_{RAW}", types, primary_key=[PARTICIPANT])
+    data_manager.create_and_fill_table(complete_df, VO2_DATASET, types, primary_key=[PARTICIPANT])

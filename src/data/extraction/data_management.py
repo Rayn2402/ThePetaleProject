@@ -19,12 +19,12 @@ from settings.paths import Paths
 from src.data.extraction import helpers
 from src.data.extraction.constants import *
 from tqdm import tqdm
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 
 class DataManager:
     """
-    Object that can interact with a PostgresSQL database
+    Object that helps interacting with a PostgresSQL database
     """
     # Common count csv headers constants
     TABLES: str = "tables"
@@ -72,7 +72,7 @@ class DataManager:
             types: dictionary with names of the columns (key) and their respective types (value)
             primary_key: list of column names to use as primary key (or composite key when more than 1)
 
-        Returns:
+        Returns: None
         """
         # We save the start of the query
         query = f"CREATE TABLE {self.__schema}.\"{table_name}\" (" + self._reformat_columns_and_types(types)
@@ -231,12 +231,9 @@ class DataManager:
                 # We get the total count of this category
                 category_total = df[df[col] == category].shape[0]
 
-                # We get the total percentage of this category
-                all_percent = round(category_total/total * 100, 2)
-
                 # We save the results
                 results[DataManager.VAR_NAME].append(f"{col} : {category}")
-                results[DataManager.ALL].append(f"{category_total} ({all_percent}%)")
+                results[DataManager.ALL].append(f"{category_total} ({category_total/total:.2%})")
 
                 if group is not None:
                     for group_val in group_values:
@@ -249,8 +246,8 @@ class DataManager:
 
                         # We compute the statistics needed
                         sub_category_total = df[filter_].shape[0]
-                        sub_category_percent = round(sub_category_total/(group_totals[group_val]) * 100, 2)
-                        results[f"{group} {group_val}"].append(f"{sub_category_total} ({sub_category_percent}%)")
+                        sub_category_percent = f"{sub_category_total/(group_totals[group_val]):.2%}"
+                        results[f"{group} {group_val}"].append(f"{sub_category_total} ({sub_category_percent})")
 
         return pd.DataFrame(results)
 
@@ -432,7 +429,7 @@ class DataManager:
             # We append the statistics for all participants to the results dictionary
             results[DataManager.VAR_NAME].append(col)
             all_mean, all_var, all_min, all_max = helpers.get_column_stats(df, col)
-            results[DataManager.ALL].append(f"{all_mean} ({all_var}) [{all_min}, {all_max}]")
+            results[DataManager.ALL].append(f"{all_mean:.2f} ({all_var:.2f}) [{all_min:.2f}, {all_max:.2f}]")
 
             # If a group column is given, we calculate the stats for each possible value of that group
             if group is not None:
@@ -441,7 +438,7 @@ class DataManager:
                     # We append the statistics for sub group participants to the results dictionary
                     df_group = df[df[group] == group_val]
                     group_mean, group_var, group_min, group_max = helpers.get_column_stats(df_group, col)
-                    results[f"{group} {group_val}"].append(f"{group_mean} ({group_var}) [{group_min}, {group_max}]")
+                    results[f"{group} {group_val}"].append(f"{group_mean:.2f} ({group_var:.2f}) [{group_min:.2f}, {group_max:.2f}]")
 
         return pd.DataFrame(results)
 
@@ -515,7 +512,7 @@ class DataManager:
     def _initialize_results_dict(df: pd.DataFrame,
                                  group: str) -> Tuple[Dict[str, List[Any]], List[Any]]:
         """
-        Initializes a dictionary that will contains results of a descriptive analyses
+        Initializes a dictionary that will contain results of a descriptive analyses
 
         Args:
             df: pandas dataframe
@@ -666,54 +663,56 @@ class PetaleDataManager(DataManager):
         return DataManager.get_missing_data_count(self, table_name, directory, excluded_cols)
 
     def get_table_stats(self,
-                        table_name: str,
-                        included_cols: Optional[List[str]] = None,
-                        excluded_cols: Optional[List[str]] = None,
-                        save_in_file: bool = True) -> pd.DataFrame:
+                        table: Union[str, pd.DataFrame],
+                        categorical_cols: Optional[List[str]] = None,
+                        numerical_cols: Optional[List[str]] = None,
+                        filename: Optional[str] = None) -> pd.DataFrame:
         """
         Retrieves numerical and categorical statistics of a Petale table
 
         Args:
-            table_name: name of the table
-            included_cols: list of all the columns to include (default = None (all columns))
-            excluded_cols: list of all the columns to exclude (default = None)
-            save_in_file: true if we want to save the statistics in a csv file associated to the table name
+            table: name of the table or pandas dataframe
+            categorical_cols: list of categorical column names
+            numerical_cols: list of numerical column names
+            filename: true if we want to save the statistics in a csv file associated to the table name
 
         Returns: dataframe with all the statistics
         """
 
         # We get a the dataframe containing the table
-        if included_cols is None:
-            table_df = self.get_table(table_name)
+        if isinstance(table, str):
+            table = self.get_table(table)
+            excluded_cols = [DATE, FORM, STATUS, REMARKS]
         else:
-            table_df = self.get_table(table_name, included_cols)
-
-        # We update the list of all columns that must be excluded
-        if excluded_cols is None:
             excluded_cols = []
-        excluded_cols += [DATE, FORM, STATUS, REMARKS]
 
         # We exclude the variables specified
-        cols = [col for col in table_df.columns if col not in excluded_cols]
-        table_df = table_df[cols]
+        table = table.drop(excluded_cols, axis=1, errors='ignore')
 
         # We get only the rows associated to a specific phase
-        if TAG in cols:
-            table_df = table_df[table_df[TAG] == PHASE]
-            table_df = table_df.drop([TAG], axis=1)
+        if TAG in table.columns:
+            table = table[table[TAG] == PHASE]
+            table.drop([TAG], axis=1, inplace=True)
 
         # We get the dataframe from the table containing the sex information
-        if SEX in cols:
-            sex_df = table_df[[PARTICIPANT, SEX]]
-            table_df = table_df.drop([SEX], axis=1)
+        if SEX in table.columns:
+            sex_df = table[[PARTICIPANT, SEX]]
+            table.drop([SEX], axis=1, inplace=True)
         else:
             sex_df = self.get_table(GEN_1, columns=[PARTICIPANT, TAG, SEX])
             sex_df = sex_df[sex_df[TAG] == PHASE]
-            sex_df = sex_df.drop([TAG], axis=1)
+            sex_df.drop([TAG], axis=1, inplace=True)
 
         # We retrieve categorical and numerical data
-        categorical_df = helpers.retrieve_categorical_var(table_df, to_keep=[PARTICIPANT])
-        numerical_df = helpers.retrieve_numerical_var(table_df, to_keep=[PARTICIPANT])
+        if categorical_cols is None:
+            categorical_df = helpers.retrieve_categorical_var(table, to_keep=[PARTICIPANT])
+        else:
+            categorical_df = table[[PARTICIPANT] + categorical_cols]
+
+        if numerical_cols is None:
+            numerical_df = helpers.retrieve_numerical_var(table, to_keep=[PARTICIPANT])
+        else:
+            numerical_df = table[[PARTICIPANT] + numerical_cols]
 
         # We merge the the categorical dataframe with the sex dataframe by the column PARTICIPANT
         categorical_df = pd.merge(sex_df, categorical_df, on=PARTICIPANT, how=INNER)
@@ -734,10 +733,9 @@ class PetaleDataManager(DataManager):
 
         # We concatenate all the results to get the final stats dataframe
         stats_df = pd.concat([sex_stats, categorical_stats, numerical_stats], ignore_index=True)
-        table_name = self._reformat_table_name(table_name)
 
-        if save_in_file:
-            self._save_stats_file(table_name, "statistics", stats_df)
+        if filename is not None:
+            self.save_stats_file(filename, stats_df)
 
         return stats_df
 
@@ -754,7 +752,7 @@ class PetaleDataManager(DataManager):
         var_id = self.extract_var_id(var_name)
 
         # we prepare the query
-        query = f'SELECT * FROM "PETALE_meta_data" WHERE "Test ID" = {var_id}'
+        query = f'SELECT * FROM {PETALE_META_DATA} WHERE "Test ID" = {var_id}'
 
         # We execute the query
         try:
@@ -780,35 +778,6 @@ class PetaleDataManager(DataManager):
         conversion_map = {k: v[0] for k, v in conversion_df.set_index('Reference name').T.to_dict('series').items()}
 
         return conversion_map
-
-    @staticmethod
-    def _save_stats_file(table_name: str,
-                         file_name: str,
-                         df: pd.DataFrame,
-                         index: bool = False,
-                         header: bool = True) -> None:
-        """
-        Saves a csv file in the stats directory associated to a table
-
-        Args:
-            table_name: name of the table for which we save the statistics
-            file_name: name of the csv file
-            df: pandas dataframe to turn into csv
-            index: true if we need to add indexes in the csv
-            header: true if we need to store the header of the df in the csv
-
-        Returns: None
-        """
-        # We save the file path
-        directory = os.path.join(Paths.DESC_STATS, table_name)
-        os.makedirs(directory, exist_ok=True)
-        file_path = os.path.join(directory, f"{file_name}.csv")
-
-        # We remove the current csv if it is already existing
-        if os.path.isfile(file_path):
-            os.remove(file_path)
-
-        df.to_csv(file_path, index=index, header=header)
 
     @staticmethod
     def extract_var_id(var_name: str) -> str:
@@ -867,3 +836,30 @@ class PetaleDataManager(DataManager):
         df.reset_index(inplace=True)
 
         return df
+
+    @staticmethod
+    def save_stats_file(table_name: str,
+                        df: pd.DataFrame,
+                        index: bool = False,
+                        header: bool = True) -> None:
+        """
+        Saves a csv file in the stats directory associated to a table
+
+        Args:
+            table_name: name of the table for which we save the statistics
+            df: pandas dataframe to turn into csv
+            index: true if we need to add indexes in the csv
+            header: true if we need to store the header of the df in the csv
+
+        Returns: None
+        """
+        # We save the file path
+        directory = os.path.join(Paths.DESC_STATS, table_name)
+        os.makedirs(directory, exist_ok=True)
+        file_path = os.path.join(directory, "statistics.csv")
+
+        # We remove the current csv if it is already existing
+        if os.path.isfile(file_path):
+            os.remove(file_path)
+
+        df.to_csv(file_path, index=index, header=header)

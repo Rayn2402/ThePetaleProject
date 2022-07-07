@@ -133,10 +133,10 @@ if __name__ == '__main__':
     complete_df = data_cleaner(complete_df)
 
     # We create a dummy column that combines sex and VO2 quartiles
-    complete_df[WARMUP_DUMMY] = pd.qcut(complete_df[TOTAL_BODY_FAT].astype(float).values, 2, labels=False)
-    complete_df[WARMUP_DUMMY] = complete_df[SEX] + complete_df[WARMUP_DUMMY].astype(str)
-    complete_df[WARMUP_DUMMY] = complete_df[WARMUP_DUMMY].apply(func=lambda x: WARMUP_DUMMY_DICT_INT[x])
-    visualize_class_distribution(complete_df[WARMUP_DUMMY].values, WARMUP_DUMMY_DICT_NAME)
+    complete_df[DUMMY] = pd.qcut(complete_df[TOTAL_BODY_FAT].astype(float).values, 2, labels=False)
+    complete_df[DUMMY] = complete_df[SEX] + complete_df[DUMMY].astype(str)
+    complete_df[DUMMY] = complete_df[DUMMY].apply(func=lambda x: DUMMY_DICT_INT[x])
+    visualize_class_distribution(complete_df[DUMMY].values, DUMMY_DICT_NAME)
 
     # We look at the missing data
     print(f"n_cols : {len(complete_df.columns)}")

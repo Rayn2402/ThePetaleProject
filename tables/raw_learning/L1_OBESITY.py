@@ -1,12 +1,12 @@
 """
-Filename: L1_OBESITY_RAW_2.py
+Filename: L1_OBESITY.py
 
 Authors: Nicolas Raymond
 
 Description: This file stores the procedure to execute in order to obtain
-             "L1_OBESITY_RAW_2" table in the database.
+             "L1_OBESITY_RAW" and "OBESITY_TARGET" tables in the database.
 
-         L1_OBESITY_RAW_2 contains :
+         L1_OBESITY_RAW contains :
 
             Features:
              - SEX
@@ -21,9 +21,9 @@ Description: This file stores the procedure to execute in order to obtain
              - EOT BMI
 
             Target:
-            - OBESITY
+            - TOTAL BODY FAT (%)
 
-Date of last modification : 2022/06/06
+Date of last modification : 2022/07/07
 """
 
 import pandas as pd
@@ -47,7 +47,7 @@ if __name__ == '__main__':
     data_manager = PetaleDataManager()
 
     # We build a data cleaner
-    data_cleaner = DataCleaner(join(Paths.CLEANING_RECORDS, "OBESITY_2"), column_thresh=COLUMN_REMOVAL_THRESHOLD,
+    data_cleaner = DataCleaner(join(Paths.CLEANING_RECORDS, "OBESITY"), column_thresh=COLUMN_REMOVAL_THRESHOLD,
                                row_thresh=ROW_REMOVAL_THRESHOLD, outlier_alpha=OUTLIER_ALPHA,
                                min_n_per_cat=MIN_N_PER_CAT, max_cat_percentage=MAX_CAT_PERCENTAGE)
 
@@ -114,13 +114,10 @@ if __name__ == '__main__':
             filter = (obesity_df[SEX] == sex) & (obesity_df[AGE] >= age) & (obesity_df[AGE] < age + 0.5) & (obesity_df[TOTAL_BODY_FAT] >= percentile)
             obesity_df.loc[filter, [OBESITY]] = 1
 
-    print(obesity_df[OBESITY].sum())
-
     obesity_df = obesity_df[[PARTICIPANT, AGE, SEX, OBESITY]]
 
     types = {c: TYPES.get(c, CATEGORICAL_TYPE) for c in list(obesity_df.columns)}
-    data_manager.create_and_fill_table(obesity_df, OBESITY_TARGET_2, types, primary_key=[PARTICIPANT])
-
+    data_manager.create_and_fill_table(obesity_df, OBESITY_TARGET, types, primary_key=[PARTICIPANT])
 
     # We proceed to table concatenation (baselines + ages + body fat + genes)
     complete_df = pd.merge(intermediate_df4, chrom_pos_df, on=[PARTICIPANT], how=INNER)
@@ -153,4 +150,4 @@ if __name__ == '__main__':
     types[TOTAL_BODY_FAT] = TYPES[TOTAL_BODY_FAT]
 
     # We create the RAW learning table
-    data_manager.create_and_fill_table(complete_df, f"{LEARNING_1_2}_{RAW}", types, primary_key=[PARTICIPANT])
+    data_manager.create_and_fill_table(complete_df, f"{LEARNING_1}_{RAW}", types, primary_key=[PARTICIPANT])

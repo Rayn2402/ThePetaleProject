@@ -24,17 +24,6 @@ from tqdm import tqdm
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 
-class GeneChoice:
-    """
-    Stores the constant related to gene choices
-    """
-    ALL: str = "all"
-    SIGNIFICANT: str = "significant"
-
-    def __iter__(self):
-        return iter([self.ALL, self.SIGNIFICANT])
-
-
 class RandomStratifiedSampler:
     """
     Object uses in order to generate lists of indexes to use as train, valid

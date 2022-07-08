@@ -1,5 +1,5 @@
 """
-Filename: apriori_experiment.py
+Filename: apriori.py
 
 Authors: Nicolas Raymond
 

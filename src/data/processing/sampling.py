@@ -7,7 +7,7 @@ Description: Defines the RandomStratifiedSampler class used to separate test set
              valid sets from train sets. Also contains few functions used to extract
              specific datasets
 
-Date of last modification : 2022/07/07
+Date of last modification : 2022/07/08
 """
 
 from itertools import product
@@ -415,6 +415,10 @@ def get_obesity_data(data_manager: PetaleDataManager,
     Returns: dataframe, target, continuous columns, categorical columns
     """
 
+    # We make sure that some variables were selected
+    if not (baselines or genomics):
+        raise ValueError("At least baselines or genomics must be selected")
+
     # We initialize empty lists for continuous and categorical columns
     cont_cols, cat_cols = [], []
 
@@ -423,9 +427,9 @@ def get_obesity_data(data_manager: PetaleDataManager,
         cont_cols += [AGE_AT_DIAGNOSIS, DT, DOX, EOT_BMI, METHO, CORTICO]
         cat_cols += [SEX, RADIOTHERAPY_DOSE, DEX, BIRTH_AGE]
 
-    # We check for genes
+    # We check for genomics
     if genomics is not None:
-        cat_cols += ALL_CHROM_POS_OBESITY
+        cat_cols += OBESITY_SNPS
 
     if dummy:
         cat_cols.append(DUMMY)
@@ -457,29 +461,29 @@ def get_obesity_data(data_manager: PetaleDataManager,
     return df, target, cont_cols, cat_cols
 
 
-def get_warmup_data(data_manager: PetaleDataManager,
-                    baselines: bool = True,
-                    genes: Optional[str] = None,
-                    sex: bool = False,
-                    dummy: bool = False,
-                    holdout: bool = False) -> Tuple[DataFrame, str, Optional[List[str]], Optional[List[str]]]:
+def get_VO2_data(data_manager: PetaleDataManager,
+                 genomics: bool = False,
+                 baselines: bool = True,
+                 sex: bool = False,
+                 dummy: bool = False,
+                 holdout: bool = False) -> Tuple[DataFrame, str, Optional[List[str]], Optional[List[str]]]:
     """
-    Extracts dataframe needed to proceed to warmup experiments
+    Extracts dataframe needed to proceed to VO2 peak prediction experiments
 
     Args:
         data_manager: data manager to communicate with the database
-        baselines: true if we want to include variables from original equation
-        genes: One choice among ("None", "significant", "all")
-        sex: true if we want to include sex variable
-        dummy: true if we want to include dummy variable combining sex and VO2 quantile
-        holdout: if true, holdout data is included at the bottom of the dataframe
+        genomics: if True, genomic variables are included
+        baselines: if True, variables from the original equation are included
+        sex: if True, sex is included
+        dummy: if True, includes dummy variable combining sex and VO2 peak category
+        holdout: if True, holdout data is included at the bottom of the dataframe
 
     Returns: dataframe, target, continuous columns, categorical columns
     """
 
-    # We make sure few variables were selected
-    if not (baselines or genes or sex):
-        raise ValueError("At least baselines, genes or sex must be selected")
+    # We make sure that some variables were selected
+    if not (baselines or genomics or sex):
+        raise ValueError("At least baselines, genomics or sex must be selected")
 
     # We save participant and VO2 max column names
     all_columns = [PARTICIPANT, VO2R_MAX]
@@ -491,19 +495,10 @@ def get_warmup_data(data_manager: PetaleDataManager,
     else:
         cont_cols = None
 
-    # We check for genes
+    # We check for genomics
     cat_cols = []
-    if genes is not None:
-
-        if genes not in GeneChoice():
-            raise ValueError(f"Genes value must be in {list(GeneChoice())}")
-
-        if genes == GeneChoice.ALL:
-            cat_cols += ALL_CHROM_POS_WARMUP
-
-        elif genes == GeneChoice.SIGNIFICANT:
-            cat_cols += SIGNIFICANT_CHROM_POS_WARMUP
-
+    if genomics:
+        cat_cols += VO2_SNPS
     if sex:
         cat_cols.append(SEX)
     if dummy:
@@ -513,11 +508,11 @@ def get_warmup_data(data_manager: PetaleDataManager,
     cat_cols = cat_cols if len(cat_cols) != 0 else None
 
     # We extract the dataframe
-    df = data_manager.get_table(LEARNING_0_GENES, columns=all_columns)
+    df = data_manager.get_table(VO2_LEARNING_SET, columns=all_columns)
 
     # We add the holdout data
     if holdout:
-        h_df = data_manager.get_table(LEARNING_0_GENES_HOLDOUT, columns=all_columns)
+        h_df = data_manager.get_table(VO2_HOLDOUT_SET, columns=all_columns)
         df = df.append(h_df, ignore_index=True)
 
     return df, VO2R_MAX, cont_cols, cat_cols

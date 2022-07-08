@@ -7,7 +7,7 @@ Description: Defines the RandomStratifiedSampler class used to separate test set
              valid sets from train sets. Also contains few functions used to extract
              specific datasets
 
-Date of last modification : 2022/04/13
+Date of last modification : 2022/07/07
 """
 
 from itertools import product
@@ -364,128 +364,6 @@ def push_valid_to_train(masks: Dict[int, Dict[str, Union[List[int], Dict[str, Li
             masks[k][INNER][in_k][MaskType.VALID] = None
 
 
-def get_learning_one_data(data_manager: PetaleDataManager,
-                          genes: Optional[str],
-                          baselines: bool = True,
-                          classification: bool = False,
-                          dummy: bool = False,
-                          holdout: bool = False) -> Tuple[DataFrame, str, List[str], List[str]]:
-    """
-    Extracts dataframe needed to proceed to "learning one" experiments and turn it into a dataset
-
-    Args:
-        data_manager: data manager to communicate with the database
-        genes: One choice among ("None", "significant", "all")
-        baselines: if True, baselines variables are included
-        classification: if True, targets returned are obesity classes instead of Total Body Fat values
-        dummy: if True, includes dummy variable combining sex and Total Body Fat quantile
-        holdout: if True, holdout data is included at the bottom of the dataframe
-
-    Returns: dataframe, target, continuous columns, categorical columns
-    """
-
-    # We initialize empty lists for continuous and categorical columns
-    cont_cols, cat_cols = [], []
-
-    # We add baselines
-    if baselines:
-        cont_cols += [AGE_AT_DIAGNOSIS, DT, DOX, EOT_BMI, METHO, CORTICO]
-        cat_cols += [SEX, RADIOTHERAPY_DOSE, DEX, BIRTH_AGE]
-
-    # We check for genes
-    if genes is not None:
-
-        if genes not in GeneChoice():
-            raise ValueError(f"genes value must be in {GeneChoice()}")
-
-        if genes == GeneChoice.SIGNIFICANT:
-            cat_cols += SIGNIFICANT_CHROM_POS_OBESITY
-
-        else:
-            cat_cols += ALL_CHROM_POS_OBESITY
-
-    if dummy:
-        cat_cols.append(WARMUP_DUMMY)
-
-    # We extract the dataframe
-    target = TOTAL_BODY_FAT
-    df = data_manager.get_table(LEARNING_1_2, columns=[PARTICIPANT, TOTAL_BODY_FAT] + cont_cols + cat_cols)
-
-    if holdout:
-        h_df = data_manager.get_table(LEARNING_1_2_HOLDOUT,
-                                      columns=[PARTICIPANT, TOTAL_BODY_FAT] + cont_cols + cat_cols)
-        df = df.append(h_df, ignore_index=True)
-
-    if classification:
-        target = OBESITY
-        ob_df = data_manager.get_table(OBESITY_TARGET_2, columns=[PARTICIPANT, OBESITY])
-        df = merge(df, ob_df, on=[PARTICIPANT], how=INNER)
-        df.drop([TOTAL_BODY_FAT], axis=1, inplace=True)
-
-    # We replace wrong categorical values
-    if baselines:
-        df.loc[(df[DEX] != "0"), [DEX]] = ">0"
-    else:
-        cont_cols = None
-
-    if genes is not None:
-        df.replace("0/2", "0/1", inplace=True)
-        df.replace("1/2", "1/1", inplace=True)
-
-    return df, target, cont_cols, cat_cols
-
-
-def get_learning_two_data(data_manager: PetaleDataManager,
-                          genes: Optional[str],
-                          baselines: bool = True,
-                          **kwargs) -> Tuple[DataFrame, str, List[str], List[str]]:
-    """
-    Extracts dataframe needed to proceed to "learning two" experiments and turn it into a dataset
-
-    Args:
-        data_manager: data manager to communicate with the database
-        genes: One choice among ("None", "significant", "all")
-        baselines: if True, baselines variables are included
-
-    Returns: dataframe, target, continuous columns, categorical columns
-    """
-
-    # We initialize empty lists for continuous and categorical columns
-    cont_cols, cat_cols = [], []
-
-    # We add baselines
-    if baselines:
-        cont_cols += [AGE_AT_DIAGNOSIS, DT, DOX, METHO, CORTICO]
-        cat_cols += [SEX, RADIOTHERAPY_DOSE, DEX, BIRTH_AGE]
-
-    # We check for genes
-    if genes is not None:
-
-        if genes not in GeneChoice():
-            raise ValueError(f"genes value must be in {GeneChoice()}")
-
-        if genes == GeneChoice.SIGNIFICANT:
-            cat_cols += SIGNIFICANT_CHROM_POS_REF
-
-        else:
-            cat_cols += ALL_CHROM_POS_REF
-
-    # We extract the dataframe
-    df = data_manager.get_table(LEARNING_2, columns=[PARTICIPANT, EF] + cont_cols + cat_cols)
-
-    # We replace wrong categorical values
-    if baselines:
-        df.loc[(df[DEX] != "0"), [DEX]] = ">0"
-    else:
-        cont_cols = None
-
-    if genes is not None:
-        df.replace("0/2", "0/1", inplace=True)
-        df.replace("1/2", "1/1", inplace=True)
-
-    return df, EF, cont_cols, cat_cols
-
-
 def generate_multitask_labels(df: DataFrame,
                               target_columns: List[str]) -> Tuple[array, Dict[int, tuple]]:
     """
@@ -515,6 +393,68 @@ def generate_multitask_labels(df: DataFrame,
     labels_dict = {v: k for k, v in labels_dict.items()}
 
     return multitask_labels, labels_dict
+
+
+def get_obesity_data(data_manager: PetaleDataManager,
+                     genomics: bool = False,
+                     baselines: bool = True,
+                     classification: bool = False,
+                     dummy: bool = False,
+                     holdout: bool = False) -> Tuple[DataFrame, str, List[str], List[str]]:
+    """
+    Extracts dataframe needed to proceed to obesity prediction experiments
+
+    Args:
+        data_manager: data manager to communicate with the database
+        genomics: if True, genomic variables are included
+        baselines: if True, baselines variables are included
+        classification: if True, targets returned are obesity classes instead of Total Body Fat values
+        dummy: if True, includes dummy variable combining sex and Total Body Fat category
+        holdout: if True, holdout data is included at the bottom of the dataframe
+
+    Returns: dataframe, target, continuous columns, categorical columns
+    """
+
+    # We initialize empty lists for continuous and categorical columns
+    cont_cols, cat_cols = [], []
+
+    # We add baselines
+    if baselines:
+        cont_cols += [AGE_AT_DIAGNOSIS, DT, DOX, EOT_BMI, METHO, CORTICO]
+        cat_cols += [SEX, RADIOTHERAPY_DOSE, DEX, BIRTH_AGE]
+
+    # We check for genes
+    if genomics is not None:
+        cat_cols += ALL_CHROM_POS_OBESITY
+
+    if dummy:
+        cat_cols.append(DUMMY)
+
+    # We extract the dataframe
+    target = TOTAL_BODY_FAT
+    df = data_manager.get_table(OBESITY_LEARNING_SET, columns=[PARTICIPANT, TOTAL_BODY_FAT] + cont_cols + cat_cols)
+
+    if holdout:
+        h_df = data_manager.get_table(OBESITY_HOLDOUT_SET, columns=[PARTICIPANT, TOTAL_BODY_FAT] + cont_cols + cat_cols)
+        df = df.append(h_df, ignore_index=True)
+
+    if classification:
+        target = OBESITY
+        ob_df = data_manager.get_table(OBESITY_TARGET, columns=[PARTICIPANT, OBESITY])
+        df = merge(df, ob_df, on=[PARTICIPANT], how=INNER)
+        df.drop([TOTAL_BODY_FAT], axis=1, inplace=True)
+
+    # We replace wrong categorical values
+    if baselines:
+        df.loc[(df[DEX] != "0"), [DEX]] = ">0"
+    else:
+        cont_cols = None
+
+    if genomics:
+        df.replace("0/2", "0/1", inplace=True)
+        df.replace("1/2", "1/1", inplace=True)
+
+    return df, target, cont_cols, cat_cols
 
 
 def get_warmup_data(data_manager: PetaleDataManager,
@@ -567,7 +507,7 @@ def get_warmup_data(data_manager: PetaleDataManager,
     if sex:
         cat_cols.append(SEX)
     if dummy:
-        cat_cols.append(WARMUP_DUMMY)
+        cat_cols.append(DUMMY)
 
     all_columns += cat_cols
     cat_cols = cat_cols if len(cat_cols) != 0 else None

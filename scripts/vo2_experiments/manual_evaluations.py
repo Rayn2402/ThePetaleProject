@@ -182,8 +182,8 @@ if __name__ == '__main__':
 
         # Creation of a function to update fixed params
         def update_fixed_params(dts):
-            return {'max_epochs': 500,
-                    'patience': 50,
+            return {'max_epochs': args.epochs,
+                    'patience': args.patience,
                     'num_cont_col': len(dts.cont_idx),
                     'cat_idx': dts.cat_idx,
                     'cat_sizes': dts.cat_sizes,
@@ -232,8 +232,8 @@ if __name__ == '__main__':
 
         # Creation of a function to update fixed params
         def update_fixed_params(dts):
-            return {'max_epochs': 500,
-                    'patience': 50,
+            return {'max_epochs': args.epochs,
+                    'patience': args.patience,
                     'num_cont_col': len(dts.cont_idx),
                     'cat_idx': dts.cat_idx,
                     'cat_sizes': dts.cat_sizes,
@@ -302,8 +302,8 @@ if __name__ == '__main__':
 
         # Creation of a function to update fixed params
         def update_fixed_params(dts):
-            return {'max_epochs': 500,
-                    'patience': 50,
+            return {'max_epochs': args.epochs,
+                    'patience': args.patience,
                     'num_cont_col': len(dts.cont_idx),
                     'cat_idx': dts.cat_idx,
                     'cat_sizes': dts.cat_sizes,
@@ -374,8 +374,8 @@ if __name__ == '__main__':
 
         # Creation of a function to update fixed params
         def update_fixed_params(dts):
-            return {'max_epochs': 500,
-                    'patience': 50,
+            return {'max_epochs': args.epochs,
+                    'patience': args.patience,
                     'num_cont_col': len(dts.cont_idx),
                     'cat_idx': dts.cat_idx,
                     'cat_sizes': dts.cat_sizes,
@@ -425,8 +425,8 @@ if __name__ == '__main__':
                     'cat_idx': dts.cat_idx,
                     'cat_sizes': dts.cat_sizes,
                     'cat_emb_sizes': dts.cat_sizes,
-                    'max_epochs': 500,
-                    'patience': 50,
+                    'max_epochs': args.epochs,
+                    'patience': args.patience,
                     **GATHPS}
 
         for nb_neighbor in args.degree:
@@ -490,8 +490,8 @@ if __name__ == '__main__':
                     'cat_idx': dts.cat_idx,
                     'cat_sizes': dts.cat_sizes,
                     'cat_emb_sizes': dts.cat_sizes,
-                    'max_epochs': 500,
-                    'patience': 50,
+                    'max_epochs': args.epochs,
+                    'patience': args.patience,
                     **GCNHPS}
 
         for nb_neighbor in args.degree:
@@ -553,8 +553,8 @@ if __name__ == '__main__':
 
         # Creation of a function to update fixed params
         def update_fixed_params(dts):
-            return {'max_epochs': 500,
-                    'patience': 50,
+            return {'max_epochs': args.epochs,
+                    'patience': args.patience,
                     'gene_idx_groups': dts.gene_idx_groups,
                     'hidden_size': 2,
                     'signature_size': args.signature_size,

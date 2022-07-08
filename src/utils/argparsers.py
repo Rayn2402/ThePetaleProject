@@ -171,7 +171,7 @@ def VO2_experiment_parser():
     parser = argparse.ArgumentParser(usage='\n python [experiment file].py',
                                      description="Runs the experiments associated to the VO2 dataset")
 
-    # Nb inner split and nb outer split selection
+    # Nb of inner splits and nb of outer splits
     parser.add_argument('-k', '--nb_outer_splits', type=int, default=10,
                         help='Number of outer splits used during the models evaluations')
     parser.add_argument('-l', '--nb_inner_splits', type=int, default=10,
@@ -179,7 +179,7 @@ def VO2_experiment_parser():
     parser.add_argument('-holdout', '--holdout', default=False, action='store_true',
                         help='If true, includes the holdout set data')
 
-    # Features selection
+    # Feature selection
     parser.add_argument('-b', '--baselines', default=False, action='store_true',
                         help='If true, includes the variables from the original equation')
     parser.add_argument('-r_w', '--remove_walk_variables', default=False, action='store_true',
@@ -215,6 +215,12 @@ def VO2_experiment_parser():
     parser.add_argument('-ggae', '--ggae', default=False, action='store_true',
                         help='If true, runs Gene GraphAttention Encoder (with enet) experiment')
 
+    # Training parameter
+    parser.add_argument('-epochs', '--epochs', type=int, default=500,
+                        help='Maximal number of epochs during training')
+    parser.add_argument('-patience', '--patience', type=int, default=50,
+                        help='Number of epochs allowed without improvement (for early stopping)')
+
     # Graph construction parameters
     parser.add_argument('-w_sim', '--weighted_similarity', default=False, action='store_true',
                         help='If true, calculates patients similarities using weighted metrics')
@@ -234,8 +240,9 @@ def VO2_experiment_parser():
                         help='If true, runs self supervised learning with the GeneGraphEncoder')
 
     # Activation of sharpness-aware minimization
-    parser.add_argument('-sam', '--enable_sam', default=False, action='store_true',
-                        help='If true, uses Sharpness-Aware Minimization Optimizer')
+    parser.add_argument('-rho', '--rho', type=float, default=0,
+                        help='Rho parameter of Sharpness-Aware Minimization (SAM) Optimizer.'
+                             'If >0, SAM is enabled')
 
     # Usage of predictions from another experiment
     parser.add_argument('-p', '--path', type=str, default=None,

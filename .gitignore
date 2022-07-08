@@ -1,4 +1,5 @@
 settings/database.py
+postgresql_tables
 .idea
 *.pyc
 *.html

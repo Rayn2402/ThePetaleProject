@@ -4,9 +4,9 @@ Filename: descriptive_analyses.py
 Authors: Nicolas Raymond
 
 Description: This file is used to generate descriptive analyses of the table
-             related to the vo2 prediction task.
+             related to the VO2 peak prediction task.
 
-Date of last modification : 2022/06/24
+Date of last modification : 2022/07/07
 """
 
 from src.data.extraction.constants import *
@@ -19,8 +19,8 @@ if __name__ == '__main__':
 
     # Tables extraction
     variables = [PARTICIPANT, SEX, TDM6_DIST, TDM6_HR_END, WEIGHT, DT, AGE, MVLPA, VO2R_MAX]
-    learning_set = data_manager.get_table(LEARNING_0_GENES, columns=variables)
-    holdout_set = data_manager.get_table(LEARNING_0_GENES_HOLDOUT, columns=variables)
+    learning_set = data_manager.get_table(VO2_LEARNING_SET, columns=variables)
+    holdout_set = data_manager.get_table(VO2_HOLDOUT_SET, columns=variables)
     dataset = learning_set.append(holdout_set)
 
     # We proceed to the descriptive analyses

@@ -17,7 +17,7 @@ sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
 from src.data.extraction.data_management import PetaleDataManager
 from src.data.processing.datasets import MaskType, PetaleDataset
 from src.data.processing.transforms import ContinuousTransform
-from src.data.processing.sampling import extract_masks, get_warmup_data
+from src.data.processing.sampling import extract_masks, get_VO2_data
 from src.utils.score_metrics import AbsoluteError, ConcordanceIndex, Pearson, RootMeanSquaredError, SquaredError
 from src.data.extraction.constants import *
 from torch import tensor
@@ -128,7 +128,7 @@ if __name__ == '__main__':
 
     # Generation of dataset
     data_manager = PetaleDataManager()
-    df, target, cont_cols, cat_cols = get_warmup_data(data_manager, holdout=args.holdout)
+    df, target, cont_cols, cat_cols = get_VO2_data(data_manager, holdout=args.holdout)
 
     # Creation of the dataset
     dataset = PetaleDataset(df, target, cont_cols, cat_cols=cat_cols,

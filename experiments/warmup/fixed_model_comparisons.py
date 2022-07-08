@@ -26,7 +26,7 @@ if __name__ == '__main__':
     from src.data.processing.datasets import PetaleDataset
     from src.data.processing.gnn_datasets import PetaleKGNNDataset
     from src.data.processing.feature_selection import FeatureSelector
-    from src.data.processing.sampling import extract_masks, GeneChoice, get_warmup_data,\
+    from src.data.processing.sampling import extract_masks, GeneChoice, get_VO2_data,\
         push_valid_to_train
     from src.models.blocks.genes_signature_block import GeneEncoder, GeneGraphEncoder, GeneGraphAttentionEncoder
     from src.models.gcn import PetaleGCNR, GCNHP
@@ -54,23 +54,23 @@ if __name__ == '__main__':
         genes = True
     elif args.all_genes:
         genes_selection = GeneChoice.ALL
-        gene_cols = ALL_CHROM_POS_WARMUP
+        gene_cols = VO2_SNPS
         genes = True
     else:
         genes_selection = None if not args.single_gene else GeneChoice.ALL
         gene_cols = None
         genes = False
 
-    df, target, cont_cols, cat_cols = get_warmup_data(manager,
-                                                      baselines=args.baselines,
-                                                      genes=genes_selection,
-                                                      sex=args.sex,
-                                                      holdout=args.holdout)
+    df, target, cont_cols, cat_cols = get_VO2_data(manager,
+                                                   baselines=args.baselines,
+                                                   genes=genes_selection,
+                                                   sex=args.sex,
+                                                   holdout=args.holdout)
     # We filter gene variables if needed
     if args.single_gene:
-        ALL_CHROM_POS_WARMUP.remove('7_45932669')
-        df.drop(ALL_CHROM_POS_WARMUP, axis=1, inplace=True)
-        cat_cols = [c for c in cat_cols if c not in ALL_CHROM_POS_WARMUP]
+        VO2_SNPS.remove('7_45932669')
+        df.drop(VO2_SNPS, axis=1, inplace=True)
+        cat_cols = [c for c in cat_cols if c not in VO2_SNPS]
 
     # We filter baselines variables if needed
     if args.baselines and args.remove_walk_variables:

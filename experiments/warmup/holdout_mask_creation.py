@@ -17,24 +17,24 @@ if __name__ == '__main__':
     # Imports specific to project
     sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
     from settings.paths import Paths
-    from src.data.processing.sampling import GeneChoice, get_warmup_data, RandomStratifiedSampler
+    from src.data.processing.sampling import GeneChoice, get_VO2_data, RandomStratifiedSampler
     from src.data.processing.datasets import MaskType, PetaleDataset
-    from src.data.extraction.constants import LEARNING_0_GENES_HOLDOUT, WARMUP_DUMMY
+    from src.data.extraction.constants import LEARNING_0_GENES_HOLDOUT, DUMMY
     from src.data.extraction.data_management import PetaleDataManager
 
     # Initialization of the manager
     m = PetaleDataManager()
 
     # Learning set extraction
-    df, _, cont_cols, cat_cols = get_warmup_data(data_manager=m,
-                                                 baselines=True,
-                                                 genes=GeneChoice.ALL,
-                                                 sex=True,
-                                                 dummy=True)
+    df, _, cont_cols, cat_cols = get_VO2_data(data_manager=m,
+                                              baselines=True,
+                                              genes=GeneChoice.ALL,
+                                              sex=True,
+                                              dummy=True)
 
     # Temporary dataset creation
-    cat_cols.remove(WARMUP_DUMMY)
-    dts = PetaleDataset(df, WARMUP_DUMMY, cont_cols, cat_cols, classification=True)
+    cat_cols.remove(DUMMY)
+    dts = PetaleDataset(df, DUMMY, cont_cols, cat_cols, classification=True)
     learning_size = len(dts)
 
     # Mask creation

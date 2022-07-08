@@ -21,7 +21,7 @@ if __name__ == '__main__':
     sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
     from settings.paths import Paths
     from src.data.extraction.data_management import PetaleDataManager
-    from src.data.processing.sampling import extract_masks, GeneChoice, get_warmup_data
+    from src.data.processing.sampling import extract_masks, GeneChoice, get_VO2_data
     from src.utils.argparsers import apriori_argparser
     from src.utils.experiments import run_apriori_experiment
 
@@ -33,7 +33,7 @@ if __name__ == '__main__':
 
     # We first extract data
     manager = PetaleDataManager()
-    df, target, cont_cols, cat_cols = get_warmup_data(manager, genes=GeneChoice.ALL, sex=True)
+    df, target, cont_cols, cat_cols = get_VO2_data(manager, genes=GeneChoice.ALL, sex=True)
 
     # Extraction of masks
     masks = extract_masks(Paths.WARMUP_MASK, k=10, l=0)

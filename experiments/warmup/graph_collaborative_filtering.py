@@ -20,7 +20,7 @@ if __name__ == '__main__':
     # Imports related to project
     sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
     from src.data.extraction.data_management import PetaleDataManager
-    from src.data.processing.sampling import extract_masks, GeneChoice, get_warmup_data, MaskType
+    from src.data.processing.sampling import extract_masks, GeneChoice, get_VO2_data, MaskType
     from src.data.processing.datasets import PetaleDataset
     from src.utils.graph import PetaleGraph
     from src.utils.collaborative_filtering import run_collaborative_filtering
@@ -30,7 +30,7 @@ if __name__ == '__main__':
 
     # Generation of dataset
     data_manager = PetaleDataManager()
-    df, target, cont_cols, cat_cols = get_warmup_data(data_manager, genes=GeneChoice.SIGNIFICANT, sex=True)
+    df, target, cont_cols, cat_cols = get_VO2_data(data_manager, genes=GeneChoice.SIGNIFICANT, sex=True)
 
     # Creation of the dataset
     dataset = PetaleDataset(df, target, cont_cols, cat_cols=cat_cols,

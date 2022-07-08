@@ -18,7 +18,7 @@ if __name__ == '__main__':
     data_manager = PetaleDataManager()
 
     # Tables extraction
-    variables = [PARTICIPANT, SEX, WEIGHT, DT, AGE, MVLPA, VO2R_MAX]
+    variables = [PARTICIPANT, SEX, TDM6_DIST, TDM6_HR_END, WEIGHT, DT, AGE, MVLPA, VO2R_MAX]
     learning_set = data_manager.get_table(LEARNING_0_GENES, columns=variables)
     holdout_set = data_manager.get_table(LEARNING_0_GENES_HOLDOUT, columns=variables)
     dataset = learning_set.append(holdout_set)

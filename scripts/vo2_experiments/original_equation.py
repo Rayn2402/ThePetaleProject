@@ -3,9 +3,9 @@ Filename: original_equation.py
 
 Authors: Nicolas Raymond
 
-Description: This file is used to to experiment the original equation on the warmup dataset.
+Description: This file is used to evaluate the original equation on the VO2 peak dataset.
 
-Date of last modification : 2021/11/08
+Date of last modification : 2022/07/07
 """
 
 import argparse
@@ -20,13 +20,13 @@ from src.data.processing.transforms import ContinuousTransform
 from src.data.processing.sampling import extract_masks, get_VO2_data
 from src.utils.score_metrics import AbsoluteError, ConcordanceIndex, Pearson, RootMeanSquaredError, SquaredError
 from src.data.extraction.constants import *
-from torch import tensor
-from src.recording.recording import Recorder, get_evaluation_recap, compare_prediction_recordings
+from src.recording.recording import compare_prediction_recordings, get_evaluation_recap, Recorder
 from settings.paths import Paths
+from torch import tensor
 from typing import Dict, List
 
 
-# We create the function that will calculate the vo2 Peak value based on the original equation
+# We create the function that will calculate the VO2 peak values based on the original equation
 def original_equation(item):
     return -0.236 * item[AGE] - 0.094 * item[WEIGHT] - 0.120 * item[TDM6_HR_END] + 0.067 * item[TDM6_DIST] + \
            0.065 * item[MVLPA] - 0.204 * item[DT] + 25.145
@@ -34,25 +34,19 @@ def original_equation(item):
 
 def argument_parser():
     """
-    This function defines a parser that enables user to easily run different experiments
+    This function defines a parser for the original equation experiment
     """
     # Create a parser
-    parser = argparse.ArgumentParser(usage='\n python3 original_equation.py',
+    parser = argparse.ArgumentParser(usage='\n python original_equation.py',
                                      description="Runs the original equation experiment")
 
-    parser.add_argument('-k', '--nb_outer_splits', type=int, default=5,
-                        help="Number of outer splits (default = 5)")
+    parser.add_argument('-k', '--nb_outer_splits', type=int, default=10,
+                        help="Number of outer splits (default = 10)")
 
     parser.add_argument('-holdout', '--holdout', default=False, action='store_true',
                         help='If true, includes the holdout set data')
 
     arguments = parser.parse_args()
-
-    # Print arguments
-    print("\nThe inputs are:")
-    for arg in vars(arguments):
-        print("{}: {}".format(arg, getattr(arguments, arg)))
-    print("\n")
 
     return arguments
 
@@ -61,17 +55,16 @@ def execute_original_equation_experiment(dts: PetaleDataset,
                                          m: Dict[int, Dict[str, List[int]]],
                                          eval_name: str) -> None:
     """
-        Function that executes a Neural Network experiments
+    Executes the original equation experiment
 
-         Args:
-            dts:  dataset with inputs and regression targets
-            m: dictionary with list of idx to use for training and testing
-            eval_name: name of the results file saved at the recordings_path
+    Args:
+        dts:  dataset with inputs and regression targets
+        m: dictionary with list of idx to use for training and testing
+        eval_name: name of the results file saved at the recordings_path
 
 
-         Returns: None
-
-         """
+    Returns: None
+    """
     # We save the evaluation metrics
     eval_metrics = [AbsoluteError(), ConcordanceIndex(), Pearson(), SquaredError(), RootMeanSquaredError()]
 

@@ -21,7 +21,7 @@ if __name__ == '__main__':
 
     # Imports specific to project
     sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
-    from hps.manually_selected_hps import ENET_HPS, ENET_GGE_HPS, GATHPS, GCNHPS, GGEHPS, MLP_HPS, RF_HPS, XGBOOST_HPS
+    from hps import manually_selected_hps as ms_hps
     from settings.paths import Paths
     from src.data.processing.datasets import PetaleDataset
     from src.data.processing.feature_selection import FeatureSelector
@@ -120,7 +120,7 @@ if __name__ == '__main__':
                               n_trials=0,
                               evaluation_metrics=evaluation_metrics,
                               feature_selector=feature_selector,
-                              fixed_params=RF_HPS,
+                              fixed_params=ms_hps.RF_HPS,
                               save_hps_importance=True,
                               save_optimization_history=True,
                               seed=args.seed,
@@ -152,7 +152,7 @@ if __name__ == '__main__':
                               n_trials=0,
                               evaluation_metrics=evaluation_metrics,
                               feature_selector=feature_selector,
-                              fixed_params=XGBOOST_HPS,
+                              fixed_params=ms_hps.XGBOOST_HPS,
                               save_hps_importance=True,
                               save_optimization_history=True,
                               seed=args.seed,
@@ -176,9 +176,9 @@ if __name__ == '__main__':
                                 classification=False, feature_selection_groups=[VO2_SNPS])
 
         # Update of the hyperparameters
-        MLP_HPS[MLPHP.RHO.name] = args.rho
+        ms_hps.MLP_HPS[MLPHP.RHO.name] = args.rho
         cat_sizes_sum = sum(dataset.cat_sizes) if dataset.cat_sizes is not None else 0
-        MLP_HPS[MLPHP.N_UNIT.name] = int((len(cont_cols) + cat_sizes_sum)/2)
+        ms_hps.MLP_HPS[MLPHP.N_UNIT.name] = int((len(cont_cols) + cat_sizes_sum)/2)
 
         # Creation of a function to update fixed params
         def update_fixed_params(dts):
@@ -188,7 +188,7 @@ if __name__ == '__main__':
                     'cat_idx': dts.cat_idx,
                     'cat_sizes': dts.cat_sizes,
                     'cat_emb_sizes': dts.cat_sizes,
-                    **MLP_HPS}
+                    **ms_hps.MLP_HPS}
 
         # Saving of the fixed params of MLP
         fixed_params = update_fixed_params(dataset)
@@ -228,7 +228,7 @@ if __name__ == '__main__':
                                 feature_selection_groups=[VO2_SNPS])
 
         # Update of the hyperparameters
-        ENET_HPS[MLPHP.RHO.name] = args.rho
+        ms_hps.ENET_HPS[MLPHP.RHO.name] = args.rho
 
         # Creation of a function to update fixed params
         def update_fixed_params(dts):
@@ -238,7 +238,7 @@ if __name__ == '__main__':
                     'cat_idx': dts.cat_idx,
                     'cat_sizes': dts.cat_sizes,
                     'cat_emb_sizes': dts.cat_sizes,
-                    **ENET_HPS}
+                    **ms_hps.ENET_HPS}
 
         # Saving of the fixed params of ENET
         fixed_params = update_fixed_params(dataset)
@@ -298,7 +298,7 @@ if __name__ == '__main__':
                                     signature_size=args.signature_size)
 
         # Update of the hyperparameters
-        ENET_GGE_HPS[MLPHP.RHO.name] = args.rho
+        ms_hps.ENET_GGE_HPS[MLPHP.RHO.name] = args.rho
 
         # Creation of a function to update fixed params
         def update_fixed_params(dts):
@@ -310,7 +310,7 @@ if __name__ == '__main__':
                     'cat_emb_sizes': dts.cat_sizes,
                     'gene_idx_groups': dts.gene_idx_groups,
                     'gene_encoder_constructor': gene_encoder_constructor,
-                    **ENET_GGE_HPS}
+                    **ms_hps.ENET_GGE_HPS}
 
 
         # Saving of the fixed params of ENET + GGE
@@ -370,7 +370,7 @@ if __name__ == '__main__':
                                              signature_size=args.signature_size)
 
         # Update of the hyperparameters
-        ENET_GGE_HPS[MLPHP.RHO.name] = args.rho
+        ms_hps.ENET_GGE_HPS[MLPHP.RHO.name] = args.rho
 
         # Creation of a function to update fixed params
         def update_fixed_params(dts):
@@ -382,7 +382,7 @@ if __name__ == '__main__':
                     'cat_emb_sizes': dts.cat_sizes,
                     'gene_idx_groups': dts.gene_idx_groups,
                     'gene_encoder_constructor': gene_encoder_constructor,
-                    **ENET_GGE_HPS}
+                    **ms_hps.ENET_GGE_HPS}
 
 
         # Saving of the fixed params of ENET + GGAE
@@ -417,7 +417,7 @@ if __name__ == '__main__':
         start = time.time()
 
         # Update of the hyperparameters
-        GATHPS[GATHP.RHO.name] = args.rho
+        ms_hps.GATHPS[GATHP.RHO.name] = args.rho
 
         # Creation of a function to update fixed params
         def update_fixed_params(dts):
@@ -427,7 +427,7 @@ if __name__ == '__main__':
                     'cat_emb_sizes': dts.cat_sizes,
                     'max_epochs': args.epochs,
                     'patience': args.patience,
-                    **GATHPS}
+                    **ms_hps.GATHPS}
 
         for nb_neighbor in args.degree:
 
@@ -482,7 +482,7 @@ if __name__ == '__main__':
         start = time.time()
 
         # Update of the hyperparameters
-        GCNHPS[GCNHP.RHO.name] = args.rho
+        ms_hps.GCNHPS[GCNHP.RHO.name] = args.rho
 
         # Creation of function to update fixed params
         def update_fixed_params(dts):
@@ -492,7 +492,7 @@ if __name__ == '__main__':
                     'cat_emb_sizes': dts.cat_sizes,
                     'max_epochs': args.epochs,
                     'patience': args.patience,
-                    **GCNHPS}
+                    **ms_hps.GCNHPS}
 
         for nb_neighbor in args.degree:
 
@@ -560,7 +560,7 @@ if __name__ == '__main__':
                     'signature_size': args.signature_size,
                     'genes_emb_sharing': args.embedding_sharing,
                     'aggregation_method': 'avg',
-                    **GGEHPS}
+                    **ms_hps.GGEHPS}
 
         # Saving of the fixed params for GGAE
         fixed_params = update_fixed_params(dataset)

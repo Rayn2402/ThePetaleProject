@@ -18,7 +18,7 @@ if __name__ == '__main__':
 
     # Imports specific to project
     sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
-    from hps.manually_selected_hps import ENET_HPS, ENET_GGE_HPS, GATHPS, GCNHPS, GGEHPS, MLP_HPS, RF_HPS, XGBOOST_HPS
+    from hps import manually_selected_hps as ms_hps
     from settings.paths import Paths
     from src.data.extraction.constants import *
     from src.data.extraction.data_management import PetaleDataManager
@@ -35,9 +35,7 @@ if __name__ == '__main__':
     from src.models.xgboost_ import PetaleBinaryXGBC, PetaleXGBR, XGBoostHP
     from src.training.evaluation import Evaluator
     from src.utils.argparsers import obesity_experiment_parser
-    from src.utils.score_metrics import AbsoluteError, ConcordanceIndex, Pearson, RootMeanSquaredError, \
-        SquaredError, AUC, BinaryCrossEntropy, BinaryBalancedAccuracy, \
-        Sensitivity, Specificity, BalancedAccuracyEntropyRatio, Reduction
+    from src.utils import score_metrics as sm
 
     # Arguments parsing
     args = obesity_experiment_parser()
@@ -62,11 +60,12 @@ if __name__ == '__main__':
 
     # Initialization of the dictionary containing the evaluation metrics
     if args.classification:
-        evaluation_metrics = [AUC(), BinaryBalancedAccuracy(), Sensitivity(),
-                              Specificity(), BinaryCrossEntropy(),
-                              BalancedAccuracyEntropyRatio(reduction=Reduction.GEO_MEAN)]
+        evaluation_metrics = [sm.AUC(), sm.BinaryBalancedAccuracy(), sm.Sensitivity(),
+                              sm.Specificity(), sm.BinaryCrossEntropy(),
+                              sm.BalancedAccuracyEntropyRatio(reduction=sm.Reduction.GEO_MEAN)]
     else:
-        evaluation_metrics = [AbsoluteError(), ConcordanceIndex(), Pearson(), SquaredError(), RootMeanSquaredError()]
+        evaluation_metrics = [sm.AbsoluteError(), sm.ConcordanceIndex(), sm.Pearson(),
+                              sm.SquaredError(), sm.RootMeanSquaredError()]
 
     # Initialization of feature selector
     if args.feature_selection:
@@ -108,7 +107,7 @@ if __name__ == '__main__':
         # Constructor selection
         if args.classification:
             constructor = PetaleBinaryRFC
-            RF_HPS[RandomForestHP.WEIGHT.name] = 0.5
+            ms_hps.RF_HPS[RandomForestHP.WEIGHT.name] = 0.5
         else:
             constructor = PetaleRFR
 
@@ -121,7 +120,7 @@ if __name__ == '__main__':
                               n_trials=0,
                               evaluation_metrics=evaluation_metrics,
                               feature_selector=feature_selector,
-                              fixed_params=RF_HPS,
+                              fixed_params=ms_hps.RF_HPS,
                               save_hps_importance=True,
                               save_optimization_history=True,
                               seed=args.seed,
@@ -147,7 +146,7 @@ if __name__ == '__main__':
         # Constructor selection
         if args.classification:
             constructor = PetaleBinaryXGBC
-            XGBOOST_HPS[XGBoostHP.WEIGHT.name] = 0.5
+            ms_hps.XGBOOST_HPS[XGBoostHP.WEIGHT.name] = 0.5
         else:
             constructor = PetaleXGBR
 
@@ -160,7 +159,7 @@ if __name__ == '__main__':
                               n_trials=0,
                               evaluation_metrics=evaluation_metrics,
                               feature_selector=feature_selector,
-                              fixed_params=XGBOOST_HPS,
+                              fixed_params=ms_hps.XGBOOST_HPS,
                               save_hps_importance=True,
                               save_optimization_history=True,
                               seed=args.seed,
@@ -186,14 +185,14 @@ if __name__ == '__main__':
         # Constructor selection
         if args.classification:
             constructor = PetaleBinaryMLPC
-            MLP_HPS[MLPHP.WEIGHT.name] = 0.5
+            ms_hps.MLP_HPS[MLPHP.WEIGHT.name] = 0.5
         else:
             constructor = PetaleMLPR
 
         # Update of the hyperparameters
-        MLP_HPS[MLPHP.RHO.name] = args.rho
+        ms_hps.MLP_HPS[MLPHP.RHO.name] = args.rho
         cat_sizes_sum = sum(dataset.cat_sizes) if dataset.cat_sizes is not None else 0
-        MLP_HPS[MLPHP.N_UNIT.name] = int((len(cont_cols) + cat_sizes_sum) / 2)
+        ms_hps.MLP_HPS[MLPHP.N_UNIT.name] = int((len(cont_cols) + cat_sizes_sum) / 2)
 
         # Creation of a function to update the fixed params
         def update_fixed_params(dts):
@@ -203,7 +202,7 @@ if __name__ == '__main__':
                     'cat_idx': dts.cat_idx,
                     'cat_sizes': dts.cat_sizes,
                     'cat_emb_sizes': dts.cat_sizes,
-                    **MLP_HPS}
+                    **ms_hps.MLP_HPS}
 
 
         # Saving of the fixed params of MLP
@@ -246,12 +245,12 @@ if __name__ == '__main__':
         # Constructor selection
         if args.classification:
             constructor = PetaleBinaryMLPC
-            MLP_HPS[MLPHP.WEIGHT.name] = 0.5
+            ms_hps.MLP_HPS[MLPHP.WEIGHT.name] = 0.5
         else:
             constructor = PetaleMLPR
 
         # Update of the hyperparameters
-        ENET_HPS[MLPHP.RHO.name] = args.rho
+        ms_hps.ENET_HPS[MLPHP.RHO.name] = args.rho
 
         # Creation of a function to update the fixed params
         def update_fixed_params(dts):
@@ -261,7 +260,7 @@ if __name__ == '__main__':
                     'cat_idx': dts.cat_idx,
                     'cat_sizes': dts.cat_sizes,
                     'cat_emb_sizes': dts.cat_sizes,
-                    **ENET_HPS}
+                    **ms_hps.ENET_HPS}
 
         # Saving of the fixed params of ENET
         fixed_params = update_fixed_params(dataset)
@@ -324,12 +323,12 @@ if __name__ == '__main__':
         # Constructor selection
         if args.classification:
             constructor = PetaleBinaryMLPC
-            MLP_HPS[MLPHP.WEIGHT.name] = 0.5
+            ms_hps.ENET_GGE_HPS[MLPHP.WEIGHT.name] = 0.5
         else:
             constructor = PetaleMLPR
 
         # Update of the hyperparameters
-        ENET_GGE_HPS[MLPHP.RHO.name] = args.rho
+        ms_hps.ENET_GGE_HPS[MLPHP.RHO.name] = args.rho
 
         # Creation of a function to update the fixed params
         def update_fixed_params(dts):
@@ -341,7 +340,7 @@ if __name__ == '__main__':
                     'cat_emb_sizes': dts.cat_sizes,
                     'gene_idx_groups': dts.gene_idx_groups,
                     'gene_encoder_constructor': gene_encoder_constructor,
-                    **ENET_GGE_HPS}
+                    **ms_hps.ENET_GGE_HPS}
 
 
         # Saving of fixed_params for ENET + GGE
@@ -403,12 +402,12 @@ if __name__ == '__main__':
         # Constructor selection
         if args.classification:
             constructor = PetaleBinaryMLPC
-            MLP_HPS[MLPHP.WEIGHT.name] = 0.5
+            ms_hps.ENET_GGE_HPS[MLPHP.WEIGHT.name] = 0.5
         else:
             constructor = PetaleMLPR
 
         # Update of the hyperparameters
-        ENET_GGE_HPS[MLPHP.RHO.name] = args.rho
+        ms_hps.ENET_GGE_HPS[MLPHP.RHO.name] = args.rho
 
         # Creation of a function to update the fixed params
         def update_fixed_params(dts):
@@ -420,7 +419,7 @@ if __name__ == '__main__':
                     'cat_emb_sizes': dts.cat_sizes,
                     'gene_idx_groups': dts.gene_idx_groups,
                     'gene_encoder_constructor': gene_encoder_constructor,
-                    **ENET_GGE_HPS}
+                    **ms_hps.ENET_GGE_HPS}
 
 
         # Saving of the fixed_params for ENET + GGAE
@@ -457,12 +456,12 @@ if __name__ == '__main__':
         # Constructor selection
         if args.classification:
             constructor = PetaleBinaryGATC
-            GATHPS[GATHP.WEIGHT.name] = 0.5
+            ms_hps.GATHPS[GATHP.WEIGHT.name] = 0.5
         else:
             constructor = PetaleGATR
 
         # Update of the hyperparameters
-        GATHPS[GATHP.RHO.name] = args.rho
+        ms_hps.GATHPS[GATHP.RHO.name] = args.rho
 
         # Creation of a function to update the fixed params
         def update_fixed_params(dts):
@@ -472,7 +471,7 @@ if __name__ == '__main__':
                     'cat_emb_sizes': dts.cat_sizes,
                     'max_epochs': args.epochs,
                     'patience': args.patience,
-                    **GATHPS}
+                    **ms_hps.GATHPS}
 
         for nb_neighbor in args.degree:
 
@@ -529,12 +528,12 @@ if __name__ == '__main__':
         # Constructor selection
         if args.classification:
             constructor = PetaleBinaryGCNC
-            GCNHPS[GCNHP.WEIGHT.name] = 0.5
+            ms_hps.GCNHPS[GCNHP.WEIGHT.name] = 0.5
         else:
             constructor = PetaleGCNR
 
         # Update of the hyperparameters
-        GCNHPS[GCNHP.RHO.name] = args.rho
+        ms_hps.GCNHPS[GCNHP.RHO.name] = args.rho
 
         # Creation of function to update fixed params
         def update_fixed_params(dts):
@@ -544,7 +543,7 @@ if __name__ == '__main__':
                     'cat_idx': dts.cat_idx,
                     'cat_sizes': dts.cat_sizes,
                     'cat_emb_sizes': dts.cat_sizes,
-                    **GCNHPS}
+                    **ms_hps.GCNHPS}
 
         for nb_neighbor in args.degree:
 
@@ -612,7 +611,7 @@ if __name__ == '__main__':
                     'signature_size': args.signature_size,
                     'genes_emb_sharing': args.embedding_sharing,
                     'aggregation_method': 'avg',
-                    **GGEHPS}
+                    **ms_hps.GGEHPS}
 
 
         # Saving of the fixed params of GGE

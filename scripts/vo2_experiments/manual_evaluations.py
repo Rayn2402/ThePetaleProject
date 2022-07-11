@@ -6,7 +6,7 @@ Author: Nicolas Raymond
 Description: Script used to run VO2 peak experiments using
              manually selected hyperparameters.
 
-Date of last modification: 2022/07/07
+Date of last modification: 2022/07/11
 """
 
 import sys
@@ -59,9 +59,9 @@ if __name__ == '__main__':
 
     # Extraction of masks
     if args.holdout:
-        masks = extract_masks(Paths.WARMUP_HOLDOUT_MASK, k=1, l=10)
+        masks = extract_masks(Paths.VO2_HOLDOUT_MASK, k=1, l=10)
     else:
-        masks = extract_masks(Paths.WARMUP_MASK, k=args.nb_outer_splits, l=args.nb_inner_splits)
+        masks = extract_masks(Paths.VO2_MASK, k=args.nb_outer_splits, l=args.nb_inner_splits)
 
     # Creation of masks for tree-based models
     masks_without_val = deepcopy(masks)
@@ -70,7 +70,7 @@ if __name__ == '__main__':
     # Initialization of list containing the evaluation metrics
     evaluation_metrics = [AbsoluteError(), ConcordanceIndex(), Pearson(), SquaredError(), RootMeanSquaredError()]
 
-    # Initialization of feature selector
+    # Initialization of a feature selector
     if args.feature_selection:
         if args.genomics and args.baselines:
             feature_selector = FeatureSelector(threshold=[0.01, 0.01],
@@ -175,7 +175,7 @@ if __name__ == '__main__':
         dataset = PetaleDataset(df, target, cont_cols, cat_cols, to_tensor=True,
                                 classification=False, feature_selection_groups=[VO2_SNPS])
 
-        # Update of hyperparameters
+        # Update of the hyperparameters
         MLP_HPS[MLPHP.RHO.name] = args.rho
         cat_sizes_sum = sum(dataset.cat_sizes) if dataset.cat_sizes is not None else 0
         MLP_HPS[MLPHP.N_UNIT.name] = int((len(cont_cols) + cat_sizes_sum)/2)
@@ -227,7 +227,7 @@ if __name__ == '__main__':
                                 to_tensor=True, classification=False,
                                 feature_selection_groups=[VO2_SNPS])
 
-        # Update of hyperparameters
+        # Update of the hyperparameters
         ENET_HPS[MLPHP.RHO.name] = args.rho
 
         # Creation of a function to update fixed params
@@ -297,7 +297,7 @@ if __name__ == '__main__':
                                     dropout=dropout,
                                     signature_size=args.signature_size)
 
-        # Update of hyperparameters
+        # Update of the hyperparameters
         ENET_GGE_HPS[MLPHP.RHO.name] = args.rho
 
         # Creation of a function to update fixed params
@@ -313,7 +313,7 @@ if __name__ == '__main__':
                     **ENET_GGE_HPS}
 
 
-        # Saving of the fixed params of GGE + ENET
+        # Saving of the fixed params of ENET + GGE
         fixed_params = update_fixed_params(dataset)
 
         # Creation of the evaluator
@@ -369,7 +369,7 @@ if __name__ == '__main__':
                                              dropout=dropout,
                                              signature_size=args.signature_size)
 
-        # Update of hyperparameters
+        # Update of the hyperparameters
         ENET_GGE_HPS[MLPHP.RHO.name] = args.rho
 
         # Creation of a function to update fixed params
@@ -385,7 +385,7 @@ if __name__ == '__main__':
                     **ENET_GGE_HPS}
 
 
-        # Saving of the fixed params of GGAE + ENET
+        # Saving of the fixed params of ENET + GGAE
         fixed_params = update_fixed_params(dataset)
 
         # Creation of evaluator
@@ -416,7 +416,7 @@ if __name__ == '__main__':
         # Start timer
         start = time.time()
 
-        # Update of hyperparameters
+        # Update of the hyperparameters
         GATHPS[GATHP.RHO.name] = args.rho
 
         # Creation of a function to update fixed params
@@ -481,7 +481,7 @@ if __name__ == '__main__':
         # Start timer
         start = time.time()
 
-        # Update of hyperparameters
+        # Update of the hyperparameters
         GCNHPS[GCNHP.RHO.name] = args.rho
 
         # Creation of function to update fixed params
@@ -556,7 +556,7 @@ if __name__ == '__main__':
             return {'max_epochs': args.epochs,
                     'patience': args.patience,
                     'gene_idx_groups': dts.gene_idx_groups,
-                    'hidden_size': 2,
+                    'hidden_size': 3,
                     'signature_size': args.signature_size,
                     'genes_emb_sharing': args.embedding_sharing,
                     'aggregation_method': 'avg',

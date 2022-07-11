@@ -42,7 +42,7 @@ if __name__ == '__main__':
     # Arguments parsing
     args = obesity_experiment_parser()
 
-    # Initialization of DataManager
+    # Initialization of a data manager
     manager = PetaleDataManager()
 
     # We extract needed data

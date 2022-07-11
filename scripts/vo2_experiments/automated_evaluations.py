@@ -44,7 +44,7 @@ if __name__ == '__main__':
     # Arguments parsing
     args = VO2_experiment_parser()
 
-    # Initialization of DataManager
+    # Initialization of a data manager
     manager = PetaleDataManager()
 
     # We extract needed data
@@ -97,7 +97,7 @@ if __name__ == '__main__':
         eval_id += "_sam"
         sam_search_space = {Range.MIN: 0, Range.MAX: args.rho}  # Sharpness-Aware Minimization search space
     else:
-        sam_search_space = 0
+        sam_search_space = {Range.VALUE: 0}
 
     # We start a timer for the whole experiment
     first_start = time.time()

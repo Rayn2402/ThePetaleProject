@@ -21,7 +21,7 @@ if __name__ == '__main__':
 
     # Imports specific to project
     sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
-    from hps.search_spaces import ENET_HPS, ENET_GGE_HPS, GATHPS, GCNHPS, GGEHPS, MLP_HPS, RF_HPS, XGBOOST_HPS
+    from hps import search_spaces as ss
     from settings.paths import Paths
     from src.data.processing.datasets import PetaleDataset
     from src.data.processing.gnn_datasets import PetaleKGNNDataset
@@ -119,7 +119,7 @@ if __name__ == '__main__':
                               dataset=dataset,
                               masks=masks_without_val,
                               evaluation_name=f"RF_{eval_id}",
-                              hps=RF_HPS,
+                              hps=ss.RF_HPS,
                               n_trials=NB_TRIALS,
                               evaluation_metrics=evaluation_metrics,
                               feature_selector=feature_selector,
@@ -150,7 +150,7 @@ if __name__ == '__main__':
                               dataset=dataset,
                               masks=masks_without_val,
                               evaluation_name=f"XGBoost_{eval_id}",
-                              hps=XGBOOST_HPS,
+                              hps=ss.XGBOOST_HPS,
                               n_trials=NB_TRIALS,
                               evaluation_metrics=evaluation_metrics,
                               feature_selector=feature_selector,
@@ -189,16 +189,16 @@ if __name__ == '__main__':
         fixed_params = update_fixed_params(dataset)
 
         # Update of the hyperparameters
-        MLP_HPS[MLPHP.RHO.name] = sam_search_space
+        ss.MLP_HPS[MLPHP.RHO.name] = sam_search_space
         cat_sizes_sum = sum(dataset.cat_sizes) if dataset.cat_sizes is not None else 0
-        MLP_HPS[MLPHP.N_UNIT.name] = {Range.VALUE: int((len(cont_cols) + cat_sizes_sum)/2)}
+        ss.MLP_HPS[MLPHP.N_UNIT.name] = {Range.VALUE: int((len(cont_cols) + cat_sizes_sum)/2)}
 
         # Creation of the evaluator
         evaluator = Evaluator(model_constructor=PetaleMLPR,
                               dataset=dataset,
                               masks=masks,
                               evaluation_name=f"MLP_{eval_id}",
-                              hps=MLP_HPS,
+                              hps=ss.MLP_HPS,
                               n_trials=NB_TRIALS,
                               evaluation_metrics=evaluation_metrics,
                               feature_selector=feature_selector,
@@ -240,14 +240,14 @@ if __name__ == '__main__':
         fixed_params = update_fixed_params(dataset)
 
         # Update of the hyperparameters
-        ENET_HPS[MLPHP.RHO.name] = sam_search_space
+        ss.ENET_HPS[MLPHP.RHO.name] = sam_search_space
 
         # Creation of the evaluator
         evaluator = Evaluator(model_constructor=PetaleMLPR,
                               dataset=dataset,
                               masks=masks,
                               evaluation_name=f"enet_{eval_id}",
-                              hps=ENET_HPS,
+                              hps=ss.ENET_HPS,
                               n_trials=NB_TRIALS,
                               evaluation_metrics=evaluation_metrics,
                               feature_selector=feature_selector,
@@ -313,14 +313,14 @@ if __name__ == '__main__':
         fixed_params = update_fixed_params(dataset)
 
         # Update of the hyperparameters
-        ENET_GGE_HPS[MLPHP.RHO.name] = sam_search_space
+        ss.ENET_GGE_HPS[MLPHP.RHO.name] = sam_search_space
 
         # Creation of the evaluator
         evaluator = Evaluator(model_constructor=PetaleMLPR,
                               dataset=dataset,
                               masks=masks,
                               evaluation_name=f"ggeEnet_{eval_id}",
-                              hps=ENET_GGE_HPS,
+                              hps=ss.ENET_GGE_HPS,
                               n_trials=NB_TRIALS,
                               evaluation_metrics=evaluation_metrics,
                               feature_selector=feature_selector,
@@ -385,14 +385,14 @@ if __name__ == '__main__':
         fixed_params = update_fixed_params(dataset)
 
         # Update of the hyperparameters
-        ENET_GGE_HPS[MLPHP.RHO.name] = sam_search_space
+        ss.ENET_GGE_HPS[MLPHP.RHO.name] = sam_search_space
 
         # Creation of the evaluator
         evaluator = Evaluator(model_constructor=PetaleMLPR,
                               dataset=dataset,
                               masks=masks,
                               evaluation_name=f"ggaeEnet_{eval_id}",
-                              hps=ENET_GGE_HPS,
+                              hps=ss.ENET_GGE_HPS,
                               n_trials=NB_TRIALS,
                               evaluation_metrics=evaluation_metrics,
                               feature_selector=feature_selector,
@@ -448,14 +448,14 @@ if __name__ == '__main__':
                 fixed_params = update_fixed_params(dataset)
 
                 # Update of the hyperparameters
-                GATHPS[GATHP.RHO.name] = sam_search_space
+                ss.GATHPS[GATHP.RHO.name] = sam_search_space
 
                 # Creation of the evaluator
                 evaluator = Evaluator(model_constructor=PetaleGATR,
                                       dataset=dataset,
                                       masks=masks,
                                       evaluation_name=f"{prefix}GAT{nb_neighbor}_{eval_id}",
-                                      hps=GATHPS,
+                                      hps=ss.GATHPS,
                                       n_trials=NB_TRIALS,
                                       evaluation_metrics=evaluation_metrics,
                                       fixed_params=fixed_params,
@@ -512,14 +512,14 @@ if __name__ == '__main__':
                 fixed_params = update_fixed_params(dataset)
 
                 # Update of the hyperparameters
-                GCNHPS[GCNHP.RHO.name] = sam_search_space
+                ss.GCNHPS[GCNHP.RHO.name] = sam_search_space
 
                 # Creation of the evaluator
                 evaluator = Evaluator(model_constructor=PetaleGCNR,
                                       dataset=dataset,
                                       masks=masks,
                                       evaluation_name=f"{prefix}GCN{nb_neighbor}_{eval_id}",
-                                      hps=GCNHPS,
+                                      hps=ss.GCNHPS,
                                       n_trials=NB_TRIALS,
                                       evaluation_metrics=evaluation_metrics,
                                       fixed_params=fixed_params,
@@ -565,7 +565,7 @@ if __name__ == '__main__':
                               dataset=dataset,
                               masks=masks,
                               evaluation_name=f"gge_{eval_id}",
-                              hps=GGEHPS,
+                              hps=ss.GGEHPS,
                               n_trials=NB_TRIALS,
                               evaluation_metrics=[],
                               fixed_params=fixed_params,

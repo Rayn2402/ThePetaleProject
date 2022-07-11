@@ -43,7 +43,7 @@ if __name__ == '__main__':
     # Arguments parsing
     args = VO2_experiment_parser()
 
-    # Initialization of the DataManager
+    # Initialization of a data manager
     manager = PetaleDataManager()
 
     # We extract the data needed

@@ -1,33 +1,37 @@
 """
-Filename: vo2_tsne.py
+Filename: embeddings_projection.py
 
 Author: Nicolas Raymond
 
-Description: Script used to extract participants visualization
+Description: Script used to project patient embeddings in a 2D space
+             using TSNE and compare a patient profile in the holdout set
+             to the closest patients in the learning set
 
-Date of last modification: 2022/05/16
+Date of last modification: 2022/07/12
 """
+import sys
 
-from hps.fixed_hps import GATHPS
 from matplotlib import pyplot as plt
 from matplotlib.cm import ScalarMappable
-from os.path import join
-from settings.paths import Paths
+from os.path import dirname, join, realpath
 from sklearn.manifold import TSNE
-from src.data.extraction.constants import PARTICIPANT, SEX, TDM6_HR_END, TDM6_DIST
-from src.data.extraction.data_management import PetaleDataManager
-from src.data.processing.datasets import MaskType
-from src.data.processing.gnn_datasets import PetaleKGNNDataset
-from src.data.processing.sampling import extract_masks, get_warmup_data
-from src.models.gat import PetaleGATR
 from torch import load
-
 
 if __name__ == '__main__':
 
+    # Imports specific to project
+    sys.path.append(dirname(dirname(dirname(dirname(realpath(__file__))))))
+    from hps.manually_selected_hps import GATHPS
+    from settings.paths import Paths
+    from src.data.extraction.constants import PARTICIPANT, SEX, TDM6_HR_END, TDM6_DIST
+    from src.data.extraction.data_management import PetaleDataManager
+    from src.data.processing.datasets import MaskType
+    from src.data.processing.gnn_datasets import PetaleKGNNDataset
+    from src.data.processing.sampling import extract_masks, get_VO2_data
+    from src.models.gat import PetaleGATR
+
     # Data loading
-    m = PetaleDataManager()
-    df, target, cont_col, cat_col = get_warmup_data(m, baselines=True, sex=True, holdout=True)
+    df, target, cont_col, cat_col = get_VO2_data(PetaleDataManager(), baselines=True, sex=True, holdout=True)
     df.drop([TDM6_HR_END, TDM6_DIST], axis=1, inplace=True)
     for f in [TDM6_HR_END, TDM6_DIST]:
         cont_col.remove(f)
@@ -38,7 +42,7 @@ if __name__ == '__main__':
                             conditional_cat_col=SEX)
 
     # Mask extraction
-    masks = extract_masks(Paths.WARMUP_HOLDOUT_MASK, k=1, l=0)
+    masks = extract_masks(Paths.VO2_HOLDOUT_MASK, k=1, l=0)
     test_mask = masks[0][MaskType.TEST]
 
     # Masks update
@@ -56,7 +60,7 @@ if __name__ == '__main__':
                              **GATHPS)
 
     # Model parameters loading
-    gat_wrapper.model.load_state_dict(load(join(Paths.MODELS, 'warmup_gat.pt')))
+    gat_wrapper.model.load_state_dict(load(join(Paths.MODELS, 'vo2_gat.pt')))
 
     # Forward pass
     pred = gat_wrapper.predict(dts)
@@ -68,10 +72,9 @@ if __name__ == '__main__':
     g, idx_map, idx = dts.test_subgraph
 
     """
-    TSNE figures
+    Embeddings projection figure with TSNE
     """
-
-    # TSNE Subplots creation
+    # Subplots creation
     plt.rc('text', usetex=True)
     fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 4))
 
@@ -86,14 +89,15 @@ if __name__ == '__main__':
         else:
             raise Exception('Missing sex')
 
-    x = TSNE(n_components=2, perplexity=10, random_state=1010710).fit_transform(emb.numpy())
-    ax.scatter(x[men_pos, 0], x[men_pos, 1], c=dts.y[men_idx].numpy(), cmap='viridis', marker='D')
-    ax.scatter(x[women_pos, 0], x[women_pos, 1], c=dts.y[women_idx].numpy(), cmap='viridis', marker='o')
+    proj_x = TSNE(n_components=2, perplexity=10, random_state=1010710).fit_transform(emb.numpy())
+    cmap = 'viridis'
+    ax.scatter(proj_x[men_pos, 0], proj_x[men_pos, 1], c=dts.y[men_idx].numpy(), cmap=cmap, marker='D')
+    ax.scatter(proj_x[women_pos, 0], proj_x[women_pos, 1], c=dts.y[women_idx].numpy(), cmap=cmap, marker='o')
     ax.set_title('Embeddings projection')
 
     fig.subplots_adjust(right=0.75)
     cbar_ax = fig.add_axes([0.85, 0.15, 0.02, 0.7])
-    cbar = fig.colorbar(ScalarMappable(cmap='viridis'), cax=cbar_ax, ticks=[0, 1])
+    cbar = fig.colorbar(ScalarMappable(cmap=cmap), cax=cbar_ax, ticks=[0, 1])
     cbar.set_label('VO$_2$ peak (ml/kg/min)')
     min, max = dts.y.min(), dts.y.max()
     cbar.ax.set_yticklabels([f'{min:.0f}', f'{max:.0f}'])
@@ -101,13 +105,10 @@ if __name__ == '__main__':
     # Figure saving
     for f in ['pdf', 'svg']:
         plt.savefig(f'embeddings_projection.{f}')
-    plt.show()
-    plt.close()
 
     """
     Distance analysis
     """
-
     # Metric weights
     metric_weight = gat_wrapper.model.state_dict()['_linear_layer.weight'].abs()
 

@@ -85,16 +85,25 @@ if __name__ == '__main__':
     columns = [c for c in df.columns if c not in args.removed_columns]
     df = df[columns]
 
-    # We create stratified mask according to the target columns
+    # We identify numerical and categorical columns
     cont_cols = [c for c in list(retrieve_numerical_var(df, []).columns.values) if c != args.target_column]
     cat_cols = [c for c in df.columns.values if c not in [PARTICIPANT, args.target_column] + cont_cols]
+
+    # We create a temporary dataset
     dataset = PetaleDataset(df, args.target_column,
                             cont_cols=cont_cols,
                             cat_cols=cat_cols,
                             classification=args.categorical)
-    rss = RandomStratifiedSampler(dataset, n_out_split=args.nb_out_split, n_in_split=args.nb_in_split,
-                                  valid_size=args.validation_size, test_size=args.test_size,
-                                  random_state=args.seed, alpha=args.alpha, patience=1000)
+
+    # We create stratified mask according to the target columns
+    rss = RandomStratifiedSampler(dataset,
+                                  n_out_split=args.nb_out_split,
+                                  n_in_split=args.nb_in_split,
+                                  valid_size=args.validation_size,
+                                  test_size=args.test_size,
+                                  random_state=args.seed,
+                                  alpha=args.alpha,
+                                  patience=1000)
     masks = rss()
 
     # We dump the masks in a json file

@@ -28,7 +28,7 @@ if __name__ == '__main__':
     from src.data.extraction.constants import AGE_AT_DIAGNOSIS, CORTICO, DOX, DT, EOT_BMI, METHO, PARTICIPANT, SEX
     from src.data.extraction.data_management import PetaleDataManager
     from src.data.processing.datasets import MaskType, PetaleDataset
-    from src.data.processing.sampling import extract_masks, GeneChoice, get_learning_one_data
+    from src.data.processing.sampling import extract_masks, get_obesity_data
     from src.models.blocks.genes_signature_block import GeneEncoder, GeneGraphAttentionEncoder
     from src.models.mlp import PetaleMLPR
 
@@ -45,8 +45,7 @@ if __name__ == '__main__':
     SELECTED_FEATURES = [SEX, EOT_BMI, METHO, CORTICO, DOX, DT, AGE_AT_DIAGNOSIS]
 
     # Data loading
-    m = PetaleDataManager()
-    df, target, cont_col, cat_col = get_learning_one_data(m, GeneChoice.ALL, baselines=True, holdout=True)
+    df, target, cont_col, cat_col = get_obesity_data(PetaleDataManager(), genomics=True, baselines=True, holdout=True)
     cat_col = [c for c in cat_col if c in SELECTED_FEATURES] + SELECTED_GENES
     cont_col = [c for c in cont_col if c in SELECTED_FEATURES]
     dts = PetaleDataset(df, target, cont_col, cat_col, gene_cols=SELECTED_GENES, to_tensor=True)

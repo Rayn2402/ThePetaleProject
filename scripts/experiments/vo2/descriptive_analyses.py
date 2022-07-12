@@ -8,11 +8,15 @@ Description: This file is used to generate descriptive analyses of the table
 
 Date of last modification : 2022/07/07
 """
-
-from src.data.extraction.constants import *
-from src.data.extraction.data_management import PetaleDataManager
+import sys
+from os.path import dirname, realpath
 
 if __name__ == '__main__':
+
+    # Imports specific to project
+    sys.path.append(dirname(dirname(dirname(dirname(realpath(__file__))))))
+    from src.data.extraction.constants import *
+    from src.data.extraction.data_management import PetaleDataManager
 
     # Data manager initialization
     data_manager = PetaleDataManager()

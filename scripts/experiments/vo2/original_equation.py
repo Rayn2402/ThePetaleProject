@@ -13,7 +13,7 @@ import argparse
 from os.path import dirname, realpath
 import sys
 
-sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
+sys.path.append(dirname(dirname(dirname(dirname(realpath(__file__))))))
 from src.data.extraction.data_management import PetaleDataManager
 from src.data.processing.datasets import MaskType, PetaleDataset
 from src.data.processing.transforms import ContinuousTransform

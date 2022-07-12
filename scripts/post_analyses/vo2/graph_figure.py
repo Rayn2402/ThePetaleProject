@@ -1,21 +1,37 @@
-import matplotlib.pyplot as plt
+"""
+Filename: graph_figure.py
 
+Author: Nicolas Raymond
+
+Description: Script used to visualize the graph created for the final
+             test on the holdout set
+
+Date of last modification: 2022/07/12
+"""
+
+
+import matplotlib.pyplot as plt
+import sys
 
 from dgl import to_networkx
 from matplotlib.cm import get_cmap, ScalarMappable
 from networkx import connected_components, draw
-from settings.paths import Paths
-from src.data.extraction.constants import SEX
-from src.data.extraction.data_management import PetaleDataManager
-from src.data.processing.datasets import MaskType
-from src.data.processing.gnn_datasets import PetaleKGNNDataset
-from src.data.processing.sampling import get_warmup_data, extract_masks
+from os.path import dirname, realpath
 
 
 if __name__ == '__main__':
 
+    # Imports specific to project
+    sys.path.append(dirname(dirname(dirname(dirname(realpath(__file__))))))
+    from settings.paths import Paths
+    from src.data.extraction.constants import SEX
+    from src.data.extraction.data_management import PetaleDataManager
+    from src.data.processing.datasets import MaskType
+    from src.data.processing.gnn_datasets import PetaleKGNNDataset
+    from src.data.processing.sampling import get_VO2_data, extract_masks
+
     # Data extraction
-    df, target, cont_col, cat_col = get_warmup_data(PetaleDataManager(), genes=None, sex=True, holdout=True)
+    df, target, cont_col, cat_col = get_VO2_data(PetaleDataManager(), genomics=False, sex=True, holdout=True)
 
     # Dataset construction
     dts = PetaleKGNNDataset(df=df, target=target, k=10,
@@ -23,7 +39,7 @@ if __name__ == '__main__':
                             conditional_cat_col=SEX, classification=False)
 
     # Train, valid, test idx extraction
-    mask = extract_masks(Paths.WARMUP_HOLDOUT_MASK, k=1, l=0)
+    mask = extract_masks(Paths.VO2_HOLDOUT_MASK, k=1, l=0)
     train, valid, test = mask[0][MaskType.TRAIN], mask[0][MaskType.VALID], mask[0][MaskType.TEST]
 
     # Masks update

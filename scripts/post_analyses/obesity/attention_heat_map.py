@@ -1,44 +1,48 @@
 """
-Filename: obesity_attention_heat_map.py
+Filename: attention_heat_map.py
 
 Author: Nicolas Raymond
 
 Description: Script used to extract genes attention on the holdout set
 
-Date of last modification: 2022/05/02
+Date of last modification: 2022/07/12
 """
 
-from hps.fixed_hps import ENET_GGE_HPS
+import sys
+from os.path import dirname, join, realpath
 from matplotlib import pyplot as plt
 from matplotlib import ticker
 from numpy import isclose
-from os.path import join
 from pandas import DataFrame
 from seaborn import heatmap
-from settings.paths import Paths
-from src.data.extraction.constants import AGE_AT_DIAGNOSIS, CORTICO, DOX, DT, EOT_BMI, METHO, PARTICIPANT, SEX
-from src.data.extraction.data_management import PetaleDataManager
-from src.data.processing.datasets import MaskType, PetaleDataset
-from src.data.processing.sampling import extract_masks, GeneChoice, get_learning_one_data
-from src.models.blocks.genes_signature_block import GeneEncoder, GeneGraphAttentionEncoder
-from src.models.mlp import PetaleMLPR
 from torch import einsum, load
 from typing import Dict, List, Optional
 
 
-# Selected genes
-SELECTED_GENES = ['6_110760008', '17_26096597', '17_37884037', '21_44324365',
-                  '1_66036441', '17_4856580', '13_23824818', '17_38545824',
-                  '1_161182208', '22_42486723', '6_29912386', '16_88713236',
-                  '6_29912280', '21_37518706', '12_48272895', '7_87160618',
-                  '1_226019633', '7_45932669', '2_46611678', '6_29912333',
-                  '15_58838010', '7_20762646', '17_48712711', '13_95863008',
-                  '7_94946084', '4_120241902', '16_69745145', '6_12296255',
-                  '2_240946766', '2_179650408']
-
-SELECTED_FEATURES = [SEX, EOT_BMI, METHO, CORTICO, DOX, DT, AGE_AT_DIAGNOSIS]
-
 if __name__ == '__main__':
+
+    # Imports specific to project
+    sys.path.append(dirname(dirname(dirname(dirname(realpath(__file__))))))
+    from hps.manually_selected_hps import ENET_GGE_HPS
+    from settings.paths import Paths
+    from src.data.extraction.constants import AGE_AT_DIAGNOSIS, CORTICO, DOX, DT, EOT_BMI, METHO, PARTICIPANT, SEX
+    from src.data.extraction.data_management import PetaleDataManager
+    from src.data.processing.datasets import MaskType, PetaleDataset
+    from src.data.processing.sampling import extract_masks, GeneChoice, get_learning_one_data
+    from src.models.blocks.genes_signature_block import GeneEncoder, GeneGraphAttentionEncoder
+    from src.models.mlp import PetaleMLPR
+
+    # Selected genes
+    SELECTED_GENES = ['6_110760008', '17_26096597', '17_37884037', '21_44324365',
+                      '1_66036441', '17_4856580', '13_23824818', '17_38545824',
+                      '1_161182208', '22_42486723', '6_29912386', '16_88713236',
+                      '6_29912280', '21_37518706', '12_48272895', '7_87160618',
+                      '1_226019633', '7_45932669', '2_46611678', '6_29912333',
+                      '15_58838010', '7_20762646', '17_48712711', '13_95863008',
+                      '7_94946084', '4_120241902', '16_69745145', '6_12296255',
+                      '2_240946766', '2_179650408']
+
+    SELECTED_FEATURES = [SEX, EOT_BMI, METHO, CORTICO, DOX, DT, AGE_AT_DIAGNOSIS]
 
     # Data loading
     m = PetaleDataManager()
@@ -85,7 +89,7 @@ if __name__ == '__main__':
                               **ENET_GGE_HPS)
 
     # Model parameters loading
-    ggae_wrapper.model.load_state_dict(load(join(Paths.MODELS, 'obesity_ggae_2.pt')))
+    ggae_wrapper.model.load_state_dict(load(join(Paths.MODELS, 'obesity_ggae.pt')))
 
     # Forward pass
     y = ggae_wrapper.predict(dts)
@@ -149,7 +153,7 @@ if __name__ == '__main__':
 
     plt.tight_layout()
     for f in ['pdf', 'svg']:
-        plt.savefig(f'obesity_genes_att_heatmap.{f}')
+        plt.savefig(f'obesity_snps_att_heatmap.{f}')
 
 
 

@@ -1,25 +1,30 @@
 """
-Filename: obesity_figures.py
+Filename: comparison_figure.py
 
 Author: Nicolas Raymond
 
-Description: This file is used to create figures that compare obesity model predictions on the holdout set
+Description: This file is used to create figures that compare
+             obesity models on the holdout set
 
-Date of last modification: 2022/05/30
+Date of last modification: 2022/07/12
 """
 
 import matplotlib.pyplot as plt
+import sys
 
-from os.path import join
+from os.path import dirname, join, realpath
 from pandas import read_csv
-from settings.paths import Paths
-from src.data.extraction.constants import AGE, PARTICIPANT, SEX, OBESITY_TARGET
-from src.data.extraction.data_management import PetaleDataManager
 
 if __name__ == '__main__':
 
+    # Imports specific to project
+    sys.path.append(dirname(dirname(dirname(dirname(realpath(__file__))))))
+    from settings.paths import Paths
+    from src.data.extraction.constants import AGE, PARTICIPANT, SEX, OBESITY_TARGET
+    from src.data.extraction.data_management import PetaleDataManager
+
     # We read the data
-    df = read_csv(join(Paths.CSV_FILES, "obesity_predictions_2.csv"), index_col=0)
+    df = read_csv(join(Paths.CSV_FILES, "obesity_predictions.csv"), index_col=0)
 
     # We load the data that contains the sex and the age of the participants
     m = PetaleDataManager()

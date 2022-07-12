@@ -61,12 +61,12 @@ if __name__ == '__main__':
     def gene_encoder_constructor(gene_idx_groups: Optional[Dict[str, List[int]]],
                                  dropout: float) -> GeneEncoder:
         """
-        Builds a GeneGraphAttentionEncoder
+        Builds a Gene Graph Attention Encoder
 
         Args:
-            gene_idx_groups: dictionary where keys are names of chromosomes and values
-                             are list of idx referring to columns of genes associated to
-                             the chromosome
+            gene_idx_groups: dictionary where keys are names of chromosomes pairs and values
+                             are list of idx referring to columns of SNPs associated to
+                             the chromosomes pairs
             dropout: dropout probability
 
         Returns: GeneEncoder

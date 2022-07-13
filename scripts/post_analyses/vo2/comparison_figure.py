@@ -1,5 +1,5 @@
 """
-Filename: warmup_figures.py
+Filename: comparison_figure.py
 
 Author: Nicolas Raymond
 

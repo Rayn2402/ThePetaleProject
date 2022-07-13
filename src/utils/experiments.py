@@ -15,7 +15,7 @@ from pandas import DataFrame
 from settings.paths import Paths
 from src.data.processing.datasets import MaskType
 from src.data.processing.preprocessing import preprocess_for_apriori
-from src.utils.results_analysis import get_apriori_statistics, print_and_save_apriori_rules
+from src.utils.results_analyses import get_apriori_statistics, print_and_save_apriori_rules
 from time import time
 from typing import Dict, List
 

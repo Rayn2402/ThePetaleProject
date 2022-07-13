@@ -6,7 +6,7 @@ Authors: Nicolas Raymond
 Description: This file is used to execute all the model comparisons
              made on the VO2 peak dataset
 
-Date of last modification : 2022/07/11
+Date of last modification : 2022/07/13
 """
 import sys
 import time
@@ -34,7 +34,7 @@ if __name__ == '__main__':
     from src.models.mlp import PetaleMLPR, MLPHP
     from src.models.random_forest import PetaleRFR
     from src.models.xgboost_ import PetaleXGBR
-    from src.training.evaluation import Evaluator
+    from src.evaluation.evaluation import Evaluator
     from src.data.extraction.constants import *
     from src.data.extraction.data_management import PetaleDataManager
     from src.utils.argparsers import VO2_experiment_parser

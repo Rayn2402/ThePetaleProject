@@ -12,7 +12,7 @@ Date of last modification : 2022/04/13
 from src.models.wrappers.torch_wrappers import TorchBinaryClassifierWrapper, TorchRegressorWrapper
 from src.models.abstract_models.mlp_base_models import MLPBinaryClassifier, MLPRegressor
 from src.utils.hyperparameters import CategoricalHP, HP, NumericalContinuousHP, NumericalIntHP
-from src.utils.score_metrics import Metric, BinaryClassificationMetric
+from src.utils.metrics import Metric, BinaryClassificationMetric
 from typing import Callable, Dict, List, Optional
 
 

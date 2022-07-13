@@ -12,7 +12,7 @@ import argparse
 import os
 import json
 
-from src.training.tuning import Tuner
+from src.evaluation.tuning import Tuner
 from src.utils.visualization import EPOCHS_PROGRESSION_FIG
 
 

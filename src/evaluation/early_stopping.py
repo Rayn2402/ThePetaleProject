@@ -13,7 +13,7 @@ import numpy as np
 
 from os import path, remove
 from settings.paths import Paths
-from src.utils.score_metrics import Direction
+from src.utils.metrics import Direction
 from torch import load, save, tensor
 from torch.nn import Module
 from typing import OrderedDict

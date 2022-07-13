@@ -11,7 +11,7 @@ Date of last modification: 2022/04/13
 
 from src.data.processing.gnn_datasets import MaskType, PetaleKGNNDataset
 from src.models.abstract_models.custom_torch_base import TorchCustomModel
-from src.training.early_stopping import EarlyStopper
+from src.evaluation.early_stopping import EarlyStopper
 from src.utils.score_metrics import Metric
 from torch import no_grad, ones, tensor
 from torch.nn import BatchNorm1d, Dropout, Linear

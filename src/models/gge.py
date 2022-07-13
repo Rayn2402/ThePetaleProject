@@ -12,15 +12,15 @@ import os
 from src.data.processing.datasets import PetaleDataset
 from src.models.abstract_models.base_models import PetaleEncoder
 from src.models.blocks.genes_signature_block import GeneGraphAttentionEncoder, GeneGraphEncoder, GeneSignatureDecoder
-from src.training.early_stopping import EarlyStopper
+from src.evaluation.early_stopping import EarlyStopper
 from src.utils.hyperparameters import HP, NumericalContinuousHP, NumericalIntHP
-from src.utils.score_metrics import Direction
-from torch import abs, eye, mean, mm, no_grad, pow, save, sum, tensor, zeros
+from src.utils.metrics import Direction
+from torch import abs, eye, mean, mm, no_grad, pow, save, sum, tensor
 from torch.nn import Module
 from torch.nn.functional import one_hot
 from torch.optim import Adam
 from torch.utils.data import DataLoader, SubsetRandomSampler
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 
 class PetaleGGE(PetaleEncoder, Module):

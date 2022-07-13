@@ -12,7 +12,7 @@ Date of last modification: 2022/05/04
 from src.models.abstract_models.gat_base_models import GATClassifier, GATRegressor
 from src.models.wrappers.torch_wrappers import TorchBinaryClassifierWrapper, TorchRegressorWrapper
 from src.utils.hyperparameters import HP, NumericalContinuousHP, NumericalIntHP
-from src.utils.score_metrics import RegressionMetric
+from src.utils.metrics import RegressionMetric
 from torch import tensor
 from typing import List, Optional
 

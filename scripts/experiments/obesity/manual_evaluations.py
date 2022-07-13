@@ -6,7 +6,7 @@ Author: Nicolas Raymond
 Description: Script used to run obesity experiments using
              manually selected hyperparameters.
 
-Date of last modification: 2022/07/11
+Date of last modification: 2022/07/13
 """
 import sys
 from copy import deepcopy
@@ -33,7 +33,7 @@ if __name__ == '__main__':
     from src.models.mlp import PetaleBinaryMLPC, PetaleMLPR, MLPHP
     from src.models.random_forest import PetaleBinaryRFC, PetaleRFR, RandomForestHP
     from src.models.xgboost_ import PetaleBinaryXGBC, PetaleXGBR, XGBoostHP
-    from src.training.evaluation import Evaluator
+    from src.evaluation.evaluation import Evaluator
     from src.utils.argparsers import obesity_experiment_parser
     from src.utils import metrics as m
 

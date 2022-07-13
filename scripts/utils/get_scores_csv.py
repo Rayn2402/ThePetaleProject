@@ -14,7 +14,7 @@ from os.path import dirname, realpath
 # Imports specific to project
 sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
 from src.utils.argparsers import print_arguments
-from src.utils.results_analysis import get_experiment_summaries
+from src.utils.results_analyses import get_experiment_summaries
 
 
 def argument_parser():

@@ -15,7 +15,7 @@ if __name__ == '__main__':
     # Imports specific to project
     sys.path.append(dirname(dirname(dirname(dirname(realpath(__file__))))))
     from src.data.extraction.constants import AGE, CHILDREN_OBESITY_PERCENTILE, OBESITY, OBESITY_TARGET, SEX
-    from src.utils.results_analysis import CLASS_PRED, get_classification_metrics, REG_PRED
+    from src.utils.results_analyses import CLASS_PRED, get_classification_metrics, REG_PRED
 
     # Class generation function
     def get_class_labels(df: DataFrame) -> DataFrame:

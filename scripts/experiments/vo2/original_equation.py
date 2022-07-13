@@ -18,7 +18,7 @@ from src.data.extraction.data_management import PetaleDataManager
 from src.data.processing.datasets import MaskType, PetaleDataset
 from src.data.processing.transforms import ContinuousTransform
 from src.data.processing.sampling import extract_masks, get_VO2_data
-from src.utils.score_metrics import AbsoluteError, ConcordanceIndex, Pearson, RootMeanSquaredError, SquaredError
+from src.utils.metrics import AbsoluteError, ConcordanceIndex, Pearson, RootMeanSquaredError, SquaredError
 from src.data.extraction.constants import *
 from src.recording.recording import compare_prediction_recordings, get_evaluation_recap, Recorder
 from settings.paths import Paths

@@ -35,7 +35,7 @@ if __name__ == '__main__':
     from src.training.evaluation import Evaluator
     from src.utils.argparsers import obesity_experiment_parser
     from src.utils.hyperparameters import Range
-    from src.utils import score_metrics as sm
+    from src.utils import metrics as m
     from time import time
     from typing import Dict, List, Optional
 
@@ -62,12 +62,12 @@ if __name__ == '__main__':
 
     # Initialization of the dictionary containing the evaluation metrics
     if args.classification:
-        evaluation_metrics = [sm.AUC(), sm.BinaryBalancedAccuracy(), sm.Sensitivity(),
-                              sm.Specificity(), sm.BinaryCrossEntropy(),
-                              sm.BalancedAccuracyEntropyRatio(reduction=sm.Reduction.GEO_MEAN)]
+        evaluation_metrics = [m.AUC(), m.BinaryBalancedAccuracy(), m.Sensitivity(),
+                              m.Specificity(), m.BinaryCrossEntropy(),
+                              m.BalancedAccuracyEntropyRatio(reduction=m.Reduction.GEO_MEAN)]
     else:
-        evaluation_metrics = [sm.AbsoluteError(), sm.ConcordanceIndex(), sm.Pearson(),
-                              sm.SquaredError(), sm.RootMeanSquaredError()]
+        evaluation_metrics = [m.AbsoluteError(), m.ConcordanceIndex(), m.Pearson(),
+                              m.SquaredError(), m.RootMeanSquaredError()]
 
     # Initialization of feature selector
     if args.feature_selection:

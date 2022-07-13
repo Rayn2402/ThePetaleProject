@@ -38,7 +38,7 @@ if __name__ == '__main__':
     from src.data.extraction.constants import *
     from src.data.extraction.data_management import PetaleDataManager
     from src.utils.argparsers import VO2_experiment_parser
-    from src.utils.score_metrics import AbsoluteError, ConcordanceIndex, Pearson, RootMeanSquaredError, SquaredError
+    from src.utils.metrics import AbsoluteError, ConcordanceIndex, Pearson, RootMeanSquaredError, SquaredError
 
     # Arguments parsing
     args = VO2_experiment_parser()

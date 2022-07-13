@@ -15,7 +15,7 @@ from os.path import dirname, realpath
 # Imports specific to project
 sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
 from src.utils.argparsers import print_arguments
-from src.utils.results_analysis import extract_predictions
+from src.utils.results_analyses import extract_predictions
 
 
 def paths_and_ids_parser():

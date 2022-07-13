@@ -1,14 +1,19 @@
 """
-Filename: get_model_scores_csv.py
+Filename: get_scores_csv.py
 
 Author: Nicolas Raymond
 
-Description: Creates a csv with scores of test metrics of each model compared within an experiment
+Description: Script that creates a csv with scores of test metrics of each model compared within an experiment
 
-Date of last modification: 2021/12/2
+Date of last modification: 2022/07/13
 """
-import argparse
+import sys
+from argparse import ArgumentParser
+from os.path import dirname, realpath
 
+# Imports specific to project
+sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
+from src.utils.argparsers import print_arguments
 from src.utils.results_analysis import get_experiment_summaries
 
 
@@ -17,8 +22,8 @@ def argument_parser():
     This function defines a parser that to extract scores of each model within an experiment
     """
     # Create a parser
-    parser = argparse.ArgumentParser(usage='\n python3 get_model_scores_csv.py [experiment_folder_path]',
-                                     description="Creates a csv with metrics scores of each model")
+    parser = ArgumentParser(usage='\n python get_scores_csv.py [experiment_folder_path]',
+                            description="Creates a csv with metrics scores of each model")
 
     parser.add_argument('-p', '--path', type=str, help='Path of the experiment folder')
 
@@ -27,10 +32,7 @@ def argument_parser():
     arguments = parser.parse_args()
 
     # Print arguments
-    print("\nThe inputs are:")
-    for arg in vars(arguments):
-        print("{}: {}".format(arg, getattr(arguments, arg)))
-    print("\n")
+    print_arguments(arguments)
 
     return arguments
 

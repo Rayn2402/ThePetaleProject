@@ -16,8 +16,7 @@ from pandas import DataFrame, merge
 from settings.paths import Paths
 from src.data.extraction.constants import *
 from src.data.extraction.data_management import PetaleDataManager
-from src.recording.constants import *
-from src.recording.recording import get_evaluation_recap
+from src.recording.recording import get_evaluation_recap, Recorder
 from src.utils.argparsers import path_parser
 from src.utils.score_metrics import Sensitivity, Specificity, BinaryBalancedAccuracy
 from time import time
@@ -47,19 +46,19 @@ def extract_predictions(paths: List[str],
     for i, m, p in zip(range(len(model_ids)), model_ids, paths):
 
         # We load the data from the records
-        with open(join(p, RECORDS_FILE), "r") as read_file:
+        with open(join(p, Recorder.RECORDS_FILE), "r") as read_file:
             data = load(read_file)
 
         if i == 0:
-            for k, v in data[TEST_RESULTS].items():
-                predictions[k] = {TARGET: v[TARGET], m: v[PREDICTION]}
+            for k, v in data[Recorder.TEST_RESULTS].items():
+                predictions[k] = {Recorder.TARGET: v[Recorder.TARGET], m: v[Recorder.PREDICTION]}
         else:
-            for k, v in data[TEST_RESULTS].items():
-                predictions[k][m] = v[PREDICTION]
+            for k, v in data[Recorder.TEST_RESULTS].items():
+                predictions[k][m] = v[Recorder.PREDICTION]
 
     # We use the dict to create a dataframe
     df = DataFrame.from_dict(data=predictions, orient='index')
-    df.sort_values(TARGET, inplace=True)
+    df.sort_values(Recorder.TARGET, inplace=True)
 
     # We save the dataframe in a csv
     df.to_csv(path_or_buf=f"{filename}.csv")
@@ -101,17 +100,17 @@ def get_classification_metrics(target_table_name: str,
         for f2 in get_directories(sub_path):
 
             # We load the data from the records
-            with open(join(sub_path, f2, RECORDS_FILE), "r") as read_file:
+            with open(join(sub_path, f2, Recorder.RECORDS_FILE), "r") as read_file:
                 data = load(read_file)
 
             # We save the predictions of every participant
             pred = {PARTICIPANT: [], SECTION: [], REG_PRED: [], CLASS_PRED: []}
-            for section in [TRAIN_RESULTS, TEST_RESULTS, VALID_RESULTS]:
+            for section in [Recorder.TRAIN_RESULTS, Recorder.TEST_RESULTS, Recorder.VALID_RESULTS]:
                 if data.get(section) is not None:
                     for k in data[section].keys():
                         pred[PARTICIPANT].append(k)
                         pred[SECTION].append(section)
-                        pred[REG_PRED].append(float(data[section][k][PREDICTION]))
+                        pred[REG_PRED].append(float(data[section][k][Recorder.PREDICTION]))
                         pred[CLASS_PRED].append(0)
 
             # We save the predictions in a dataframe
@@ -124,7 +123,10 @@ def get_classification_metrics(target_table_name: str,
             pred_df = class_generator_function(df=pred_df)
 
             # We calculate the metrics
-            for s1, s2 in [(TRAIN_RESULTS, TRAIN_METRICS), (TEST_RESULTS, TEST_METRICS), (VALID_RESULTS, VALID_METRICS)]:
+            for s1, s2 in [(Recorder.TRAIN_RESULTS, Recorder.TRAIN_METRICS),
+                           (Recorder.TEST_RESULTS, Recorder.TEST_METRICS),
+                           (Recorder.VALID_RESULTS, Recorder.VALID_METRICS)]:
+
                 if data.get(s2) is not None:
                     subset_df = pred_df.loc[pred_df[SECTION] == s1, :]
                     pred = tensor(subset_df[CLASS_PRED].to_numpy())
@@ -134,7 +136,7 @@ def get_classification_metrics(target_table_name: str,
                         data[s2][metric.name] = metric(pred=pred, targets=target)
 
             # We update the json records file
-            with open(join(sub_path, f2, RECORDS_FILE), "w") as file:
+            with open(join(sub_path, f2, Recorder.RECORDS_FILE), "w") as file:
                 dump(data, file, indent=True)
 
         get_evaluation_recap(evaluation_name='', recordings_path=sub_path)
@@ -222,12 +224,12 @@ def get_experiment_summaries(path: str, csv_filename: str, nb_digits: int = 2) -
         m = f.split('_')[0]
 
         # We load the data from the summary
-        with open(join(path, f, SUMMARY_FILE), "r") as read_file:
+        with open(join(path, f, Recorder.SUMMARY_FILE), "r") as read_file:
             data = load(read_file)
 
         # We save the metrics in the dictionary
-        test_metrics[m] = {metric: f"{round(float(v[MEAN]), nb_digits)} +- {round(float(v[STD]), nb_digits)}"
-                           for metric, v in data[TEST_METRICS].items()}
+        test_metrics[m] = {metric: f"{round(float(v[Recorder.MEAN]), nb_digits)} +- {round(float(v[Recorder.STD]), nb_digits)}"
+                           for metric, v in data[Recorder.TEST_METRICS].items()}
 
     # We store the data in a dataframe and save it into a csv
     df = DataFrame(data=test_metrics).T

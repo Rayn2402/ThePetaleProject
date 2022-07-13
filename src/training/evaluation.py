@@ -21,7 +21,6 @@ from src.data.extraction.constants import PARTICIPANT
 from src.data.processing.datasets import MaskType, PetaleDataset
 from src.data.processing.feature_selection import FeatureSelector
 from src.models.abstract_models.base_models import PetaleBinaryClassifier, PetaleRegressor
-from src.recording.constants import PREDICTION, RECORDS_FILE, TEST_RESULTS, TRAIN_RESULTS, VALID_RESULTS
 from src.recording.recording import Recorder, compare_prediction_recordings, \
     get_evaluation_recap, plot_feature_importance_charts, plot_hps_importance_chart
 from src.training.tuning import Objective, Tuner
@@ -287,11 +286,11 @@ class Evaluator:
         """
 
         # Loading of records
-        with open(path.join(self._pred_path, f"Split_{split_number}", RECORDS_FILE), "r") as read_file:
+        with open(path.join(self._pred_path, f"Split_{split_number}", Recorder.RECORDS_FILE), "r") as read_file:
             data = load(read_file)
 
         # We check the format of predictions
-        random_pred = list(data[TRAIN_RESULTS].values())[0][PREDICTION]
+        random_pred = list(data[Recorder.TRAIN_RESULTS].values())[0][Recorder.PREDICTION]
         if "[" not in random_pred:
 
             # Saving of the number of predictions columns
@@ -311,8 +310,8 @@ class Evaluator:
 
         # Extraction of predictions
         pred = {}
-        for section in TRAIN_RESULTS, TEST_RESULTS, VALID_RESULTS:
-            pred = {**pred, **{p_id: [p_id, *convert(v[PREDICTION])] for p_id, v in data[section].items()}}
+        for section in [Recorder.TRAIN_RESULTS, Recorder.TEST_RESULTS, Recorder.VALID_RESULTS]:
+            pred = {**pred, **{p_id: [p_id, *convert(v[Recorder.PREDICTION])] for p_id, v in data[section].items()}}
 
         # Creation of pandas dataframe
         pred_col_names = [f'pred{i}' for i in range(nb_pred_col)]

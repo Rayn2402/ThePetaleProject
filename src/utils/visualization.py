@@ -3,9 +3,9 @@ Filename: visualization.py
 
 Authors: Nicolas Raymond
 
-Description: This file contains all function related to data visualization
+Description: This file contains all functions related to data visualization
 
-Date of last modification : 2021/03/29
+Date of last modification : 2022/07/13
 """
 
 from matplotlib import pyplot as plt
@@ -120,8 +120,8 @@ def visualize_epoch_progression(train_history: List[tensor],
 
     Args:
         train_history: list of (E,) tensors where E is the number of epochs
-        valid_history: list of (E,) tensor
-        progression_type: list of string specifying the type of the progressions to visualize
+        valid_history: list of (E,) tensors where E is the number of epochs
+        progression_type: list of strings specifying the types of the progressions to visualize
         path: path where to save the plots
 
     Returns: None

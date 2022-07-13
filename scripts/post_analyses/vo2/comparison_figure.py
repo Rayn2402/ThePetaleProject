@@ -5,7 +5,7 @@ Author: Nicolas Raymond
 
 Description: This file is used to create figures that compare VO2 peak model predictions on the holdout set
 
-Date of last modification: 2022/05/04
+Date of last modification: 2022/07/13
 """
 
 import matplotlib.pyplot as plt
@@ -15,15 +15,15 @@ from pandas import read_csv
 from settings.paths import Paths
 from src.data.extraction.constants import PARTICIPANT, SEX
 from src.data.extraction.data_management import PetaleDataManager
-from src.data.processing.sampling import get_warmup_data
+from src.data.processing.sampling import get_VO2_data
 
 if __name__ == '__main__':
 
     # We read the prediction data
-    df = read_csv(join(Paths.CSV_FILES, "warmup_predictions.csv"), index_col=0)
+    df = read_csv(join(Paths.CSV_FILES, "vo2_predictions.csv"), index_col=0)
 
     # We load the data that contains the sex of the participants
-    sex_df, _, _, _, = get_warmup_data(PetaleDataManager(), sex=True, holdout=True)
+    sex_df, _, _, _, = get_VO2_data(PetaleDataManager(), sex=True, holdout=True)
     sex_df.set_index(PARTICIPANT, inplace=True)
     sex_df = sex_df[SEX]
 

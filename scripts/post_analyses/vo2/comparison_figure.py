@@ -59,4 +59,4 @@ if __name__ == '__main__':
     # Figure saving
     fig.tight_layout()
     for f in ['pdf', 'svg']:
-        plt.savefig(f'warmup_predictions.{f}')
+        plt.savefig(f'vo2_predictions.{f}')

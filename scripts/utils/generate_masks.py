@@ -26,7 +26,8 @@ def argument_parser():
     Creates a parser for the masks generation
     """
     # Create a parser
-    parser = argparse.ArgumentParser(usage='\n python generate_masks.py [table] [target] [...]',
+    parser = argparse.ArgumentParser(usage='\n python generate_masks.py -tab [table_name] -tc [target_column]'
+                                           ' -fn [file_name] [...]',
                                      description="Generates stratified masks"
                                                  " associated from a dataframe.")
 

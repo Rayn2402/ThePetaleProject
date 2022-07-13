@@ -1,12 +1,11 @@
 """
-Filename: generate_learning_table.py
+Filename: generate_experiment_tables.py
 
 Author: Nicolas Raymond
 
-Description: This file contains the procedure to execute in order to obtain official learning table
-             from a RAW table
+Description: Script to create a learning set and a holdout set from a dataset.
 
-Date of last modification: 2021/11/15
+Date of last modification: 2022/07/13
 """
 import argparse
 
@@ -16,21 +15,19 @@ from src.data.extraction.data_management import PetaleDataManager
 from src.data.extraction.helpers import retrieve_numerical_var
 from src.data.processing.datasets import MaskType, PetaleDataset
 from src.data.processing.sampling import RandomStratifiedSampler
+from src.utils.argparsers import print_arguments
 
 
 def argument_parser():
     """
-    This function defines a parser that enables a user to create a learning
-    set from a raw table
+    Creates a parser to extract a learning set and an holdout set from a dataset
     """
     # Create a parser
-    parser = argparse.ArgumentParser(usage='\n python generate_learning_tables.py [raw_table] [new_table]'
-                                           ' [target_column] [outliers_csv]',
-                                     description="This program enables to remove participants from raw"
-                                                 " learning table and extract an holdout set.")
+    parser = argparse.ArgumentParser(usage='\n python generate_experiment_tables.py [...]',
+                                     description="Extracts a learning set and an holdout set from a dataset.")
 
     parser.add_argument('-rt', '--raw_table', type=str,
-                        help="Name of the raw learning table (ex. 'L0_WARMUP_RAW')")
+                        help="Name of the raw dataset (ex. 'VO2_DATASET')")
 
     parser.add_argument('-nt', '--new_table', type=str,
                         help="Name of the new table created")
@@ -57,15 +54,12 @@ def argument_parser():
                         help=f"IQR multiplier used to check numerical variable range"
                              f" validity of the holdout created (default = {SAMPLING_OUTLIER_ALPHA})")
 
-    args = parser.parse_args()
+    arguments = parser.parse_args()
 
     # Print arguments
-    print("\nThe inputs are:")
-    for arg in vars(args):
-        print("{}: {}".format(arg, getattr(args, arg)))
-    print("\n")
+    print_arguments(arguments)
 
-    return args
+    return arguments
 
 
 if __name__ == '__main__':
@@ -86,11 +80,18 @@ if __name__ == '__main__':
     # We remove the ids
     df = df.loc[~df[PARTICIPANT].isin(list(outliers_ids[PARTICIPANT].values)), :]
 
-    # We extract an holdout set from the whole dataframe using a sampler
+    # We identify numerical and categorical columns
     cont_cols = [c for c in list(retrieve_numerical_var(df, []).columns.values) if c != args.target_column]
     cat_cols = [c for c in df.columns.values if c not in [PARTICIPANT, args.target_column] + cont_cols]
-    dataset = PetaleDataset(df, args.target_column, cont_cols=cont_cols, cat_cols=cat_cols,
+
+    # We create a temporary dataset
+    dataset = PetaleDataset(df,
+                            args.target_column,
+                            cont_cols=cont_cols,
+                            cat_cols=cat_cols,
                             classification=args.categorical)
+
+    # We extract an holdout set from the dataset using random stratified sampling
     rss = RandomStratifiedSampler(dataset,
                                   n_out_split=1,
                                   n_in_split=0,
@@ -106,6 +107,6 @@ if __name__ == '__main__':
     types = {c: TYPES.get(c, CATEGORICAL_TYPE) for c in list(learning_df.columns)}
 
     # We create the tables
-    data_manager.create_and_fill_table(learning_df, args.new_table, types, primary_key=[PARTICIPANT])
-    data_manager.create_and_fill_table(hold_out_df, f"{args.new_table}_HOLDOUT", types, primary_key=[PARTICIPANT])
+    data_manager.create_and_fill_table(learning_df, f"{args.new_table}_LEARNING_SET", types, primary_key=[PARTICIPANT])
+    data_manager.create_and_fill_table(hold_out_df, f"{args.new_table}_HOLDOUT_SET", types, primary_key=[PARTICIPANT])
     print("\nTables created!")

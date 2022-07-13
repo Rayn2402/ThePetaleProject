@@ -1,14 +1,19 @@
 """
-Filename: get_model_predictions_csv.py
+Filename: get_predictions_csv.py
 
 Author: Nicolas Raymond
 
 Description: Script used to retrieved predictions from multiple records file
 
-Date of last modification: 2022/04/27
+Date of last modification: 2022/07/13
 """
 
+import sys
 from argparse import ArgumentParser
+from os.path import dirname, realpath
+
+# Imports specific to project
+sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
 from src.utils.argparsers import print_arguments
 from src.utils.results_analysis import extract_predictions
 

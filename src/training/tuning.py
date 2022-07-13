@@ -25,7 +25,7 @@ from os.path import join
 from settings.paths import Paths
 from src.data.processing.datasets import MaskType, PetaleDataset
 from src.models.abstract_models.base_models import PetaleBinaryClassifier, PetaleRegressor
-from src.utils.score_metrics import Direction, Metric
+from src.utils.metrics import Direction, Metric
 from src.utils.hyperparameters import CategoricalHP, Distribution, HP, NumericalContinuousHP, NumericalIntHP, Range
 from time import strftime
 from torch import mean, tensor

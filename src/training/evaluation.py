@@ -24,7 +24,7 @@ from src.models.abstract_models.base_models import PetaleBinaryClassifier, Petal
 from src.recording.recording import Recorder, compare_prediction_recordings, \
     get_evaluation_recap, plot_feature_importance_charts, plot_hps_importance_chart
 from src.training.tuning import Objective, Tuner
-from src.utils.score_metrics import Metric
+from src.utils.metrics import Metric
 from time import strftime
 from torch import is_tensor, from_numpy, manual_seed
 from typing import Any, Callable, Dict, List, Optional, Union

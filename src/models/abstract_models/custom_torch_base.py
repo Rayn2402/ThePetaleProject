@@ -18,7 +18,7 @@ from src.data.processing.gnn_datasets import PetaleKGNNDataset
 from src.models.blocks.mlp_blocks import EntityEmbeddingBlock
 from src.evaluation.early_stopping import EarlyStopper
 from src.evaluation.sam import SAM
-from src.utils.score_metrics import Metric
+from src.utils.metrics import Metric
 from src.utils.visualization import visualize_epoch_progression
 from torch import tensor
 from torch.nn import BatchNorm1d, Module

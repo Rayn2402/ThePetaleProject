@@ -18,7 +18,7 @@ from src.models.blocks.genes_signature_block import GeneGraphAttentionEncoder
 from src.models.blocks.mlp_blocks import MLPEncodingBlock
 from src.data.processing.datasets import MaskType, PetaleDataset
 from src.evaluation.early_stopping import EarlyStopper
-from src.utils.score_metrics import BinaryCrossEntropy, Metric, RootMeanSquaredError
+from src.utils.metrics import BinaryCrossEntropy, Metric, RootMeanSquaredError
 from torch import cat, no_grad, tensor, ones, sigmoid
 from torch.nn import BCEWithLogitsLoss, Dropout, Identity, Linear, MSELoss
 from torch.utils.data import DataLoader

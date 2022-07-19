@@ -15,7 +15,7 @@ from numpy import where as npwhere
 from numpy import zeros as npzeros
 from src.data.processing.datasets import PetaleDataset
 from src.utils.hyperparameters import HP
-from src.utils.score_metrics import BinaryClassificationMetric, Direction
+from src.utils.metrics import BinaryClassificationMetric, Direction
 from torch import tensor, is_tensor
 from torch import where as thwhere
 from torch import zeros as thzeros

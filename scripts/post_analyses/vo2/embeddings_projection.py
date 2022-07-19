@@ -7,7 +7,7 @@ Description: Script used to project patient embeddings in a 2D space
              using TSNE and compare a patient profile in the holdout set
              to the closest patients in the learning set
 
-Date of last modification: 2022/07/12
+Date of last modification: 2022/07/19
 """
 import sys
 
@@ -93,7 +93,7 @@ if __name__ == '__main__':
     cmap = 'viridis'
     ax.scatter(proj_x[men_pos, 0], proj_x[men_pos, 1], c=dts.y[men_idx].numpy(), cmap=cmap, marker='D')
     ax.scatter(proj_x[women_pos, 0], proj_x[women_pos, 1], c=dts.y[women_idx].numpy(), cmap=cmap, marker='o')
-    ax.set_title('Embeddings projection')
+    ax.set_title('Projection of the embeddings')
 
     fig.subplots_adjust(right=0.75)
     cbar_ax = fig.add_axes([0.85, 0.15, 0.02, 0.7])

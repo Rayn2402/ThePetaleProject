@@ -14,7 +14,6 @@ from numpy import sum as npsum
 from os.path import join
 from sklearn.manifold import TSNE
 from src.data.processing.datasets import MaskType
-from src.recording.recording import Recorder
 from torch import tensor
 from typing import Dict, List, Optional
 
@@ -177,10 +176,10 @@ def visualize_importance(data: Dict[str, Dict[str, float]],
 
     # We collect the data of each hyperparameter importance
     for key in data.keys():
-        mean = data[key][Recorder.MEAN]
+        mean = data[key]["mean"]
         if mean >= 0.01:
             means.append(mean)
-            stds.append(data[key][Recorder.STD])
+            stds.append(data[key]["std"])
             labels.append(key)
 
     # We sort the list according to their values
@@ -221,9 +220,9 @@ def visualize_scaled_importance(data: Dict[str, Dict[str, float]],
 
     # We collect the data of each hyperparameter importance
     for key in data.keys():
-        mean = data[key][Recorder.MEAN]
+        mean = data[key]["mean"]
         if mean >= 0.01:
-            scaled_imp.append(mean/(data[key][Recorder.STD] + 0.001))
+            scaled_imp.append(mean/(data[key]["std"] + 0.001))
             labels.append(key)
 
     # We sort the list according values

@@ -18,7 +18,7 @@ from src.data.extraction.constants import *
 from src.data.extraction.data_management import PetaleDataManager
 from src.recording.recording import get_evaluation_recap, Recorder
 from src.utils.argparsers import path_parser
-from src.utils.score_metrics import Sensitivity, Specificity, BinaryBalancedAccuracy
+from src.utils.metrics import Sensitivity, Specificity, BinaryBalancedAccuracy
 from time import time
 from torch import tensor
 from typing import Any, Callable, Dict, List, Union

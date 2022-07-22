@@ -52,6 +52,10 @@ if __name__ == '__main__':
                                                    genomics=args.genomics,
                                                    sex=args.sex,
                                                    holdout=args.holdout)
+
+    # We modify SNPs list according to the given arguments
+    VO2_SNPS = None if not args.genomics else VO2_SNPS
+
     # We filter baselines variables if needed
     if args.baselines and args.remove_walk_variables:
         df.drop([TDM6_HR_END, TDM6_DIST], axis=1, inplace=True)
@@ -129,7 +133,7 @@ if __name__ == '__main__':
         # Evaluation
         evaluator.evaluate()
 
-        print(f"Time taken for Random Forest (min): {(time.time() - start)/60, 2:.2f}")
+        print(f"Time taken for Random Forest (min): {(time.time() - start)/60:.2f}")
 
     """
     XGBoost experiment
@@ -161,7 +165,7 @@ if __name__ == '__main__':
         # Evaluation
         evaluator.evaluate()
 
-        print(f"Time taken for XGBoost (min): {(time.time() - start)/60, 2:.2f}")
+        print(f"Time taken for XGBoost (min): {(time.time() - start)/60:.2f}")
 
     """
     MLP experiment
@@ -212,7 +216,7 @@ if __name__ == '__main__':
         # Evaluation
         evaluator.evaluate()
 
-        print(f"Time taken for MLP (min): {(time.time() - start)/60, 2:.2f}")
+        print(f"Time taken for MLP (min): {(time.time() - start)/60:.2f}")
 
     """
     ENET experiment
@@ -262,7 +266,7 @@ if __name__ == '__main__':
         # Evaluation
         evaluator.evaluate()
 
-        print(f"Time taken for enet (min): {(time.time() - start)/60, 2:.2f}")
+        print(f"Time taken for enet (min): {(time.time() - start)/60:.2f}")
 
     """
     GGE experiment
@@ -334,7 +338,7 @@ if __name__ == '__main__':
         # Evaluation
         evaluator.evaluate()
 
-        print(f"Time taken for GGE (min): {(time.time() - start)/60, 2:.2f}")
+        print(f"Time taken for GGE (min): {(time.time() - start)/60:.2f}")
 
     """
     GGAE experiment
@@ -406,7 +410,7 @@ if __name__ == '__main__':
         # Evaluation
         evaluator.evaluate()
 
-        print(f"Time taken for GGAE (min): {(time.time() - start)/60, 2:.2f}")
+        print(f"Time taken for GGAE (min): {(time.time() - start)/60:.2f}")
 
     """
     GAT experiment
@@ -471,7 +475,7 @@ if __name__ == '__main__':
                 # Evaluation
                 evaluator.evaluate()
 
-        print(f"Time taken for GAT (min): {(time.time() - start)/60, 2:.2f}")
+        print(f"Time taken for GAT (min): {(time.time() - start)/60:.2f}")
 
     """
     GCN experiment
@@ -536,7 +540,7 @@ if __name__ == '__main__':
                 # Evaluation
                 evaluator.evaluate()
 
-        print(f"Time taken for GCN (min): {(time.time() - start)/60, 2:.2f}")
+        print(f"Time taken for GCN (min): {(time.time() - start)/60:.2f}")
 
     """
     Self supervised learning experiment with GGE
@@ -583,6 +587,6 @@ if __name__ == '__main__':
         # Evaluation
         evaluator.evaluate()
 
-        print(f"Time taken for SSL with GGE (min): {(time.time() - start)/60, 2:.2f}")
+        print(f"Time taken for SSL with GGE (min): {(time.time() - start)/60:.2f}")
 
-    print(f"Overall time (min): {(time.time() - first_start)/60, 2:.2f}")
+    print(f"Overall time (min): {(time.time() - first_start)/60:.2f}")

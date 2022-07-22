@@ -51,6 +51,9 @@ if __name__ == '__main__':
                                                        baselines=args.baselines,
                                                        classification=args.classification,
                                                        holdout=args.holdout)
+    # We modify SNPs list according to the given arguments
+    OBESITY_SNPS = None if not args.genomics else OBESITY_SNPS
+
     # Extraction of masks
     if args.holdout:
         masks = extract_masks(Paths.OBESITY_HOLDOUT_MASK, k=1, l=10)
@@ -86,7 +89,7 @@ if __name__ == '__main__':
     experiment_id = f"obesity_automated"
     if args.classification:
         experiment_id += "_c"
-    if args.genomic:
+    if args.genomics:
         experiment_id += "_snps"
     if args.rho > 0:
         experiment_id += "_sam"
@@ -331,7 +334,7 @@ if __name__ == '__main__':
 
         # Creation of a function to update fixed params
         def update_fixed_params(dts):
-            return {'max_epochs': args.epoch,
+            return {'max_epochs': args.epochs,
                     'patience': args.patience,
                     'num_cont_col': len(dts.cont_idx),
                     'cat_idx': dts.cat_idx,
@@ -409,7 +412,7 @@ if __name__ == '__main__':
 
         # Creation of a function to update fixed params
         def update_fixed_params(dts):
-            return {'max_epochs': args.epoch,
+            return {'max_epochs': args.epochs,
                     'patience': args.patience,
                     'num_cont_col': len(dts.cont_idx),
                     'cat_idx': dts.cat_idx,
@@ -461,7 +464,7 @@ if __name__ == '__main__':
 
         # Creation of a function to update fixed params
         def update_fixed_params(dts):
-            return {'max_epochs': args.epoch,
+            return {'max_epochs': args.epochs,
                     'patience': args.patience,
                     'num_cont_col': len(dts.cont_idx),
                     'cat_idx': dts.cat_idx,
@@ -537,7 +540,7 @@ if __name__ == '__main__':
                     'cat_idx': dts.cat_idx,
                     'cat_sizes': dts.cat_sizes,
                     'cat_emb_sizes': dts.cat_sizes,
-                    'max_epochs': args.epoch,
+                    'max_epochs': args.epochs,
                     'patience': args.patience}
 
         for nb_neighbor in args.degree:
@@ -600,7 +603,7 @@ if __name__ == '__main__':
 
         # Creation of a function to update fixed params
         def update_fixed_params(dts):
-            return {'max_epochs': args.epoch,
+            return {'max_epochs': args.epochs,
                     'patience': args.patience,
                     'gene_idx_groups': dts.gene_idx_groups,
                     'hidden_size': 3,
@@ -631,4 +634,4 @@ if __name__ == '__main__':
 
         print(f"Time taken for SSL GGE (minutes): {(time() - start) / 60:.2f}")
 
-    print(f"Overall time (minutes): {(time() - start) / 60:.2f}")
+    print(f"Overall time (minutes): {(time() - first_start) / 60:.2f}")

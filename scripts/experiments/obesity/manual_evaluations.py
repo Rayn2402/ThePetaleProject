@@ -49,6 +49,10 @@ if __name__ == '__main__':
                                                        baselines=args.baselines,
                                                        classification=args.classification,
                                                        holdout=args.holdout)
+
+    # We modify SNPs list according to the given arguments
+    OBESITY_SNPS = None if not args.genomics else OBESITY_SNPS
+
     # Extraction of masks
     if args.holdout:
         masks = extract_masks(Paths.OBESITY_HOLDOUT_MASK, k=1, l=10)
@@ -69,7 +73,7 @@ if __name__ == '__main__':
 
     # Initialization of feature selector
     if args.feature_selection:
-        if args.baselines and args.genomic:
+        if args.baselines and args.genomics:
             feature_selector = FeatureSelector(threshold=[0.01, 0.01],
                                                cumulative_imp=[False, False],
                                                seed=args.seed)
@@ -84,7 +88,7 @@ if __name__ == '__main__':
     experiment_id = f"obesity_manual"
     if args.classification:
         experiment_id += "_c"
-    if args.genomic:
+    if args.genomics:
         experiment_id += "_snps"
     if args.rho > 0:
         experiment_id += "_sam"

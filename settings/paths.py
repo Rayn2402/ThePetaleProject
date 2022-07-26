@@ -17,7 +17,6 @@ class Paths:
     """
     PROJECT_DIR: str = dirname(dirname(__file__))
     CHECKPOINTS: str = join(PROJECT_DIR, "checkpoints")
-    CSV_FILES: str = join(PROJECT_DIR, "csv")
     HYPERPARAMETERS: str = join(PROJECT_DIR, "hps")
     MASKS: str = join(PROJECT_DIR, "masks")
     VO2_MASK: str = join(MASKS, "vo2_mask.json")
@@ -28,6 +27,7 @@ class Paths:
     MODELS: str = join(PROJECT_DIR, "models")
     RECORDS: str = join(PROJECT_DIR, "records")
     CLEANING_RECORDS: str = join(RECORDS, "cleaning")
+    CSV_FILES: str = join(RECORDS, "csv")
     DESC_RECORDS: str = join(RECORDS, "descriptive_analyses")
     DESC_CHARTS: str = join(DESC_RECORDS, "charts")
     DESC_STATS: str = join(DESC_RECORDS, "stats")

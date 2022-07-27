@@ -5,14 +5,16 @@ Author: Nicolas Raymond
 
 Description: Script used to produce train, valid and test masks related to a dataframe
 
-Date of last modification: 2022/07/12
+Date of last modification: 2022/07/27
 """
 import argparse
 import sys
 from json import dump
-from os.path import dirname, realpath
+from os.path import dirname, join, realpath
+from pandas import read_csv
 
 sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
+from settings.paths import Paths
 from src.data.processing.datasets import PetaleDataset
 from src.data.processing.sampling import RandomStratifiedSampler
 from src.data.extraction.constants import *
@@ -28,12 +30,17 @@ def argument_parser():
     # Create a parser
     parser = argparse.ArgumentParser(usage='\n python generate_masks.py -tab [table_name] -tc [target_column]'
                                            ' -fn [file_name] [...]',
-                                     description="Generates stratified masks"
-                                                 " associated from a dataframe.")
+                                     description="Generates stratified masks associated to a dataframe coming"
+                                                 " from a postgresql table or a csv file.")
 
-    parser.add_argument('-tab', '--table', type=str, help="Name of the postgresql table")
+    parser.add_argument('-csv', '--csv', type=str,
+                        help="Path of the csv file containing the dataset")
 
-    parser.add_argument('-tc', '--target_column', type=str, help="Name of the column to use as target")
+    parser.add_argument('-tab', '--table', type=str,
+                        help="Name of the postgresql table")
+
+    parser.add_argument('-tc', '--target_column', type=str,
+                        help="Name of the column to use as target")
 
     parser.add_argument('-cat', '--categorical', default=False, action='store_true',
                         help='True if the target is categorical')
@@ -73,14 +80,25 @@ def argument_parser():
 
 if __name__ == '__main__':
 
-    # We retrieve parser's arguments
+    # We retrieve arguments
     args = argument_parser()
 
-    # We initialize a data manager
-    data_manager = PetaleDataManager()
+    # Validation of arguments
+    if args.csv is None and args.table is None:
+        raise ValueError('A csv or a table name must be provided')
 
-    # We retrieve the table needed
-    df = data_manager.get_table(args.table)
+    if args.csv is None:
+
+        # We initialize a data manager
+        data_manager = PetaleDataManager()
+
+        # We retrieve the table needed
+        df = data_manager.get_table(args.table)
+
+    else:
+
+        # We retrieve the table needed
+        df = read_csv(args.csv)
 
     # We remove unnecessary columns
     columns = [c for c in df.columns if c not in args.removed_columns]
@@ -108,5 +126,5 @@ if __name__ == '__main__':
     masks = rss()
 
     # We dump the masks in a json file
-    with open(f"{args.file_name}.json", "w") as file:
+    with open(join(Paths.MASKS, f"{args.file_name}.json"), "w") as file:
         dump(masks, file, indent=True)

@@ -6,7 +6,7 @@ Authors: Nicolas Raymond
 Description: This file is used to execute all the model comparisons
              made on the VO2 peak dataset
 
-Date of last modification : 2022/07/13
+Date of last modification : 2022/07/27
 """
 import sys
 import time
@@ -45,7 +45,7 @@ if __name__ == '__main__':
     args = VO2_experiment_parser()
 
     # Initialization of a data manager
-    manager = PetaleDataManager()
+    manager = PetaleDataManager() if not args.from_csv else None
 
     # We extract needed data
     df, target, cont_cols, cat_cols = get_VO2_data(manager,
@@ -53,6 +53,9 @@ if __name__ == '__main__':
                                                    genomics=args.genomics,
                                                    sex=args.sex,
                                                    holdout=args.holdout)
+    # We modify SNPs list according to the given arguments
+    VO2_SNPS = None if not args.genomics else VO2_SNPS
+
     # We filter baselines variables if needed
     if args.baselines and args.remove_walk_variables:
         df.drop([TDM6_HR_END, TDM6_DIST], axis=1, inplace=True)
@@ -60,9 +63,9 @@ if __name__ == '__main__':
 
     # Extraction of masks
     if args.holdout:
-        masks = extract_masks(Paths.OBESITY_HOLDOUT_MASK, k=1, l=10)
+        masks = extract_masks(Paths.VO2_HOLDOUT_MASK, k=1, l=10)
     else:
-        masks = extract_masks(Paths.OBESITY_MASK, k=args.nb_outer_splits, l=args.nb_inner_splits)
+        masks = extract_masks(Paths.VO2_MASK, k=args.nb_outer_splits, l=args.nb_inner_splits)
 
     masks_without_val = deepcopy(masks)
     push_valid_to_train(masks_without_val)

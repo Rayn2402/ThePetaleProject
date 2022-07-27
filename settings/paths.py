@@ -5,11 +5,12 @@ Authors : Nicolas Raymond
 
 Description : Stores a custom enumeration of the important paths within the project
 
-Date of last modification: 2021/10/19
+Date of last modification: 2021/07/27
 """
 
 from os.path import dirname, join
 from src.data.extraction import constants as cst
+
 
 class Paths:
     """

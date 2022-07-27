@@ -8,8 +8,13 @@ Description: Script to create a learning set and a holdout set from a dataset.
 Date of last modification: 2022/07/13
 """
 import argparse
-
+import sys
+from os.path import dirname, join, realpath
 from pandas import read_csv
+
+# Imports specific to project
+sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
+from settings.paths import Paths
 from src.data.extraction.constants import *
 from src.data.extraction.data_management import PetaleDataManager
 from src.data.extraction.helpers import retrieve_numerical_var
@@ -24,7 +29,12 @@ def argument_parser():
     """
     # Create a parser
     parser = argparse.ArgumentParser(usage='\n python generate_experiment_tables.py [...]',
-                                     description="Extracts a learning set and an holdout set from a dataset.")
+                                     description="Extracts a learning set and an holdout set from a dataset."
+                                                 "Can either work with a dataset from a postgresql database"
+                                                 "or a csv")
+
+    parser.add_argument('-csv', '--csv', type=str,
+                        help='Path of the csv file containing the dataset')
 
     parser.add_argument('-rt', '--raw_table', type=str,
                         help="Name of the raw dataset (ex. 'VO2_DATASET')")
@@ -36,7 +46,7 @@ def argument_parser():
                         help="Path of the csv file containing participant ids to remove")
 
     parser.add_argument('-sep', '--csv_separator', type=str, default=",",
-                        help="Separation character used in the csv file (default = ',')")
+                        help="Separation character used in the csv files (default = ',')")
 
     parser.add_argument('-tc', '--target_column', type=str,
                         help="Name of the column to use as target")
@@ -67,18 +77,31 @@ if __name__ == '__main__':
     # We retrieve parser's arguments
     args = argument_parser()
 
-    # We build a PetaleDataManager that will help interacting with PETALE database
-    data_manager = PetaleDataManager()
+    # Validation of arguments
+    if args.csv is None and args.raw_table is None:
+        raise ValueError('A csv or a table name must be provided')
 
-    # We retrieve the raw table needed
-    df = data_manager.get_table(args.raw_table)
+    if args.csv is not None:
 
-    # We retrieve participant ids to remove
-    outliers_ids = read_csv(args.outliers_csv, sep=args.csv_separator)
-    outliers_ids[PARTICIPANT] = outliers_ids[PARTICIPANT].astype(str).apply(PetaleDataManager.fill_participant_id)
+        # We load the dataframe from the csv
+        df = read_csv(args.csv, sep=args.csv_separator)
 
-    # We remove the ids
-    df = df.loc[~df[PARTICIPANT].isin(list(outliers_ids[PARTICIPANT].values)), :]
+    else:
+
+        # We build a data manager to interact with the database
+        data_manager = PetaleDataManager()
+
+        # We retrieve the raw table needed
+        df = data_manager.get_table(args.raw_table)
+
+    if args.outliers_csv is not None:
+
+        # We retrieve participant ids to remove
+        outliers_ids = read_csv(args.outliers_csv, sep=args.csv_separator)
+        outliers_ids[PARTICIPANT] = outliers_ids[PARTICIPANT].astype(str).apply(PetaleDataManager.fill_participant_id)
+
+        # We remove the ids
+        df = df.loc[~df[PARTICIPANT].isin(list(outliers_ids[PARTICIPANT].values)), :]
 
     # We identify numerical and categorical columns
     cont_cols = [c for c in list(retrieve_numerical_var(df, []).columns.values) if c != args.target_column]
@@ -103,10 +126,19 @@ if __name__ == '__main__':
     learning_idx, hold_out_idx = masks[0][MaskType.TRAIN], masks[0][MaskType.TEST]
     learning_df, hold_out_df = df.iloc[learning_idx, :], df.iloc[hold_out_idx, :]
 
-    # We create the dictionary needed to create the table
-    types = {c: TYPES.get(c, CATEGORICAL_TYPE) for c in list(learning_df.columns)}
+    if args.csv is not None:
 
-    # We create the tables
-    data_manager.create_and_fill_table(learning_df, f"{args.new_table}_LEARNING_SET", types, primary_key=[PARTICIPANT])
-    data_manager.create_and_fill_table(hold_out_df, f"{args.new_table}_HOLDOUT_SET", types, primary_key=[PARTICIPANT])
-    print("\nTables created!")
+        # We save the dataframes into csv files
+        directory = join(Paths.DATA, args.new_table)
+        learning_df.to_csv(f"{directory}_LEARNING_SET.csv")
+        hold_out_df.to_csv(f"{directory}_HOLDOUT_SET.csv")
+
+    else:
+
+        # We create the dictionary needed to create the postgresql tables
+        types = {c: TYPES.get(c, CATEGORICAL_TYPE) for c in list(learning_df.columns)}
+
+        # We create the tables
+        data_manager.create_and_fill_table(learning_df, f"{args.new_table}_LEARNING_SET", types, primary_key=[PARTICIPANT])
+        data_manager.create_and_fill_table(hold_out_df, f"{args.new_table}_HOLDOUT_SET", types, primary_key=[PARTICIPANT])
+        print("\nTables created!")

@@ -14,8 +14,10 @@ from itertools import product
 from json import load
 from numpy import array
 from numpy.random import seed
-from pandas import DataFrame, merge, qcut
+from os.path import join
+from pandas import DataFrame, qcut, read_csv
 from sklearn.model_selection import train_test_split
+from settings.paths import Paths
 from src.data.extraction.constants import *
 from src.data.extraction.data_management import PetaleDataManager
 from src.data.processing.datasets import MaskType, PetaleDataset
@@ -384,20 +386,21 @@ def generate_multitask_labels(df: DataFrame,
     return multitask_labels, labels_dict
 
 
-def get_obesity_data(data_manager: PetaleDataManager,
+def get_obesity_data(data_manager: Optional[PetaleDataManager] = None,
                      genomics: bool = False,
                      baselines: bool = True,
-                     classification: bool = False,
                      dummy: bool = False,
                      holdout: bool = False) -> Tuple[DataFrame, str, List[str], List[str]]:
     """
     Extracts dataframe needed to proceed to obesity prediction experiments
 
     Args:
-        data_manager: data manager to communicate with the database
+        data_manager: data manager to communicate with the database.
+                      If the parameter is left to None, data will be taken
+                      from the csv files.
+
         genomics: if True, genomic variables are included
         baselines: if True, baselines variables are included
-        classification: if True, targets returned are obesity classes instead of Total Body Fat values
         dummy: if True, includes dummy variable combining sex and Total Body Fat category
         holdout: if True, holdout data is included at the bottom of the dataframe
 
@@ -423,19 +426,27 @@ def get_obesity_data(data_manager: PetaleDataManager,
     if dummy:
         cat_cols.append(DUMMY)
 
-    # We extract the dataframe
-    target = TOTAL_BODY_FAT
-    df = data_manager.get_table(OBESITY_LEARNING_SET, columns=[PARTICIPANT, TOTAL_BODY_FAT] + cont_cols + cat_cols)
+    all_columns = [PARTICIPANT, TOTAL_BODY_FAT] + cont_cols + cat_cols
 
-    if holdout:
-        h_df = data_manager.get_table(OBESITY_HOLDOUT_SET, columns=[PARTICIPANT, TOTAL_BODY_FAT] + cont_cols + cat_cols)
-        df = df.append(h_df, ignore_index=True)
+    if data_manager is not None:
 
-    if classification:
-        target = OBESITY
-        ob_df = data_manager.get_table(OBESITY_TARGET, columns=[PARTICIPANT, OBESITY])
-        df = merge(df, ob_df, on=[PARTICIPANT], how=INNER)
-        df.drop([TOTAL_BODY_FAT], axis=1, inplace=True)
+        # We extract the dataframe
+        df = data_manager.get_table(OBESITY_LEARNING_SET, columns=all_columns)
+
+        # We add the data from the holdout set
+        if holdout:
+            h_df = data_manager.get_table(OBESITY_HOLDOUT_SET, columns=all_columns)
+            df = df.append(h_df, ignore_index=True)
+
+    else:
+
+        # We extract the dataframe
+        df = read_csv(Paths.OBESITY_LEARNING_SET_CSV, usecols=all_columns)
+
+        # We add the data from the holdout set
+        if holdout:
+            h_df = read_csv(Paths.OBESITY_HOLDOUT_SET_CSV, usecols=all_columns)
+            df = df.append(h_df, ignore_index=True)
 
     # We replace wrong categorical values
     if baselines:
@@ -447,10 +458,10 @@ def get_obesity_data(data_manager: PetaleDataManager,
         df.replace("0/2", "0/1", inplace=True)
         df.replace("1/2", "1/1", inplace=True)
 
-    return df, target, cont_cols, cat_cols
+    return df, TOTAL_BODY_FAT, cont_cols, cat_cols
 
 
-def get_VO2_data(data_manager: PetaleDataManager,
+def get_VO2_data(data_manager: Optional[PetaleDataManager] = None,
                  genomics: bool = False,
                  baselines: bool = True,
                  sex: bool = False,
@@ -460,7 +471,9 @@ def get_VO2_data(data_manager: PetaleDataManager,
     Extracts dataframe needed to proceed to VO2 peak prediction experiments
 
     Args:
-        data_manager: data manager to communicate with the database
+        data_manager: data manager to communicate with the database.
+                      If the parameter is left to None, data will be taken
+                      from the csv files.
         genomics: if True, genomic variables are included
         baselines: if True, variables from the original equation are included
         sex: if True, sex is included
@@ -496,13 +509,25 @@ def get_VO2_data(data_manager: PetaleDataManager,
     all_columns += cat_cols
     cat_cols = cat_cols if len(cat_cols) != 0 else None
 
-    # We extract the dataframe
-    df = data_manager.get_table(VO2_LEARNING_SET, columns=all_columns)
+    if data_manager is not None:
 
-    # We add the holdout data
-    if holdout:
-        h_df = data_manager.get_table(VO2_HOLDOUT_SET, columns=all_columns)
-        df = df.append(h_df, ignore_index=True)
+        # We extract the dataframe
+        df = data_manager.get_table(VO2_LEARNING_SET, columns=all_columns)
+
+        # We add the holdout data
+        if holdout:
+            h_df = data_manager.get_table(VO2_HOLDOUT_SET, columns=all_columns)
+            df = df.append(h_df, ignore_index=True)
+
+    else:
+
+        # We extract the dataframe
+        df = read_csv(Paths.VO2_LEARNING_SET_CSV, usecols=all_columns)
+
+        # We add the data from the holdout set
+        if holdout:
+            h_df = read_csv(Paths.VO2_HOLDOUT_SET_CSV, usecols=all_columns)
+            df = df.append(h_df, ignore_index=True)
 
     return df, VO2R_MAX, cont_cols, cat_cols
 

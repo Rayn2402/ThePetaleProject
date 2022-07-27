@@ -5,7 +5,7 @@ Author: Nicolas Raymond
 
 Description: Script to create a learning set and a holdout set from a dataset.
 
-Date of last modification: 2022/07/13
+Date of last modification: 2022/07/27
 """
 import argparse
 import sys

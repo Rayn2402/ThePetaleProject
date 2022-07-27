@@ -6,7 +6,7 @@ Author: Nicolas Raymond
 Description: Script used to run obesity experiments using automated
              hyperparameter optimization.
 
-Date of last modification: 2022/07/13
+Date of last modification: 2022/07/27
 """
 
 import sys
@@ -49,7 +49,6 @@ if __name__ == '__main__':
     df, target, cont_cols, cat_cols = get_obesity_data(data_manager=manager,
                                                        genomics=args.genomics,
                                                        baselines=args.baselines,
-                                                       classification=args.classification,
                                                        holdout=args.holdout)
     # We modify SNPs list according to the given arguments
     OBESITY_SNPS = None if not args.genomics else OBESITY_SNPS
@@ -64,12 +63,7 @@ if __name__ == '__main__':
     push_valid_to_train(masks_without_val)
 
     # Initialization of the dictionary containing the evaluation metrics
-    if args.classification:
-        evaluation_metrics = [m.AUC(), m.BinaryBalancedAccuracy(), m.Sensitivity(),
-                              m.Specificity(), m.BinaryCrossEntropy(),
-                              m.BalancedAccuracyEntropyRatio(reduction=m.Reduction.GEO_MEAN)]
-    else:
-        evaluation_metrics = [m.AbsoluteError(), m.ConcordanceIndex(), m.Pearson(),
+    evaluation_metrics = [m.AbsoluteError(), m.ConcordanceIndex(), m.Pearson(),
                               m.SquaredError(), m.RootMeanSquaredError()]
 
     # Initialization of feature selector
@@ -87,8 +81,6 @@ if __name__ == '__main__':
 
     # We save the string that will help identify evaluations
     experiment_id = f"obesity_automated"
-    if args.classification:
-        experiment_id += "_c"
     if args.genomics:
         experiment_id += "_snps"
     if args.rho > 0:
@@ -109,18 +101,11 @@ if __name__ == '__main__':
         start = time()
 
         # Creation of dataset
-        dataset = PetaleDataset(df, target, cont_cols, cat_cols, classification=args.classification,
+        dataset = PetaleDataset(df, target, cont_cols, cat_cols, classification=False,
                                 feature_selection_groups=[OBESITY_SNPS])
 
-        # Constructor selection
-        if args.classification:
-            constructor = PetaleBinaryRFC
-            ss.RF_HPS[RandomForestHP.WEIGHT.name] = {Range.VALUE: 0.5}
-        else:
-            constructor = PetaleRFR
-
         # Creation of the evaluator
-        evaluator = Evaluator(model_constructor=constructor,
+        evaluator = Evaluator(model_constructor=PetaleRFR,
                               dataset=dataset,
                               masks=masks_without_val,
                               evaluation_name=f"RF_{experiment_id}",
@@ -147,18 +132,11 @@ if __name__ == '__main__':
         start = time()
 
         # Creation of dataset
-        dataset = PetaleDataset(df, target, cont_cols, cat_cols, classification=args.classification,
+        dataset = PetaleDataset(df, target, cont_cols, cat_cols, classification=False,
                                 feature_selection_groups=[OBESITY_SNPS])
 
-        # Constructor selection
-        if args.classification:
-            constructor = PetaleBinaryXGBC
-            ss.XGBOOST_HPS[XGBoostHP.WEIGHT.name] = {Range.VALUE: 0.5}
-        else:
-            constructor = PetaleXGBR
-
         # Creation of the evaluator
-        evaluator = Evaluator(model_constructor=constructor,
+        evaluator = Evaluator(model_constructor=PetaleXGBR,
                               dataset=dataset,
                               masks=masks_without_val,
                               evaluation_name=f"XGBoost_{experiment_id}",
@@ -186,14 +164,7 @@ if __name__ == '__main__':
 
         # Creation of the dataset
         dataset = PetaleDataset(df, target, cont_cols, cat_cols, to_tensor=True,
-                                classification=args.classification, feature_selection_groups=[OBESITY_SNPS])
-
-        # Constructor selection
-        if args.classification:
-            constructor = PetaleBinaryMLPC
-            ss.MLP_HPS[MLPHP.WEIGHT.name] = {Range.VALUE: 0.5}
-        else:
-            constructor = PetaleMLPR
+                                classification=False, feature_selection_groups=[OBESITY_SNPS])
 
         # Update of the hyperparameters
         ss.MLP_HPS[MLPHP.RHO.name] = sam_search_space
@@ -213,7 +184,7 @@ if __name__ == '__main__':
         fixed_params = update_fixed_params(dataset)
 
         # Creation of the evaluator
-        evaluator = Evaluator(model_constructor=constructor,
+        evaluator = Evaluator(model_constructor=PetaleMLPR,
                               dataset=dataset,
                               masks=masks,
                               evaluation_name=f"MLP_{experiment_id}",
@@ -243,15 +214,8 @@ if __name__ == '__main__':
 
         # Creation of the dataset
         dataset = PetaleDataset(df, target, cont_cols, cat_cols,
-                                to_tensor=True, classification=args.classification,
+                                to_tensor=True, classification=False,
                                 feature_selection_groups=[OBESITY_SNPS])
-
-        # Constructor selection
-        if args.classification:
-            constructor = PetaleBinaryMLPC
-            ss.ENET_HPS[MLPHP.WEIGHT.name] = {Range.VALUE: 0.5}
-        else:
-            constructor = PetaleMLPR
 
         # Update of the hyperparameters
         ss.ENET_HPS[MLPHP.RHO.name] = sam_search_space
@@ -269,7 +233,7 @@ if __name__ == '__main__':
         fixed_params = update_fixed_params(dataset)
 
         # Creation of the evaluator
-        evaluator = Evaluator(model_constructor=constructor,
+        evaluator = Evaluator(model_constructor=PetaleMLPR,
                               dataset=dataset,
                               masks=masks,
                               evaluation_name=f"enet_{experiment_id}",
@@ -300,7 +264,7 @@ if __name__ == '__main__':
         # Creation of the dataset
         dataset = PetaleDataset(df, target, cont_cols, cat_cols,
                                 gene_cols=OBESITY_SNPS, to_tensor=True,
-                                classification=args.classification, feature_selection_groups=[OBESITY_SNPS])
+                                classification=False, feature_selection_groups=[OBESITY_SNPS])
 
         # Creation of a function that builds a Gene Graph Encoder
         def gene_encoder_constructor(gene_idx_groups: Optional[Dict[str, List[int]]],
@@ -322,13 +286,6 @@ if __name__ == '__main__':
                                     dropout=dropout,
                                     signature_size=args.signature_size)
 
-        # Constructor selection
-        if args.classification:
-            constructor = PetaleBinaryMLPC
-            ss.ENET_GGE_HPS[MLPHP.WEIGHT.name] = {Range.VALUE: 0.5}
-        else:
-            constructor = PetaleMLPR
-
         # Update of the hyperparameters
         ss.ENET_GGE_HPS[MLPHP.RHO.name] = sam_search_space
 
@@ -347,7 +304,7 @@ if __name__ == '__main__':
         fixed_params = update_fixed_params(dataset)
 
         # Creation of the evaluator
-        evaluator = Evaluator(model_constructor=constructor,
+        evaluator = Evaluator(model_constructor=PetaleMLPR,
                               dataset=dataset,
                               masks=masks,
                               evaluation_name=f"ggeEnet_{experiment_id}",
@@ -377,7 +334,7 @@ if __name__ == '__main__':
         # Creation of the dataset
         dataset = PetaleDataset(df, target, cont_cols, cat_cols,
                                 gene_cols=OBESITY_SNPS, to_tensor=True,
-                                classification=args.classification, feature_selection_groups=[OBESITY_SNPS])
+                                classification=False, feature_selection_groups=[OBESITY_SNPS])
 
         # Creation of a function that builds a Gene Graph Attention Encoder
         def gene_encoder_constructor(gene_idx_groups: Optional[Dict[str, List[int]]],
@@ -399,13 +356,6 @@ if __name__ == '__main__':
                                              dropout=dropout,
                                              signature_size=args.signature_size)
 
-        # Constructor selection
-        if args.classification:
-            constructor = PetaleBinaryMLPC
-            ss.ENET_GGE_HPS[MLPHP.WEIGHT.name] = {Range.VALUE: 0.5}
-        else:
-            constructor = PetaleMLPR
-
         # Update of the hyperparameters
         if args.enable_sam:
             ss.ENET_GGE_HPS[MLPHP.RHO.name] = sam_search_space
@@ -425,7 +375,7 @@ if __name__ == '__main__':
         fixed_params = update_fixed_params(dataset)
 
         # Creation of the evaluator
-        evaluator = Evaluator(model_constructor=constructor,
+        evaluator = Evaluator(model_constructor=PetaleMLPR,
                               dataset=dataset,
                               masks=masks,
                               evaluation_name=f"ggaeEnet_{experiment_id}",
@@ -451,13 +401,6 @@ if __name__ == '__main__':
 
         # Start timer
         start = time()
-
-        # Constructor selection
-        if args.classification:
-            constructor = PetaleBinaryGATC
-            ss.GATHPS[GATHP.WEIGHT.name] = {Range.VALUE: 0.5}
-        else:
-            constructor = PetaleGATR
 
         # Update of the hyperparameters
         ss.GATHPS[GATHP.RHO.name] = sam_search_space
@@ -489,14 +432,14 @@ if __name__ == '__main__':
                                             weighted_similarity=w_sim,
                                             cont_cols=cont_cols, cat_cols=cat_cols,
                                             conditional_cat_col=cond_cat_col,
-                                            classification=args.classification,
+                                            classification=False,
                                             feature_selection_groups=[OBESITY_SNPS])
 
                 # Saving of the fixed params of GAT
                 fixed_params = update_fixed_params(dataset)
 
                 # Creation of the evaluator
-                evaluator = Evaluator(model_constructor=constructor,
+                evaluator = Evaluator(model_constructor=PetaleGATR,
                                       dataset=dataset,
                                       masks=masks,
                                       evaluation_name=f"{prefix}GAT{nb_neighbor}_{experiment_id}",
@@ -523,13 +466,6 @@ if __name__ == '__main__':
 
         # Start timer
         start = time()
-
-        # Constructor selection
-        if args.classification:
-            constructor = PetaleBinaryGCNC
-            ss.GCNHPS[GCNHP.WEIGHT.name] = {Range.VALUE: 0.5}
-        else:
-            constructor = PetaleGCNR
 
         # Update of the hyperparameters
         ss.GCNHPS[GCNHP.RHO.name] = sam_search_space
@@ -561,14 +497,14 @@ if __name__ == '__main__':
                                             weighted_similarity=w_sim,
                                             cont_cols=cont_cols, cat_cols=cat_cols,
                                             conditional_cat_col=cond_cat_col,
-                                            classification=args.classification,
+                                            classification=False,
                                             feature_selection_groups=[OBESITY_SNPS])
 
                 # Saving of the fixed params of GCN
                 fixed_params = update_fixed_params(dataset)
 
                 # Creation of the evaluator
-                evaluator = Evaluator(model_constructor=constructor,
+                evaluator = Evaluator(model_constructor=PetaleGCNR,
                                       dataset=dataset,
                                       masks=masks,
                                       evaluation_name=f"{prefix}GCN{nb_neighbor}_{experiment_id}",

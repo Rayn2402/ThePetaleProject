@@ -42,8 +42,8 @@ if __name__ == '__main__':
     # Arguments parsing
     args = obesity_experiment_parser()
 
-    # Initialization of DataManager
-    manager = PetaleDataManager()
+    # Initialization of a data manager
+    manager = PetaleDataManager() if not args.from_csv else None
 
     # We extract needed data
     df, target, cont_cols, cat_cols = get_obesity_data(data_manager=manager,

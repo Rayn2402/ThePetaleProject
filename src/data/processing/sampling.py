@@ -7,14 +7,13 @@ Description: Defines the RandomStratifiedSampler class used to separate test set
              valid sets from train sets. Also contains few functions used to extract
              specific datasets
 
-Date of last modification : 2022/07/08
+Date of last modification : 2022/07/27
 """
 
 from itertools import product
 from json import load
 from numpy import array
 from numpy.random import seed
-from os.path import join
 from pandas import DataFrame, qcut, read_csv
 from sklearn.model_selection import train_test_split
 from settings.paths import Paths

@@ -6,7 +6,7 @@ Author: Nicolas Raymond
 Description: Script used to run VO2 peak experiments using
              manually selected hyperparameters.
 
-Date of last modification: 2022/07/13
+Date of last modification: 2022/07/27
 """
 
 import sys
@@ -44,7 +44,7 @@ if __name__ == '__main__':
     args = VO2_experiment_parser()
 
     # Initialization of a data manager
-    manager = PetaleDataManager()
+    manager = PetaleDataManager() if not args.from_csv else None
 
     # We extract the data needed
     df, target, cont_cols, cat_cols = get_VO2_data(manager,

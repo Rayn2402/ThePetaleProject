@@ -63,7 +63,7 @@ if __name__ == '__main__':
 
     # Initialization of the dictionary containing the evaluation metrics
     evaluation_metrics = [m.AbsoluteError(), m.ConcordanceIndex(), m.Pearson(),
-                              m.SquaredError(), m.RootMeanSquaredError()]
+                          m.SquaredError(), m.RootMeanSquaredError()]
 
     # Initialization of feature selector
     if args.feature_selection:

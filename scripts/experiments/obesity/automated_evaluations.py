@@ -26,12 +26,12 @@ if __name__ == '__main__':
     from src.data.processing.gnn_datasets import PetaleKGNNDataset
     from src.data.processing.sampling import get_obesity_data, extract_masks, push_valid_to_train
     from src.models.blocks.genes_signature_block import GeneEncoder, GeneGraphEncoder, GeneGraphAttentionEncoder
-    from src.models.gat import PetaleBinaryGATC, PetaleGATR, GATHP
+    from src.models.gat import PetaleGATR, GATHP
     from src.models.gge import PetaleGGE
-    from src.models.gcn import PetaleBinaryGCNC, PetaleGCNR, GCNHP
-    from src.models.mlp import PetaleBinaryMLPC, PetaleMLPR, MLPHP
-    from src.models.random_forest import PetaleBinaryRFC, PetaleRFR, RandomForestHP
-    from src.models.xgboost_ import PetaleBinaryXGBC, PetaleXGBR, XGBoostHP
+    from src.models.gcn import PetaleGCNR, GCNHP
+    from src.models.mlp import PetaleMLPR, MLPHP
+    from src.models.random_forest import PetaleRFR
+    from src.models.xgboost_ import PetaleXGBR
     from src.evaluation.evaluation import Evaluator
     from src.utils.argparsers import obesity_experiment_parser
     from src.utils.hyperparameters import Range

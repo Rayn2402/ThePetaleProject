@@ -9,7 +9,7 @@ Date of last modification: 2021/10/19
 """
 
 from os.path import dirname, join
-
+from src.data.extraction import constants as cst
 
 class Paths:
     """
@@ -17,13 +17,17 @@ class Paths:
     """
     PROJECT_DIR: str = dirname(dirname(__file__))
     CHECKPOINTS: str = join(PROJECT_DIR, "checkpoints")
+    DATA: str = join(PROJECT_DIR, "data")
+    VO2_LEARNING_SET_CSV = join(DATA, f"{cst.VO2_LEARNING_SET}.csv")
+    VO2_HOLDOUT_SET_CSV = join(DATA, f"{cst.VO2_HOLDOUT_SET}.csv")
+    OBESITY_LEARNING_SET_CSV = join(DATA, f"{cst.OBESITY_LEARNING_SET}.csv")
+    OBESITY_HOLDOUT_SET_CSV = join(DATA, f"{cst.OBESITY_HOLDOUT_SET}.csv")
     HYPERPARAMETERS: str = join(PROJECT_DIR, "hps")
     MASKS: str = join(PROJECT_DIR, "masks")
     VO2_MASK: str = join(MASKS, "vo2_mask.json")
     VO2_HOLDOUT_MASK: str = join(MASKS, "vo2_holdout_mask.json")
     OBESITY_MASK: str = join(MASKS, "obesity_mask.json")
     OBESITY_HOLDOUT_MASK: str = join(MASKS, "obesity_holdout_mask.json")
-    REF_MASK: str = join(MASKS, "ref_mask.json")
     MODELS: str = join(PROJECT_DIR, "models")
     RECORDS: str = join(PROJECT_DIR, "records")
     CLEANING_RECORDS: str = join(RECORDS, "cleaning")
@@ -34,8 +38,4 @@ class Paths:
     EXPERIMENTS_RECORDS: str = join(RECORDS, "experiments")
     FIGURES_RECORDS: str = join(RECORDS, "figures")
     TUNING_RECORDS: str = join(RECORDS, "tuning")
-    EXPERIMENTS_SCRIPTS: str = join(PROJECT_DIR, "experiments")
-    WARMUP_EXPERIMENTS_SCRIPTS: str = join(EXPERIMENTS_SCRIPTS, "warmup")
-    L1_EXPERIMENT_SCRIPTS: str = join(EXPERIMENTS_SCRIPTS, "learning_01")
-    SANITY_CHECKS: str = join(PROJECT_DIR, "sanity_checks")
 

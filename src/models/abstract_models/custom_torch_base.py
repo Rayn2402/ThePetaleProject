@@ -261,8 +261,10 @@ class TorchCustomModel(Module, ABC):
 
         Returns: None
         """
-        print(f"\nEarly stopping occurred at epoch {epoch} with best_epoch = {epoch - patience}"
-              f" and best_val_{self._eval_metric.name} = {round(best_validation_score, 4)}")
+        print('-'*3)
+        print(f"Early stopping occurred at epoch {epoch} with best_epoch = {epoch - patience}")
+        print(f"Best validation {self._eval_metric.name} = {round(best_validation_score, 4)}")
+        print('-'*3)
 
     def _update_evaluations_progress(self,
                                      loss: float,

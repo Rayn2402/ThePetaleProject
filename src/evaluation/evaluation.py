@@ -79,7 +79,7 @@ class Evaluator:
         # We look if a file with the same evaluation name exists
         if evaluation_name is not None:
             if path.exists(path.join(Paths.EXPERIMENTS_RECORDS, evaluation_name)):
-                raise ValueError("evaluation with this name already exists")
+                raise ValueError("Evaluation with this name already exists")
         else:
             makedirs(Paths.EXPERIMENTS_RECORDS, exist_ok=True)
             evaluation_name = f"{strftime('%Y%m%d-%H%M%S')}"
@@ -154,10 +154,12 @@ class Evaluator:
         # We initialize ray
         ray.init()
 
-        # We execute the outer loop
+        # We execute the outer loops
+        print("\nEvaluation of model started!\n")
         for k, v in self._masks.items():
 
             # We extract the masks
+            print(f"\nSplit #{k}")
             train_mask, valid_mask = v[MaskType.TRAIN], v[MaskType.VALID]
             test_mask, in_masks = v[MaskType.TEST], v[MaskType.INNER]
 
@@ -190,7 +192,7 @@ class Evaluator:
             # We update the tuner to perform the hyperparameters optimization
             if self._hp_tuning:
 
-                print(f"\nHyperparameter tuning started - K = {k}\n")
+                print("Hyperparameter optimization")
 
                 # We update the tuner
                 self._tuner.update_tuner(study_name=f"{self.evaluation_name}_{k}",
@@ -201,7 +203,6 @@ class Evaluator:
                 best_hps, hps_importance = self._tuner.tune()
 
                 # We save the hyperparameters
-                print(f"\nHyperparameter tuning done - K = {k}\n")
                 recorder.record_hyperparameters(best_hps)
 
                 # We save the hyperparameters importance
@@ -213,7 +214,7 @@ class Evaluator:
             model = self.model_constructor(**best_hps, **self._fixed_params)
 
             # We train our model with the best hps
-            print(f"\nFinal model training - K = {k}\n")
+            print("Training")
             subset.update_masks(train_mask=train_mask, valid_mask=valid_mask, test_mask=test_mask)
             model.fit(dataset=subset)
 
@@ -225,6 +226,7 @@ class Evaluator:
             model.save_model(path=saving_path)
 
             # We get the predictions and save the evaluation metric scores
+            print("Test")
             self._record_scores_and_pred(model, recorder, subset)
 
             # We save all the data collected in one file
@@ -249,6 +251,7 @@ class Evaluator:
             plot_hps_importance_chart(evaluation_name=self.evaluation_name,
                                       recordings_path=Paths.EXPERIMENTS_RECORDS)
         # We shutdown ray
+        print("\nEvaluation of model done!\n")
         ray.shutdown()
 
     def _create_objective(self,

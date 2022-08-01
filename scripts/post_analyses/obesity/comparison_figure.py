@@ -6,7 +6,7 @@ Author: Nicolas Raymond
 Description: This file is used to create figures that compare
              obesity models on the holdout set
 
-Date of last modification: 2022/07/12
+Date of last modification: 2022/08/01
 """
 
 import matplotlib.pyplot as plt
@@ -43,9 +43,9 @@ if __name__ == '__main__':
     children_df = df.loc[df[AGE] < 18]
 
     plt.axhline(y=35, linestyle='--', color='grey', lw=0.8)
-    plt.text(-1, 35.5, 'Women cutoff', fontdict={'size': 6})
+    plt.text(-1, 35.5, 'Women cut-off', fontdict={'size': 6})
     plt.axhline(y=25, linestyle='--', color='grey', lw=0.8)
-    plt.text(-1, 25.5, 'Men cutoff', fontdict={'size': 6})
+    plt.text(-1, 25.5, 'Men cut-off', fontdict={'size': 6})
     plt.plot(df.index, df['target'], 'x', color='grey', label='Targets')
     plt.plot(men_df.index, men_df['enetB'], 'd', label='Lin. Reg. (w/o SNPs) (men)', color='#1f77b4')
     plt.plot(women_df.index, women_df['enetB'], 'o', label='Lin. Reg. (w/o SNPs) (women)', color='#1f77b4')

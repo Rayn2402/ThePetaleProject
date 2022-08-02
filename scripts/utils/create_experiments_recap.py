@@ -9,10 +9,15 @@ Description: File responsible of creating the experiment recap: an html page whi
 Date of last modification: 2021/11/23
 """
 import argparse
-import os
 import json
+import sys
+from os import listdir
+from os.path import dirname, exists, isdir, join, realpath
 
+# Imports specific to project
+sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
 from src.evaluation.tuning import Tuner
+from src.recording.recording import Recorder
 from src.utils.visualization import EPOCHS_PROGRESSION_FIG
 
 
@@ -27,7 +32,8 @@ def argument_parser():
     parser.add_argument('-p', '--path', type=str,
                         help='Path of the experiment folder')
 
-    parser.add_argument('-fn', '--filename', type=str, help='Name of the html file containing the recap')
+    parser.add_argument('-fn', '--filename', type=str,
+                        help='Name of the html file containing the recap')
 
     arguments = parser.parse_args()
 
@@ -53,8 +59,8 @@ def create_experiments_recap(path: str,
     Returns: None
     """
 
-    if not os.path.exists(path):
-        raise ValueError("Recordings Folder not found")
+    if not exists(path):
+        raise ValueError("Recordings folder not found")
 
     # We define the style of our webpage with css
     style = """<style>
@@ -236,8 +242,8 @@ x   }
     """
 
     # We get the the folders of each evaluation
-    evaluations = os.listdir(os.path.join(path))
-    evaluations = [folder for folder in evaluations if os.path.isdir(os.path.join(path,folder))]
+    evaluations = listdir(join(path))
+    evaluations = [folder for folder in evaluations if isdir(join(path, folder))]
     evaluations.sort()
     board = ""
     evaluation_sections = ""
@@ -246,32 +252,32 @@ x   }
         board += f"""<div class="subtitle center {"subtitle-active" if i==0 else None}">{evaluation}</div>"""
 
         # We get the folders of all the splits
-        splits = os.listdir(os.path.join(path, evaluation))
-        splits = [folder for folder in splits if os.path.isdir(os.path.join(path, evaluation, folder))]
+        splits = listdir(join(path, evaluation))
+        splits = [folder for folder in splits if isdir(join(path, evaluation, folder))]
         splits.sort(key=lambda x: int(x.split("_")[1]))
 
         split_board = f"""<div class="split center {"split-active" if i==0 else None}">General</div>"""
 
         # We open the json file containing the general information of an evaluation
-        with open(os.path.join(path, evaluation, "summary.json"), "r") as read_file:
+        with open(join(path, evaluation, Recorder.SUMMARY_FILE), "r") as read_file:
             general_data = json.load(read_file)
 
         main_metrics = ""
-        for key in general_data["test_metrics"].keys():
+        for key in general_data[Recorder.TEST_METRICS].keys():
             main_metrics += f"""
                     <div class="metric-section col center" style="text-align:center">
                         <div class="label">
                             {key}
                         </div>
                         <div class="info">
-                            {general_data["test_metrics"][key]["info"]}
+                            {general_data[Recorder.TEST_METRICS][key]["info"]}
                         </div>
                     x</div>
                 """
 
             main_image = f"""
-                    <img src={os.path.join(path, evaluation,"hyperparameters_importance_recap.png")} >
-                """ if os.path.exists(os.path.join(path, evaluation, "hyperparameters_importance_recap.png")) else ""
+                    <img src={join(evaluation,Tuner.HPS_IMPORTANCE_FIG)} >
+                """ if exists(join(path, evaluation, Tuner.HPS_IMPORTANCE_FIG)) else ""
 
         # We add the general section
         mains = f"""<div class="main {"hidden" if i != 0 else None}" id="{evaluation}General">
@@ -288,23 +294,23 @@ x   }
             split_board += f"""<div class="split center">{split}</div>"""
 
             # We open the json file containing information of a split
-            with open(os.path.join(path, evaluation, split, "records.json"), "r") as read_file:
+            with open(join(path, evaluation, split, Recorder.RECORDS_FILE), "r") as read_file:
                 data = json.load(read_file)
 
                 data_train_info = f"""<div class="intro-section row center">
                             <div class="intro-label">Train set:</div>
-                            <div class="intro-info">{data["data_info"]["train_set"]}</div>
-                        </div>""" if "train_set" in data["data_info"].keys() else ""
+                            <div class="intro-info">{data[Recorder.DATA_INFO]["train_set"]}</div>
+                        </div>""" if "train_set" in data[Recorder.DATA_INFO].keys() else ""
 
                 data_test_info = f"""<div class="intro-section row center">
                             <div class="intro-label">Test set:</div>
-                            <div class="intro-info">{data["data_info"]["test_set"]}</div>
-                        </div>""" if "test_set" in data["data_info"].keys() else ""
+                            <div class="intro-info">{data[Recorder.DATA_INFO]["test_set"]}</div>
+                        </div>""" if "test_set" in data[Recorder.DATA_INFO].keys() else ""
 
                 data_valid_info = f"""<div class="intro-section row center">
                             <div class="intro-label">Valid set:</div>
-                            <div class="intro-info">{data["data_info"]["valid_set"]}</div>
-                        </div>""" if "valid_set" in data["data_info"].keys() else ""
+                            <div class="intro-info">{data[Recorder.DATA_INFO]["valid_set"]}</div>
+                        </div>""" if "valid_set" in data[Recorder.DATA_INFO].keys() else ""
             # We add the intro section
             intro = f"""
                     <div class="intro row bottom-space">
@@ -314,7 +320,7 @@ x   }
                         </div>
                         <div class="intro-section row center">
                             <div class="intro-label">Split index :</div>
-                            <div class="intro-info">{split}</div>
+                            <div class="intro-info">{split.split('_')[1]}</div>
                         </div>
                     </div>
                     <div class="intro row bottom-space">
@@ -326,12 +332,12 @@ x   }
 
             # We add the hyperparameters section
             hyperparams_section = ""
-            if "hyperparameters" in data.keys():
-                for key in data["hyperparameters"].keys():
+            if Recorder.HYPERPARAMETERS in data.keys():
+                for key in data[Recorder.HYPERPARAMETERS].keys():
                     hyperparams_section += f"""
                         <div class="hyperparam-section center">
                             <div class="label">{key}</div>
-                            <div class="info">{data["hyperparameters"][key]}</div>
+                            <div class="info">{data[Recorder.HYPERPARAMETERS][key]}</div>
                         </div>
                     """
 
@@ -341,18 +347,18 @@ x   }
                         </div>
                     </div>"""
             else:
-                hyperparams_section=""
+                hyperparams_section = ""
 
             # We add the metrics section
             metric_section = ""
-            for key in data["test_metrics"].keys():
+            for key in data[Recorder.TEST_METRICS].keys():
                 metric_section += f"""
                     <div class="metric-section col center">
                         <div class="label">
                             {key}
                         </div>
                         <div class="info">
-                            {data["test_metrics"][key]}
+                            {data[Recorder.TEST_METRICS][key]}
                         </div>
                     </div>
                 """
@@ -365,42 +371,40 @@ x   }
             # We add the hyperparameters importance section
             hyperparameters_importance_section = f"""
                         <div class="row center bottom-space">
-                            <img width="1200" src="{os.path.join(path, evaluation, split, Tuner.HPS_IMPORTANCE_FIG)}" 
+                            <img width="1200" src="{join(evaluation, split, Tuner.HPS_IMPORTANCE_FIG)}" 
                             >
                         </div>
-                    """ if os.path.exists(os.path.join(path, evaluation, split, Tuner.HPS_IMPORTANCE_FIG)) else ""
+                    """ if exists(join(path, evaluation, split, Tuner.HPS_IMPORTANCE_FIG)) else ""
 
             # We add the parallel  coordinate graph
             parallel_coordinate_section = f"""
                         <div class="row center bottom-space">
-                            <img src="{os.path.join(path, evaluation, split, Tuner.PARALLEL_COORD_FIG)}" 
+                            <img src="{join(evaluation, split, Tuner.PARALLEL_COORD_FIG)}" 
                             >
                         </div>
-                    """ if os.path.exists(os.path.join(path, evaluation, split, Tuner.PARALLEL_COORD_FIG)) else ""
+                    """ if exists(join(path, evaluation, split, Tuner.PARALLEL_COORD_FIG)) else ""
 
             # We add the optimization history graph
             optimization_history_section = f"""
                         <div class="row center bottom-space">
-                            <img src="{os.path.join(path, evaluation, split, Tuner.OPTIMIZATION_HIST_FIG)}" 
+                            <img src="{join(evaluation, split, Tuner.OPTIMIZATION_HIST_FIG)}" 
                             ></img>
                         </div>
-                """ if os.path.exists(os.path.join(path, evaluation, split, Tuner.OPTIMIZATION_HIST_FIG)) else ""
+                """ if exists(join(path, evaluation, split, Tuner.OPTIMIZATION_HIST_FIG)) else ""
 
             # We add the predictions section
             predictions_section = f"""
                         <div class="row center bottom-space">
-                            <img width="1200" src="{os.path.join(path, evaluation, split, f"comparison_{evaluation}.png")}">
+                            <img width="1200" src="{join(evaluation, split, Recorder.PREDS_N_TARGETS)}">
                         </div>
-            """ if os.path.exists(os.path.join(path, evaluation, split, f"comparison_{evaluation}.png")) else ""
+            """ if exists(join(path, evaluation, split, Recorder.PREDS_N_TARGETS)) else ""
 
             # We add the section visualizing the progression of the loss over the epochs
             loss_over_epochs_section = f"""
                                     <div class="row center bottom-space">
-                                        <img width="800" src="{os.path.join(path, evaluation,
-                                                                            split, EPOCHS_PROGRESSION_FIG)}">
+                                        <img width="800" src="{join(evaluation, split, EPOCHS_PROGRESSION_FIG)}">
                                     </div>
-                        """ if os.path.exists(
-                os.path.join(path, evaluation, split, EPOCHS_PROGRESSION_FIG)) else ""
+                        """ if exists(join(path, evaluation, split, EPOCHS_PROGRESSION_FIG)) else ""
 
             # We arrange the different sections
             section = f"""<div class="main hidden" id="{evaluation}{split}">
@@ -451,7 +455,7 @@ x   }
     """
     
     # We save the html file
-    file = open(f"{filename}.html", "w")
+    file = open(join(path, f"{filename}.html"), "w")
     file.write(body)
     file.close()
 

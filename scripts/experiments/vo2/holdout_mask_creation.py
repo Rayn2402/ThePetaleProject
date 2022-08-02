@@ -6,12 +6,13 @@ Author: Nicolas Raymond
 Description: Contains the procedure used to create the holdout mask
              for the VO2 peak prediction final test
 
-Date of last modification: 2022/07/07
+Date of last modification: 2022/08/02
 """
 
 import sys
 from json import dump
 from os.path import dirname, join, realpath
+from pandas import read_csv
 
 if __name__ == '__main__':
 
@@ -22,9 +23,19 @@ if __name__ == '__main__':
     from src.data.processing.datasets import MaskType, PetaleDataset
     from src.data.extraction.constants import VO2_HOLDOUT_SET, DUMMY
     from src.data.extraction.data_management import PetaleDataManager
+    from src.utils.argparsers import data_source_parser
 
-    # Initialization of the manager
-    m = PetaleDataManager()
+    # Arguments parsing
+    args = data_source_parser()
+
+    # Initialization of the manager and setting of the holdout size
+    if not args.from_csv:
+        m = PetaleDataManager()
+        holdout_size = m.get_table(VO2_HOLDOUT_SET).shape[0]
+
+    else:
+        m = None
+        holdout_size = read_csv(Paths.VO2_HOLDOUT_SET_CSV).shape[0]
 
     # Learning set extraction
     df, _, cont_cols, cat_cols = get_VO2_data(data_manager=m,
@@ -43,7 +54,6 @@ if __name__ == '__main__':
     mask = sampler()
 
     # Mask modification
-    holdout_size = m.get_table(VO2_HOLDOUT_SET).shape[0]
     mask[0][MaskType.TRAIN] += mask[0][MaskType.TEST]
     mask[0][MaskType.TEST] = list(range(learning_size, learning_size + holdout_size))
 

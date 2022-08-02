@@ -6,7 +6,7 @@ Authors: Nicolas Raymond
 
 Description: This file is used to define the Recorder class
 
-Date of last modification : 2022/03/30
+Date of last modification : 2022/08/02
 """
 
 import json
@@ -43,6 +43,7 @@ class Recorder:
     METRICS: str = "metrics"
     NAME: str = "name"
     PREDICTION: str = "prediction"
+    PREDS_N_TARGETS = "predictions_and_targets.png"
     RECORDS_FILE: str = "records.json"
     RESULTS: str = "results"
     S_FEATURE_IMPORTANCE_CHART: str = "scaled_feature_imp_recap.png"
@@ -542,5 +543,5 @@ def compare_prediction_recordings(evaluations: List[str],
 
     # We save the plot
     plt.savefig(os.path.join(recording_path, evaluations[0], f"Split_{split_index}",
-                             f"comparison_{'_'.join(evaluations)}.png"))
+                             Recorder.PREDS_N_TARGETS))
     plt.close()

@@ -151,7 +151,7 @@ if __name__ == '__main__':
         evaluator = Evaluator(model_constructor=PetaleXGBR,
                               dataset=dataset,
                               masks=masks_without_val,
-                              evaluation_name=f"XGB_{eval_id}",
+                              evaluation_name=f"XGBoost_{eval_id}",
                               hps={},
                               n_trials=0,
                               evaluation_metrics=evaluation_metrics,

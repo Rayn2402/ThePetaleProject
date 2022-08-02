@@ -58,7 +58,7 @@ if __name__ == '__main__':
     mask[0][MaskType.TEST] = list(range(learning_size, learning_size + holdout_size))
 
     # Mask saving
-    with open(join(Paths.MASKS, "warmup_holdout_mask.json"), "w") as file:
+    with open(join(Paths.MASKS, "vo2_holdout_mask.json"), "w") as file:
         dump(mask, file, indent=True)
 
 

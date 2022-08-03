@@ -351,7 +351,8 @@ class TorchCustomModel(Module, ABC):
 
             # We calculate valid score and apply early stopping if needed
             if self._execute_valid_step(valid_data, early_stopper):
-                self.print_early_stopping_message(epoch, patience, early_stopper.best_val_score)
+                if self._verbose:
+                    self.print_early_stopping_message(epoch, patience, early_stopper.best_val_score)
                 break
 
         if early_stopper is not None:

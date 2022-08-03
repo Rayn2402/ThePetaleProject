@@ -12,6 +12,7 @@ Date of last modification : 2021/10/29
 import ray
 
 from copy import deepcopy
+from inspect import getfullargspec
 from optuna import create_study
 from optuna.importance import get_param_importances, FanovaImportanceEvaluator
 from optuna.logging import FATAL, set_verbosity
@@ -211,7 +212,10 @@ class Objective:
             dts.update_masks(train_mask=train_idx, valid_mask=valid_idx, test_mask=test_idx)
 
             # We build a model using hps and fixed params (PetaleRegressor, PetaleClassifier or PetaleEncoder)
-            model = self._model_constructor(**hps, **self._fixed_params)
+            if 'verbose' in getfullargspec(self._model_constructor).args:
+                model = self._model_constructor(**hps, **self._fixed_params, verbose=False)
+            else:
+                model = self._model_constructor(**hps, **self._fixed_params)
 
             # We train the model
             model.fit(dts)

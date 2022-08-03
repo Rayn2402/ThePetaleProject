@@ -371,7 +371,7 @@ x   }
             # We add the hyperparameters importance section
             hyperparameters_importance_section = f"""
                         <div class="row center bottom-space">
-                            <img width="1200" src="{join(evaluation, split, Tuner.HPS_IMPORTANCE_FIG)}" 
+                            <img src="{join(evaluation, split, Tuner.HPS_IMPORTANCE_FIG)}" 
                             >
                         </div>
                     """ if exists(join(path, evaluation, split, Tuner.HPS_IMPORTANCE_FIG)) else ""

@@ -18,7 +18,7 @@ from src.data.extraction.constants import DUMMY
 from src.utils.metrics import AbsoluteError, Direction, ConcordanceIndex, Pearson,\
     RootMeanSquaredError, Sensitivity, Specificity
 from subprocess import check_call
-from webbrowser import open
+from webbrowser import open_new_tab
 
 environ['MKL_THREADING_LAYER'] = 'GNU'
 
@@ -149,7 +149,7 @@ def summarize_experiments(result_directory: str, final_results: bool = False) ->
                      '-p', new_directory, '-fn', 'recap'])
 
     # We open the html file
-    open(join(new_directory, 'recap.html'))
+    open_new_tab(join(new_directory, 'recap.html'))
 
     # We return the path of the csv
     return join(Paths.CSV_FILES, f'{csv_name}.csv')

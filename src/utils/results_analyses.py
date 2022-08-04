@@ -12,7 +12,7 @@ from json import dump, load
 from numpy import mean, std
 from os import listdir
 from os.path import join, isdir
-from pandas import DataFrame, merge
+from pandas import DataFrame, merge, read_csv
 from settings.paths import Paths
 from src.data.extraction.constants import *
 from src.data.extraction.data_management import PetaleDataManager
@@ -66,6 +66,7 @@ def extract_predictions(paths: List[str],
 def get_classification_metrics(data_manager: Optional[PetaleDataManager],
                                target_table: Optional[str],
                                target_column: str,
+                               conditional_columns: Optional[List[str]],
                                experiments_path: str,
                                class_generator_function: Callable
                                ) -> None:
@@ -78,6 +79,7 @@ def get_classification_metrics(data_manager: Optional[PetaleDataManager],
                       If no manager is provided, target_column will be computed
         target_table: name of the sql table containing the ground truth
         target_column: name of the column containing targets in the target table
+        conditional_columns: columns (other than the predictions) on which the classification depends
         experiments_path: path where the experiment directories are stored
         class_generator_function: function allowing classes to be generated from the
                                   real valued predictions
@@ -112,20 +114,32 @@ def get_classification_metrics(data_manager: Optional[PetaleDataManager],
             # We save the predictions in a dataframe
             pred_df = DataFrame(data=pred)
 
-            # We add the classification prediction
-            pred_df = class_generator_function(df=pred_df, input_column=REG_PRED, new_column=CLASS_PRED)
+            # We modify the format of conditional columns variables if needed
+            conditional_columns = conditional_columns if conditional_columns is not None else []
 
             if data_manager is not None:
 
-                # We load the obesity ground truth table
-                gt_df = data_manager.get_table(target_table)
+                # We load the obesity ground truth table containing also conditional columns
+                df = data_manager.get_table(target_table, [PARTICIPANT, *conditional_columns, target_column])
 
                 # We concatenate the dataframes
-                pred_df = merge(pred_df, gt_df, on=[PARTICIPANT], how=INNER)
+                pred_df = merge(pred_df, df, on=[PARTICIPANT], how=INNER)
 
             else:
+
+                if len(conditional_columns) != 0:
+
+                    # We load the csv with the conditional column needed to generate the ground truth class
+                    df = read_csv(join(Paths.DATA, f"{target_table}.csv"), usecols=[PARTICIPANT, *conditional_columns])
+
+                    # We concatenate the dataframes
+                    pred_df = merge(pred_df, df, on=[PARTICIPANT], how=INNER)
+
                 # We calculate the ground truth column
                 pred_df = class_generator_function(df=pred_df, input_column=Recorder.TARGET, new_column=target_column)
+
+            # We add the classification prediction
+            pred_df = class_generator_function(df=pred_df, input_column=REG_PRED, new_column=CLASS_PRED)
 
             # We calculate the metrics
             for s1, s2 in [(Recorder.TRAIN_RESULTS, Recorder.TRAIN_METRICS),

@@ -71,9 +71,16 @@ if __name__ == '__main__':
     args = argument_parser()
 
     # Calculation of metrics
-    m = PetaleDataManager() if args.load_target else None
+    if args.load_target:
+        m = PetaleDataManager()
+        target_table = OBESITY_TARGET
+    else:
+        m = None
+        target_table = 'obesity_dataset'
+
     get_classification_metrics(data_manager=m,
-                               target_table=OBESITY_TARGET,
+                               target_table=target_table,
                                target_column=OBESITY,
                                experiments_path=args.path,
+                               conditional_columns=[SEX, AGE],
                                class_generator_function=get_class_labels)

@@ -17,11 +17,10 @@ from settings.paths import Paths
 from src.data.extraction.constants import *
 from src.data.extraction.data_management import PetaleDataManager
 from src.recording.recording import get_evaluation_recap, Recorder
-from src.utils.argparsers import path_parser
 from src.utils.metrics import Sensitivity, Specificity, BinaryBalancedAccuracy
 from time import time
 from torch import tensor
-from typing import Any, Callable, Dict, List, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 APRIORI_KEYS = ['Support', 'Lift', 'Confidence']
 SECTION = 'Section'
@@ -64,8 +63,10 @@ def extract_predictions(paths: List[str],
     df.to_csv(path_or_buf=f"{filename}.csv")
 
 
-def get_classification_metrics(target_table_name: str,
-                               target_column_name: str,
+def get_classification_metrics(data_manager: Optional[PetaleDataManager],
+                               target_table: Optional[str],
+                               target_column: str,
+                               experiments_path: str,
                                class_generator_function: Callable
                                ) -> None:
     """
@@ -73,30 +74,25 @@ def get_classification_metrics(target_table_name: str,
     according to the criterion in the class generator function
 
     Args:
-        target_table_name: name of the sql table containing the ground truth
-        target_column_name: name of the column containing targets in the target_table
+        data_manager: data manager to interact with sql database.
+                      If no manager is provided, target_column will be computed
+        target_table: name of the sql table containing the ground truth
+        target_column: name of the column containing targets in the target table
+        experiments_path: path where the experiment directories are stored
         class_generator_function: function allowing classes to be generated from the
                                   real valued predictions
 
     Returns: None
     """
-    # We extract the path leading to predictions
-    args = path_parser()
-    path = args.path
-
     # We initialize the metrics
     metrics = [Sensitivity(), Specificity(), BinaryBalancedAccuracy()]
 
-    # We load the obesity ground truth table
-    m = PetaleDataManager()
-    gt_df = m.get_table(target_table_name)
-
     # We extract the names of all the folders in the directory
-    experiment_folders = get_directories(path)
+    experiment_folders = get_directories(experiments_path)
 
     # For each experiment folder, we look at the split folders
     for f1 in experiment_folders:
-        sub_path = join(path, f1)
+        sub_path = join(experiments_path, f1)
         for f2 in get_directories(sub_path):
 
             # We load the data from the records
@@ -104,23 +100,32 @@ def get_classification_metrics(target_table_name: str,
                 data = load(read_file)
 
             # We save the predictions of every participant
-            pred = {PARTICIPANT: [], SECTION: [], REG_PRED: [], CLASS_PRED: []}
+            pred = {PARTICIPANT: [], SECTION: [], REG_PRED: [], Recorder.TARGET: []}
             for section in [Recorder.TRAIN_RESULTS, Recorder.TEST_RESULTS, Recorder.VALID_RESULTS]:
                 if data.get(section) is not None:
                     for k in data[section].keys():
                         pred[PARTICIPANT].append(k)
                         pred[SECTION].append(section)
                         pred[REG_PRED].append(float(data[section][k][Recorder.PREDICTION]))
-                        pred[CLASS_PRED].append(0)
+                        pred[Recorder.TARGET].append(float(data[section][k][Recorder.TARGET]))
 
             # We save the predictions in a dataframe
             pred_df = DataFrame(data=pred)
 
-            # We concatenate the dataframes
-            pred_df = merge(pred_df, gt_df, on=[PARTICIPANT], how=INNER)
+            # We add the classification prediction
+            pred_df = class_generator_function(df=pred_df, input_column=REG_PRED, new_column=CLASS_PRED)
 
-            # We calculate the class targets predicted
-            pred_df = class_generator_function(df=pred_df)
+            if data_manager is not None:
+
+                # We load the obesity ground truth table
+                gt_df = data_manager.get_table(target_table)
+
+                # We concatenate the dataframes
+                pred_df = merge(pred_df, gt_df, on=[PARTICIPANT], how=INNER)
+
+            else:
+                # We calculate the ground truth column
+                pred_df = class_generator_function(df=pred_df, input_column=Recorder.TARGET, new_column=target_column)
 
             # We calculate the metrics
             for s1, s2 in [(Recorder.TRAIN_RESULTS, Recorder.TRAIN_METRICS),
@@ -130,7 +135,7 @@ def get_classification_metrics(target_table_name: str,
                 if data.get(s2) is not None:
                     subset_df = pred_df.loc[pred_df[SECTION] == s1, :]
                     pred = tensor(subset_df[CLASS_PRED].to_numpy())
-                    target = tensor(subset_df[target_column_name].astype('float').to_numpy()).long()
+                    target = tensor(subset_df[target_column].astype('float').to_numpy()).long()
 
                     for metric in metrics:
                         data[s2][metric.name] = metric(pred=pred, targets=target)

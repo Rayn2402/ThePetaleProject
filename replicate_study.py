@@ -67,6 +67,8 @@ def argument_parser():
                         help=f'Choice of the source of data (default = {ORIGINAL})')
     parser.add_argument('-t', '--task', type=str, default=VO2, choices=[VO2, OB],
                         help=f'Choice of prediction task (default = {VO2})')
+    parser.add_argument('-gen', '--genomics', default=False, action='store_true',
+                        help='If true, includes the genomic variables (SNPs) in the experiments')
 
     # Argument parsing
     arguments = parser.parse_args()
@@ -98,12 +100,13 @@ def extract_best_graph_degree(df: DataFrame, model: str) -> int:
     return int(best[3:])
 
 
-def summarize_experiments(result_directory: str, final_results: bool = False) -> str:
+def summarize_experiments(result_directory: str, task: str, final_results: bool = False) -> str:
     """
     Moves and renames experiment folders, then summarize results into csv and html files
 
     Args:
         result_directory: path of the directory created to store the results of the experiments
+        task: name of the current task ('obesity' or 'vo2')
         final_results: if true, folders will be moved and renamed considering that they contain results
                        from the final tests on the holdout set
 
@@ -121,6 +124,7 @@ def summarize_experiments(result_directory: str, final_results: bool = False) ->
     else:
         new_directory = join(result_directory, '_'.join(keywords[2:] + ['holdout']))
 
+    print(keywords)
     makedirs(new_directory)
 
     # We move the folders into the right directory
@@ -138,6 +142,11 @@ def summarize_experiments(result_directory: str, final_results: bool = False) ->
             new_name = '_'.join([keys_list[0], keys_list[2]])
 
         rename(join(new_directory, f), join(new_directory, new_name))
+
+    # We compute classification metrics if we are working with the obesity prediction
+    if task == OB:
+        check_call(args=['python', join(Paths.POST_ANALYSES_SCRIPTS, task, 'get_classification_metrics.py'),
+                         '-p', new_directory])
 
     # We create a csv summarizing scores of all models
     csv_name = '_'.join(keywords) if not final_results else '_'.join([keywords[0]] + keywords[2:] + ['holdout'])
@@ -187,13 +196,19 @@ if __name__ == '__main__':
         eval_mask_path = Paths.OBESITY_MASK
         holdout_mask_path = Paths.OBESITY_HOLDOUT_MASK
         feature_args = ['-b', '-f']
+        metrics += [Sensitivity(), Specificity()]
+        if args.genomics:
+            model_args.append('-ggae')
+            feature_args += ['-gen']
     else:
         learning_set_path = Paths.VO2_LEARNING_SET_CSV
         holdout_set_path = Paths.VO2_HOLDOUT_SET_CSV
         eval_mask_path = Paths.VO2_MASK
         holdout_mask_path = Paths.VO2_HOLDOUT_MASK
         feature_args = ['-b', '-s', '-r_w']
-        #metrics += [Sensitivity(), Specificity()]
+        if args.genomics:
+            model_args.append('-ggae')
+            feature_args += ['-gen', '-f']
 
     to_minimize = [metric.name for metric in metrics if metric.direction == Direction.MINIMIZE]
     to_maximize = [metric.name for metric in metrics if metric.direction == Direction.MAXIMIZE]
@@ -222,6 +237,9 @@ if __name__ == '__main__':
     # If we want to use the generated data
     add_delimiter("1. Data preparation")
     if args.data == GENERATED:
+
+        # We add an argument necessary for the experiments
+        feature_args.append('-from_csv')
 
         # We create the learning set and the holdout set if they don't already exists
         if not exists(learning_set_path) or not exists(holdout_set_path):
@@ -254,7 +272,7 @@ if __name__ == '__main__':
     add_delimiter("2.2 Results compilation - Manual")
 
     # We compile and summarize results
-    manual_scores_csv = summarize_experiments(result_folder)
+    manual_scores_csv = summarize_experiments(result_folder, args.task)
 
     # We extract the best observed degrees associated to each GNNs
     df = read_csv(manual_scores_csv, index_col=0)
@@ -278,7 +296,7 @@ if __name__ == '__main__':
     add_delimiter("3.2 Results compilation - Automated")
 
     # We compile and summarize results
-    automated_scores_csv = summarize_experiments(result_folder)
+    automated_scores_csv = summarize_experiments(result_folder, args.task)
 
     """
     4. Selection of the best model
@@ -316,7 +334,7 @@ if __name__ == '__main__':
     add_delimiter("5.3 Final results compilation")
 
     # We compile and summarize results
-    _ = summarize_experiments(result_folder, final_results=True)
+    _ = summarize_experiments(result_folder, args.task, final_results=True)
 
 
 

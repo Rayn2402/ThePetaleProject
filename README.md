@@ -4,6 +4,7 @@ This repository stores the code implemented to generate the results of our paper
 
 ## Installation
 To have all the requirements needed, you must do the following actions:
+- Create a virtual environment with Python 3.7
 - Clone this repo : ```git clone https://github.com/Rayn2402/ThePetaleProject.git```
 - Install dgl (https://www.dgl.ai/pages/start.html)
 - Install torch (https://pytorch.org/get-started/locally/)
@@ -23,7 +24,7 @@ you can write the following lines in your terminal. Records of the experiments a
 - Obesity (w/ SNPs):  
 ```python replicate_study.py -d generated -t obesity -gen```
   
-It is also possible to run a faster version of the experiments by adding ```-fast``` arguments.
+It is also possible to run a faster version of any experiment by adding the ```-fast``` argument.
 For example:  
 ```python replicate_study.py -d generated -t vo2 -fast```
 
@@ -33,7 +34,7 @@ are displayed in below.
 - Computer model:  Alienware Aurora Ryzen Edition
 - Linux version: Ubuntu 20.04.4 LTS
 - CPU: AMD Ryzen 9 3900X 12-Core Processor
-- GPU: <u>None were used for our experiments</u>
+- GPU: None were used for our experiments
 
 | Experiment         | Time |
 |--------------------|------|
@@ -70,8 +71,8 @@ are displayed in below.
 │   │   ├── abstract_models       <- Abstract classes from which new models have to inherit
 │   │   ├── blocks                <- Neural network architecture blocks
 │   │   └── wrappers              <- Abstract classes used to wrap existing models
-│   ├── recording                       <- Recording module
-│   └── utils                           <- Modules associated to visualization, metrics, hps and more
+│   ├── recording                 <- Recording module
+│   └── utils                     <- Modules associated to visualization, metrics, hps and more
 ├── replicate_study.py            <- Main script used to replicate the experiments of the study
 └── README.md
 ```

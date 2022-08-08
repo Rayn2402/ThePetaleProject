@@ -3,6 +3,5 @@ postgresql_tables
 .idea
 *.pyc
 *.html
-*.pt
 *.json
 *.csv

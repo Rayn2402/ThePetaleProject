@@ -5,7 +5,7 @@ Author: Nicolas Raymond
 
 Description: Script used to replicate the entire study
 
-Date of last modification: 2022/07/28
+Date of last modification: 2022/08/08
 """
 
 from argparse import ArgumentParser
@@ -69,6 +69,11 @@ def argument_parser():
                         help=f'Choice of prediction task (default = {VO2})')
     parser.add_argument('-gen', '--genomics', default=False, action='store_true',
                         help='If true, includes the genomic variables (SNPs) in the experiments')
+    parser.add_argument('-fast', '--fast', default=False, action='store_true',
+                        help='If true, runs a fast version of the experiment with only 2'
+                             ' data splits for the model evaluations and 2 inner data splits'
+                             'the evaluation of each set of hyperparameter values (instead of'
+                             ' 10)')
 
     # Argument parsing
     arguments = parser.parse_args()
@@ -76,7 +81,8 @@ def argument_parser():
     return arguments
 
 
-def extract_best_graph_degree(df: DataFrame, model: str) -> int:
+def extract_best_graph_degree(df: DataFrame,
+                              model: str) -> int:
     """
     Finds the the degree of graph that allowed to achieve the best score
 
@@ -100,7 +106,10 @@ def extract_best_graph_degree(df: DataFrame, model: str) -> int:
     return int(best[3:])
 
 
-def summarize_experiments(result_directory: str, task: str, final_results: bool = False) -> str:
+def summarize_experiments(result_directory: str,
+                          task: str,
+                          final_results: bool = False,
+                          fast: bool = False) -> str:
     """
     Moves and renames experiment folders, then summarize results into csv and html files
 
@@ -109,22 +118,25 @@ def summarize_experiments(result_directory: str, task: str, final_results: bool 
         task: name of the current task ('obesity' or 'vo2')
         final_results: if true, folders will be moved and renamed considering that they contain results
                        from the final tests on the holdout set
+        fast: if true, files saved will mention that results were obtained with the fast version of the experiment
 
     Returns: path of the csv created
     """
     # We extract the folders name associated to the completed experiments
-    experiment_folders = [f for f in listdir(Paths.EXPERIMENTS_RECORDS) if f not in ['.gitkeep', OB, VO2]]
+    experiment_folders = [f for f in listdir(Paths.EXPERIMENTS_RECORDS) if f not in ['.gitkeep', OB, VO2,
+                                                                                     f'{OB}_fast', f'{VO2}_fast']]
 
     # We extract the keywords that help identify the experiment
     keywords = experiment_folders[0].split('_')[1:]
+    if fast:
+        keywords.insert(1, 'fast')
 
-    # We create of a new subfolder associated to the task and specific keywords
+    # We create of a new subfolder associated to the task and the specific keywords
     if not final_results:
         new_directory = join(result_directory, '_'.join(keywords[1:]))
     else:
         new_directory = join(result_directory, '_'.join(keywords[2:] + ['holdout']))
 
-    print(keywords)
     makedirs(new_directory)
 
     # We move the folders into the right directory
@@ -210,11 +222,15 @@ if __name__ == '__main__':
             model_args.append('-ggae')
             feature_args += ['-gen', '-f']
 
+    if args.fast:
+        feature_args += ['-k', '2', '-l', '2']
+
     to_minimize = [metric.name for metric in metrics if metric.direction == Direction.MINIMIZE]
     to_maximize = [metric.name for metric in metrics if metric.direction == Direction.MAXIMIZE]
 
     # We create of a new directory specific to the task
     result_folder = join(Paths.EXPERIMENTS_RECORDS, args.task)
+    result_folder = result_folder + "_fast" if args.fast else result_folder
     makedirs(result_folder, exist_ok=True)
 
     # Creation of a function specific to the metrics associated with the task
@@ -264,7 +280,7 @@ if __name__ == '__main__':
     manual_script_path = join(Paths.EXPERIMENTS_SCRIPTS, args.task, 'manual_evaluations.py')
     graph_args = ['-deg'] + [str(2 * i) for i in range(5, 6)] + ['-cond_col']
     check_call(args=['python', manual_script_path, *feature_args, *model_args, '-gcn', '-gat', *graph_args,
-                     '-k', '2', '-l', '2'])
+])
 
     """
     2.2 Results compilation
@@ -272,7 +288,7 @@ if __name__ == '__main__':
     add_delimiter("2.2 Results compilation - Manual")
 
     # We compile and summarize results
-    manual_scores_csv = summarize_experiments(result_folder, args.task)
+    manual_scores_csv = summarize_experiments(result_folder, args.task, fast=args.fast)
 
     # We extract the best observed degrees associated to each GNNs
     df = read_csv(manual_scores_csv, index_col=0)
@@ -284,11 +300,9 @@ if __name__ == '__main__':
     """
     add_delimiter("3.1 Evaluation of models - Automated")
     automated_script_path = join(Paths.EXPERIMENTS_SCRIPTS, args.task, 'automated_evaluations.py')
-    check_call(args=['python', automated_script_path, *feature_args, *model_args, '-k', '2', '-l', '2'])
-    check_call(args=['python', automated_script_path, *feature_args, '-gat', '-deg', str(gat_k), '-cond_col',
-                     '-k', '2', '-l', '2'])
-    check_call(args=['python', automated_script_path, *feature_args, '-gcn', '-deg', str(gcn_k), '-cond_col',
-                     '-k', '2', '-l', '2'])
+    check_call(args=['python', automated_script_path, *feature_args, *model_args])
+    check_call(args=['python', automated_script_path, *feature_args, '-gat', '-deg', str(gat_k), '-cond_col'])
+    check_call(args=['python', automated_script_path, *feature_args, '-gcn', '-deg', str(gcn_k), '-cond_col'])
 
     """
     3.2 Results compilation - Automated
@@ -296,7 +310,7 @@ if __name__ == '__main__':
     add_delimiter("3.2 Results compilation - Automated")
 
     # We compile and summarize results
-    automated_scores_csv = summarize_experiments(result_folder, args.task)
+    automated_scores_csv = summarize_experiments(result_folder, args.task, fast=args.fast)
 
     """
     4. Selection of the best model
@@ -322,10 +336,10 @@ if __name__ == '__main__':
     5. Final tests
     """
     add_delimiter("5.1 Final test - Manual")
-    check_call(args=['python', manual_script_path, *feature_args, *arguments, '-k', '2', '-l', '2'])
+    check_call(args=['python', manual_script_path, *feature_args, *arguments])
 
     add_delimiter("5.2 Final test - Automated")
-    check_call(args=['python', automated_script_path, *feature_args, *arguments, '-k', '2', '-l', '2'])
+    check_call(args=['python', automated_script_path, *feature_args, *arguments])
 
     """
     6. Final results compilation
@@ -334,7 +348,7 @@ if __name__ == '__main__':
     add_delimiter("5.3 Final results compilation")
 
     # We compile and summarize results
-    _ = summarize_experiments(result_folder, args.task, final_results=True)
+    _ = summarize_experiments(result_folder, args.task, final_results=True, fast=args.fast)
 
 
 

@@ -200,7 +200,7 @@ if __name__ == '__main__':
     """
     # We set main variables according to the prediction task
     metrics = [AbsoluteError(), ConcordanceIndex(), Pearson(), RootMeanSquaredError()]
-    model_args = ['-xg']
+    model_args = ['-rf', '-xg', '-enet', '-mlp']
 
     if args.task == OB:
         learning_set_path = Paths.OBESITY_LEARNING_SET_CSV

@@ -3,9 +3,9 @@ Filename: visualization.py
 
 Authors: Nicolas Raymond
 
-Description: This file contains all function related to data visualization
+Description: This file contains all functions related to data visualization
 
-Date of last modification : 2021/03/29
+Date of last modification : 2022/07/13
 """
 
 from matplotlib import pyplot as plt
@@ -14,7 +14,6 @@ from numpy import sum as npsum
 from os.path import join
 from sklearn.manifold import TSNE
 from src.data.processing.datasets import MaskType
-from src.recording.constants import MEAN, STD
 from torch import tensor
 from typing import Dict, List, Optional
 
@@ -120,8 +119,8 @@ def visualize_epoch_progression(train_history: List[tensor],
 
     Args:
         train_history: list of (E,) tensors where E is the number of epochs
-        valid_history: list of (E,) tensor
-        progression_type: list of string specifying the type of the progressions to visualize
+        valid_history: list of (E,) tensors where E is the number of epochs
+        progression_type: list of strings specifying the types of the progressions to visualize
         path: path where to save the plots
 
     Returns: None
@@ -177,10 +176,10 @@ def visualize_importance(data: Dict[str, Dict[str, float]],
 
     # We collect the data of each hyperparameter importance
     for key in data.keys():
-        mean = data[key][MEAN]
+        mean = data[key]["mean"]
         if mean >= 0.01:
             means.append(mean)
-            stds.append(data[key][STD])
+            stds.append(data[key]["std"])
             labels.append(key)
 
     # We sort the list according to their values
@@ -221,9 +220,9 @@ def visualize_scaled_importance(data: Dict[str, Dict[str, float]],
 
     # We collect the data of each hyperparameter importance
     for key in data.keys():
-        mean = data[key][MEAN]
+        mean = data[key]["mean"]
         if mean >= 0.01:
-            scaled_imp.append(mean/(data[key][STD] + 0.001))
+            scaled_imp.append(mean/(data[key]["std"] + 0.001))
             labels.append(key)
 
     # We sort the list according values

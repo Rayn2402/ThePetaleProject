@@ -11,7 +11,7 @@ from dgl import DGLGraph
 from dgl.nn.pytorch import GraphConv
 from src.data.processing.gnn_datasets import PetaleKGNNDataset
 from src.models.abstract_models.gnn_base_models import GNN
-from src.utils.score_metrics import BinaryCrossEntropy, Metric, RootMeanSquaredError
+from src.utils.metrics import BinaryCrossEntropy, Metric, RootMeanSquaredError
 from torch import cat, no_grad, sigmoid, tensor
 from torch.nn import BCEWithLogitsLoss, MSELoss
 from typing import Callable, List, Optional

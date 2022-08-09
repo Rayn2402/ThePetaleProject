@@ -6,7 +6,7 @@ Authors: Nicolas Raymond
 
 Description: This file is used to define the Recorder class
 
-Date of last modification : 2022/03/30
+Date of last modification : 2022/08/02
 """
 
 import json
@@ -18,7 +18,6 @@ from collections import Counter
 from numpy import max, mean, median, min, std
 from src.data.processing.datasets import MaskType
 from src.models.abstract_models.base_models import PetaleBinaryClassifier, PetaleRegressor
-from src.recording.constants import *
 from src.utils.visualization import visualize_importance, visualize_scaled_importance
 from torch import tensor, save, zeros
 from torch.nn import Module
@@ -29,13 +28,43 @@ class Recorder:
     """
     Recorder objects used save results of the experiments
     """
+    # Constants
+    ACCURACY: str = "accuracy"
+    COEFFICIENT: str = "coefficient"
+    DATA_INFO: str = "data_info"
+    FEATURE_IMPORTANCE: str = "feature_importance"
+    FEATURE_IMPORTANCE_CHART: str = 'feature_imp_recap.png'
+    HPS_IMPORTANCE_CHART: str = 'hps_imp_recap.png'
+    HYPERPARAMETERS: str = "hyperparameters"
+    HYPERPARAMETER_IMPORTANCE: str = "hyperparameter_importance"
+    INDEX: str = "index"
+    INFO: str = "info"
+    MEAN: str = "mean"
+    METRICS: str = "metrics"
+    NAME: str = "name"
+    PREDICTION: str = "prediction"
+    PREDS_N_TARGETS = "predictions_and_targets.png"
+    RECORDS_FILE: str = "records.json"
+    RESULTS: str = "results"
+    S_FEATURE_IMPORTANCE_CHART: str = "scaled_feature_imp_recap.png"
+    STD: str = "std"
+    SUMMARY_FILE: str = "summary.json"
+    TARGET: str = "target"
+    TEST_METRICS: str = "test_metrics"
+    TEST_RESULTS: str = "test_results"
+    TRAIN_METRICS: str = "train_metrics"
+    TRAIN_RESULTS: str = "train_results"
+    VALID_METRICS: str = "valid_metrics"
+    VALID_RESULTS: str = "valid_results"
+    VALUES: str = "values"
+
     # Dictionary that associate the mask types to their proper section
-    MASK_TO_SECTION = {METRICS: {MaskType.TRAIN: TRAIN_METRICS,
-                                 MaskType.TEST: TEST_METRICS,
-                                 MaskType.VALID: VALID_METRICS},
-                       RESULTS: {MaskType.TRAIN: TRAIN_RESULTS,
-                                 MaskType.TEST: TEST_RESULTS,
-                                 MaskType.VALID: VALID_RESULTS}
+    MASK_TO_SECTION: dict = {METRICS: {MaskType.TRAIN: TRAIN_METRICS,
+                                       MaskType.TEST: TEST_METRICS,
+                                       MaskType.VALID: VALID_METRICS},
+                             RESULTS: {MaskType.TRAIN: TRAIN_RESULTS,
+                                       MaskType.TEST: TEST_RESULTS,
+                                       MaskType.VALID: VALID_RESULTS}
                        }
 
     def __init__(self,
@@ -52,19 +81,19 @@ class Recorder:
         """
 
         # We store the protected attributes
-        self._data = {NAME: evaluation_name,
-                      INDEX: index,
-                      DATA_INFO: {},
-                      HYPERPARAMETERS: {},
-                      HYPERPARAMETER_IMPORTANCE: {},
-                      FEATURE_IMPORTANCE: {},
-                      TRAIN_METRICS: {},
-                      TEST_METRICS: {},
-                      VALID_METRICS: {},
-                      COEFFICIENT: {},
-                      TRAIN_RESULTS: {},
-                      TEST_RESULTS: {},
-                      VALID_RESULTS: {}}
+        self._data = {self.NAME: evaluation_name,
+                      self.INDEX: index,
+                      self.DATA_INFO: {},
+                      self.HYPERPARAMETERS: {},
+                      self.HYPERPARAMETER_IMPORTANCE: {},
+                      self.FEATURE_IMPORTANCE: {},
+                      self.TRAIN_METRICS: {},
+                      self.TEST_METRICS: {},
+                      self.VALID_METRICS: {},
+                      self.COEFFICIENT: {},
+                      self.TRAIN_RESULTS: {},
+                      self.TEST_RESULTS: {},
+                      self.VALID_RESULTS: {}}
 
         self._path = os.path.join(recordings_path, evaluation_name, f"Split_{index}")
 
@@ -78,10 +107,10 @@ class Recorder:
         Returns: None
         """
         # We remove empty sections
-        self._data = {k: v for k, v in self._data.items() if (k in [NAME, INDEX] or len(v) != 0)}
+        self._data = {k: v for k, v in self._data.items() if (k in [self.NAME, self.INDEX] or len(v) != 0)}
 
         # We save all the data collected in a json file
-        filepath = os.path.join(self._path, RECORDS_FILE)
+        filepath = os.path.join(self._path, self.RECORDS_FILE)
         with open(filepath, "w") as file:
             json.dump(self._data, file, indent=True)
 
@@ -97,7 +126,7 @@ class Recorder:
 
         Returns: None
         """
-        self._data[COEFFICIENT][name] = value
+        self._data[self.COEFFICIENT][name] = value
 
     def record_data_info(self,
                          data_name: str,
@@ -113,7 +142,7 @@ class Recorder:
         Returns: None
 
         """
-        self._data[DATA_INFO][data_name] = data
+        self._data[self.DATA_INFO][data_name] = data
 
     def record_features_importance(self, feature_importance: Dict[str, float]) -> None:
         """
@@ -126,7 +155,7 @@ class Recorder:
         """
         # We save all the hyperparameters importance
         for key in feature_importance.keys():
-            self._data[FEATURE_IMPORTANCE][key] = round(feature_importance[key], 4)
+            self._data[self.FEATURE_IMPORTANCE][key] = round(feature_importance[key], 4)
 
     def record_hyperparameters(self, hyperparameters: Dict[str, Any]) -> None:
         """
@@ -139,7 +168,7 @@ class Recorder:
         """
         # We save all the hyperparameters
         for key in hyperparameters.keys():
-            self._data[HYPERPARAMETERS][key] = round(hyperparameters[key], 6) if \
+            self._data[self.HYPERPARAMETERS][key] = round(hyperparameters[key], 6) if \
                 isinstance(hyperparameters[key], float) else hyperparameters[key]
 
     def record_hyperparameters_importance(self, hyperparameter_importance: Dict[str, float]) -> None:
@@ -153,7 +182,7 @@ class Recorder:
         """
         # We save all the hyperparameters importance
         for key in hyperparameter_importance.keys():
-            self._data[HYPERPARAMETER_IMPORTANCE][key] = round(hyperparameter_importance[key], 4)
+            self._data[self.HYPERPARAMETER_IMPORTANCE][key] = round(hyperparameter_importance[key], 4)
 
     def record_model(self, model: Union[PetaleBinaryClassifier, PetaleRegressor]) -> None:
         """
@@ -188,7 +217,7 @@ class Recorder:
         Returns: None
         """
         # We find the proper section name
-        section = Recorder.MASK_TO_SECTION[METRICS][mask_type]
+        section = Recorder.MASK_TO_SECTION[self.METRICS][mask_type]
 
         # We save the score of the given metric
         self._data[section][metric] = round(score, 6)
@@ -210,20 +239,20 @@ class Recorder:
         Returns: None
         """
         # We find the proper section name
-        section = Recorder.MASK_TO_SECTION[RESULTS][mask_type]
+        section = Recorder.MASK_TO_SECTION[self.RESULTS][mask_type]
 
         # We save the predictions
         targets = targets if targets is not None else zeros(predictions.shape[0])
         if len(predictions.shape) == 0:
             for j, id_ in enumerate(ids):
                 self._data[section][str(id_)] = {
-                    PREDICTION: str(predictions[j].item()),
-                    TARGET: str(targets[j].item())}
+                    self.PREDICTION: str(predictions[j].item()),
+                    self.TARGET: str(targets[j].item())}
         else:
             for j, id_ in enumerate(ids):
                 self._data[section][str(id_)] = {
-                    PREDICTION: str(predictions[j].tolist()),
-                    TARGET: str(targets[j].item())}
+                    self.PREDICTION: str(predictions[j].tolist()),
+                    self.TARGET: str(targets[j].item())}
 
     def record_test_predictions(self,
                                 ids: List[str],
@@ -297,12 +326,12 @@ def get_evaluation_recap(evaluation_name: str,
 
     # Initialization of an empty dictionary to store the summary
     data = {
-        TRAIN_METRICS: {},
-        TEST_METRICS: {},
-        HYPERPARAMETER_IMPORTANCE: {},
-        FEATURE_IMPORTANCE: {},
-        HYPERPARAMETERS: {},
-        COEFFICIENT: {}
+        Recorder.TRAIN_METRICS: {},
+        Recorder.TEST_METRICS: {},
+        Recorder.HYPERPARAMETER_IMPORTANCE: {},
+        Recorder.FEATURE_IMPORTANCE: {},
+        Recorder.HYPERPARAMETERS: {},
+        Recorder.COEFFICIENT: {}
     }
 
     # Initialization of a list of key list that we can found within section of records dictionary
@@ -311,7 +340,7 @@ def get_evaluation_recap(evaluation_name: str,
     for folder in folders:
 
         # We open the json file containing the info of each split
-        with open(os.path.join(path, folder, RECORDS_FILE), "r") as read_file:
+        with open(os.path.join(path, folder, Recorder.RECORDS_FILE), "r") as read_file:
             split_data = json.load(read_file)
 
         # For each section and their respective key list
@@ -326,11 +355,11 @@ def get_evaluation_recap(evaluation_name: str,
 
                     # Initialization of each individual key section in the dictionary
                     for key in key_lists[section]:
-                        data[section][key] = {VALUES: [], INFO: ""}
+                        data[section][key] = {Recorder.VALUES: [], Recorder.INFO: ""}
 
                 # We add values to each key associated to the current section
                 for key in key_lists[section]:
-                    data[section][key][VALUES].append(split_data[section][key])
+                    data[section][key][Recorder.VALUES].append(split_data[section][key])
 
     # We remove empty sections
     data = {k: v for k, v in data.items() if len(v) != 0}
@@ -339,7 +368,7 @@ def get_evaluation_recap(evaluation_name: str,
     set_info(data)
 
     # We save the json containing the summary of the records
-    with open(os.path.join(path, SUMMARY_FILE), "w") as file:
+    with open(os.path.join(path, Recorder.SUMMARY_FILE), "w") as file:
         json.dump(data, file, indent=True)
 
 
@@ -363,17 +392,17 @@ def set_info(data: Dict[str, Dict[str, Union[List[Union[str, float]], str]]]) ->
         for key in data[section].keys():
 
             # We extract the list of values
-            values = data[section][key][VALUES]
+            values = data[section][key][Recorder.VALUES]
 
             if not (isinstance(values[0], str) or values[0] is None):
                 mean_, std_ = round(mean(values), 4), round(std(values), 4)
                 med_, min_, max_ = round(median(values), 4), round(min(values), 4), round(max(values), 4)
-                data[section][key][INFO] = f"{mean_} +- {std_} [{med_}; {min_}-{max_}]"
-                data[section][key][MEAN] = mean_
-                data[section][key][STD] = std_
+                data[section][key][Recorder.INFO] = f"{mean_} +- {std_} [{med_}; {min_}-{max_}]"
+                data[section][key][Recorder.MEAN] = mean_
+                data[section][key][Recorder.STD] = std_
             else:
-                counts = Counter(data[section][key][VALUES])
-                data[section][key][INFO] = str(dict(counts))
+                counts = Counter(data[section][key][Recorder.VALUES])
+                data[section][key][Recorder.INFO] = str(dict(counts))
 
 
 def plot_hps_importance_chart(evaluation_name: str,
@@ -391,12 +420,12 @@ def plot_hps_importance_chart(evaluation_name: str,
     """
     # We get the content of the json file
     path = os.path.join(recordings_path, evaluation_name)
-    with open(os.path.join(path, SUMMARY_FILE), "r") as read_file:
-        data = json.load(read_file)[HYPERPARAMETER_IMPORTANCE]
+    with open(os.path.join(path, Recorder.SUMMARY_FILE), "r") as read_file:
+        data = json.load(read_file)[Recorder.HYPERPARAMETER_IMPORTANCE]
 
     # We create the bar plot
     visualize_importance(data=data, figure_title='HPs importance',
-                         filename=os.path.join(path, HPS_IMPORTANCE_CHART))
+                         filename=os.path.join(path, Recorder.HPS_IMPORTANCE_CHART))
 
 
 def plot_feature_importance_charts(evaluation_name: str,
@@ -414,14 +443,14 @@ def plot_feature_importance_charts(evaluation_name: str,
     """
     # We get the content of the json file
     path = os.path.join(recordings_path, evaluation_name)
-    with open(os.path.join(path, SUMMARY_FILE), "r") as read_file:
-        data = json.load(read_file)[FEATURE_IMPORTANCE]
+    with open(os.path.join(path, Recorder.SUMMARY_FILE), "r") as read_file:
+        data = json.load(read_file)[Recorder.FEATURE_IMPORTANCE]
 
     # We create the bar plots
     visualize_importance(data=data, figure_title='Features importance',
-                         filename=os.path.join(path, FEATURE_IMPORTANCE_CHART))
+                         filename=os.path.join(path, Recorder.FEATURE_IMPORTANCE_CHART))
     visualize_scaled_importance(data=data, figure_title='Scaled feature importance',
-                                filename=os.path.join(path, S_FEATURE_IMPORTANCE_CHART))
+                                filename=os.path.join(path, Recorder.S_FEATURE_IMPORTANCE_CHART))
 
 
 def compare_prediction_recordings(evaluations: List[str],
@@ -444,7 +473,7 @@ def compare_prediction_recordings(evaluations: List[str],
         raise ValueError("One or two evaluations must be specified")
 
     # We create the paths to recoding files
-    paths = [os.path.join(recording_path, e, f"Split_{split_index}", RECORDS_FILE) for e in evaluations]
+    paths = [os.path.join(recording_path, e, f"Split_{split_index}", Recorder.RECORDS_FILE) for e in evaluations]
 
     # We get the data from the recordings
     all_data = []  # List of dictionaries
@@ -456,17 +485,17 @@ def compare_prediction_recordings(evaluations: List[str],
 
     # We check if the two evaluations are made on the same patients
     comparison_possible = True
-    first_experiment_ids = list(all_data[0][TEST_RESULTS].keys())
+    first_experiment_ids = list(all_data[0][Recorder.TEST_RESULTS].keys())
 
     for i, data in enumerate(all_data[1:]):
 
         # We check the length of both predictions list
-        if len(data[TEST_RESULTS]) != len(all_data[0][TEST_RESULTS]):
+        if len(data[Recorder.TEST_RESULTS]) != len(all_data[0][Recorder.TEST_RESULTS]):
             comparison_possible = False
             break
 
         # We check ids in both list
-        for j, id_ in enumerate(data[TEST_RESULTS].keys()):
+        for j, id_ in enumerate(data[Recorder.TEST_RESULTS].keys()):
             if id_ != first_experiment_ids[j]:
                 comparison_possible = False
                 break
@@ -482,14 +511,14 @@ def compare_prediction_recordings(evaluations: List[str],
         # We add an empty list to store predictions
         all_predictions.append([])
 
-        for id_, item in data[TEST_RESULTS].items():
+        for id_, item in data[Recorder.TEST_RESULTS].items():
 
             # If we have not registered ids and targets yet
             if i == 0:
                 ids.append(id_)
-                targets.append(float(item[TARGET]))
+                targets.append(float(item[Recorder.TARGET]))
 
-            all_predictions[i].append(float(item[PREDICTION]))
+            all_predictions[i].append(float(item[Recorder.PREDICTION]))
 
     # We sort predictions and the ids based on their targets
     indexes = list(range(len(targets)))
@@ -514,5 +543,5 @@ def compare_prediction_recordings(evaluations: List[str],
 
     # We save the plot
     plt.savefig(os.path.join(recording_path, evaluations[0], f"Split_{split_index}",
-                             f"comparison_{'_'.join(evaluations)}.png"))
+                             Recorder.PREDS_N_TARGETS))
     plt.close()

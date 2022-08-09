@@ -6,13 +6,14 @@ Author: Nicolas Raymond
 Description: This file is used to define the wrappers for the
              GATClassifier and the GATRegressor
 
-Date of last modification: 2022/04/13
+Date of last modification: 2022/05/04
 """
 
 from src.models.abstract_models.gat_base_models import GATClassifier, GATRegressor
 from src.models.wrappers.torch_wrappers import TorchBinaryClassifierWrapper, TorchRegressorWrapper
 from src.utils.hyperparameters import HP, NumericalContinuousHP, NumericalIntHP
-from src.utils.score_metrics import RegressionMetric
+from src.utils.metrics import RegressionMetric
+from torch import tensor
 from typing import List, Optional
 
 
@@ -85,6 +86,10 @@ class PetaleBinaryGATC(TorchBinaryClassifierWrapper):
                                            valid_batch_size=None,
                                            patience=patience,
                                            max_epochs=max_epochs))
+
+    @property
+    def att_cache(self) -> tensor:
+        return self._model.att_cache
 
     @staticmethod
     def get_hps() -> List[HP]:
@@ -161,6 +166,14 @@ class PetaleGATR(TorchRegressorWrapper):
                                        'valid_batch_size': None,
                                        'patience': patience,
                                        'max_epochs': max_epochs})
+
+    @property
+    def att_cache(self) -> tensor:
+        return self._model.att_cache
+
+    @property
+    def emb_cache(self) -> tensor:
+        return self._model.emb_cache
 
     @staticmethod
     def get_hps() -> List[HP]:

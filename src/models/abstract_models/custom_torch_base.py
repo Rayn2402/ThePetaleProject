@@ -16,9 +16,9 @@ from dgl import DGLGraph
 from src.data.processing.datasets import MaskType, PetaleDataset
 from src.data.processing.gnn_datasets import PetaleKGNNDataset
 from src.models.blocks.mlp_blocks import EntityEmbeddingBlock
-from src.training.early_stopping import EarlyStopper
-from src.training.sam import SAM
-from src.utils.score_metrics import Metric
+from src.evaluation.early_stopping import EarlyStopper
+from src.evaluation.sam import SAM
+from src.utils.metrics import Metric
 from src.utils.visualization import visualize_epoch_progression
 from torch import tensor
 from torch.nn import BatchNorm1d, Module
@@ -261,8 +261,10 @@ class TorchCustomModel(Module, ABC):
 
         Returns: None
         """
-        print(f"\nEarly stopping occurred at epoch {epoch} with best_epoch = {epoch - patience}"
-              f" and best_val_{self._eval_metric.name} = {round(best_validation_score, 4)}")
+        print('-'*3)
+        print(f"Early stopping occurred at epoch {epoch} with best_epoch = {epoch - patience}")
+        print(f"Best validation {self._eval_metric.name} = {round(best_validation_score, 4)}")
+        print('-'*3)
 
     def _update_evaluations_progress(self,
                                      loss: float,
@@ -349,7 +351,8 @@ class TorchCustomModel(Module, ABC):
 
             # We calculate valid score and apply early stopping if needed
             if self._execute_valid_step(valid_data, early_stopper):
-                self.print_early_stopping_message(epoch, patience, early_stopper.best_val_score)
+                if self._verbose:
+                    self.print_early_stopping_message(epoch, patience, early_stopper.best_val_score)
                 break
 
         if early_stopper is not None:

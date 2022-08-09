@@ -6,15 +6,15 @@ Author: Nicolas Raymond
 Description: Defines the modules in charge of encoding
              and decoding the genomic signature associated to patients.
 
-Date of last modification: 2022/04/05
+Date of last modification: 2022/05/02
 """
 
 from src.models.abstract_models.encoder import Encoder
 from src.models.blocks.mlp_blocks import BaseBlock, EntityEmbeddingBlock
-from torch import bmm, einsum, exp, normal, sigmoid, tensor, zeros
+from torch import bmm, einsum, exp, max, normal, sigmoid, tensor, zeros
 from torch.nn import AvgPool1d, BatchNorm1d, Conv1d, Dropout, Linear, Module, Parameter
 from torch.nn.functional import leaky_relu, relu
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 
 class GeneEncoder(Encoder, Module):
@@ -360,6 +360,13 @@ class GeneGraphAttentionEncoder(GeneEncoder):
         self._dropout1 = Dropout(p=dropout)
         self._dropout2 = Dropout(p=dropout)
 
+        # Attention cache
+        self._att_dict = {}
+
+    @property
+    def att_dict(self) -> Dict[str, tensor]:
+        return self._att_dict
+
     def forward(self, x: tensor) -> tensor:
         """
         Executes the following actions on each element in the batch:
@@ -380,13 +387,14 @@ class GeneGraphAttentionEncoder(GeneEncoder):
         h = self._compute_genes_emb(x)  # (N, D) -> (N, NB_GENES, HIDDEN_SIZE)
 
         # Gene attention layer
-        h = relu(self._gene_attention_layer(h))  # (N, NB_GENES, HIDDEN_SIZE) -> (N, NB_CHROM, HIDDEN_SIZE)
+        # (N, NB_GENES, HIDDEN_SIZE) -> (N, NB_CHROM, HIDDEN_SIZE)
+        h = relu(self._gene_attention_layer(h, self.att_dict))
 
         # Second dropout layer
         h = self._dropout1(h)
 
         # Chromosome attention layer
-        h = relu(self._chrom_attention_layer(h))  # (N, NB_CHROM, HIDDEN_SIZE) -> (N, HIDDEN_SIZE)
+        h = relu(self._chrom_attention_layer(h, self.att_dict))  # (N, NB_CHROM, HIDDEN_SIZE) -> (N, HIDDEN_SIZE)
 
         # Third dropout layer
         h = self._dropout2(h)
@@ -418,7 +426,7 @@ class GeneAttentionLayer(Module):
         self.__attention = Parameter(normal(mean=zeros(chrom_composition_mat.shape[0], hidden_size),
                                             std=1.0).requires_grad_(True))
 
-    def forward(self, x: tensor) -> tensor:
+    def forward(self, x: tensor, att_dict: Optional[dict]) -> tensor:
         """
         Does the following step for each element in the batch:
         - Calculates attention coefficients for each gene in each chromosome
@@ -427,6 +435,7 @@ class GeneAttentionLayer(Module):
 
         Args:
             x: (N, NB_GENES, HIDDEN_SIZE) tensor
+            att_dict: dict in which attention scores will be stored
 
         Returns: (N, NB_CHROM, HIDDEN_SIZE) tensor with chromosome embeddings
         """
@@ -443,7 +452,11 @@ class GeneAttentionLayer(Module):
         att = einsum('ij,kijm->kim', self.__attention, h)
         mask = att.clone().detach().bool().byte()
         att = exp(leaky_relu(att, negative_slope=0.2))*mask
-        att = att/att.sum(dim=2, keepdim=True)
+        att = att/max(att.sum(dim=2, keepdim=True), tensor(1e-10).float())
+
+        # We save the attention scores
+        if att_dict is not None:
+            att_dict['gene_att'] = att
 
         # We calculate the chromosome embeddings
         # (N, NB_CHROM, NB_GENES)(N, NB_GENES, HIDDEN_SIZE) -> (N, NB_CHROM, HIDDEN_SIZE)
@@ -467,7 +480,7 @@ class ChromAttentionLayer(Module):
         super().__init__()
         self.__attention = Parameter(normal(mean=zeros(1, hidden_size), std=1.0).requires_grad_(True))
 
-    def forward(self, x: tensor) -> tensor:
+    def forward(self, x: tensor, att_dict: Optional[dict]) -> tensor:
         """
         Does the following step for each element in the batch:
         - Calculates attention coefficient for each chromosome
@@ -476,6 +489,7 @@ class ChromAttentionLayer(Module):
 
         Args:
             x: (N, NB_CHROM, HIDDEN_SIZE) tensor
+            att_dict: dict in which attention scores will be stored
 
         Returns: (N, HIDDEN_SIZE) tensor with weighted average chromosome embeddings
         """
@@ -485,6 +499,10 @@ class ChromAttentionLayer(Module):
         att = einsum('ij,njk->nk', self.__attention, x.transpose(1, 2))
         att = exp(leaky_relu(att, negative_slope=0.2))
         att = att/att.sum(dim=1, keepdim=True)
+
+        # We save the attention scores
+        if att_dict is not None:
+            att_dict['chrom_att'] = att
 
         # We calculate the weighted average of the chromosome embeddings
         # (N, 1, NB_CHROM)(N, NB_CHROM, HIDDEN_SIZE) -> (N, HIDDEN_SIZE)

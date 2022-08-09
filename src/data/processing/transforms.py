@@ -3,7 +3,7 @@ Filename: transforms.py
 
 Author: Nicolas Raymond
 
-Description: Defines all transformations related to preprocessing treatment
+Description: Defines all transformations related to preprocessing.
 
 Date of last modification : 2021/11/01
 """

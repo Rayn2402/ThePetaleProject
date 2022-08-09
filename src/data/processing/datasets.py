@@ -528,14 +528,25 @@ class PetaleDataset(Dataset):
 
         return gene_idx_groups
 
-    def get_imputed_dataframe(self) -> DataFrame:
+    def get_imputed_dataframe(self,
+                              include_ids_column: bool = False,
+                              include_target_column: bool = False) -> DataFrame:
         """
         Returns a copy of the original pandas dataframe where missing values
         are imputed according to the training mask.
 
         Returns: pandas dataframe
         """
-        imputed_df = self.original_data.drop([PARTICIPANT, self.target], axis=1).copy()
+        # We extract a copy of the original dataframe
+        imputed_df = self.original_data.copy()
+
+        # We remove unnecessary columns
+        if not include_ids_column:
+            imputed_df.drop([PARTICIPANT], axis=1, inplace=True)
+        if not include_target_column:
+            imputed_df.drop([self._target], axis=1, inplace=True)
+
+        # We include the imputed data
         if self._cont_cols is not None:
             imputed_df[self._cont_cols] = array(self._x_cont)
         if self._cat_cols is not None:

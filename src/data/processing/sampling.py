@@ -7,32 +7,22 @@ Description: Defines the RandomStratifiedSampler class used to separate test set
              valid sets from train sets. Also contains few functions used to extract
              specific datasets
 
-Date of last modification : 2022/04/13
+Date of last modification : 2022/07/27
 """
 
 from itertools import product
 from json import load
 from numpy import array
 from numpy.random import seed
-from pandas import DataFrame, merge, qcut
+from pandas import DataFrame, qcut, read_csv
 from sklearn.model_selection import train_test_split
+from settings.paths import Paths
 from src.data.extraction.constants import *
 from src.data.extraction.data_management import PetaleDataManager
 from src.data.processing.datasets import MaskType, PetaleDataset
 from torch import tensor
 from tqdm import tqdm
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
-
-
-class GeneChoice:
-    """
-    Stores the constant related to gene choices
-    """
-    ALL: str = "all"
-    SIGNIFICANT: str = "significant"
-
-    def __iter__(self):
-        return iter([self.ALL, self.SIGNIFICANT])
 
 
 class RandomStratifiedSampler:
@@ -364,128 +354,6 @@ def push_valid_to_train(masks: Dict[int, Dict[str, Union[List[int], Dict[str, Li
             masks[k][INNER][in_k][MaskType.VALID] = None
 
 
-def get_learning_one_data(data_manager: PetaleDataManager,
-                          genes: Optional[str],
-                          baselines: bool = True,
-                          classification: bool = False,
-                          dummy: bool = False,
-                          holdout: bool = False) -> Tuple[DataFrame, str, List[str], List[str]]:
-    """
-    Extracts dataframe needed to proceed to "learning one" experiments and turn it into a dataset
-
-    Args:
-        data_manager: data manager to communicate with the database
-        genes: One choice among ("None", "significant", "all")
-        baselines: if True, baselines variables are included
-        classification: if True, targets returned are obesity classes instead of Total Body Fat values
-        dummy: if True, includes dummy variable combining sex and Total Body Fat quantile
-        holdout: if True, holdout data is included at the bottom of the dataframe
-
-    Returns: dataframe, target, continuous columns, categorical columns
-    """
-
-    # We initialize empty lists for continuous and categorical columns
-    cont_cols, cat_cols = [], []
-
-    # We add baselines
-    if baselines:
-        cont_cols += [AGE_AT_DIAGNOSIS, DT, DOX, METHO, CORTICO]
-        cat_cols += [SEX, RADIOTHERAPY_DOSE, DEX, BIRTH_AGE]
-
-    # We check for genes
-    if genes is not None:
-
-        if genes not in GeneChoice():
-            raise ValueError(f"genes value must be in {GeneChoice()}")
-
-        if genes == GeneChoice.SIGNIFICANT:
-            cat_cols += SIGNIFICANT_CHROM_POS_OBESITY
-
-        else:
-            cat_cols += ALL_CHROM_POS_OBESITY
-
-    if dummy:
-        cat_cols.append(WARMUP_DUMMY)
-
-    # We extract the dataframe
-    target = TOTAL_BODY_FAT
-    df = data_manager.get_table(LEARNING_1, columns=[PARTICIPANT, TOTAL_BODY_FAT] + cont_cols + cat_cols)
-
-    if holdout:
-        h_df = data_manager.get_table(LEARNING_1_HOLDOUT,
-                                      columns=[PARTICIPANT, TOTAL_BODY_FAT] + cont_cols + cat_cols)
-        df.append(h_df, ignore_index=True)
-
-    if classification:
-        target = OBESITY
-        ob_df = data_manager.get_table(OBESITY_TARGET, columns=[PARTICIPANT, OBESITY])
-        df = merge(df, ob_df, on=[PARTICIPANT], how=INNER)
-        df.drop([TOTAL_BODY_FAT], axis=1, inplace=True)
-
-    # We replace wrong categorical values
-    if baselines:
-        df.loc[(df[DEX] != "0"), [DEX]] = ">0"
-    else:
-        cont_cols = None
-
-    if genes is not None:
-        df.replace("0/2", "0/1", inplace=True)
-        df.replace("1/2", "1/1", inplace=True)
-
-    return df, target, cont_cols, cat_cols
-
-
-def get_learning_two_data(data_manager: PetaleDataManager,
-                          genes: Optional[str],
-                          baselines: bool = True,
-                          **kwargs) -> Tuple[DataFrame, str, List[str], List[str]]:
-    """
-    Extracts dataframe needed to proceed to "learning two" experiments and turn it into a dataset
-
-    Args:
-        data_manager: data manager to communicate with the database
-        genes: One choice among ("None", "significant", "all")
-        baselines: if True, baselines variables are included
-
-    Returns: dataframe, target, continuous columns, categorical columns
-    """
-
-    # We initialize empty lists for continuous and categorical columns
-    cont_cols, cat_cols = [], []
-
-    # We add baselines
-    if baselines:
-        cont_cols += [AGE_AT_DIAGNOSIS, DT, DOX, METHO, CORTICO]
-        cat_cols += [SEX, RADIOTHERAPY_DOSE, DEX, BIRTH_AGE]
-
-    # We check for genes
-    if genes is not None:
-
-        if genes not in GeneChoice():
-            raise ValueError(f"genes value must be in {GeneChoice()}")
-
-        if genes == GeneChoice.SIGNIFICANT:
-            cat_cols += SIGNIFICANT_CHROM_POS_REF
-
-        else:
-            cat_cols += ALL_CHROM_POS_REF
-
-    # We extract the dataframe
-    df = data_manager.get_table(LEARNING_2, columns=[PARTICIPANT, EF] + cont_cols + cat_cols)
-
-    # We replace wrong categorical values
-    if baselines:
-        df.loc[(df[DEX] != "0"), [DEX]] = ">0"
-    else:
-        cont_cols = None
-
-    if genes is not None:
-        df.replace("0/2", "0/1", inplace=True)
-        df.replace("1/2", "1/1", inplace=True)
-
-    return df, EF, cont_cols, cat_cols
-
-
 def generate_multitask_labels(df: DataFrame,
                               target_columns: List[str]) -> Tuple[array, Dict[int, tuple]]:
     """
@@ -517,29 +385,106 @@ def generate_multitask_labels(df: DataFrame,
     return multitask_labels, labels_dict
 
 
-def get_warmup_data(data_manager: PetaleDataManager,
-                    baselines: bool = True,
-                    genes: Optional[str] = None,
-                    sex: bool = False,
-                    dummy: bool = False,
-                    holdout: bool = False) -> Tuple[DataFrame, str, Optional[List[str]], Optional[List[str]]]:
+def get_obesity_data(data_manager: Optional[PetaleDataManager] = None,
+                     genomics: bool = False,
+                     baselines: bool = True,
+                     dummy: bool = False,
+                     holdout: bool = False) -> Tuple[DataFrame, str, List[str], List[str]]:
     """
-    Extracts dataframe needed to proceed to warmup experiments
+    Extracts dataframe needed to proceed to obesity prediction experiments
 
     Args:
-        data_manager: data manager to communicate with the database
-        baselines: true if we want to include variables from original equation
-        genes: One choice among ("None", "significant", "all")
-        sex: true if we want to include sex variable
-        dummy: true if we want to include dummy variable combining sex and VO2 quantile
-        holdout: if true, holdout data is included at the bottom of the dataframe
+        data_manager: data manager to communicate with the database.
+                      If the parameter is left to None, data will be taken
+                      from the csv files.
+
+        genomics: if True, genomic variables are included
+        baselines: if True, baselines variables are included
+        dummy: if True, includes dummy variable combining sex and Total Body Fat category
+        holdout: if True, holdout data is included at the bottom of the dataframe
 
     Returns: dataframe, target, continuous columns, categorical columns
     """
 
-    # We make sure few variables were selected
-    if not (baselines or genes or sex):
-        raise ValueError("At least baselines, genes or sex must be selected")
+    # We make sure that some variables were selected
+    if not (baselines or genomics):
+        raise ValueError("At least baselines or genomics must be selected")
+
+    # We initialize empty lists for continuous and categorical columns
+    cont_cols, cat_cols = [], []
+
+    # We add baselines
+    if baselines:
+        cont_cols += [AGE_AT_DIAGNOSIS, DT, DOX, EOT_BMI, METHO, CORTICO]
+        cat_cols += [SEX, RADIOTHERAPY_DOSE, DEX, BIRTH_AGE]
+
+    # We check for genomics
+    if genomics is not None:
+        cat_cols += OBESITY_SNPS
+
+    if dummy:
+        cat_cols.append(DUMMY)
+
+    all_columns = [PARTICIPANT, TOTAL_BODY_FAT] + cont_cols + cat_cols
+
+    if data_manager is not None:
+
+        # We extract the dataframe
+        df = data_manager.get_table(OBESITY_LEARNING_SET, columns=all_columns)
+
+        # We add the data from the holdout set
+        if holdout:
+            h_df = data_manager.get_table(OBESITY_HOLDOUT_SET, columns=all_columns)
+            df = df.append(h_df, ignore_index=True)
+
+    else:
+
+        # We extract the dataframe
+        df = read_csv(Paths.OBESITY_LEARNING_SET_CSV, usecols=all_columns)
+
+        # We add the data from the holdout set
+        if holdout:
+            h_df = read_csv(Paths.OBESITY_HOLDOUT_SET_CSV, usecols=all_columns)
+            df = df.append(h_df, ignore_index=True)
+
+    # We replace wrong categorical values
+    if baselines:
+        df.loc[(df[DEX] != "0"), [DEX]] = ">0"
+    else:
+        cont_cols = None
+
+    if genomics:
+        df.replace("0/2", "0/1", inplace=True)
+        df.replace("1/2", "1/1", inplace=True)
+
+    return df, TOTAL_BODY_FAT, cont_cols, cat_cols
+
+
+def get_VO2_data(data_manager: Optional[PetaleDataManager] = None,
+                 genomics: bool = False,
+                 baselines: bool = True,
+                 sex: bool = False,
+                 dummy: bool = False,
+                 holdout: bool = False) -> Tuple[DataFrame, str, Optional[List[str]], Optional[List[str]]]:
+    """
+    Extracts dataframe needed to proceed to VO2 peak prediction experiments
+
+    Args:
+        data_manager: data manager to communicate with the database.
+                      If the parameter is left to None, data will be taken
+                      from the csv files.
+        genomics: if True, genomic variables are included
+        baselines: if True, variables from the original equation are included
+        sex: if True, sex is included
+        dummy: if True, includes dummy variable combining sex and VO2 peak category
+        holdout: if True, holdout data is included at the bottom of the dataframe
+
+    Returns: dataframe, target, continuous columns, categorical columns
+    """
+
+    # We make sure that some variables were selected
+    if not (baselines or genomics or sex):
+        raise ValueError("At least baselines, genomics or sex must be selected")
 
     # We save participant and VO2 max column names
     all_columns = [PARTICIPANT, VO2R_MAX]
@@ -551,34 +496,37 @@ def get_warmup_data(data_manager: PetaleDataManager,
     else:
         cont_cols = None
 
-    # We check for genes
+    # We check for genomics
     cat_cols = []
-    if genes is not None:
-
-        if genes not in GeneChoice():
-            raise ValueError(f"Genes value must be in {list(GeneChoice())}")
-
-        if genes == GeneChoice.ALL:
-            cat_cols += ALL_CHROM_POS_WARMUP
-
-        elif genes == GeneChoice.SIGNIFICANT:
-            cat_cols += SIGNIFICANT_CHROM_POS_WARMUP
-
+    if genomics:
+        cat_cols += VO2_SNPS
     if sex:
         cat_cols.append(SEX)
     if dummy:
-        cat_cols.append(WARMUP_DUMMY)
+        cat_cols.append(DUMMY)
 
     all_columns += cat_cols
     cat_cols = cat_cols if len(cat_cols) != 0 else None
 
-    # We extract the dataframe
-    df = data_manager.get_table(LEARNING_0_GENES, columns=all_columns)
+    if data_manager is not None:
 
-    # We add the holdout data
-    if holdout:
-        h_df = data_manager.get_table(LEARNING_0_GENES_HOLDOUT, columns=all_columns)
-        df.append(h_df, ignore_index=True)
+        # We extract the dataframe
+        df = data_manager.get_table(VO2_LEARNING_SET, columns=all_columns)
+
+        # We add the holdout data
+        if holdout:
+            h_df = data_manager.get_table(VO2_HOLDOUT_SET, columns=all_columns)
+            df = df.append(h_df, ignore_index=True)
+
+    else:
+
+        # We extract the dataframe
+        df = read_csv(Paths.VO2_LEARNING_SET_CSV, usecols=all_columns)
+
+        # We add the data from the holdout set
+        if holdout:
+            h_df = read_csv(Paths.VO2_HOLDOUT_SET_CSV, usecols=all_columns)
+            df = df.append(h_df, ignore_index=True)
 
     return df, VO2R_MAX, cont_cols, cat_cols
 

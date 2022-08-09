@@ -4,4 +4,3 @@ postgresql_tables
 *.pyc
 *.html
 *.json
-*.csv

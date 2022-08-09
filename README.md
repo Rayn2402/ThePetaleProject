@@ -8,12 +8,14 @@ To have all the requirements needed, you must do the following actions:
 - Clone this repo: ```git clone https://github.com/Rayn2402/ThePetaleProject.git```
 - Move into the directory: ```cd ThePetaleProject/```
 - Create a virtual environment with conda: ```conda env create --file settings/env.yml```
+- Activate your new environment: ```conda activate petale```
   
 ## Test the implementation
-To run the same experiments as in our work, using randomly generated data in ```data``` directory,
-you can write the following lines in your terminal. Records of the experiments are stored in ```records/experiments``` directory as they are completed.
+You can write the following lines in a terminal to replicate our experiments using randomly generated data stored
+in the ```data``` directory. Records of the experiments will be stored in ```records/experiments``` directory
+as they will be completed.
 
-- VO2:  
+- VO2 peak:  
 ```python replicate_study.py -d generated -t vo2```
   
 - Obesity (w/o SNPs):  
@@ -22,12 +24,12 @@ you can write the following lines in your terminal. Records of the experiments a
 - Obesity (w/ SNPs):  
 ```python replicate_study.py -d generated -t obesity -gen```
   
-It is also possible to run a faster version of any experiment by adding the ```-fast``` argument.
+It is also possible to run a faster version of each experiment by adding the ```-fast``` argument.
 For example:  
 ```python replicate_study.py -d generated -t vo2 -fast```
 
 Specs of our computer and execution times recorded for each experiment
-are displayed in below.   
+are displayed below.   
 
 - Computer model:  Alienware Aurora Ryzen Edition
 - Linux version: Ubuntu 20.04.4 LTS
@@ -36,7 +38,7 @@ are displayed in below.
 
 | Experiment         | Time |
 |--------------------|------|
-| VO2                |  TO DO  |
+| VO2 peak           |  TO DO  |
 | Obesity (w/o SNPs) |    TO DO  |
 | Obesity (w/ SNPs)  |     TO DO |
 
@@ -54,7 +56,7 @@ are displayed in below.
 ├── records                       <- Directories in which results and summaries of data analyses are stored
 |
 ├── scripts
-│   ├── experiments               <- Scripts to run experiments
+│   ├── experiments               <- Scripts to run individual experiments
 │   ├── post_analyses             <- Scripts to run post analyses
 │   └── utils                     <- Scripts to execute different sub tasks
 |

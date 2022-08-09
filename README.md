@@ -4,12 +4,10 @@ This repository stores the code implemented to generate the results of our paper
 
 ## Installation
 To have all the requirements needed, you must do the following actions:
-- Create a virtual environment with Python 3.7
-- Clone this repo : ```git clone https://github.com/Rayn2402/ThePetaleProject.git```
-- Install dgl (https://www.dgl.ai/pages/start.html)
-- Install torch (https://pytorch.org/get-started/locally/)
-- Install the remaining packages by running the following command:  
-  `pip install -r settings/requirements.txt`
+- Open a terminal
+- Clone this repo: ```git clone https://github.com/Rayn2402/ThePetaleProject.git```
+- Move into the directory: ```cd ThePetaleProject/```
+- Create a virtual environment with conda: ```conda env create --file settings/env.yml```
   
 ## Test the implementation
 To run the same experiments as in our work, using randomly generated data in ```data``` directory,
@@ -38,9 +36,9 @@ are displayed in below.
 
 | Experiment         | Time |
 |--------------------|------|
-| VO2                |      |
-| Obesity (w/o SNPs) |      |
-| Obesity (w/ SNPs)  |      |
+| VO2                |  TO DO  |
+| Obesity (w/o SNPs) |    TO DO  |
+| Obesity (w/ SNPs)  |     TO DO |
 
 
 ## Project Tree

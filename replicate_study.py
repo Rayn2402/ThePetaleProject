@@ -18,6 +18,7 @@ from src.data.extraction.constants import DUMMY
 from src.utils.metrics import AbsoluteError, Direction, ConcordanceIndex, Pearson,\
     RootMeanSquaredError, Sensitivity, Specificity
 from subprocess import check_call
+from time import time
 from webbrowser import open_new_tab
 
 environ['MKL_THREADING_LAYER'] = 'GNU'
@@ -193,6 +194,8 @@ def reformat_scores_df(cell_content: str) -> float:
 
 if __name__ == '__main__':
 
+    # We start a timer for the whole experiment
+    experiment_start = time()
     args = argument_parser()
 
     """
@@ -278,7 +281,7 @@ if __name__ == '__main__':
     """
     add_delimiter("2.1 Evaluation of models - Manual")
     manual_script_path = join(Paths.EXPERIMENTS_SCRIPTS, args.task, 'manual_evaluations.py')
-    graph_args = ['-deg'] + [str(2 * i) for i in range(5, 6)] + ['-cond_col']
+    graph_args = ['-deg'] + [str(2 * i) for i in range(2, 6)] + ['-cond_col']
     check_call(args=['python', manual_script_path, *feature_args, *model_args, '-gcn', '-gat', *graph_args,
 ])
 
@@ -349,6 +352,8 @@ if __name__ == '__main__':
 
     # We compile and summarize results
     _ = summarize_experiments(result_folder, args.task, final_results=True, fast=args.fast)
+
+    print(f"Total time of the experiment (min): {(time() - experiment_start) / 60:.2f}")
 
 
 

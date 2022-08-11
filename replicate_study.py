@@ -177,19 +177,51 @@ def summarize_experiments(result_directory: str,
     return join(Paths.CSV_FILES, f'{csv_name}.csv')
 
 
-def reformat_scores_df(cell_content: str) -> float:
+def reformat_cell(cell_content: str, direction: str) -> float:
     """
-    Functions that reformat cell of a pandas dataframe for further analyses
-
+    Functions that reformat cell of a pandas dataframe that are associated
+    to a metric considering if it has to be minimized or maximized
     Args:
         cell_content: str contained in a dataframe cell
+        direction: "minimize" or "maximize"
 
     Returns: float
     """
     temp_list = cell_content.split(' +- ')
     mean = float(temp_list[0])
     std = float(temp_list[1])
-    return mean + (std * 0.01)
+
+    if direction == Direction.MINIMIZE:
+        return mean + (std * 0.01)
+
+    else:
+        return mean - (std * 0.01)
+
+
+def reformat_cell_for_min(cell_content: str) -> float:
+    """
+    Functions that reformat cell of a pandas dataframe that are associated
+    to a metric that has to be minimized
+
+    Args:
+        cell_content: str contained in a dataframe cell
+
+    Returns: float
+    """
+    return reformat_cell(cell_content, Direction.MINIMIZE)
+
+
+def reformat_cell_for_max(cell_content: str) -> float:
+    """
+    Functions that reformat cell of a pandas dataframe that are associated
+    to a metric that has to be maximized
+
+    Args:
+        cell_content: str contained in a dataframe cell
+
+    Returns: float
+    """
+    return reformat_cell(cell_content, Direction.MAXIMIZE)
 
 
 if __name__ == '__main__':
@@ -236,6 +268,22 @@ if __name__ == '__main__':
     result_folder = result_folder + "_fast" if args.fast else result_folder
     makedirs(result_folder, exist_ok=True)
 
+    def reformat_df(dataframe: DataFrame) -> DataFrame:
+        """
+        Reformat all the cells of a dataframe for further analyses
+
+        Args:
+            dataframe: dataframe with the scores of each model
+
+        Returns: dataframe
+        """
+        for metric in to_minimize:
+            dataframe[metric] = dataframe[metric].map(reformat_cell_for_min)
+        for metric in to_maximize:
+            dataframe[metric] = dataframe[metric].map(reformat_cell_for_max)
+
+        return dataframe
+
     # Creation of a function specific to the metrics associated with the task
     def find_best_model(dataframe: DataFrame) -> str:
         """
@@ -246,6 +294,7 @@ if __name__ == '__main__':
 
         Returns: name of the model
         """
+
         count_min = ((dataframe[to_minimize] == dataframe[to_minimize].min()).sum(axis=1))
         count_max = ((dataframe[to_maximize] == dataframe[to_maximize].max()).sum(axis=1))
         return (count_min + count_max).idxmax()
@@ -282,8 +331,7 @@ if __name__ == '__main__':
     add_delimiter("2.1 Evaluation of models - Manual")
     manual_script_path = join(Paths.EXPERIMENTS_SCRIPTS, args.task, 'manual_evaluations.py')
     graph_args = ['-deg'] + [str(2 * i) for i in range(2, 6)] + ['-cond_col']
-    check_call(args=['python', manual_script_path, *feature_args, *model_args, '-gcn', '-gat', *graph_args,
-])
+    check_call(args=['python', manual_script_path, *feature_args, *model_args, '-gcn', '-gat', *graph_args])
 
     """
     2.2 Results compilation
@@ -294,7 +342,7 @@ if __name__ == '__main__':
     manual_scores_csv = summarize_experiments(result_folder, args.task, fast=args.fast)
 
     # We extract the best observed degrees associated to each GNNs
-    df = read_csv(manual_scores_csv, index_col=0)
+    df = reformat_df(read_csv(manual_scores_csv, index_col=0))
     gat_k = extract_best_graph_degree(df, GAT)
     gcn_k = extract_best_graph_degree(df, GAT)
 
@@ -325,7 +373,7 @@ if __name__ == '__main__':
     df = df.append(read_csv(automated_scores_csv, index_col=0))
 
     # We find the best model for the final test
-    best_model = find_best_model(df)
+    best_model = find_best_model(reformat_df(df))
     print(f"Best model : {best_model}")
 
     # We infer the correct arguments for the final test

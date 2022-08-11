@@ -131,6 +131,7 @@ def get_classification_metrics(data_manager: Optional[PetaleDataManager],
 
                     # We load the csv with the conditional column needed to generate the ground truth class
                     df = read_csv(join(Paths.DATA, f"{target_table}.csv"), usecols=[PARTICIPANT, *conditional_columns])
+                    df[PARTICIPANT] = df[PARTICIPANT].astype(str)
 
                     # We concatenate the dataframes
                     pred_df = merge(pred_df, df, on=[PARTICIPANT], how=INNER)

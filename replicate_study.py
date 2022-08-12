@@ -36,7 +36,7 @@ GAT = 'GAT'
 GCN = 'GCN'
 
 # MODEL CONVERSION DICTIONARY
-MODEL_TO_ARGS = {'RandomForest': '-rf',
+MODEL_TO_ARGS = {'RF': '-rf',
                  'XGBoost': '-xg',
                  'enet': '-enet',
                  'MLP': '-mlp',

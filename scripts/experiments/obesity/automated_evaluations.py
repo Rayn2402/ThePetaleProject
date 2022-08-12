@@ -169,7 +169,7 @@ if __name__ == '__main__':
         # Update of the hyperparameters
         ss.MLP_HPS[MLPHP.RHO.name] = sam_search_space
         cat_sizes_sum = sum(dataset.cat_sizes) if dataset.cat_sizes is not None else 0
-        ss.MLP_HPS[MLPHP.N_UNIT.name] = int((len(cont_cols) + cat_sizes_sum) / 2)
+        ss.MLP_HPS[MLPHP.N_UNIT.name] = {Range.VALUE: int((len(cont_cols) + cat_sizes_sum) / 2)}
 
         # Creation of a function to update fixed params
         def update_fixed_params(dts):

@@ -357,7 +357,7 @@ if __name__ == '__main__':
                                              signature_size=args.signature_size)
 
         # Update of the hyperparameters
-        ss.ENET_GGE_HPS[ss.ENET_GGE_HPS.RHO.name] = sam_search_space
+        ss.ENET_GGE_HPS[MLPHP.RHO.name] = sam_search_space
 
         # Creation of a function to update fixed params
         def update_fixed_params(dts):

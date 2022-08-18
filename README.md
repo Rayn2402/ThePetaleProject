@@ -36,11 +36,11 @@ are displayed below.
 - CPU: AMD Ryzen 9 3900X 12-Core Processor
 - GPU: None were used for our experiments
 
-| Experiment         | Time |
-|--------------------|------|
-| VO2 peak           |  TO DO  |
-| Obesity (w/o SNPs) |    TO DO  |
-| Obesity (w/ SNPs)  |     TO DO |
+| Experiment         | Time (fast)    | Time (normal)    |
+|--------------------|----------------|------------------|
+| VO2                | 42 min         | 4 hours 11 min.  |
+| Obesity (w/o SNPs) | 1 hour 1 min.  | 7 hours 8 min.   |
+| Obesity (w/ SNPs)  | 2 hours 7 min. | 16 hours 39 min. |
 
 
 ## Project Tree

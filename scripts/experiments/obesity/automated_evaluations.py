@@ -222,7 +222,7 @@ if __name__ == '__main__':
 
         # Creation of a function to update fixed params
         def update_fixed_params(dts):
-            return {'max_epochs': args.epoch,
+            return {'max_epochs': args.epochs,
                     'patience': args.patience,
                     'num_cont_col': len(dts.cont_idx),
                     'cat_idx': dts.cat_idx,
@@ -357,8 +357,7 @@ if __name__ == '__main__':
                                              signature_size=args.signature_size)
 
         # Update of the hyperparameters
-        if args.enable_sam:
-            ss.ENET_GGE_HPS[MLPHP.RHO.name] = sam_search_space
+        ss.ENET_GGE_HPS[MLPHP.RHO.name] = sam_search_space
 
         # Creation of a function to update fixed params
         def update_fixed_params(dts):

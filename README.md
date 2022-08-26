@@ -15,7 +15,7 @@ To have all the requirements needed, you must do the following actions:
 - Activate your new environment: ```conda activate petale```
   
 ## Test the implementation
-You can write the following lines in a terminal to replicate our experiments using the generated data stored
+You can write the following lines in a terminal to replicate our experiments using the **randomly generated** data stored
 in the ```data``` directory. Records of the experiments will be stored in ```records/experiments``` directory
 as they will be completed.
 

@@ -2,6 +2,10 @@
 This repository stores the code implemented to generate the results of our paper:  
 *Machine learning strategies to predict late adverse effects in childhood acute lymphoblastic leukemia survivors*
 
+**The datasets analysed during the study are not publicly available for confidentiality purposes.
+However, randomly generated datasets with the same format as used in our experiments are publicly
+shared in the** ```data``` **directory**.
+
 ## Installation
 To have all the requirements needed, you must do the following actions:
 - Open a terminal
@@ -11,7 +15,7 @@ To have all the requirements needed, you must do the following actions:
 - Activate your new environment: ```conda activate petale```
   
 ## Test the implementation
-You can write the following lines in a terminal to replicate our experiments using randomly generated data stored
+You can write the following lines in a terminal to replicate our experiments using the generated data stored
 in the ```data``` directory. Records of the experiments will be stored in ```records/experiments``` directory
 as they will be completed.
 
@@ -24,9 +28,9 @@ as they will be completed.
 - Obesity (w/ SNPs):  
 ```python replicate_study.py -d generated -t obesity -gen```
   
-It is also possible to run a faster version of each experiment by adding the ```-fast``` argument.
-For example:  
-```python replicate_study.py -d generated -t vo2 -fast```
+It is also possible to run a fast version of each experiment by adding the ```-fast``` argument.
+The fast version uses **2** rounds of stratified random sampling, instead of **10**,
+to evaluate each model and hyperparameter sets.
 
 Specs of our computer and execution times recorded for each experiment
 are displayed below.   

@@ -61,7 +61,9 @@ are displayed below.
 |
 ├── scripts
 │   ├── experiments               <- Scripts to run individual experiments
+|   ├── petale_importation        <- Script used to upload PETALE tables in PostgreSQL
 │   ├── post_analyses             <- Scripts to run post analyses
+|   ├── tables_creation           <- Scripts used to create new tables in the PETALE database.
 │   └── utils                     <- Scripts to execute different sub tasks
 |
 ├── settings                      <- Files used for the setup of the project environment

@@ -46,34 +46,6 @@ are displayed below.
 | Obesity (w/o SNPs) | 1 hour 1 min.  | 7 hours 8 min.   |
 | Obesity (w/ SNPs)  | 2 hours 7 min. | 16 hours 39 min. |
 
-## What's new in this fork?
-
-In this version of the repository, the scripts associated to the creation of data tables
-specific to the projet are available in the ```scripts/tables_creation directory```. 
-
-Additionally, a script created to upload all PETALE data tables on postgreSQL is available
-in the ```scripts/petale_importation directory```. To be executed, this script
-requires to do the following actions :
-
-1. Download the PETALE folder containing all the original .xlsx files;
-2. Create an empty postgreSQL database that will store the data tables;
-3. Place the script within the folder you downloaded in step #1;
-4. Run the script from a terminal (see the script for the possible arguments).
-
-```diff
-- WARNING
-- If an error occurs during the execution of the importation script,
-- incorrect characters in the original .xlsx files might be in cause.
-```
-```diff
-! NOTE
-! The importation script was created before the repository of the PETALE project itself.
-! Hence, the code within the file petale_tables_importation_script.py does not follow
-! the actual coding standards of MEDomics. Moreover, the DataManagement module provided 
-! in the file src/data/extraction/data_management.py could potentially be used to 
-! replace some parts of this script. An update of the importation script should be done.
-```
-
 
 ## Project Tree
 ```
@@ -89,9 +61,7 @@ requires to do the following actions :
 |
 ├── scripts
 │   ├── experiments               <- Scripts to run individual experiments
-|   ├── petale_importation        <- Script used to upload PETALE tables in PostgreSQL
 │   ├── post_analyses             <- Scripts to run post analyses
-|   ├── tables_creation           <- Scripts used to create new tables in the PETALE database.
 │   └── utils                     <- Scripts to execute different sub tasks
 |
 ├── settings                      <- Files used for the setup of the project environment

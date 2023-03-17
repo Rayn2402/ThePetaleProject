@@ -9,6 +9,7 @@ Description: This file is used to create the table containing the required data
              The variables contained in the resulting table are:
 
              - PARTICIPANT ('Participant')
+             - SEX ('34500 Sex')
              - VO2R_MAX ('35009 EE_VO2r_max')
              - WEIGHT ('34503 Weight')
              - TDM6_HR_END ('35149 TDM6_HR_6_2')

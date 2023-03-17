@@ -273,22 +273,22 @@ class RandomStratifiedSampler:
                     masks[k][INNER][in_k][t2] = in_v[t2].tolist() if in_v[t2] is not None else None
 
     @staticmethod
-    def visualize_splits(datasets: dict) -> None:
+    def visualize_splits(masks: dict) -> None:
         """
         Details the data splits for the experiment
 
         Args:
-            datasets: dict with all the masks obtained from the sampler
+            masks: dict with all the masks obtained from the sampler
 
         Returns: None
         """
         print("#----------------------------------#")
-        for k, v in datasets.items():
+        for k, v in masks.items():
             print(f"Split {k+1} \n")
-            print(f"Outer :")
+            print(f"Outer:")
             valid = v['valid'] if v['valid'] is not None else []
             print(f"Train {len(v['train'])} - Valid {len(valid)} - Test {len(v['test'])}")
-            print(INNER)
+            print("Inner:")
             for k1, v1 in v['inner'].items():
                 valid = v1['valid'] if v1['valid'] is not None else []
                 print(f"{k+1}.{k1} -> Train {len(v1['train'])} - Valid {len(valid)} -"
@@ -460,12 +460,7 @@ def get_obesity_data(data_manager: Optional[PetaleDataManager] = None,
     return df, TOTAL_BODY_FAT, cont_cols, cat_cols
 
 
-def get_VO2_data(data_manager: Optional[PetaleDataManager] = None,
-                 genomics: bool = False,
-                 baselines: bool = True,
-                 sex: bool = False,
-                 dummy: bool = False,
-                 holdout: bool = False) -> Tuple[DataFrame, str, Optional[List[str]], Optional[List[str]]]:
+def get_VO2_data(data_manager: Optional[PetaleDataManager] = None) -> Tuple[DataFrame, str, List[str], List[str]]:
     """
     Extracts dataframe needed to proceed to VO2 peak prediction experiments
 
@@ -473,60 +468,22 @@ def get_VO2_data(data_manager: Optional[PetaleDataManager] = None,
         data_manager: data manager to communicate with the database.
                       If the parameter is left to None, data will be taken
                       from the csv files.
-        genomics: if True, genomic variables are included
-        baselines: if True, variables from the original equation are included
-        sex: if True, sex is included
-        dummy: if True, includes dummy variable combining sex and VO2 peak category
-        holdout: if True, holdout data is included at the bottom of the dataframe
 
     Returns: dataframe, target, continuous columns, categorical columns
     """
 
-    # We make sure that some variables were selected
-    if not (baselines or genomics or sex):
-        raise ValueError("At least baselines, genomics or sex must be selected")
-
     # We save participant and VO2 max column names
-    all_columns = [PARTICIPANT, VO2R_MAX]
-
-    # We save the name of continuous columns in a list
-    if baselines:
-        cont_cols = [WEIGHT, TDM6_HR_END, TDM6_DIST, DT, AGE, MVLPA]
-        all_columns += cont_cols
-    else:
-        cont_cols = None
-
-    # We check for genomics
-    cat_cols = []
-    if genomics:
-        cat_cols += VO2_SNPS
-    if sex:
-        cat_cols.append(SEX)
-    if dummy:
-        cat_cols.append(DUMMY)
-
-    all_columns += cat_cols
-    cat_cols = cat_cols if len(cat_cols) != 0 else None
+    cont_cols = [WEIGHT, TDM6_HR_END, TDM6_DIST, DT, AGE, MVLPA]
+    cat_cols = [SEX]
 
     if data_manager is not None:
 
         # We extract the dataframe
-        df = data_manager.get_table(VO2_LEARNING_SET, columns=all_columns)
-
-        # We add the holdout data
-        if holdout:
-            h_df = data_manager.get_table(VO2_HOLDOUT_SET, columns=all_columns)
-            df = df.append(h_df, ignore_index=True)
+        df = data_manager.get_table(VO2_LEARNING_SET, columns=[PARTICIPANT, VO2R_MAX] + cont_cols + cat_cols)
 
     else:
-
         # We extract the dataframe
-        df = read_csv(Paths.VO2_LEARNING_SET_CSV, usecols=all_columns)
-
-        # We add the data from the holdout set
-        if holdout:
-            h_df = read_csv(Paths.VO2_HOLDOUT_SET_CSV, usecols=all_columns)
-            df = df.append(h_df, ignore_index=True)
+        df = read_csv(Paths.VO2_LEARNING_SET_CSV, usecols=[PARTICIPANT, VO2R_MAX] + cont_cols + cat_cols)
 
     return df, VO2R_MAX, cont_cols, cat_cols
 

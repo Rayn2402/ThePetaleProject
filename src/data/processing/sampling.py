@@ -10,7 +10,6 @@ Description: Defines the RandomStratifiedSampler class used to separate test set
 Date of last modification : 2022/07/27
 """
 
-from itertools import product
 from json import load
 from numpy import array
 from numpy.random import seed
@@ -352,112 +351,6 @@ def push_valid_to_train(masks: Dict[int, Dict[str, Union[List[int], Dict[str, Li
         for in_k, in_v in masks[k][INNER].items():
             masks[k][INNER][in_k][MaskType.TRAIN] += in_v[MaskType.VALID]
             masks[k][INNER][in_k][MaskType.VALID] = None
-
-
-def generate_multitask_labels(df: DataFrame,
-                              target_columns: List[str]) -> Tuple[array, Dict[int, tuple]]:
-    """
-    Generates single array of class labels using all possible combinations of unique values
-    contained within target_columns.
-
-    For example, for 3 binary columns we will generate 2^3 = 8 different class labels and assign them
-    to the respective rows.
-
-    Args:
-        df: dataframe with items to classify
-        target_columns: names of the columns to use for multitask learning
-
-    Returns: array with labels, dict with the meaning of each label
-    """
-    # We extract unique values of each target column
-    possible_targets = [list(df[target].unique()) for target in target_columns]
-
-    # We generate all possible combinations of these unique values and assign them a label
-    labels_dict = {combination: i for i, combination in enumerate(product(*possible_targets))}
-
-    # We associate labels to the items in the dataframe
-    item_labels_union = list(zip(*[df[t].values for t in target_columns]))
-    multitask_labels = array([labels_dict[item] for item in item_labels_union])
-
-    # We rearrange labels_dict for visualization purpose
-    labels_dict = {v: k for k, v in labels_dict.items()}
-
-    return multitask_labels, labels_dict
-
-
-def get_obesity_data(data_manager: Optional[PetaleDataManager] = None,
-                     genomics: bool = False,
-                     baselines: bool = True,
-                     dummy: bool = False,
-                     holdout: bool = False) -> Tuple[DataFrame, str, List[str], List[str]]:
-    """
-    Extracts dataframe needed to proceed to obesity prediction experiments
-
-    Args:
-        data_manager: data manager to communicate with the database.
-                      If the parameter is left to None, data will be taken
-                      from the csv files.
-
-        genomics: if True, genomic variables are included
-        baselines: if True, baselines variables are included
-        dummy: if True, includes dummy variable combining sex and Total Body Fat category
-        holdout: if True, holdout data is included at the bottom of the dataframe
-
-    Returns: dataframe, target, continuous columns, categorical columns
-    """
-
-    # We make sure that some variables were selected
-    if not (baselines or genomics):
-        raise ValueError("At least baselines or genomics must be selected")
-
-    # We initialize empty lists for continuous and categorical columns
-    cont_cols, cat_cols = [], []
-
-    # We add baselines
-    if baselines:
-        cont_cols += [AGE_AT_DIAGNOSIS, DT, DOX, EOT_BMI, METHO, CORTICO]
-        cat_cols += [SEX, RADIOTHERAPY_DOSE, DEX, BIRTH_AGE]
-
-    # We check for genomics
-    if genomics is not None:
-        cat_cols += OBESITY_SNPS
-
-    if dummy:
-        cat_cols.append(DUMMY)
-
-    all_columns = [PARTICIPANT, TOTAL_BODY_FAT] + cont_cols + cat_cols
-
-    if data_manager is not None:
-
-        # We extract the dataframe
-        df = data_manager.get_table(OBESITY_LEARNING_SET, columns=all_columns)
-
-        # We add the data from the holdout set
-        if holdout:
-            h_df = data_manager.get_table(OBESITY_HOLDOUT_SET, columns=all_columns)
-            df = df.append(h_df, ignore_index=True)
-
-    else:
-
-        # We extract the dataframe
-        df = read_csv(Paths.OBESITY_LEARNING_SET_CSV, usecols=all_columns)
-
-        # We add the data from the holdout set
-        if holdout:
-            h_df = read_csv(Paths.OBESITY_HOLDOUT_SET_CSV, usecols=all_columns)
-            df = df.append(h_df, ignore_index=True)
-
-    # We replace wrong categorical values
-    if baselines:
-        df.loc[(df[DEX] != "0"), [DEX]] = ">0"
-    else:
-        cont_cols = None
-
-    if genomics:
-        df.replace("0/2", "0/1", inplace=True)
-        df.replace("1/2", "1/1", inplace=True)
-
-    return df, TOTAL_BODY_FAT, cont_cols, cat_cols
 
 
 def get_VO2_data(data_manager: Optional[PetaleDataManager] = None) -> Tuple[DataFrame, str, List[str], List[str]]:

@@ -34,7 +34,7 @@ XGBOOST_HPS = {
 MLP_HPS = {
     MLPHP.ACTIVATION.name: "PReLU",
     MLPHP.ALPHA.name: 0,
-    MLPHP.BATCH_SIZE.name: 5,
+    MLPHP.BATCH_SIZE.name: 25,
     MLPHP.BETA.name: 0.0005,
     MLPHP.DROPOUT.name: 0.25,
     MLPHP.LR.name: 0.001,
@@ -46,7 +46,7 @@ MLP_HPS = {
 ENET_HPS = {
     MLPHP.ACTIVATION.name: "PReLU",
     MLPHP.ALPHA.name: 0,
-    MLPHP.BATCH_SIZE.name: 5,
+    MLPHP.BATCH_SIZE.name: 25,
     MLPHP.BETA.name: 0.0005,
     MLPHP.DROPOUT.name: 0,
     MLPHP.LR.name: 0.01,
@@ -74,7 +74,7 @@ GATHPS = {
     GATHP.HIDDEN_SIZE.name: None,
     GATHP.LR.name: 0.01,
     GATHP.ATTN_DROPOUT.name: 0.50,
-    GATHP.NUM_HEADS.name: 1,
+    GATHP.NUM_HEADS.name: 5,
     GATHP.RHO.name: 0,
 }
 

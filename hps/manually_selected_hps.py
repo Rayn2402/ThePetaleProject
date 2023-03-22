@@ -55,18 +55,6 @@ ENET_HPS = {
     MLPHP.N_UNIT.name: 5
 }
 
-ENET_GGE_HPS = {
-    MLPHP.ACTIVATION.name: "PReLU",
-    MLPHP.ALPHA.name: 0,
-    MLPHP.BATCH_SIZE.name: 5,
-    MLPHP.BETA.name: 0.0005,
-    MLPHP.DROPOUT.name: 0.25,
-    MLPHP.LR.name: 0.01,
-    MLPHP.RHO.name: 0,
-    MLPHP.N_LAYER.name: 0,
-    MLPHP.N_UNIT.name: 5
-}
-
 GATHPS = {
     GATHP.ALPHA.name: 0,
     GATHP.BETA.name: 0.005,
@@ -84,11 +72,4 @@ GCNHPS = {
     GCNHP.HIDDEN_SIZE.name: None,
     GCNHP.LR.name: 0.01,
     GCNHP.RHO.name: 0,
-}
-
-GGEHPS = {
-    GGEHP.BATCH_SIZE.name: 5,
-    GGEHP.BETA.name: 0.0005,
-    GGEHP.DROPOUT.name: 0.25,
-    GGEHP.LR.name: 0.005,
 }

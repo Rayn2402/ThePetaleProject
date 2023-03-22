@@ -12,9 +12,85 @@ Date of last modification: 2022/07/27
 import sys
 import time
 
+from argparse import ArgumentParser
 from copy import deepcopy
 from os.path import dirname, realpath
-from typing import Dict, List, Optional
+
+
+def retrieve_arguments():
+    """
+    Creates a parser for VO2 peak prediction experiments
+    """
+    # Create a parser
+    parser = ArgumentParser(usage='\n python [experiment file].py',
+                            description="Runs the experiments associated to the VO2 dataset.")
+
+    # Nb of inner splits and nb of outer splits
+    parser.add_argument('-k', '--nb_outer_splits', type=int, default=10,
+                        help='Number of outer splits used during the models evaluations.')
+    parser.add_argument('-l', '--nb_inner_splits', type=int, default=10,
+                        help='Number of inner splits used during the models evaluations.')
+
+    # Data source
+    parser.add_argument('-from_csv', '--from_csv', default=False, action='store_true',
+                        help='If true, extract the data from the csv file instead of the database.')
+
+    # Feature selection
+    parser.add_argument('-r_w', '--remove_walk_variables', default=False, action='store_true',
+                        help='If true, removes the six-minute walk test variables from the data.')
+    parser.add_argument('-f', '--feature_selection', default=False, action='store_true',
+                        help='If true, applies automatic feature selection')
+
+    # Models selection
+    parser.add_argument('-enet', '--enet', default=False, action='store_true',
+                        help='If true, runs enet experiment')
+    parser.add_argument('-mlp', '--mlp', default=False, action='store_true',
+                        help='If true, runs mlp experiment')
+    parser.add_argument('-rf', '--random_forest', default=False, action='store_true',
+                        help='If true, runs random forest experiment')
+    parser.add_argument('-xg', '--xg_boost', default=False, action='store_true',
+                        help='If true, runs xgboost experiment')
+    parser.add_argument('-gat', '--gat', default=False, action='store_true',
+                        help='If true, runs Graph Attention Network experiment')
+    parser.add_argument('-gcn', '--gcn', default=False, action='store_true',
+                        help='If true, runs Graph Convolutional Network experiment')
+
+    # Training parameters
+    parser.add_argument('-epochs', '--epochs', type=int, default=500,
+                        help='Maximal number of epochs during training')
+    parser.add_argument('-patience', '--patience', type=int, default=50,
+                        help='Number of epochs allowed without improvement (for early stopping)')
+
+    # Graph construction parameters
+    parser.add_argument('-w_sim', '--weighted_similarity', default=False, action='store_true',
+                        help='If true, calculates patients similarities using weighted metrics')
+    parser.add_argument('-cond_col', '--conditional_column', default=False, action='store_true',
+                        help='If true, uses the sex as a conditional column in graph construction')
+    parser.add_argument('-deg', '--degree', nargs='*', type=str, default=[7],
+                        help="Maximum number of in-degrees for each node in the graph")
+
+    # Activation of sharpness-aware minimization
+    parser.add_argument('-rho', '--rho', type=float, default=0,
+                        help='Rho parameter of Sharpness-Aware Minimization (SAM) Optimizer.'
+                             'If >0, SAM is enabled')
+
+    # Usage of predictions from another experiment
+    parser.add_argument('-p', '--path', type=str, default=None,
+                        help='Path leading to predictions of another model')
+
+    # Seed
+    parser.add_argument('-seed', '--seed', type=int, default=1010710,
+                        help='Seed used during model evaluations')
+
+    arguments = parser.parse_args()
+
+    # Print arguments
+    print("\nThe inputs are:")
+    for arg in vars(arguments):
+        print(f"{arg}: {getattr(arguments, arg)}")
+    print("\n")
+
+    return arguments
 
 
 if __name__ == '__main__':
@@ -27,45 +103,32 @@ if __name__ == '__main__':
     from src.data.processing.feature_selection import FeatureSelector
     from src.data.processing.gnn_datasets import PetaleKGNNDataset
     from src.data.processing.sampling import extract_masks, get_VO2_data, push_valid_to_train
-    from src.models.blocks.genes_signature_block import GeneEncoder, GeneGraphEncoder, GeneGraphAttentionEncoder
     from src.models.gcn import PetaleGCNR, GCNHP
     from src.models.gat import PetaleGATR, GATHP
-    from src.models.gge import PetaleGGE
     from src.models.mlp import PetaleMLPR, MLPHP
     from src.models.random_forest import PetaleRFR
     from src.models.xgboost_ import PetaleXGBR
     from src.evaluation.evaluation import Evaluator
     from src.data.extraction.constants import *
     from src.data.extraction.data_management import PetaleDataManager
-    from src.utils.argparsers import VO2_experiment_parser
     from src.utils.metrics import AbsoluteError, ConcordanceIndex, Pearson, RootMeanSquaredError, SquaredError
 
     # Arguments parsing
-    args = VO2_experiment_parser()
+    args = retrieve_arguments()
 
     # Initialization of a data manager
     manager = PetaleDataManager() if not args.from_csv else None
 
     # We extract the data needed
-    df, target, cont_cols, cat_cols = get_VO2_data(manager,
-                                                   baselines=args.baselines,
-                                                   genomics=args.genomics,
-                                                   sex=args.sex,
-                                                   holdout=args.holdout)
-
-    # We modify SNPs list according to the given arguments
-    VO2_SNPS = None if not args.genomics else VO2_SNPS
+    df, target, cont_cols, cat_cols = get_VO2_data(manager)
 
     # We filter baselines variables if needed
-    if args.baselines and args.remove_walk_variables:
+    if args.remove_walk_variables:
         df.drop([TDM6_HR_END, TDM6_DIST], axis=1, inplace=True)
         cont_cols = [c for c in cont_cols if c not in [TDM6_HR_END, TDM6_DIST]]
 
     # Extraction of masks
-    if args.holdout:
-        masks = extract_masks(Paths.VO2_HOLDOUT_MASK, k=1, l=10)
-    else:
-        masks = extract_masks(Paths.VO2_MASK, k=args.nb_outer_splits, l=args.nb_inner_splits)
+    masks = extract_masks(Paths.VO2_MASK, k=args.nb_outer_splits, l=args.nb_inner_splits)
 
     # Creation of masks for tree-based models
     masks_without_val = deepcopy(masks)
@@ -76,27 +139,16 @@ if __name__ == '__main__':
 
     # Initialization of a feature selector
     if args.feature_selection:
-        if args.genomics and args.baselines:
-            feature_selector = FeatureSelector(threshold=[0.01, 0.01],
-                                               cumulative_imp=[False, False],
-                                               seed=args.seed)
-        else:
-            feature_selector = FeatureSelector(threshold=[0.01],
-                                               cumulative_imp=[False],
-                                               seed=args.seed)
+        feature_selector = FeatureSelector(threshold=[0.01],
+                                           cumulative_imp=[False],
+                                           seed=args.seed)
     else:
         feature_selector = None
 
     # We save the string that will help identify evaluations
     eval_id = "vo2_manual"
-    if args.baselines:
-        eval_id += "_b"
-        if args.remove_walk_variables:
-            eval_id += "_nw"
-    if args.genomics:
-        eval_id += "_snps"
-    if args.sex:
-        eval_id += "_sex"
+    if args.remove_walk_variables:
+        eval_id += "_nw"
     if args.rho > 0:
         eval_id += "_sam"
 
@@ -112,8 +164,7 @@ if __name__ == '__main__':
         start = time.time()
 
         # Creation of the dataset
-        dataset = PetaleDataset(df, target, cont_cols, cat_cols,
-                                classification=False, feature_selection_groups=[VO2_SNPS])
+        dataset = PetaleDataset(df, target, cont_cols, cat_cols, classification=False)
 
         # Creation of the evaluator
         evaluator = Evaluator(model_constructor=PetaleRFR,
@@ -144,8 +195,7 @@ if __name__ == '__main__':
         start = time.time()
 
         # Creation of the dataset
-        dataset = PetaleDataset(df, target, cont_cols, cat_cols,
-                                classification=False, feature_selection_groups=[VO2_SNPS])
+        dataset = PetaleDataset(df, target, cont_cols, cat_cols, classification=False)
 
         # Creation of the evaluator
         evaluator = Evaluator(model_constructor=PetaleXGBR,
@@ -176,8 +226,7 @@ if __name__ == '__main__':
         start = time.time()
 
         # Creation of the dataset
-        dataset = PetaleDataset(df, target, cont_cols, cat_cols, to_tensor=True,
-                                classification=False, feature_selection_groups=[VO2_SNPS])
+        dataset = PetaleDataset(df, target, cont_cols, cat_cols, to_tensor=True, classification=False)
 
         # Update of the hyperparameters
         ms_hps.MLP_HPS[MLPHP.RHO.name] = args.rho
@@ -227,9 +276,7 @@ if __name__ == '__main__':
         start = time.time()
 
         # Creation of the dataset
-        dataset = PetaleDataset(df, target, cont_cols, cat_cols,
-                                to_tensor=True, classification=False,
-                                feature_selection_groups=[VO2_SNPS])
+        dataset = PetaleDataset(df, target, cont_cols, cat_cols, to_tensor=True, classification=False)
 
         # Update of the hyperparameters
         ms_hps.ENET_HPS[MLPHP.RHO.name] = args.rho
@@ -267,150 +314,6 @@ if __name__ == '__main__':
         evaluator.evaluate()
 
         print(f"Time taken for enet (min): {(time.time() - start)/60:.2f}")
-
-    """
-    GGE experiment
-    """
-    if args.gge and args.genomics:
-
-        # Start timer
-        start = time.time()
-
-        # Creation of the dataset
-        dataset = PetaleDataset(df, target, cont_cols, cat_cols,
-                                gene_cols=VO2_SNPS, to_tensor=True,
-                                classification=False, feature_selection_groups=[VO2_SNPS])
-
-        # Creation of a function that builds a Gene Graph Encoder
-        def gene_encoder_constructor(gene_idx_groups: Optional[Dict[str, List[int]]],
-                                     dropout: float) -> GeneEncoder:
-            """
-            Builds a Gene Graph Encoder
-
-            Args:
-                gene_idx_groups: dictionary where keys are names of chromosomes pairs and values
-                                 are list of idx referring to columns of SNPs associated to
-                                 the chromosomes pairs
-                dropout: dropout probability
-
-            Returns: GeneEncoder
-            """
-
-            return GeneGraphEncoder(gene_idx_groups=gene_idx_groups,
-                                    genes_emb_sharing=args.embedding_sharing,
-                                    dropout=dropout,
-                                    signature_size=args.signature_size)
-
-        # Update of the hyperparameters
-        ms_hps.ENET_GGE_HPS[MLPHP.RHO.name] = args.rho
-
-        # Creation of a function to update fixed params
-        def update_fixed_params(dts):
-            return {'max_epochs': args.epochs,
-                    'patience': args.patience,
-                    'num_cont_col': len(dts.cont_idx),
-                    'cat_idx': dts.cat_idx,
-                    'cat_sizes': dts.cat_sizes,
-                    'cat_emb_sizes': dts.cat_sizes,
-                    'gene_idx_groups': dts.gene_idx_groups,
-                    'gene_encoder_constructor': gene_encoder_constructor,
-                    **ms_hps.ENET_GGE_HPS}
-
-
-        # Saving of the fixed params of ENET + GGE
-        fixed_params = update_fixed_params(dataset)
-
-        # Creation of the evaluator
-        evaluator = Evaluator(model_constructor=PetaleMLPR,
-                              dataset=dataset,
-                              masks=masks,
-                              evaluation_name=f"ggeEnet_{eval_id}",
-                              hps={},
-                              n_trials=0,
-                              evaluation_metrics=evaluation_metrics,
-                              feature_selector=feature_selector,
-                              fixed_params=fixed_params,
-                              fixed_params_update_function=update_fixed_params,
-                              save_hps_importance=True,
-                              save_optimization_history=True,
-                              seed=args.seed)
-
-        # Evaluation
-        evaluator.evaluate()
-
-        print(f"Time taken for GGE (min): {(time.time() - start)/60:.2f}")
-
-    """
-    GGAE experiment
-    """
-    if args.ggae and args.genomics:
-
-        # Start timer
-        start = time.time()
-
-        # Creation of the dataset
-        dataset = PetaleDataset(df, target, cont_cols, cat_cols,
-                                gene_cols=VO2_SNPS, to_tensor=True,
-                                classification=False, feature_selection_groups=[VO2_SNPS])
-
-        # Creation of a function that builds a Gene Graph Attention Encoder
-        def gene_encoder_constructor(gene_idx_groups: Optional[Dict[str, List[int]]],
-                                     dropout: float) -> GeneEncoder:
-            """
-            Builds a Gene Graph Attention Encoder
-
-            Args:
-                gene_idx_groups: dictionary where keys are names of chromosomes pairs and values
-                                 are list of idx referring to columns of SNPs associated to
-                                 the chromosomes pairs
-                dropout: dropout probability
-
-            Returns: GeneEncoder
-            """
-
-            return GeneGraphAttentionEncoder(gene_idx_groups=gene_idx_groups,
-                                             genes_emb_sharing=args.embedding_sharing,
-                                             dropout=dropout,
-                                             signature_size=args.signature_size)
-
-        # Update of the hyperparameters
-        ms_hps.ENET_GGE_HPS[MLPHP.RHO.name] = args.rho
-
-        # Creation of a function to update fixed params
-        def update_fixed_params(dts):
-            return {'max_epochs': args.epochs,
-                    'patience': args.patience,
-                    'num_cont_col': len(dts.cont_idx),
-                    'cat_idx': dts.cat_idx,
-                    'cat_sizes': dts.cat_sizes,
-                    'cat_emb_sizes': dts.cat_sizes,
-                    'gene_idx_groups': dts.gene_idx_groups,
-                    'gene_encoder_constructor': gene_encoder_constructor,
-                    **ms_hps.ENET_GGE_HPS}
-
-
-        # Saving of the fixed params of ENET + GGAE
-        fixed_params = update_fixed_params(dataset)
-
-        # Creation of evaluator
-        evaluator = Evaluator(model_constructor=PetaleMLPR,
-                              dataset=dataset,
-                              masks=masks,
-                              evaluation_name=f"ggaeEnet_{eval_id}",
-                              hps={},
-                              n_trials=0,
-                              evaluation_metrics=evaluation_metrics,
-                              feature_selector=feature_selector,
-                              fixed_params=fixed_params,
-                              fixed_params_update_function=update_fixed_params,
-                              save_hps_importance=True,
-                              save_optimization_history=True,
-                              seed=args.seed)
-
-        # Evaluation
-        evaluator.evaluate()
-
-        print(f"Time taken for GGAE (min): {(time.time() - start)/60:.2f}")
 
     """
     GAT experiment
@@ -451,7 +354,7 @@ if __name__ == '__main__':
                                             weighted_similarity=w_sim,
                                             cont_cols=cont_cols, cat_cols=cat_cols,
                                             conditional_cat_col=cond_cat_col,
-                                            classification=False, feature_selection_groups=[VO2_SNPS])
+                                            classification=False)
 
                 # Saving of the fixed params of GAT
                 fixed_params = update_fixed_params(dataset)
@@ -515,8 +418,7 @@ if __name__ == '__main__':
                 dataset = PetaleKGNNDataset(df, target, k=nb_neigh,
                                             weighted_similarity=w_sim,
                                             cont_cols=cont_cols, cat_cols=cat_cols,
-                                            conditional_cat_col=cond_cat_col, classification=False,
-                                            feature_selection_groups=[VO2_SNPS])
+                                            conditional_cat_col=cond_cat_col, classification=False)
 
                 # Saving of the fixed params of GCN
                 fixed_params = update_fixed_params(dataset)
@@ -541,52 +443,3 @@ if __name__ == '__main__':
                 evaluator.evaluate()
 
         print(f"Time taken for GCN (min): {(time.time() - start)/60:.2f}")
-
-    """
-    Self supervised learning experiment with GGE
-    """
-    if args.ssl_gge and args.genomics:
-
-        # Start timer
-        start = time.time()
-
-        # Creation of the dataset
-        dataset = PetaleDataset(df, target, cont_cols, cat_cols,
-                                gene_cols=VO2_SNPS, to_tensor=True, classification=False,
-                                feature_selection_groups=[VO2_SNPS])
-
-        # Creation of a function to update fixed params
-        def update_fixed_params(dts):
-            return {'max_epochs': args.epochs,
-                    'patience': args.patience,
-                    'gene_idx_groups': dts.gene_idx_groups,
-                    'hidden_size': 3,
-                    'signature_size': args.signature_size,
-                    'genes_emb_sharing': args.embedding_sharing,
-                    'aggregation_method': 'avg',
-                    **ms_hps.GGEHPS}
-
-        # Saving of the fixed params for GGAE
-        fixed_params = update_fixed_params(dataset)
-
-        # Creation of the evaluator
-        evaluator = Evaluator(model_constructor=PetaleGGE,
-                              dataset=dataset,
-                              masks=masks,
-                              evaluation_name=f"sslgge_{eval_id}",
-                              hps={},
-                              n_trials=0,
-                              evaluation_metrics=[],
-                              fixed_params=fixed_params,
-                              fixed_params_update_function=update_fixed_params,
-                              feature_selector=feature_selector,
-                              save_hps_importance=True,
-                              save_optimization_history=True,
-                              seed=args.seed)
-
-        # Evaluation
-        evaluator.evaluate()
-
-        print(f"Time taken for SSL with GGE (min): {(time.time() - start)/60:.2f}")
-
-    print(f"Overall time (min): {(time.time() - first_start)/60:.2f}")

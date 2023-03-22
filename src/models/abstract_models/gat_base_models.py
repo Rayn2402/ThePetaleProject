@@ -80,9 +80,6 @@ class GAT(GNN):
                                    attn_drop=attn_dropout,
                                    activation=relu)
 
-        # We save the number of attention heads
-        self._num_att_heads = num_heads
-
         # Attention cache
         self._att_cache = None
 
@@ -126,11 +123,11 @@ class GAT(GNN):
         # We apply the graph convolutional layer
         h, self._att_cache = self._conv_layer(g, x, get_attention=True)
 
-        # We take the average of all the attention heads and apply batch norm
-        h = h.sum(dim=1)/self._num_att_heads
+        # We take the average of all the attention heads
+        h = h.mean(dim=1)
 
         # We apply the residual connection
-        self._emb_cache = h = self._bn(cat([h, x], dim=1))
+        self._emb_cache = h = self._bn(x+h)
         h = self._dropout(h)
 
         # We apply the linear layer

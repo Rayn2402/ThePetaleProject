@@ -479,7 +479,7 @@ def get_VO2_data(data_manager: Optional[PetaleDataManager] = None) -> Tuple[Data
     if data_manager is not None:
 
         # We extract the dataframe
-        df = data_manager.get_table(VO2_LEARNING_SET, columns=[PARTICIPANT, VO2R_MAX] + cont_cols + cat_cols)
+        df = data_manager.get_table(VO2_OFFICIAL_DATASET, columns=[PARTICIPANT, VO2R_MAX] + cont_cols + cat_cols)
 
     else:
         # We extract the dataframe

@@ -10,7 +10,6 @@ Date of last modification: 2022/04/12
 
 from src.models.gat import GATHP
 from src.models.gcn import GCNHP
-from src.models.gge import GGEHP
 from src.models.mlp import MLPHP
 from src.models.random_forest import RandomForestHP
 from src.models.xgboost_ import XGBoostHP
@@ -69,9 +68,7 @@ MLP_HPS = {
         Range.VALUE: 0
     },
     MLPHP.BATCH_SIZE.name: {
-        Range.MIN: 5,
-        Range.MAX: 25,
-        Range.STEP: 5
+        Range.VALUE: 25
     },
     MLPHP.BETA.name: {
         Range.MIN: 0.0005,
@@ -79,7 +76,7 @@ MLP_HPS = {
     },
     MLPHP.DROPOUT.name: {
         Range.MIN: 0,
-        Range.MAX: 0.25
+        Range.MAX: 0.50
     },
     MLPHP.LR.name: {
         Range.MIN: 0.001,
@@ -104,9 +101,7 @@ ENET_HPS = {
         Range.VALUE: 0
     },
     MLPHP.BATCH_SIZE.name: {
-        Range.MIN: 5,
-        Range.MAX: 25,
-        Range.STEP: 5
+        Range.VALUE: 25
     },
     MLPHP.BETA.name: {
         Range.MIN: 0.0005,
@@ -114,41 +109,6 @@ ENET_HPS = {
     },
     MLPHP.DROPOUT.name: {
         Range.VALUE: 0,
-    },
-    MLPHP.LR.name: {
-        Range.MIN: 0.005,
-        Range.MAX: 0.1
-    },
-    MLPHP.RHO.name: {
-        Range.VALUE: 0
-    },
-    MLPHP.N_LAYER.name: {
-        Range.VALUE: 0
-    },
-    MLPHP.N_UNIT.name: {
-        Range.VALUE: 5
-    },
-}
-
-ENET_GGE_HPS = {
-    MLPHP.ACTIVATION.name: {
-        Range.VALUE: "PReLU"
-    },
-    MLPHP.ALPHA.name: {
-        Range.VALUE: 0
-    },
-    MLPHP.BATCH_SIZE.name: {
-        Range.MIN: 5,
-        Range.MAX: 25,
-        Range.STEP: 5
-    },
-    MLPHP.BETA.name: {
-        Range.MIN: 0.0005,
-        Range.MAX: 1,
-    },
-    MLPHP.DROPOUT.name: {
-        Range.MIN: 0,
-        Range.MAX: 0.25
     },
     MLPHP.LR.name: {
         Range.MIN: 0.005,
@@ -212,24 +172,5 @@ GCNHPS = {
     },
     GCNHP.RHO.name: {
         Range.VALUE: 0
-    },
-}
-GGEHPS = {
-    GGEHP.BATCH_SIZE.name: {
-        Range.MIN: 5,
-        Range.MAX: 25,
-        Range.STEP: 5
-    },
-    GGEHP.BETA.name: {
-        Range.MIN: 0.0005,
-        Range.MAX: 1
-    },
-    GGEHP.DROPOUT.name: {
-        Range.MIN: 0,
-        Range.MAX: 0.25,
-    },
-    GGEHP.LR.name: {
-        Range.MIN: 0.005,
-        Range.MAX: 0.1
     },
 }

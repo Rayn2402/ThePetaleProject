@@ -10,7 +10,6 @@ Date of last modification: 2022/03/28
 
 from src.models.gat import GATHP
 from src.models.gcn import GCNHP
-from src.models.gge import GGEHP
 from src.models.mlp import MLPHP
 from src.models.random_forest import RandomForestHP
 from src.models.xgboost_ import XGBoostHP

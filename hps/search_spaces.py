@@ -3,7 +3,7 @@ Filename: free_hps.py
 
 Author: Nicolas Raymond
 
-Description: File used to store hps search spaces for warmup experiments
+Description: File used to store hps search spaces for the experiments
 
 Date of last modification: 2022/04/12
 """

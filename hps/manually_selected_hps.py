@@ -3,7 +3,7 @@ Filename: fixed_hps.py
 
 Author: Nicolas Raymond
 
-Description: File used to store fixed hps for warmup experiments
+Description: File used to store fixed hps for the experiments
 
 Date of last modification: 2022/03/28
 """

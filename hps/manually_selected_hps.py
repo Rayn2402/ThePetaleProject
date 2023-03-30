@@ -35,7 +35,7 @@ MLP_HPS = {
     MLPHP.ALPHA.name: 0,
     MLPHP.BATCH_SIZE.name: 25,
     MLPHP.BETA.name: 0.0005,
-    MLPHP.DROPOUT.name: 0.25,
+    MLPHP.DROPOUT.name: 0,
     MLPHP.LR.name: 0.001,
     MLPHP.RHO.name: 0,
     MLPHP.N_LAYER.name: 1,

@@ -14,7 +14,6 @@ from os.path import dirname, realpath
 
 # Imports specific to project
 sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
-from src.utils.argparsers import print_arguments
 from src.utils.results_analyses import extract_predictions
 
 
@@ -31,8 +30,8 @@ def paths_and_ids_parser():
     parser.add_argument('-ids', '--ids', nargs='*', type=str, help='List of ids associated to the paths')
     parser.add_argument('-fn', '--filename', type=str, default='predictions',
                         help='Name of the file in which the predictions will be stored')
+
     arguments = parser.parse_args()
-    print_arguments(arguments)
 
     return arguments
 

@@ -20,7 +20,6 @@ from src.data.processing.sampling import RandomStratifiedSampler
 from src.data.extraction.constants import *
 from src.data.extraction.data_management import PetaleDataManager
 from src.data.extraction.helpers import retrieve_numerical_var
-from src.utils.argparsers import print_arguments
 
 
 def argument_parser():
@@ -71,9 +70,6 @@ def argument_parser():
                         help="Number of inner splits masks to produce (default = 10)")
 
     arguments = parser.parse_args()
-
-    # Print arguments
-    print_arguments(arguments)
 
     return arguments
 

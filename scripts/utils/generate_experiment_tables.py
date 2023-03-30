@@ -20,7 +20,6 @@ from src.data.extraction.data_management import PetaleDataManager
 from src.data.extraction.helpers import retrieve_numerical_var
 from src.data.processing.datasets import MaskType, PetaleDataset
 from src.data.processing.sampling import RandomStratifiedSampler
-from src.utils.argparsers import print_arguments
 
 
 def argument_parser():
@@ -65,9 +64,6 @@ def argument_parser():
                              f" validity of the holdout created (default = {SAMPLING_OUTLIER_ALPHA})")
 
     arguments = parser.parse_args()
-
-    # Print arguments
-    print_arguments(arguments)
 
     return arguments
 

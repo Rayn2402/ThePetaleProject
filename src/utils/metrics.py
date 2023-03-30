@@ -12,6 +12,7 @@ Date of last modification : 2021/04/14
 from abc import ABC, abstractmethod
 from lifelines.utils import concordance_index
 from numpy import array
+from scipy.stats import spearmanr
 from sklearn.metrics import roc_auc_score
 from torch import abs, from_numpy, is_tensor, mean, pow, prod, sqrt, sum, tensor, zeros
 from torch.nn.functional import binary_cross_entropy_with_logits
@@ -159,10 +160,7 @@ class RegressionMetric(Metric):
         Returns: (N,) tensor, (N,) tensor
 
         """
-        if not is_tensor(pred):
-            return from_numpy(pred).float(), from_numpy(targets).float()
-        else:
-            return pred, targets
+        return from_numpy(pred).float(), from_numpy(targets).float()
 
     @abstractmethod
     def compute_metric(self,
@@ -231,10 +229,7 @@ class BinaryClassificationMetric(Metric):
         Returns: (N,) tensor, (N,) tensor
 
         """
-        if not is_tensor(pred):
-            return from_numpy(pred).float(), from_numpy(targets).long()
-        else:
-            return pred, targets
+        return from_numpy(pred).float(), from_numpy(targets).long()
 
     @staticmethod
     def get_confusion_matrix(pred_proba: tensor,
@@ -309,6 +304,35 @@ class Pearson(RegressionMetric):
         t = targets - targets.mean()
 
         return (p.dot(t) / (sqrt((p ** 2).sum()) * sqrt((t ** 2).sum()))).item()
+
+
+class SpearmanR(RegressionMetric):
+    """
+    Callable class that computes Pearson correlation coefficient
+    """
+    def __init__(self, n_digits: int = 5):
+        """
+        Sets protected attributes using parent's constructor
+
+        Args:
+            n_digits: number of digits kept for the score
+        """
+        super().__init__(direction=Direction.MAXIMIZE, name="SpearmanR", n_digits=n_digits)
+
+    def compute_metric(self,
+                       pred: tensor,
+                       targets: tensor) -> float:
+        """
+        Computes the pearson correlation coefficient between predictions and targets
+
+        Args:
+            pred: (N,) tensor with predicted labels
+            targets: (N,) tensor with ground truth
+
+        Returns: float
+
+        """
+        return spearmanr(pred, targets).correlation
 
 
 class AbsoluteError(RegressionMetric):

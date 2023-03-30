@@ -20,7 +20,7 @@ NB_TRIALS = 200
 if __name__ == '__main__':
 
     # Imports specific to project
-    sys.path.append(dirname(dirname(dirname(dirname(realpath(__file__))))))
+    sys.path.append((dirname(dirname(dirname(realpath(__file__))))))
     from hps import search_spaces as ss
     from settings.paths import Paths
     from src.data.processing.datasets import PetaleDataset

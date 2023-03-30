@@ -13,7 +13,7 @@ import argparse
 from os.path import dirname, realpath
 import sys
 
-sys.path.append(dirname(dirname(dirname(dirname(realpath(__file__))))))
+sys.path.append((dirname(dirname(dirname(realpath(__file__))))))
 from src.data.extraction.data_management import PetaleDataManager
 from src.data.processing.datasets import MaskType, PetaleDataset
 from src.data.processing.transforms import ContinuousTransform
@@ -32,7 +32,7 @@ def original_equation(item):
            0.065 * item[MVLPA] - 0.204 * item[DT] + 25.145
 
 
-def argument_parser():
+def get_arguments():
     """
     This function defines a parser for the original equation experiment
     """
@@ -40,15 +40,10 @@ def argument_parser():
     parser = argparse.ArgumentParser(usage='\n python original_equation.py',
                                      description="Runs the original equation experiment")
 
-    parser.add_argument('-k', '--nb_outer_splits', type=int, default=10,
-                        help="Number of outer splits (default = 10)")
+    parser.add_argument('-k', '--nb_outer_splits', type=int, default=5,
+                        help="Number of outer splits (default = 5)")
 
-    parser.add_argument('-holdout', '--holdout', default=False, action='store_true',
-                        help='If true, includes the holdout set data')
-
-    arguments = parser.parse_args()
-
-    return arguments
+    return parser.parse_args()
 
 
 def execute_original_equation_experiment(dts: PetaleDataset,
@@ -114,14 +109,13 @@ def execute_original_equation_experiment(dts: PetaleDataset,
 if __name__ == '__main__':
 
     # Arguments parsing
-    args = argument_parser()
+    args = get_arguments()
 
     # Arguments extraction
     k = args.nb_outer_splits
 
     # Generation of dataset
-    data_manager = PetaleDataManager()
-    df, target, cont_cols, cat_cols = get_VO2_data(data_manager, holdout=args.holdout)
+    df, target, cont_cols, cat_cols = get_VO2_data(PetaleDataManager())
 
     # Creation of the dataset
     dataset = PetaleDataset(df, target, cont_cols, cat_cols=cat_cols,

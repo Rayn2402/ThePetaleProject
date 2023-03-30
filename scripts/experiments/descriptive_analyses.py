@@ -14,7 +14,7 @@ from os.path import dirname, realpath
 if __name__ == '__main__':
 
     # Imports specific to project
-    sys.path.append(dirname(dirname(dirname(dirname(realpath(__file__))))))
+    sys.path.append((dirname(dirname(dirname(realpath(__file__))))))
     from src.data.extraction.constants import *
     from src.data.extraction.data_management import PetaleDataManager
 

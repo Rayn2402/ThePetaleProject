@@ -96,7 +96,7 @@ def retrieve_arguments():
 if __name__ == '__main__':
 
     # Imports specific to project
-    sys.path.append(dirname(dirname(dirname(dirname(realpath(__file__))))))
+    sys.path.append((dirname(dirname(dirname(realpath(__file__))))))
     from hps import manually_selected_hps as ms_hps
     from settings.paths import Paths
     from src.data.processing.datasets import PetaleDataset

@@ -122,12 +122,8 @@ if __name__ == '__main__':
                             classification=False, to_tensor=True)
 
     # Extraction of masks
-    if args.holdout:
-        masks = extract_masks(Paths.WARMUP_HOLDOUT_MASK, k=1, l=0)
-        evaluation_name = f"original_equation_holdout"
-    else:
-        masks = extract_masks(Paths.WARMUP_MASK, k=k, l=0)
-        evaluation_name = f"original_equation"
+    masks = extract_masks(Paths.VO2_MASK, k=k, l=0)
+    evaluation_name = f"original_equation"
 
     # Execution of the experiment
     execute_original_equation_experiment(dts=dataset, m=masks, eval_name=evaluation_name)

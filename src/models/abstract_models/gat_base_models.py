@@ -127,7 +127,7 @@ class GAT(GNN):
         h = h.mean(dim=1)
 
         # We apply the residual connection
-        self._emb_cache = h = self._bn(x+h)
+        self._emb_cache = h = self._bn(cat([x, h], dim=1))
         h = self._dropout(h)
 
         # We apply the linear layer

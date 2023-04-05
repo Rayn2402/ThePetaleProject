@@ -13,7 +13,6 @@ import time
 
 from os.path import dirname, realpath
 from copy import deepcopy
-from typing import Dict, List, Optional
 
 NB_TRIALS = 200
 

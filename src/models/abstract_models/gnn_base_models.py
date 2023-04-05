@@ -73,7 +73,7 @@ class GNN(TorchCustomModel):
         self._bn = BatchNorm1d(self._input_size)
 
         # We save the dropout layer
-        # self._dropout = Dropout(0.25)
+        self._dropout = Dropout(0.50)
 
         # We save the linear layer for the final output
         self._linear_layer = Linear(self._input_size, output_size)

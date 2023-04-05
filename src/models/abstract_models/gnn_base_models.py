@@ -70,13 +70,13 @@ class GNN(TorchCustomModel):
         self._hidden_size = hidden_size if hidden_size is not None else self._input_size
 
         # We save the batch norm layer
-        self._bn = BatchNorm1d(self._input_size + self._hidden_size)
+        self._bn = BatchNorm1d(self._input_size)
 
         # We save the dropout layer
         self._dropout = Dropout(0.25)
 
         # We save the linear layer for the final output
-        self._linear_layer = Linear(self._input_size + self._hidden_size, output_size)
+        self._linear_layer = Linear(self._input_size, output_size)
 
     def _execute_train_step(self, train_data: Tuple[DataLoader, PetaleKGNNDataset]) -> float:
         """

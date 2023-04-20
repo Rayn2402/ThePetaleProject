@@ -238,7 +238,7 @@ if __name__ == '__main__':
     """
     GAT experiment
     """
-    if args.gat and args.baselines:
+    if args.gat:
 
         # Start timer
         start = time.time()
@@ -301,7 +301,7 @@ if __name__ == '__main__':
     """
     GCN experiment
     """
-    if args.gcn and args.baselines:
+    if args.gcn:
 
         # Start timer
         start = time.time()

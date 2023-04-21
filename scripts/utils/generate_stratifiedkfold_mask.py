@@ -46,10 +46,11 @@ if __name__ == '__main__':
         masks[i][MaskType.TRAIN] = train_idx.tolist()
         masks[i][MaskType.VALID] = valid_idx.tolist()
 
-        # We repeat the process using only the data in the training set
+        # We repeat the process using only the data in the training set and the valid set
         inner_skf = StratifiedKFold(n_splits=5)
+        inner_idx = train_idx.tolist() + valid_idx.tolist()
         masks[i][MaskType.INNER] = {}
-        for k, (inner_remaining_idx, inner_test_idx) in enumerate(inner_skf.split(x[train_idx, :], x[train_idx, j])):
+        for k, (inner_remaining_idx, inner_test_idx) in enumerate(inner_skf.split(x[inner_idx, :], x[inner_idx, j])):
 
             # We extract the inner test idx
             masks[i][MaskType.INNER][k] = {MaskType.TEST: inner_test_idx.tolist()}

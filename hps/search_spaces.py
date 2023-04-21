@@ -52,7 +52,7 @@ XGBOOST_HPS = {
     },
     XGBoostHP.MAX_DEPTH.name: {
         Range.MIN: 1,
-        Range.MAX: 5,
+        Range.MAX: 3,
     },
     XGBoostHP.SUBSAMPLE.name: {
         Range.MIN: 0.80,
@@ -134,8 +134,7 @@ GATHPS = {
         Range.MAX: 1,
     },
     GATHP.FEAT_DROPOUT.name: {
-        Range.MIN: 0,
-        Range.MAX: 0.25
+        Range.VALUE: 0,
     },
     GATHP.HIDDEN_SIZE.name: {
         Range.VALUE: None,
@@ -148,7 +147,7 @@ GATHPS = {
         Range.VALUE: 0.5
     },
     GATHP.NUM_HEADS.name: {
-        Range.VALUE: 1,
+        Range.VALUE: 10,
     },
     GATHP.RHO.name: {
         Range.VALUE: 0

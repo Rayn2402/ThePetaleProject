@@ -17,8 +17,8 @@ from src.utils.hyperparameters import Range
 
 RF_HPS = {
     RandomForestHP.MAX_LEAF_NODES.name: {
-        Range.MIN: 5,
-        Range.MAX: 50,
+        Range.MIN: 15,
+        Range.MAX: 30,
         Range.STEP: 5,
     },
     RandomForestHP.MAX_FEATURES.name: {
@@ -43,11 +43,11 @@ XGBOOST_HPS = {
        Range.VALUE: 0
     },
     XGBoostHP.BETA.name: {
-        Range.MIN: 0.0005,
-        Range.MAX: 1,
+        Range.MIN: 5e-4,
+        Range.MAX: 5e-3,
     },
     XGBoostHP.LR.name: {
-        Range.MIN: 0.005,
+        Range.MIN: 0.01,
         Range.MAX: 0.1
     },
     XGBoostHP.MAX_DEPTH.name: {
@@ -71,16 +71,15 @@ MLP_HPS = {
         Range.VALUE: 25
     },
     MLPHP.BETA.name: {
-        Range.MIN: 0.0005,
-        Range.MAX: 1,
+        Range.MIN: 5e-4,
+        Range.MAX: 5e-3,
     },
     MLPHP.DROPOUT.name: {
-        Range.MIN: 0,
-        Range.MAX: 0.50
+        Range.VALUE: 0,
     },
     MLPHP.LR.name: {
-        Range.MIN: 0.001,
-        Range.MAX: 0.1
+        Range.MIN: 5e-3,
+        Range.MAX: 5e-2,
     },
     MLPHP.RHO.name: {
         Range.VALUE: 0
@@ -104,15 +103,15 @@ ENET_HPS = {
         Range.VALUE: 25
     },
     MLPHP.BETA.name: {
-        Range.MIN: 0.0005,
-        Range.MAX: 1,
+        Range.MIN: 5e-4,
+        Range.MAX: 5e-3,
     },
     MLPHP.DROPOUT.name: {
         Range.VALUE: 0,
     },
     MLPHP.LR.name: {
-        Range.MIN: 0.005,
-        Range.MAX: 0.1
+        Range.MIN: 5e-3,
+        Range.MAX: 5e-2,
     },
     MLPHP.RHO.name: {
         Range.VALUE: 0
@@ -130,8 +129,8 @@ GATHPS = {
         Range.VALUE: 0
     },
     GATHP.BETA.name: {
-        Range.MIN: 0.0005,
-        Range.MAX: 1,
+        Range.MIN: 5e-4,
+        Range.MAX: 5e-3,
     },
     GATHP.FEAT_DROPOUT.name: {
         Range.VALUE: 0,
@@ -140,8 +139,8 @@ GATHPS = {
         Range.VALUE: None,
     },
     GATHP.LR.name: {
-        Range.MIN: 0.005,
-        Range.MAX: 0.1
+        Range.MIN: 5e-3,
+        Range.MAX: 5e-2,
     },
     GATHP.ATTN_DROPOUT.name: {
         Range.VALUE: 0.5
@@ -159,15 +158,15 @@ GCNHPS = {
         Range.VALUE: 0
     },
     GCNHP.BETA.name: {
-        Range.MIN: 0.0005,
-        Range.MAX: 1,
+        Range.MIN: 5e-4,
+        Range.MAX: 5e-3,
     },
     GCNHP.HIDDEN_SIZE.name: {
         Range.VALUE: None,
     },
     GCNHP.LR.name: {
-        Range.MIN: 0.005,
-        Range.MAX: 0.1
+        Range.MIN: 5e-3,
+        Range.MAX: 5e-2,
     },
     GCNHP.RHO.name: {
         Range.VALUE: 0

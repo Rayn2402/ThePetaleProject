@@ -56,9 +56,9 @@ def retrieve_arguments():
                         help='If true, runs Graph Convolutional Network experiment')
 
     # Training parameters
-    parser.add_argument('-epochs', '--epochs', type=int, default=500,
+    parser.add_argument('-epochs', '--epochs', type=int, default=100,
                         help='Maximal number of epochs during training')
-    parser.add_argument('-patience', '--patience', type=int, default=50,
+    parser.add_argument('-patience', '--patience', type=int, default=10,
                         help='Number of epochs allowed without improvement (for early stopping)')
 
     # Graph construction parameters

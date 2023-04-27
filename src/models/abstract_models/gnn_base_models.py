@@ -141,7 +141,7 @@ class GNN(TorchCustomModel):
         Returns: True if we need to early stop
         """
         # We check if there is validation to do
-        if valid_data is None:
+        if valid_data[0] is None:
             return False
 
         # We extract train loader, dataset

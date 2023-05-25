@@ -79,7 +79,7 @@ class GNN(TorchCustomModel):
         self._activation = PReLU()
 
         # We save the linear layer for the final output
-        self._linear_layer = Linear(self._input_size, output_size)
+        self._linear_layer = Linear(self._hidden_size, output_size)
 
     def _execute_train_step(self, train_data: Tuple[DataLoader, PetaleKGNNDataset]) -> float:
         """

@@ -14,7 +14,7 @@ from src.models.abstract_models.custom_torch_base import TorchCustomModel
 from src.evaluation.early_stopping import EarlyStopper
 from src.utils.metrics import Metric
 from torch import no_grad
-from torch.nn import BatchNorm1d, Dropout, Linear
+from torch.nn import BatchNorm1d, Dropout, Linear, PReLU
 from torch.utils.data import DataLoader
 from typing import Callable, List, Optional, Union, Tuple
 
@@ -73,7 +73,10 @@ class GNN(TorchCustomModel):
         self._bn = BatchNorm1d(self._input_size)
 
         # We save the dropout layer
-        self._dropout = Dropout(0.25)
+        # self._dropout = Dropout(0.25)
+
+        # We save the activation layer
+        self._activation = PReLU()
 
         # We save the linear layer for the final output
         self._linear_layer = Linear(self._input_size, output_size)

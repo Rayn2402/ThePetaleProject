@@ -261,6 +261,10 @@ if __name__ == '__main__':
                                             cont_cols=cont_cols, cat_cols=cat_cols,
                                             conditional_cat_col=cond_cat_col, classification=False)
 
+                # Update of hyperparameter
+                cat_sizes_sum = sum(dataset.cat_sizes) if dataset.cat_sizes is not None else 0
+                ss.GATHPS[GATHP.HIDDEN_SIZE.name] = {Range.VALUE: int((len(cont_cols) + cat_sizes_sum)/2)}
+
                 # Creation of a function to update fixed params
                 def update_fixed_params(dts):
                     return {'num_cont_col': len(dts.cont_idx),
@@ -323,6 +327,10 @@ if __name__ == '__main__':
                                             weighted_similarity=w_sim,
                                             cont_cols=cont_cols, cat_cols=cat_cols,
                                             conditional_cat_col=cond_cat_col, classification=False)
+
+                # Update of hyperparameter
+                cat_sizes_sum = sum(dataset.cat_sizes) if dataset.cat_sizes is not None else 0
+                ss.GCNHPS[GCNHP.HIDDEN_SIZE.name] = {Range.VALUE: int((len(cont_cols) + cat_sizes_sum)/2)}
 
                 # Creation of a function to update fixed params
                 def update_fixed_params(dts):

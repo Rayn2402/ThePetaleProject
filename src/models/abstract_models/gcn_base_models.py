@@ -101,7 +101,8 @@ class GCN(GNN):
         h = self._conv_layer(g, x, edge_weight=g.edata['w'])
 
         # We apply the residual connection
-        h = self._dropout(self._bn(cat([x, h], 1)))
+        # h = self._dropout(self._bn(cat([x, h], 1)))
+        h = self._activation(self._bn(h))
 
         # We apply the linear layer
         return self._linear_layer(h).squeeze()

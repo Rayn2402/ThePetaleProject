@@ -166,18 +166,15 @@ class GAS(TorchCustomModel):
         # We concatenate all inputs
         x = cat(new_x, 1)
 
-        if test_idx is None:
+        # We extract previous prediction made by another model
+        y_hat = x[:, self._prediction_idx]
 
-            # We extract previous prediction made by another model
-            y_hat = x[:, self._prediction_idx]
+        if test_idx is None:
 
             # We compute the scaled-dot product attention
             att = softmax(matmul(self._key_projection(x), self._query_projection(x).t())/self._dk, dim=-1)
 
         else:
-
-            # We extract previous prediction made by another model
-            y_hat = x[:, self._prediction_idx]
 
             # We calculate the queries and set some test column to zero.
             # This makes sure that not attention is given to test points.

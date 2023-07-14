@@ -114,8 +114,8 @@ class TorchCustomModel(Module, ABC):
     def _create_validation_objects(self,
                                    dataset: PetaleDataset,
                                    valid_batch_size: Optional[int],
-                                   patience: int
-                                   ) -> Tuple[EarlyStopper, DataLoader]:
+                                   patience: int,
+                                   no_dataloader: bool) -> Tuple[EarlyStopper, Union[DataLoader, PetaleDataset]]:
         """
         Creates the objects needed for validation during the training process
 
@@ -128,20 +128,22 @@ class TorchCustomModel(Module, ABC):
 
         """
         # We create the valid dataloader (if valid size != 0)
-        valid_size, valid_data, early_stopper = len(dataset.valid_mask), None, None
+        valid_size, valid_data, early_stopper = len(dataset.valid_mask), dataset, None
 
         if valid_size != 0:
 
-            # We check if a valid batch size was provided
-            valid_batch_size = min(valid_size, valid_batch_size) if valid_batch_size is not None else valid_size
-
-            # We create the valid loader
-            valid_data = DataLoader(dataset,
-                                    batch_size=valid_batch_size,
-                                    sampler=SubsetRandomSampler(dataset.valid_mask))
-
             # We create the early stopper
             early_stopper = EarlyStopper(patience, self._eval_metric.direction)
+
+            if not no_dataloader:
+
+                # We check if a valid batch size was provided
+                valid_batch_size = min(valid_size, valid_batch_size) if valid_batch_size is not None else valid_size
+
+                # We create the valid loader
+                valid_data = DataLoader(dataset,
+                                        batch_size=valid_batch_size,
+                                        sampler=SubsetRandomSampler(dataset.valid_mask))
 
         return early_stopper, valid_data
 
@@ -304,7 +306,8 @@ class TorchCustomModel(Module, ABC):
             batch_size: Optional[int] = 55,
             valid_batch_size: Optional[int] = None,
             max_epochs: int = 200,
-            patience: int = 15) -> None:
+            patience: int = 15,
+            no_dataloader: bool = False) -> None:
         """
         Fits the model to the training data
 
@@ -317,14 +320,15 @@ class TorchCustomModel(Module, ABC):
             valid_batch_size: size of the batches in the valid loader (None = one single batch)
             max_epochs: Maximum number of epochs for training
             patience: Number of consecutive epochs without improvement allowed
+            no_dataloader: if True, no dataloaders will be created for model training (only used with GAS model)
 
         Returns: None
         """
         # We create the training objects
-        train_data = self._create_train_dataloader(dataset, batch_size)
+        train_data = self._create_train_objects(dataset, batch_size, no_dataloader)
 
         # We create the objects needed for validation (data loader, early stopper)
-        early_stopper, valid_data = self._create_validation_objects(dataset, valid_batch_size, patience)
+        early_stopper, valid_data = self._create_validation_objects(dataset, valid_batch_size, patience, no_dataloader)
 
         # We init the update function
         update_progress = self._generate_progress_func(max_epochs)
@@ -404,9 +408,9 @@ class TorchCustomModel(Module, ABC):
                                     path=save_path)
 
     @staticmethod
-    def _create_train_dataloader(dataset: PetaleDataset,
-                                 batch_size: int
-                                 ) -> DataLoader:
+    def _create_train_objects(dataset: PetaleDataset,
+                              batch_size: int,
+                              no_dataloader: bool) -> Union[DataLoader, PetaleDataset]:
         """
         Creates the objects needed for the training
 
@@ -415,8 +419,10 @@ class TorchCustomModel(Module, ABC):
             batch_size: size of the batches in the train loader
 
         Returns: train loader
-
         """
+        if no_dataloader:
+            return dataset
+
         # Creation of training loader
         train_size = len(dataset.train_mask)
         batch_size = min(train_size, batch_size) if batch_size is not None else train_size

@@ -350,6 +350,8 @@ if __name__ == '__main__':
                 fp['pred_mu'] = dataset.original_data['pred0'].mean()
                 fp['pred_std'] = dataset.original_data['pred0'].std()
 
+            print(fp)
+
             return fp
 
         # Saving of the fixed params of GAT

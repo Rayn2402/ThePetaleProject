@@ -159,8 +159,6 @@ class GAS(TorchCustomModel):
         Returns: (N, 1) tensor with smoothed targets
         """
         # We extract previous prediction made by another model
-        print(self._pred_mu)
-        print(self._pred_std)
         y_hat = (x[:, self._prediction_idx]*self._pred_std)+self._pred_mu
 
         # We initialize a list of tensors to concatenate
@@ -177,13 +175,10 @@ class GAS(TorchCustomModel):
         # We concatenate all inputs
         x = cat(new_x, 1)
 
-        print(y_hat)
-
         if test_idx is None:
 
             # We compute the scaled-dot product attention
             att = softmax(matmul(self._key_projection(x), self._query_projection(x).t())/self._dk, dim=-1)
-            print(att)
 
         else:
 

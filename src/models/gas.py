@@ -262,7 +262,7 @@ class PetaleGASR(TorchRegressorWrapper):
 
         Returns: list of hyperparameters
         """
-        return list(GASHP)
+        return list(GASHP())
 
 
 class GASHP:

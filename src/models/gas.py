@@ -152,6 +152,9 @@ class GAS(TorchCustomModel):
 
         Returns: (N, 1) tensor with smoothed targets
         """
+        # We extract previous prediction made by another model
+        y_hat = x[:, self._prediction_idx]
+
         # We initialize a list of tensors to concatenate
         new_x = []
 
@@ -166,8 +169,6 @@ class GAS(TorchCustomModel):
         # We concatenate all inputs
         x = cat(new_x, 1)
 
-        # We extract previous prediction made by another model
-        y_hat = x[:, self._prediction_idx]
         print(y_hat)
 
         if test_idx is None:

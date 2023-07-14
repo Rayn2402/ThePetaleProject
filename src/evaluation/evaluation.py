@@ -314,7 +314,8 @@ class Evaluator:
         # Extraction of predictions
         pred = {}
         for section in [Recorder.TRAIN_RESULTS, Recorder.TEST_RESULTS, Recorder.VALID_RESULTS]:
-            pred = {**pred, **{p_id: [p_id, *convert(v[Recorder.PREDICTION])] for p_id, v in data[section].items()}}
+            if section in data.keys():
+                pred = {**pred, **{p_id: [p_id, *convert(v[Recorder.PREDICTION])] for p_id, v in data[section].items()}}
 
         # Creation of pandas dataframe
         pred_col_names = [f'pred{i}' for i in range(nb_pred_col)]

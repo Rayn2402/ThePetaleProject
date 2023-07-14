@@ -176,7 +176,7 @@ class GAS(TorchCustomModel):
         else:
 
             # We extract previous prediction made by another model
-            y_hat = x[test_idx, self._prediction_idx]
+            y_hat = x[:, self._prediction_idx]
 
             # We calculate the queries and set some test column to zero.
             # This makes sure that not attention is given to test points.

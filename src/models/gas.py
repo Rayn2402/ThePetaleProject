@@ -101,7 +101,7 @@ class GAS(TorchCustomModel):
 
         # We update evaluations history
         mean_epoch_score = self._update_evaluations_progress(epoch_loss, epoch_score,
-                                                             nb_batch=len(valid_data),
+                                                             nb_batch=1,
                                                              mask_type=MaskType.VALID)
 
         # We check early stopping status

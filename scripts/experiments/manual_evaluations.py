@@ -50,7 +50,7 @@ def retrieve_arguments():
                         help='If true, runs random forest experiment')
     parser.add_argument('-xg', '--xg_boost', default=False, action='store_true',
                         help='If true, runs xgboost experiment')
-    parser.add_argument('-gas', '--gat', default=False, action='store_true',
+    parser.add_argument('-gas', '--gas', default=False, action='store_true',
                         help='If true, runs Graph Attention Smoothing experiment')
     parser.add_argument('-gat', '--gat', default=False, action='store_true',
                         help='If true, runs Graph Attention Network experiment')

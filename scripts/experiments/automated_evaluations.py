@@ -55,7 +55,10 @@ if __name__ == '__main__':
 
     # Extraction of masks
     masks = extract_masks(Paths.VO2_MASK, k=args.nb_outer_splits, l=args.nb_inner_splits)
-    push_valid_to_train(masks)
+
+    # Creation of masks for tree-based models
+    masks_without_val = deepcopy(masks)
+    push_valid_to_train(masks_without_val)
 
     # Initialization of the dictionary containing the evaluation metrics
     evaluation_metrics = [AbsoluteError(), SpearmanR(), Pearson(), SquaredError(), RootMeanSquaredError()]
@@ -93,7 +96,7 @@ if __name__ == '__main__':
         # Creation of the evaluator
         evaluator = Evaluator(model_constructor=PetaleRFR,
                               dataset=dataset,
-                              masks=masks,
+                              masks=masks_without_val,
                               evaluation_name=f"RF_{eval_id}",
                               hps=ss.RF_HPS,
                               n_trials=NB_TRIALS,
@@ -123,7 +126,7 @@ if __name__ == '__main__':
         # Creation of the evaluator
         evaluator = Evaluator(model_constructor=PetaleXGBR,
                               dataset=dataset,
-                              masks=masks,
+                              masks=masks_without_val,
                               evaluation_name=f"XGBoost_{eval_id}",
                               hps=ss.XGBOOST_HPS,
                               n_trials=NB_TRIALS,

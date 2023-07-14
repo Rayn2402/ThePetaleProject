@@ -206,6 +206,10 @@ class GAS(TorchCustomModel):
         Returns: (N,) tensor
         """
 
+        # Set mask value if not provided
+        if mask is None:
+            mask = dataset.test_mask
+
         # Set model for evaluation
         self.eval()
 

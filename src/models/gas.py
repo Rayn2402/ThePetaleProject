@@ -159,6 +159,8 @@ class GAS(TorchCustomModel):
         Returns: (N, 1) tensor with smoothed targets
         """
         # We extract previous prediction made by another model
+        print(self._pred_mu)
+        print(self._pred_std)
         y_hat = (x[:, self._prediction_idx]*self._pred_std)+self._pred_mu
 
         # We initialize a list of tensors to concatenate

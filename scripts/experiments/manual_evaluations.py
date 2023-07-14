@@ -336,6 +336,8 @@ if __name__ == '__main__':
         def update_fixed_params(dts):
             return {'num_cont_col': len(dts.cont_idx),
                     'previous_pred_idx': len(dts.cont_idx) - 1,
+                    'pred_mu': dataset.original_data['pred0'].mean(),
+                    'pred_std': dataset.original_data['pred0'].std(),
                     'cat_idx': dts.cat_idx,
                     'cat_sizes': dts.cat_sizes,
                     'cat_emb_sizes': dts.cat_sizes,

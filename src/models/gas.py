@@ -27,6 +27,8 @@ class GAS(TorchCustomModel):
     """
     def __init__(self,
                  previous_pred_idx: int,
+                 pred_mu: float,
+                 pred_std: float,
                  alpha: float = 0,
                  beta: float = 0,
                  num_cont_col: Optional[int] = None,
@@ -52,6 +54,10 @@ class GAS(TorchCustomModel):
         # Index indicating which column of the dataset is associated to previous
         # predictions made by another model
         self._prediction_idx = previous_pred_idx
+
+        # We set variables needed to set back predictions in their original scale
+        self._pred_mu = pred_mu
+        self._pred_std = pred_std
 
         # Key and Query projection layers
         # We decrease the input size by one because one column contains predicted targets and will be removed
@@ -153,7 +159,7 @@ class GAS(TorchCustomModel):
         Returns: (N, 1) tensor with smoothed targets
         """
         # We extract previous prediction made by another model
-        y_hat = x[:, self._prediction_idx]
+        y_hat = (x[:, self._prediction_idx]*self._pred_std)+self._pred_mu
 
         # We initialize a list of tensors to concatenate
         new_x = []
@@ -231,6 +237,8 @@ class PetaleGASR(TorchRegressorWrapper):
     """
     def __init__(self,
                  previous_pred_idx: int,
+                 pred_mu: float,
+                 pred_std: float,
                  alpha: float = 0,
                  beta: float = 0,
                  num_cont_col: Optional[int] = None,
@@ -245,6 +253,8 @@ class PetaleGASR(TorchRegressorWrapper):
 
         # Creation of the model
         model = GAS(previous_pred_idx=previous_pred_idx,
+                    pred_mu=pred_mu,
+                    pred_std=pred_std,
                     alpha=alpha,
                     beta=beta,
                     num_cont_col=num_cont_col,

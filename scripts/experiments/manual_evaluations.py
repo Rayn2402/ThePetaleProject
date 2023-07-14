@@ -346,12 +346,9 @@ if __name__ == '__main__':
                   'patience': args.patience,
                   **ms_hps.GASHPS}
 
-            print(dataset.original_data.columns)
-            if 'pred0' in dataset.original_data.columns:
-                fp['pred_mu'] = dataset.original_data['pred0'].mean()
-                fp['pred_std'] = dataset.original_data['pred0'].std()
-
-            print(fp)
+            if 'pred0' in dts.original_data.columns:
+                fp['pred_mu'] = dts.original_data['pred0'].mean()
+                fp['pred_std'] = dts.original_data['pred0'].std()
 
             return fp
 

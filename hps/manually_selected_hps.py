@@ -8,6 +8,7 @@ Description: File used to store fixed hps for the experiments
 Date of last modification: 2022/03/28
 """
 
+from src.models.gas import GASHP
 from src.models.gat import GATHP
 from src.models.gcn import GCNHP
 from src.models.mlp import MLPHP
@@ -52,6 +53,13 @@ ENET_HPS = {
     MLPHP.RHO.name: 0,
     MLPHP.N_LAYER.name: 0,
     MLPHP.N_UNIT.name: 5
+}
+
+GASHPS = {
+    GATHP.ALPHA.name: 0,
+    GATHP.BETA.name: 0,
+    GASHP.LR.name: 0.01,
+    GASHP.RHO.name: 0,
 }
 
 GATHPS = {

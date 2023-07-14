@@ -17,7 +17,7 @@ from src.data.processing.datasets import MaskType, PetaleDataset
 from src.evaluation.early_stopping import EarlyStopper
 from src.models.abstract_models.custom_torch_base import TorchCustomModel
 from src.models.wrappers.torch_wrappers import TorchRegressorWrapper
-from src.utils.hyperparameters import HP, NumericalContinuousHP, NumericalIntHP
+from src.utils.hyperparameters import HP, NumericalContinuousHP
 from src.utils.metrics import RootMeanSquaredError
 
 
@@ -252,7 +252,8 @@ class PetaleGASR(TorchRegressorWrapper):
                                            batch_size=None,
                                            valid_batch_size=None,
                                            patience=patience,
-                                           max_epochs=max_epochs))
+                                           max_epochs=max_epochs,
+                                           no_dataloader=True))
 
     @staticmethod
     def get_hps() -> List[HP]:

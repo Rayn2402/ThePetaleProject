@@ -219,7 +219,10 @@ class GAS(TorchCustomModel):
         # Execute a forward pass and apply a softmax
         with no_grad():
             x, _, idx = dataset[dataset.train_mask + added_idx]
-            return self(x, [idx.index(i) for i in added_idx])
+            if len(added_idx) > 0:
+                return self(x, [idx.index(i) for i in added_idx])
+            else:
+                return self(x)
 
 
 class PetaleGASR(TorchRegressorWrapper):

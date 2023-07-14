@@ -334,16 +334,23 @@ if __name__ == '__main__':
 
         # Creation of a function to update fixed params
         def update_fixed_params(dts):
-            return {'num_cont_col': len(dts.cont_idx),
-                    'previous_pred_idx': len(dts.cont_idx) - 1,
-                    'pred_mu': dataset.original_data['pred0'].mean(),
-                    'pred_std': dataset.original_data['pred0'].std(),
-                    'cat_idx': dts.cat_idx,
-                    'cat_sizes': dts.cat_sizes,
-                    'cat_emb_sizes': dts.cat_sizes,
-                    'max_epochs': args.epochs,
-                    'patience': args.patience,
-                    **ms_hps.GASHPS}
+
+            fp = {'num_cont_col': len(dts.cont_idx),
+                  'previous_pred_idx': len(dts.cont_idx) - 1,
+                  'pred_mu': 0,
+                  'pred_std': 1,
+                  'cat_idx': dts.cat_idx,
+                  'cat_sizes': dts.cat_sizes,
+                  'cat_emb_sizes': dts.cat_sizes,
+                  'max_epochs': args.epochs,
+                  'patience': args.patience,
+                  **ms_hps.GASHPS}
+
+            if 'pred0' in dataset.original_data.columns:
+                fp['pred_mu'] = dataset.original_data['pred0'].mean()
+                fp['pred_std'] = dataset.original_data['pred0'].std()
+
+            return fp
 
         # Saving of the fixed params of GAT
         fixed_params = update_fixed_params(dataset)

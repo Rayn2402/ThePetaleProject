@@ -86,11 +86,12 @@ class GAS(TorchCustomModel):
             x, y, idx = valid_data[valid_data.train_mask + valid_data.valid_mask]
 
             # We perform the forward pass
-            output = self(x, [idx.index(i) for i in valid_data.valid_mask])
+            valid_pos_idx = [idx.index(i) for i in valid_data.valid_mask]
+            output = self(x, valid_pos_idx)
 
             # We calculate the loss and the score
-            epoch_loss += self.loss(output, y).item()
-            epoch_score += self._eval_metric(output, y)
+            epoch_loss += self.loss(output, y[valid_pos_idx]).item()
+            epoch_score += self._eval_metric(output, y[valid_pos_idx])
 
         # We update evaluations history
         mean_epoch_score = self._update_evaluations_progress(epoch_loss, epoch_score,

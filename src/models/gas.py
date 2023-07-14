@@ -54,8 +54,9 @@ class GAS(TorchCustomModel):
         self._prediction_idx = previous_pred_idx
 
         # Key and Query projection layers
-        self._key_projection = Linear(self._input_size, self._input_size)
-        self._query_projection = Linear(self._input_size, self._input_size)
+        # We decrease the input size by one because one column contains predicted targets and will be removed
+        self._key_projection = Linear(self._input_size - 1, self._input_size)
+        self._query_projection = Linear(self._input_size - 1, self._input_size)
 
         # Scaling factor
         self._dk = sqrt(Tensor([self._input_size]))

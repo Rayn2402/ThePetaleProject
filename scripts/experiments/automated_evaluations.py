@@ -251,13 +251,22 @@ if __name__ == '__main__':
 
         # Creation of a function to update fixed params
         def update_fixed_params(dts):
-            return {'num_cont_col': len(dts.cont_idx),
-                    'previous_pred_idx': len(dts.cont_idx) - 1,
-                    'cat_idx': dts.cat_idx,
-                    'cat_sizes': dts.cat_sizes,
-                    'cat_emb_sizes': dts.cat_sizes,
-                    'max_epochs': args.epochs,
-                    'patience': args.patience}
+
+            fp = {'num_cont_col': len(dts.cont_idx),
+                  'previous_pred_idx': len(dts.cont_idx) - 1,
+                  'pred_mu': 0,
+                  'pred_std': 1,
+                  'cat_idx': dts.cat_idx,
+                  'cat_sizes': dts.cat_sizes,
+                  'cat_emb_sizes': dts.cat_sizes,
+                  'max_epochs': args.epochs,
+                  'patience': args.patience}
+
+            if 'pred0' in dts.original_data.columns:
+                fp['pred_mu'] = dts.original_data['pred0'].mean()
+                fp['pred_std'] = dts.original_data['pred0'].std()
+
+            return fp
 
         # Saving of the fixed params of GAS
         fixed_params = update_fixed_params(dataset)

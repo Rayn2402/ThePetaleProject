@@ -266,7 +266,7 @@ if __name__ == '__main__':
         evaluator = Evaluator(model_constructor=PetaleGASR,
                               dataset=dataset,
                               masks=masks,
-                              evaluation_name=f"GASR_{eval_id}",
+                              evaluation_name=f"GAS_{eval_id}",
                               hps=ss.GASHPS,
                               n_trials=NB_TRIALS,
                               evaluation_metrics=evaluation_metrics,

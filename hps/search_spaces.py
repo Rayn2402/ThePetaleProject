@@ -8,6 +8,7 @@ Description: File used to store hps search spaces for the experiments
 Date of last modification: 2022/04/12
 """
 
+from src.models.gas import GASHP
 from src.models.gat import GATHP
 from src.models.gcn import GCNHP
 from src.models.mlp import MLPHP
@@ -121,6 +122,23 @@ ENET_HPS = {
     },
     MLPHP.N_UNIT.name: {
         Range.VALUE: 5
+    },
+}
+
+GASHPS = {
+    GASHP.ALPHA.name: {
+        Range.VALUE: 0
+    },
+    GASHP.BETA.name: {
+        Range.MIN: 5e-4,
+        Range.MAX: 5e-3,
+    },
+    GASHP.LR.name: {
+        Range.MIN: 5e-3,
+        Range.MAX: 5e-2,
+    },
+    GASHP.RHO.name: {
+        Range.VALUE: 0
     },
 }
 

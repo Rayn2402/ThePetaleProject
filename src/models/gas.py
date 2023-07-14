@@ -181,7 +181,7 @@ class GAS(TorchCustomModel):
             # We calculate the queries and set some test column to zero.
             # This makes sure that not attention is given to test points.
             queries = self._query_projection(x)
-            queries[:, test_idx] = 0
+            queries[test_idx, :] = 0
 
             # We compute the scaled-dot product attention
             att = softmax(matmul(self._key_projection(x[test_idx, :]), queries.t())/self._dk, dim=-1)

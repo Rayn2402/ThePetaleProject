@@ -30,6 +30,7 @@ if __name__ == '__main__':
     from src.data.processing.feature_selection import FeatureSelector
     from src.data.processing.sampling import extract_masks, get_VO2_data, push_valid_to_train
     from src.evaluation.evaluation import Evaluator
+    from src.models.gas import PetaleGASR, GASHP
     from src.models.gat import PetaleGATR, GATHP
     from src.models.gcn import PetaleGCNR, GCNHP
     from src.models.mlp import PetaleMLPR, MLPHP
@@ -233,6 +234,54 @@ if __name__ == '__main__':
         evaluator.evaluate()
 
         print(f"Time taken for enet (minutes): {(time.time() - start) / 60:.2f}")
+
+    """
+    GAS experiment
+    """
+    if args.gas and (args.path is not None):
+
+        # Start timer
+        start = time.time()
+
+        # Creation of the dataset
+        dataset = PetaleDataset(df, target, cont_cols, cat_cols, to_tensor=True, classification=False)
+
+        # Creation of a function to update fixed params
+        def update_fixed_params(dts):
+            return {'num_cont_col': len(dts.cont_idx),
+                    'previous_pred_idx': len(dts.cont_idx) - 1,
+                    'cat_idx': dts.cat_idx,
+                    'cat_sizes': dts.cat_sizes,
+                    'cat_emb_sizes': dts.cat_sizes,
+                    'max_epochs': args.epochs,
+                    'patience': args.patience}
+
+        # Saving of the fixed params of GAS
+        fixed_params = update_fixed_params(dataset)
+
+        # Update of the hyperparameters
+        ss.GASHPS[GASHP.RHO.name] = sam_search_space
+
+        # Creation of the evaluator
+        evaluator = Evaluator(model_constructor=PetaleGASR,
+                              dataset=dataset,
+                              masks=masks,
+                              evaluation_name=f"GASR_{eval_id}",
+                              hps=ss.GASHPS,
+                              n_trials=NB_TRIALS,
+                              evaluation_metrics=evaluation_metrics,
+                              feature_selector=feature_selector,
+                              fixed_params=fixed_params,
+                              fixed_params_update_function=update_fixed_params,
+                              save_hps_importance=True,
+                              save_optimization_history=True,
+                              seed=args.seed,
+                              pred_path=args.path)
+
+        # Evaluation
+        evaluator.evaluate()
+
+        print(f"Time taken for GAS (minutes): {(time.time() - start) / 60:.2f}")
 
     """
     GAT experiment

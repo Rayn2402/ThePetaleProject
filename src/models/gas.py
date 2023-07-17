@@ -177,7 +177,8 @@ class GAS(TorchCustomModel):
         y_hat = (x[:, self._prediction_idx]*self._pred_std)+self._pred_mu
 
         # We change targets of test idx for their predictions
-        y[test_idx] = y_hat[test_idx]
+        if test_idx is not None:
+            y[test_idx] = y_hat[test_idx]
 
         # We initialize a list of tensors to concatenate
         new_x = []
@@ -243,11 +244,11 @@ class GAS(TorchCustomModel):
 
         # Execute a forward pass and apply a softmax
         with no_grad():
-            x, _, idx = dataset[dataset.train_mask + added_idx]
+            x, y, idx = dataset[dataset.train_mask + added_idx]
             if len(added_idx) > 0:
-                return self(x, [idx.index(i) for i in added_idx])
+                return self(x, y, [idx.index(i) for i in added_idx])
             else:
-                return self(x)
+                return self(x, y)
 
 
 class PetaleGASR(TorchRegressorWrapper):

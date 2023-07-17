@@ -189,7 +189,7 @@ class GAS(TorchCustomModel):
             # We set some elements to zero
             nb_test_elements = len(test_idx)
             if nb_test_elements > 1:
-                for i, in range(nb_test_elements):
+                for i in range(nb_test_elements):
                     att[i, list(range(i)) + list(range(i+1, nb_test_elements))] = 0
 
             # We apply the softmax max

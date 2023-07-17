@@ -7,11 +7,12 @@ Description: This file is used to define the Graph Attention Smoothing model.
 
 Date of last modification: 2023/05/17
 """
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from torch import cat, matmul, no_grad, sqrt, Tensor
 from torch.nn import Linear, MSELoss
 from torch.nn.functional import softmax
+from torch.utils.data import DataLoader
 
 from src.data.processing.datasets import MaskType, PetaleDataset
 from src.evaluation.early_stopping import EarlyStopper
@@ -68,7 +69,7 @@ class GAS(TorchCustomModel):
         self._dk = sqrt(Tensor([self._input_size]))
 
     def _execute_valid_step(self,
-                            valid_data: Optional[PetaleDataset],
+                            valid_data: Tuple[Optional[DataLoader], PetaleDataset],
                             early_stopper: EarlyStopper) -> bool:
         """
         Executes an inference step on the validation data
@@ -78,30 +79,35 @@ class GAS(TorchCustomModel):
 
         Returns: True if we need to early stop
         """
-        if valid_data is None:
+        if valid_data[0] is None:
             return False
+
+        # We extract the valid dataloader and the complete dataset
+        valid_loader, dataset = valid_data
 
         # Set model for evaluation
         self.eval()
         epoch_loss, epoch_score = 0, 0
 
+        # We extract the data of training and valid set
+        x, y, all_idx = dataset[dataset.train_mask + dataset.valid_mask]
+
         # We execute one inference step on validation set
         with no_grad():
 
-            # We extract the data
-            x, y, idx = valid_data[valid_data.train_mask + valid_data.valid_mask]
+            for _, _, idx in valid_loader:
 
-            # We perform the forward pass
-            valid_pos_idx = [idx.index(i) for i in valid_data.valid_mask]
-            output = self(x, valid_pos_idx)
+                # We perform the forward pass
+                batch_pos_idx = [all_idx.index(i) for i in idx]
+                output = self(x, y, batch_pos_idx)
 
-            # We calculate the loss and the score
-            epoch_loss += self.loss(output, y[valid_pos_idx]).item()
-            epoch_score += self._eval_metric(output, y[valid_pos_idx])
+                # We calculate the loss and the score
+                epoch_loss += self.loss(output, y[batch_pos_idx]).item()
+                epoch_score += self._eval_metric(output, y[batch_pos_idx])
 
         # We update evaluations history
         mean_epoch_score = self._update_evaluations_progress(epoch_loss, epoch_score,
-                                                             nb_batch=1,
+                                                             nb_batch=len(valid_loader),
                                                              mask_type=MaskType.VALID)
 
         # We check early stopping status
@@ -112,7 +118,7 @@ class GAS(TorchCustomModel):
 
         return False
 
-    def _execute_train_step(self, train_data: PetaleDataset) -> float:
+    def _execute_train_step(self, train_data: Tuple[Optional[DataLoader], PetaleDataset]) -> float:
         """
         Executes one training epoch
 
@@ -125,34 +131,42 @@ class GAS(TorchCustomModel):
         self.train()
         epoch_loss, epoch_score = 0, 0
 
+        # We extract the valid dataloader and the complete dataset
+        train_loader, dataset = train_data
+
         # We extract the features related to all the train mask
-        x, y, _ = train_data[train_data.train_mask]
+        x, y, all_idx = dataset[dataset.train_mask]
 
-        # We clear the gradients
-        self._optimizer.zero_grad()
+        for _, _, idx in train_loader:
 
-        # We perform the weight update
-        pred, loss = self._update_weights([x], y)
+            # We clear the gradients
+            self._optimizer.zero_grad()
 
-        # We update the metrics history
-        score = self._eval_metric(pred, y)
-        epoch_loss += loss
-        epoch_score += score
+            # We perform the weight update
+            batch_pos_idx = [all_idx.index(i) for i in idx]
+            pred, loss = self._update_weights([x, y, batch_pos_idx], y)
+
+            # We update the metrics history
+            score = self._eval_metric(pred, y[batch_pos_idx])
+            epoch_loss += loss
+            epoch_score += score
 
         # We update evaluations history
         mean_epoch_loss = self._update_evaluations_progress(epoch_loss, epoch_score,
-                                                            nb_batch=1,
+                                                            nb_batch=len(train_loader),
                                                             mask_type=MaskType.TRAIN)
         return mean_epoch_loss
 
     def forward(self,
                 x: Tensor,
+                y: Tensor,
                 test_idx: Optional[List[int]] = None) -> Tensor:
         """
         Executes a forward pass.
 
         Args:
             x: (N, D) tensor with features
+            y: (N, 1) tensor with targets
             test_idx: List of idx associated to test data points for which we want to calculate smooth targets.
                       If None, values are returned for all idx.
 
@@ -161,6 +175,9 @@ class GAS(TorchCustomModel):
 
         # We extract previous prediction made by another model
         y_hat = (x[:, self._prediction_idx]*self._pred_std)+self._pred_mu
+
+        # We change targets of test idx for their predictions
+        y[test_idx] = y_hat[test_idx]
 
         # We initialize a list of tensors to concatenate
         new_x = []
@@ -195,7 +212,7 @@ class GAS(TorchCustomModel):
             # We apply the softmax max
             att = softmax(att, dim=-1)
 
-        return matmul(att, y_hat).squeeze(dim=-1)
+        return matmul(att, y).squeeze(dim=-1)
 
     def predict(self,
                 dataset: PetaleDataset,

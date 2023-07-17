@@ -187,9 +187,10 @@ class GAS(TorchCustomModel):
             att = matmul(self._key_projection(x[test_idx, :]), self._query_projection(x).t())/self._dk
 
             # We set some elements to zero
-            if len(test_idx) > 1:
-                for i, idx in enumerate(test_idx):
-                    att[idx, test_idx[:i] + test_idx[i+1:]] = 0
+            nb_test_elements = len(test_idx)
+            if nb_test_elements > 1:
+                for i, in range(nb_test_elements):
+                    att[i, list(range(i)) + list(range(i+1, nb_test_elements))] = 0
 
             # We apply the softmax max
             att = softmax(att, dim=-1)

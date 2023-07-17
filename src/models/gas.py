@@ -287,7 +287,7 @@ class PetaleGASR(TorchRegressorWrapper):
         super().__init__(model=model,
                          train_params=dict(lr=lr,
                                            rho=rho,
-                                           batch_size=None,
+                                           batch_size=10,
                                            valid_batch_size=None,
                                            patience=patience,
                                            max_epochs=max_epochs,

@@ -158,6 +158,7 @@ class GAS(TorchCustomModel):
 
         Returns: (N, 1) tensor with smoothed targets
         """
+
         # We extract previous prediction made by another model
         y_hat = (x[:, self._prediction_idx]*self._pred_std)+self._pred_mu
 
@@ -182,13 +183,16 @@ class GAS(TorchCustomModel):
 
         else:
 
-            # We calculate the queries and set some test column to zero.
-            # This makes sure that not attention is given to test points.
-            queries = self._query_projection(x)
-            queries[test_idx, :] = 0
+            # We compute the scaled-dot product
+            att = matmul(self._key_projection(x[test_idx, :]), self._query_projection(x).t())/self._dk
 
-            # We compute the scaled-dot product attention
-            att = softmax(matmul(self._key_projection(x[test_idx, :]), queries.t())/self._dk, dim=-1)
+            # We set some elements to zero
+            if len(test_idx) > 1:
+                for i, idx in enumerate(test_idx):
+                    att[idx, test_idx[:i] + test_idx[i+1:]] = 0
+
+            # We apply the softmax max
+            att = softmax(att, dim=-1)
 
         return matmul(att, y_hat).squeeze(dim=-1)
 

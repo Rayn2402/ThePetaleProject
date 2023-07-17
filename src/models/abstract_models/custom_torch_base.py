@@ -115,7 +115,8 @@ class TorchCustomModel(Module, ABC):
                                    dataset: PetaleDataset,
                                    valid_batch_size: Optional[int],
                                    patience: int,
-                                   no_dataloader: bool) -> Tuple[EarlyStopper, Union[DataLoader, PetaleDataset]]:
+                                   include_dataset: bool) -> \
+            Tuple[EarlyStopper, Union[DataLoader, Tuple[DataLoader, PetaleDataset]]]:
         """
         Creates the objects needed for validation during the training process
 
@@ -123,27 +124,30 @@ class TorchCustomModel(Module, ABC):
             dataset: PetaleDataset used to feed the dataloader
             valid_batch_size: size of the batches in the valid loader (None = one single batch)
             patience: number of consecutive epochs without improvement allowed
+            include_dataset: if True, dataset will be included with the dataloader when passed to train and eval methods
 
         Returns: EarlyStopper, Dataloader
 
         """
         # We create the valid dataloader (if valid size != 0)
-        valid_size, valid_data, early_stopper = len(dataset.valid_mask), dataset, None
+        valid_size, valid_data, early_stopper = len(dataset.valid_mask), None, None
 
         if valid_size != 0:
 
             # We create the early stopper
             early_stopper = EarlyStopper(patience, self._eval_metric.direction)
 
-            if not no_dataloader:
+            # We check if a valid batch size was provided
+            valid_batch_size = min(valid_size, valid_batch_size) if valid_batch_size is not None else valid_size
 
-                # We check if a valid batch size was provided
-                valid_batch_size = min(valid_size, valid_batch_size) if valid_batch_size is not None else valid_size
+            # We create the valid loader
+            valid_data = DataLoader(dataset,
+                                    batch_size=valid_batch_size,
+                                    sampler=SubsetRandomSampler(dataset.valid_mask))
 
-                # We create the valid loader
-                valid_data = DataLoader(dataset,
-                                        batch_size=valid_batch_size,
-                                        sampler=SubsetRandomSampler(dataset.valid_mask))
+            # Check if we need to include the dataset
+            if include_dataset:
+                valid_data = (valid_data, dataset)
 
         return early_stopper, valid_data
 
@@ -307,7 +311,7 @@ class TorchCustomModel(Module, ABC):
             valid_batch_size: Optional[int] = None,
             max_epochs: int = 200,
             patience: int = 15,
-            no_dataloader: bool = False) -> None:
+            include_dataset: bool = False) -> None:
         """
         Fits the model to the training data
 
@@ -320,15 +324,16 @@ class TorchCustomModel(Module, ABC):
             valid_batch_size: size of the batches in the valid loader (None = one single batch)
             max_epochs: Maximum number of epochs for training
             patience: Number of consecutive epochs without improvement allowed
-            no_dataloader: if True, no dataloaders will be created for model training (only used with GAS model)
+            include_dataset: if True, dataset will be included with the dataloader when passed to train and eval methods
 
         Returns: None
         """
         # We create the training objects
-        train_data = self._create_train_objects(dataset, batch_size, no_dataloader)
+        train_data = self._create_train_objects(dataset, batch_size, include_dataset)
 
         # We create the objects needed for validation (data loader, early stopper)
-        early_stopper, valid_data = self._create_validation_objects(dataset, valid_batch_size, patience, no_dataloader)
+        early_stopper, valid_data = self._create_validation_objects(dataset, valid_batch_size,
+                                                                    patience, include_dataset)
 
         # We init the update function
         update_progress = self._generate_progress_func(max_epochs)
@@ -340,11 +345,6 @@ class TorchCustomModel(Module, ABC):
         else:
             self._update_weights = self._basic_weight_update
             self._optimizer = Adam(self.parameters(), lr=lr)
-
-        # We add the dataset to train_data and valid_data if it is a GNN dataset
-        if isinstance(dataset, PetaleKGNNDataset):
-            train_data = (train_data, dataset)
-            valid_data = (valid_data, dataset)
 
         # We execute the epochs
         for epoch in range(max_epochs):
@@ -410,19 +410,17 @@ class TorchCustomModel(Module, ABC):
     @staticmethod
     def _create_train_objects(dataset: PetaleDataset,
                               batch_size: int,
-                              no_dataloader: bool) -> Union[DataLoader, PetaleDataset]:
+                              include_dataset: bool) -> Union[DataLoader, Tuple[DataLoader, PetaleDataset]]:
         """
         Creates the objects needed for the training
 
         Args:
             dataset: PetaleDataset used to feed the dataloaders
             batch_size: size of the batches in the train loader
+            include_dataset: if True, dataset is returned with the dataloader
 
         Returns: train loader
         """
-        if no_dataloader:
-            return dataset
-
         # Creation of training loader
         train_size = len(dataset.train_mask)
         batch_size = min(train_size, batch_size) if batch_size is not None else train_size
@@ -430,6 +428,10 @@ class TorchCustomModel(Module, ABC):
                                 batch_size=batch_size,
                                 sampler=SubsetRandomSampler(dataset.train_mask),
                                 drop_last=(train_size % batch_size) == 1)
+
+        # Check if we need to include the dataset
+        if include_dataset:
+            train_data = (train_data, dataset)
 
         return train_data
 

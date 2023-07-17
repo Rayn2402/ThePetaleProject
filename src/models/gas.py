@@ -144,9 +144,7 @@ class GAS(TorchCustomModel):
 
             # We perform the weight update
             batch_pos_idx = [all_idx.index(i) for i in idx]
-            pred, loss = self._update_weights([x, y, batch_pos_idx], y)
-            print(pred.shape)
-            print(y[batch_pos_idx].shape)
+            pred, loss = self._update_weights([x, y, batch_pos_idx], y[batch_pos_idx])
 
             # We update the metrics history
             score = self._eval_metric(pred, y[batch_pos_idx])

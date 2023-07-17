@@ -291,7 +291,7 @@ class PetaleGASR(TorchRegressorWrapper):
                                            valid_batch_size=None,
                                            patience=patience,
                                            max_epochs=max_epochs,
-                                           no_dataloader=True))
+                                           include_dataset=True))
 
     @staticmethod
     def get_hps() -> List[HP]:

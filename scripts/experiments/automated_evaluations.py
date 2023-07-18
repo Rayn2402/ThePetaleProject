@@ -14,7 +14,7 @@ import time
 from os.path import dirname, realpath
 from copy import deepcopy
 
-NB_TRIALS = 200
+NB_TRIALS = 500
 
 if __name__ == '__main__':
 

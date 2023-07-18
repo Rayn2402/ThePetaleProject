@@ -18,7 +18,7 @@ from src.data.processing.datasets import MaskType, PetaleDataset
 from src.evaluation.early_stopping import EarlyStopper
 from src.models.abstract_models.custom_torch_base import TorchCustomModel
 from src.models.wrappers.torch_wrappers import TorchRegressorWrapper
-from src.utils.hyperparameters import HP, NumericalContinuousHP
+from src.utils.hyperparameters import HP, NumericalContinuousHP, NumericalIntHP
 from src.utils.metrics import RootMeanSquaredError
 
 
@@ -269,6 +269,7 @@ class PetaleGASR(TorchRegressorWrapper):
                  cat_emb_sizes: Optional[List[int]] = None,
                  lr: float = 0.05,
                  rho: float = 0,
+                 batch_size: Optional[int] = None,
                  max_epochs: int = 200,
                  patience: int = 15,
                  verbose: bool = False):
@@ -290,7 +291,7 @@ class PetaleGASR(TorchRegressorWrapper):
         super().__init__(model=model,
                          train_params=dict(lr=lr,
                                            rho=rho,
-                                           batch_size=10,
+                                           batch_size=batch_size,
                                            valid_batch_size=None,
                                            patience=patience,
                                            max_epochs=max_epochs,
@@ -311,9 +312,10 @@ class GASHP:
     GAS hyperparameters
     """
     ALPHA = NumericalContinuousHP("alpha")
+    BATCH_SIZE = NumericalIntHP("batch_size")
     BETA = NumericalContinuousHP("beta")
     LR = NumericalContinuousHP("lr")
     RHO = NumericalContinuousHP("rho")
 
     def __iter__(self):
-        return iter([self.ALPHA, self.BETA, self.LR, self.RHO])
+        return iter([self.ALPHA, self.BATCH_SIZE, self.BETA, self.LR, self.RHO])

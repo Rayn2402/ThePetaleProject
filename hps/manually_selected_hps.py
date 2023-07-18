@@ -56,8 +56,9 @@ ENET_HPS = {
 }
 
 GASHPS = {
-    GATHP.ALPHA.name: 0,
-    GATHP.BETA.name: 0,
+    GASHP.ALPHA.name: 0,
+    GASHP.BATCH_SIZE.name: 50,
+    GASHP.BETA.name: 0,
     GASHP.LR.name: 0.01,
     GASHP.RHO.name: 0,
 }

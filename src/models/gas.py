@@ -177,8 +177,8 @@ class GAS(TorchCustomModel):
         y_hat = (x[:, self._prediction_idx]*self._pred_std)+self._pred_mu
 
         # We change targets of test idx for their predictions
-        if test_idx is not None:
-            y[test_idx] = y_hat[test_idx]
+        # if test_idx is not None:
+        #     y[test_idx] = y_hat[test_idx]
 
         # We initialize a list of tensors to concatenate
         new_x = []
@@ -213,7 +213,9 @@ class GAS(TorchCustomModel):
             # We apply the softmax max
             att = softmax(att, dim=-1)
 
-        return matmul(att, y).squeeze(dim=-1)
+        # return matmul(att, y).squeeze(dim=-1)
+
+        return matmul(att, y_hat).squeeze(dim=-1)
 
     def predict(self,
                 dataset: PetaleDataset,

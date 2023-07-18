@@ -17,7 +17,7 @@ from optuna import create_study
 from optuna.importance import get_param_importances, FanovaImportanceEvaluator
 from optuna.logging import FATAL, set_verbosity
 from optuna.pruners import NopPruner
-from optuna.samplers import TPESampler
+from optuna.samplers import TPESampler, CmaEsSampler
 from optuna.study import Study
 from optuna.trial import Trial, FrozenTrial
 from optuna.visualization import plot_parallel_coordinate, plot_param_importances, plot_optimization_history
@@ -320,12 +320,17 @@ class Tuner:
         else:
             direction = self._objective.metric.direction
 
+        # return create_study(direction=direction,
+        #                     study_name=study_name,
+        #                     sampler=TPESampler(n_startup_trials=20,
+        #                                        n_ei_candidates=20,
+        #                                        multivariate=True,
+        #                                        constant_liar=True),
+        #                     pruner=NopPruner())
+
         return create_study(direction=direction,
                             study_name=study_name,
-                            sampler=TPESampler(n_startup_trials=20,
-                                               n_ei_candidates=20,
-                                               multivariate=True,
-                                               constant_liar=True),
+                            sampler=CmaEsSampler(n_startup_trials=20),
                             pruner=NopPruner())
 
     def _plot_hps_importance_graph(self) -> None:

@@ -397,10 +397,10 @@ class TopKAbsoluteError(RegressionMetric):
             raise ValueError(f"Reduction must be in {[Reduction.MEAN, Reduction.SUM]}")
 
         if reduction == Reduction.MEAN:
-            name = "topkMAE"
+            name = f"top{k}MAE"
             self._reduction = mean
         else:
-            name = "topkAE"
+            name = f"top{k}AE"
             self._reduction = sum
 
         self._k = k

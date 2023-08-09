@@ -376,6 +376,7 @@ class AbsoluteError(RegressionMetric):
         """
         return self._reduction(abs(pred - targets)).item()
 
+
 class TopKAbsoluteError(RegressionMetric):
     """
     Callable class that computes the absolute error over the K highest errors
@@ -396,10 +397,10 @@ class TopKAbsoluteError(RegressionMetric):
             raise ValueError(f"Reduction must be in {[Reduction.MEAN, Reduction.SUM]}")
 
         if reduction == Reduction.MEAN:
-            name = "MAE"
+            name = "topkMAE"
             self._reduction = mean
         else:
-            name = "AE"
+            name = "topkAE"
             self._reduction = sum
 
         self._k = k

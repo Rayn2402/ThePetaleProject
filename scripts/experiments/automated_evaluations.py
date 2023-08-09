@@ -37,7 +37,8 @@ if __name__ == '__main__':
     from src.models.random_forest import PetaleRFR
     from src.models.xgboost_ import PetaleXGBR
     from src.utils.hyperparameters import Range
-    from src.utils.metrics import AbsoluteError, Pearson, RootMeanSquaredError, SpearmanR, SquaredError
+    from src.utils.metrics import AbsoluteError, Pearson, RootMeanSquaredError, SpearmanR, SquaredError,\
+        TopKAbsoluteError
 
     # Arguments parsing
     args = retrieve_arguments()
@@ -61,7 +62,8 @@ if __name__ == '__main__':
     push_valid_to_train(masks_without_val)
 
     # Initialization of the dictionary containing the evaluation metrics
-    evaluation_metrics = [AbsoluteError(), SpearmanR(), Pearson(), SquaredError(), RootMeanSquaredError()]
+    evaluation_metrics = [AbsoluteError(), SpearmanR(), Pearson(), SquaredError(),
+                          TopKAbsoluteError(), RootMeanSquaredError()]
 
     # Initialization of a feature selector
     if args.feature_selection:

@@ -14,7 +14,7 @@ from lifelines.utils import concordance_index
 from numpy import array
 from scipy.stats import spearmanr
 from sklearn.metrics import roc_auc_score
-from torch import abs, from_numpy, is_tensor, mean, pow, prod, sqrt, sum, tensor, zeros
+from torch import abs, from_numpy, is_tensor, mean, pow, prod, sqrt, sum, tensor, topk, zeros
 from torch.nn.functional import binary_cross_entropy_with_logits
 from typing import Optional, Tuple, Union
 
@@ -375,6 +375,52 @@ class AbsoluteError(RegressionMetric):
 
         """
         return self._reduction(abs(pred - targets)).item()
+
+class TopKAbsoluteError(RegressionMetric):
+    """
+    Callable class that computes the absolute error over the K highest errors
+    """
+    def __init__(self,
+                 k: int = 10,
+                 reduction: str = Reduction.MEAN,
+                 n_digits: int = 5):
+        """
+        Sets the protected reduction method and other protected attributes using parent's constructor
+
+        Args:
+            k: top k highest errors to record
+            reduction: "mean" for mean absolute error and "sum" for the sum of the absolute errors
+            n_digits: number of digits kept for the score
+        """
+        if reduction not in [Reduction.MEAN, Reduction.SUM]:
+            raise ValueError(f"Reduction must be in {[Reduction.MEAN, Reduction.SUM]}")
+
+        if reduction == Reduction.MEAN:
+            name = "MAE"
+            self._reduction = mean
+        else:
+            name = "AE"
+            self._reduction = sum
+
+        self._k = k
+
+        super().__init__(direction=Direction.MINIMIZE, name=name, n_digits=n_digits)
+
+    def compute_metric(self,
+                       pred: tensor,
+                       targets: tensor) -> float:
+        """
+        Computes the absolute error between predictions and targets
+
+        Args:
+            pred: (N,) tensor with predicted labels
+            targets: (N,) tensor with ground truth
+
+        Returns: float
+
+        """
+        top_k_error = topk(abs(pred - targets), k=self._k)
+        return self._reduction(top_k_error.values).item()
 
 
 class ConcordanceIndex(RegressionMetric):

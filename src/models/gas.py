@@ -9,7 +9,7 @@ Date of last modification: 2023/05/17
 """
 from typing import List, Optional, Tuple
 
-from torch import cat, matmul, no_grad, sqrt, Tensor
+from torch import cat, eye, matmul, no_grad, sqrt, Tensor
 from torch.nn import Linear, MSELoss
 from torch.nn.functional import softmax
 from torch.utils.data import DataLoader
@@ -176,9 +176,8 @@ class GAS(TorchCustomModel):
         # We extract previous prediction made by another model
         y_hat = (x[:, self._prediction_idx]*self._pred_std)+self._pred_mu
 
-        # We change targets of test idx for their predictions
-        # if test_idx is not None:
-        #     y[test_idx] = y_hat[test_idx]
+        # We calculate the errors made on these predictions
+        errors = y - y_hat
 
         # We initialize a list of tensors to concatenate
         new_x = []
@@ -196,26 +195,31 @@ class GAS(TorchCustomModel):
 
         if test_idx is None:
 
-            # We compute the scaled-dot product attention
-            att = softmax(matmul(self._key_projection(x), self._query_projection(x).t())/self._dk, dim=-1)
+            # We compute the scaled-dot product
+            att = matmul(self._key_projection(x), self._query_projection(x).t())/self._dk
+
+            # We set the diagonal to zero
+            att = att*(1-eye(att.shape[0], att.shape[1]))
+
+            # We apply the softmax
+            att = softmax(att, dim=-1)
 
         else:
 
             # We compute the scaled-dot product
             att = matmul(self._key_projection(x[test_idx, :]), self._query_projection(x).t())/self._dk
 
-            # We set some elements to zero
-            nb_test_elements = len(test_idx)
-            if nb_test_elements > 1:
-                for i in range(nb_test_elements):
-                    att[i, list(range(i)) + list(range(i+1, nb_test_elements))] = 0
+            # We set the attention given to test elements to zero
+            # Therefore test elements cannot attend to their own errors
+            att[:, test_idx] = 0
 
-            # We apply the softmax max
+            # We apply the softmax
             att = softmax(att, dim=-1)
 
-        # return matmul(att, y).squeeze(dim=-1)
+            # We only keep predictions previously made for test idx
+            y_hat = y_hat[test_idx]
 
-        return matmul(att, y_hat).squeeze(dim=-1)
+        return (matmul(att, errors) + y_hat).squeeze(dim=-1)
 
     def predict(self,
                 dataset: PetaleDataset,

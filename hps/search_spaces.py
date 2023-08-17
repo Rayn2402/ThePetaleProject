@@ -130,9 +130,7 @@ GASHPS = {
         Range.VALUE: 0
     },
     GASHP.BATCH_SIZE.name: {
-        Range.MIN: 10,
-        Range.MAX: 50,
-        Range.STEP: 10,
+        Range.VALUE: 32,
     },
     GASHP.BETA.name: {
         Range.MIN: 5e-4,

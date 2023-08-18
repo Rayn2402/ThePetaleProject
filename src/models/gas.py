@@ -209,9 +209,16 @@ class GAS(TorchCustomModel):
             # We compute the scaled-dot product
             att = matmul(self._key_projection(x[test_idx, :]), self._query_projection(x).t())/self._dk
 
-            # We set the attention given to test elements to zero
-            # Therefore test elements cannot attend to their own errors
-            att[:, test_idx] = 0
+            if not self.training:
+
+                # We set the attention given to all test elements to zero
+                # Therefore test elements cannot attend to errors of other test elements (including their own)
+                att[:, test_idx] = 0
+
+            else:
+
+                # We only make sure that self attention value of test elements are zeroed
+                att[range(len(test_idx)), test_idx] = 0
 
             # We apply the softmax
             att = softmax(att, dim=-1)

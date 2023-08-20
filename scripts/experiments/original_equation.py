@@ -18,7 +18,7 @@ from src.data.extraction.data_management import PetaleDataManager
 from src.data.processing.datasets import MaskType, PetaleDataset
 from src.data.processing.transforms import ContinuousTransform
 from src.data.processing.sampling import extract_masks, get_VO2_data
-from src.utils.metrics import AbsoluteError, ConcordanceIndex, Pearson, RootMeanSquaredError, SquaredError
+from src.utils.metrics import AbsoluteError, Pearson, RootMeanSquaredError, SquaredError, SpearmanR, TopKAbsoluteError
 from src.data.extraction.constants import *
 from src.recording.recording import compare_prediction_recordings, get_evaluation_recap, Recorder
 from settings.paths import Paths
@@ -61,7 +61,8 @@ def execute_original_equation_experiment(dts: PetaleDataset,
     Returns: None
     """
     # We save the evaluation metrics
-    eval_metrics = [AbsoluteError(), ConcordanceIndex(), Pearson(), SquaredError(), RootMeanSquaredError()]
+    eval_metrics = [AbsoluteError(), SpearmanR(), Pearson(), SquaredError(),
+                    TopKAbsoluteError(), RootMeanSquaredError()]
 
     # We run tests for each masks
     for k, v in m.items():

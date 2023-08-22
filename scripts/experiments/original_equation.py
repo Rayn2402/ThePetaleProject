@@ -17,7 +17,7 @@ sys.path.append((dirname(dirname(dirname(realpath(__file__))))))
 from src.data.extraction.data_management import PetaleDataManager
 from src.data.processing.datasets import MaskType, PetaleDataset
 from src.data.processing.transforms import ContinuousTransform
-from src.data.processing.sampling import extract_masks, get_VO2_data
+from src.data.processing.sampling import extract_masks, get_VO2_data, push_valid_to_train
 from src.utils.metrics import AbsoluteError, Pearson, RootMeanSquaredError, SquaredError, SpearmanR, TopKAbsoluteError
 from src.data.extraction.constants import *
 from src.recording.recording import compare_prediction_recordings, get_evaluation_recap, Recorder
@@ -124,7 +124,8 @@ if __name__ == '__main__':
 
     # Extraction of masks
     masks = extract_masks(Paths.VO2_MASK, k=k, l=0)
-    evaluation_name = f"original_equation"
+    push_valid_to_train(masks)
 
     # Execution of the experiment
+    evaluation_name = f"original_equation"
     execute_original_equation_experiment(dts=dataset, m=masks, eval_name=evaluation_name)

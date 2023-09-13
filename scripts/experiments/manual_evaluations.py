@@ -84,6 +84,10 @@ def retrieve_arguments():
     parser.add_argument('-seed', '--seed', type=int, default=1010710,
                         help='Seed used during model evaluations')
 
+    # Additional experiment tag
+    parser.add_argument('-tag', '-additional_tag', type=str, default=None,
+                        help='String that can be added to identify experiment folder')
+
     arguments = parser.parse_args()
 
     # Print arguments
@@ -154,6 +158,8 @@ if __name__ == '__main__':
         eval_id += "_nw"
     if args.rho > 0:
         eval_id += "_sam"
+    if args.additional_tag is not None:
+        eval_id += args.additional_tag
 
     # We start a timer for the whole experiment
     first_start = time.time()

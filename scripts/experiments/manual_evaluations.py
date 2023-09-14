@@ -85,7 +85,7 @@ def retrieve_arguments():
                         help='Seed used during model evaluations')
 
     # Additional experiment tag
-    parser.add_argument('-tag', '-additional_tag', type=str, default=None,
+    parser.add_argument('-tag', '--additional_tag', type=str, default=None,
                         help='String that can be added to identify experiment folder')
 
     arguments = parser.parse_args()

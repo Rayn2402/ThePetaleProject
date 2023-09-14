@@ -121,7 +121,8 @@ if __name__ == '__main__':
     from src.evaluation.evaluation import Evaluator
     from src.data.extraction.constants import *
     from src.data.extraction.data_management import PetaleDataManager
-    from src.utils.metrics import AbsoluteError, Pearson, RootMeanSquaredError, SpearmanR, SquaredError
+    from src.utils.metrics import AbsoluteError, Pearson, RootMeanSquaredError, SpearmanR, SquaredError, \
+        TopKAbsoluteError, ConcordanceIndex
 
     # Arguments parsing
     args = retrieve_arguments()
@@ -145,7 +146,8 @@ if __name__ == '__main__':
     push_valid_to_train(masks_without_val)
 
     # Initialization of list containing the evaluation metrics
-    evaluation_metrics = [AbsoluteError(), SpearmanR(), Pearson(), SquaredError(), RootMeanSquaredError()]
+    evaluation_metrics = [AbsoluteError(), SpearmanR(), ConcordanceIndex(), Pearson(), SquaredError(),
+                          TopKAbsoluteError(), RootMeanSquaredError()]
 
     # Initialization of a feature selector
     if args.feature_selection:

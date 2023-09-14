@@ -81,6 +81,9 @@ if __name__ == '__main__':
     else:
         sam_search_space = {Range.VALUE: 0}
 
+    if args.additional_tag is not None:
+        eval_id += f"_{args.additional_tag}"
+
     # We start a timer for the whole experiment
     first_start = time.time()
 

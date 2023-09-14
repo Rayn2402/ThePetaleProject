@@ -159,7 +159,7 @@ if __name__ == '__main__':
     if args.rho > 0:
         eval_id += "_sam"
     if args.additional_tag is not None:
-        eval_id += args.additional_tag
+        eval_id += f"_{args.additional_tag}"
 
     # We start a timer for the whole experiment
     first_start = time.time()

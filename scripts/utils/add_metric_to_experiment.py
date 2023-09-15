@@ -58,7 +58,7 @@ if __name__ == '__main__':
 
             if data.get(s1) is not None:
                 pred, targets = [], []
-                for k in data[s1].keys:
+                for k in data[s1].keys():
                     pred.append(float(data[s1][k][Recorder.PREDICTION]))
                     targets.append(float(data[s1][k][Recorder.TARGET]))
 

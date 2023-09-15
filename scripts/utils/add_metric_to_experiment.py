@@ -64,14 +64,13 @@ if __name__ == '__main__':
 
                 pred, targets = tensor(pred), tensor(targets)
                 data[s2][METRIC.name] = METRIC(pred=pred, targets=targets)
-                print(data)
 
         # Update the records file
-        # with open(join(args.path, folder, Recorder.RECORDS_FILE), "w") as file:
-        #     dump(data, file, indent=True)
+        with open(join(args.path, folder, Recorder.RECORDS_FILE), "w") as file:
+            dump(data, file, indent=True)
 
     # Update the file containing the summary of the experiment
-    # get_evaluation_recap(evaluation_name='', recordings_path=args.path)
+    get_evaluation_recap(evaluation_name='', recordings_path=args.path)
 
 
 

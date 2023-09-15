@@ -64,6 +64,7 @@ if __name__ == '__main__':
 
                 pred, targets = tensor(pred), tensor(targets)
                 data[s2][METRIC.name] = METRIC(pred=pred, targets=targets)
+                print(data)
 
         # Update the records file
         # with open(join(args.path, folder, Recorder.RECORDS_FILE), "w") as file:

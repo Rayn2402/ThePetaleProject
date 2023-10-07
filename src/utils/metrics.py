@@ -404,7 +404,7 @@ class MeanAbsolutePercentageError(RegressionMetric):
         Returns: float
 
         """
-        return (abs(pred - targets)/targets).item()
+        return mean(abs(pred - targets)/targets).item()
 
 
 class TopKAbsoluteError(RegressionMetric):

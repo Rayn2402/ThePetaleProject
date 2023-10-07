@@ -19,7 +19,7 @@ from torch import tensor
 sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
 from src.recording.recording import get_evaluation_recap, Recorder
 from src.utils.results_analyses import get_directories
-from src.utils.metrics import ConcordanceIndex
+from src.utils.metrics import MeanAbsolutePercentageError
 
 
 def argument_parser():
@@ -37,7 +37,7 @@ def argument_parser():
     return arguments
 
 
-METRIC = ConcordanceIndex()
+METRIC = MeanAbsolutePercentageError()
 
 if __name__ == '__main__':
 

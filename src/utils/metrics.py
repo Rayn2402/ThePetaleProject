@@ -377,6 +377,36 @@ class AbsoluteError(RegressionMetric):
         return self._reduction(abs(pred - targets)).item()
 
 
+class MeanAbsolutePercentageError(RegressionMetric):
+    """
+    Callable class that computes the absolute error
+    """
+    def __init__(self,
+                 n_digits: int = 5):
+        """
+        Sets the protected reduction method and other protected attributes using parent's constructor
+
+        Args:
+            n_digits: number of digits kept for the score
+        """
+        super().__init__(direction=Direction.MINIMIZE, name="MAPE", n_digits=n_digits)
+
+    def compute_metric(self,
+                       pred: tensor,
+                       targets: tensor) -> float:
+        """
+        Computes the absolute error between predictions and targets
+
+        Args:
+            pred: (N,) tensor with predicted labels
+            targets: (N,) tensor with ground truth
+
+        Returns: float
+
+        """
+        return (abs(pred - targets)/targets).item()
+
+
 class TopKAbsoluteError(RegressionMetric):
     """
     Callable class that computes the absolute error over the K highest errors

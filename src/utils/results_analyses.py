@@ -115,7 +115,7 @@ def get_directories(path: str) -> List[str]:
 
 def get_experiment_summaries(path: str,
                              csv_filename: str,
-                             nb_digits: int = 2) -> None:
+                             nb_digits: int = 4) -> None:
     """
     From a folder containing experiment results of different models,
     we extract test metrics and save it in a csv that can then be converted to a LaTeX table using :

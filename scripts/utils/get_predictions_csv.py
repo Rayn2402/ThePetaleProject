@@ -14,7 +14,7 @@ from os.path import dirname, realpath
 
 # Imports specific to project
 sys.path.append(dirname(dirname(dirname(realpath(__file__)))))
-from src.utils.results_analyses import extract_predictions
+from src.utils.results_analyses import get_all_fold_predictions
 
 
 def paths_and_ids_parser():
@@ -42,4 +42,4 @@ if __name__ == '__main__':
     args = paths_and_ids_parser()
 
     # We retrieve the predictions
-    extract_predictions(paths=args.paths, model_ids=args.ids, filename=args.filename)
+    get_all_fold_predictions(paths=args.paths, model_ids=args.ids, filename=args.filename)

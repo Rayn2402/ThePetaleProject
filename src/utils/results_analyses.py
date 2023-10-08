@@ -63,6 +63,44 @@ def extract_predictions(paths: List[str],
     df.to_csv(path_or_buf=f"{filename}.csv")
 
 
+def get_all_fold_predictions(paths: List[str],
+                             model_ids: List[str],
+                             filename: str) -> None:
+    """
+    Extracts the test predictions of different models over all cross-validation fold and stores them in a csv file
+
+    Args:
+        paths: list of paths associated to experiment folders
+        model_ids: list of names to identify models associated to the experiments
+        filename: name of the file in which the predictions will be stored
+
+    Returns: None
+    """
+    predictions = {}
+    for i, m, p in zip(range(len(model_ids)), model_ids, paths):
+
+        # For all data split (i.e., cross-validation fold)
+        for j in range(5):
+
+            # We load the data from the records
+            with open(join(p, f'Split_{j}', Recorder.RECORDS_FILE), "r") as read_file:
+                data = load(read_file)
+
+            if i == 0:
+                for k, v in data[Recorder.TEST_RESULTS].items():
+                    predictions[k] = {Recorder.TARGET: v[Recorder.TARGET], m: v[Recorder.PREDICTION]}
+            else:
+                for k, v in data[Recorder.TEST_RESULTS].items():
+                    predictions[k][m] = v[Recorder.PREDICTION]
+
+    # We use the dict to create a dataframe
+    df = DataFrame.from_dict(data=predictions, orient='index')
+    df.sort_values(Recorder.TARGET, inplace=True)
+
+    # We save the dataframe in a csv
+    df.to_csv(path_or_buf=f"{filename}.csv")
+
+
 def get_directories(path: str) -> List[str]:
     """
     Extracts the names of all the folders that can be found at the given path

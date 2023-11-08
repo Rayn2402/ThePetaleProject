@@ -88,7 +88,7 @@ def get_all_fold_predictions(paths: List[str],
 
             if i == 0:
                 for k, v in data[Recorder.TEST_RESULTS].items():
-                    predictions[k] = {Recorder.TARGET: v[Recorder.TARGET], m: v[Recorder.PREDICTION]}
+                    predictions[k] = {'Fold': j, Recorder.TARGET: v[Recorder.TARGET], m: v[Recorder.PREDICTION]}
             else:
                 for k, v in data[Recorder.TEST_RESULTS].items():
                     predictions[k][m] = v[Recorder.PREDICTION]

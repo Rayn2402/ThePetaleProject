@@ -53,6 +53,9 @@ if __name__ == '__main__':
     if args.remove_walk_variables:
         df.drop([TDM6_HR_END, TDM6_DIST], axis=1, inplace=True)
         cont_cols = [c for c in cont_cols if c not in [TDM6_HR_END, TDM6_DIST]]
+    if args.remove_sex_variable:
+        df.drop([SEX], axis=1, inplace=True)
+        cont_cols.remove(SEX)
 
     # Extraction of masks
     masks = extract_masks(Paths.VO2_MASK, k=args.nb_outer_splits, l=args.nb_inner_splits)
@@ -75,6 +78,8 @@ if __name__ == '__main__':
     eval_id = "vo2_automated"
     if args.remove_walk_variables:
         eval_id += "_nw"
+    if args.remove_sex_variable:
+        eval_id += "_ns"
     if args.rho > 0:
         eval_id += "_sam"
         sam_search_space = {Range.MIN: 0, Range.MAX: args.rho}  # Sharpness-Aware Minimization search space

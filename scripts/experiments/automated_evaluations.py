@@ -56,6 +56,8 @@ if __name__ == '__main__':
     if args.remove_sex_variable:
         df.drop([SEX], axis=1, inplace=True)
         cat_cols.remove(SEX)
+        if len(cat_cols) == 0:
+            cat_cols = None
 
     # Extraction of masks
     masks = extract_masks(Paths.VO2_MASK, k=args.nb_outer_splits, l=args.nb_inner_splits)

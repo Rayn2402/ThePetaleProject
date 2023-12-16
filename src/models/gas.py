@@ -68,6 +68,9 @@ class GAS(TorchCustomModel):
         # Scaling factor
         self._dk = sqrt(Tensor([self._input_size]))
 
+        # Attention map cache
+        self._attn_cache = None
+
     def _execute_valid_step(self,
                             valid_data: Tuple[Optional[DataLoader], PetaleDataset],
                             early_stopper: EarlyStopper) -> bool:
@@ -221,7 +224,7 @@ class GAS(TorchCustomModel):
                 att[range(len(test_idx)), test_idx] = 0
 
             # We apply the softmax
-            att = softmax(att, dim=-1)
+            self._attn_cache = att = softmax(att, dim=-1)
 
             # We only keep predictions previously made for test idx
             y_hat = y_hat[test_idx]

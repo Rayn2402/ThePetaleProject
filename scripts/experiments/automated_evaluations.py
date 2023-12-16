@@ -38,7 +38,7 @@ if __name__ == '__main__':
     from src.models.xgboost_ import PetaleXGBR
     from src.utils.hyperparameters import Range
     from src.utils.metrics import AbsoluteError, Pearson, RootMeanSquaredError, SpearmanR, SquaredError,\
-        TopKAbsoluteError, ConcordanceIndex
+        TopKAbsoluteError, ConcordanceIndex, MeanAbsolutePercentageError
 
     # Arguments parsing
     args = retrieve_arguments()
@@ -66,7 +66,7 @@ if __name__ == '__main__':
 
     # Initialization of the dictionary containing the evaluation metrics
     evaluation_metrics = [AbsoluteError(), SpearmanR(), ConcordanceIndex(), Pearson(), SquaredError(),
-                          TopKAbsoluteError(), RootMeanSquaredError()]
+                          TopKAbsoluteError(), MeanAbsolutePercentageError(), RootMeanSquaredError()]
 
     # Initialization of a feature selector
     if args.feature_selection:

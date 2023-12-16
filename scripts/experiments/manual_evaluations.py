@@ -38,6 +38,8 @@ def retrieve_arguments():
     # Feature selection
     parser.add_argument('-r_w', '--remove_walk_variables', default=False, action='store_true',
                         help='If true, removes the six-minute walk test variables from the data.')
+    parser.add_argument('-r_s', '--remove_sex_variable', default=False, action='store_true',
+                        help='If true, removes the biological sex variable from the data.')
     parser.add_argument('-f', '--feature_selection', default=False, action='store_true',
                         help='If true, applies automatic feature selection')
 
@@ -137,6 +139,9 @@ if __name__ == '__main__':
     if args.remove_walk_variables:
         df.drop([TDM6_HR_END, TDM6_DIST], axis=1, inplace=True)
         cont_cols = [c for c in cont_cols if c not in [TDM6_HR_END, TDM6_DIST]]
+    if args.remove_sex_variable:
+        df.drop([SEX], axis=1, inplace=True)
+        cont_cols.remove(SEX)
 
     # Extraction of masks
     masks = extract_masks(Paths.VO2_MASK, k=args.nb_outer_splits, l=args.nb_inner_splits)

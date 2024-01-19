@@ -104,6 +104,9 @@ if __name__ == '__main__':
     # 11. Load the parameters of the model
     path = join(Paths.EXPERIMENTS_RECORDS, 'experiment_with_walk',
                 'GASOE_vo2_automated_ns', 'Split_2', 'torch_model.pt')
+
+    d = load(path)
+    print(d)
     epn_wrapper.model.load_state_dict(load(path))
 
     # 12. Execute the forward pass and load the attention scores

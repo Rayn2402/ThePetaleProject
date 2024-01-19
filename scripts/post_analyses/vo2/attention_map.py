@@ -86,6 +86,9 @@ if __name__ == '__main__':
     mask_pos = test_mask.index(row_idx)
 
     # 10. Create the model
+    print(cat_cols)
+    print(dts.cat_idx)
+    print(dts.cat_sizes)
     epn_wrapper = PetaleGASR(previous_pred_idx=len(dts.cont_idx) - 1,
                              pred_mu=dts.original_data['pred0'].mean(),
                              pred_std=dts.original_data['pred0'].std(),

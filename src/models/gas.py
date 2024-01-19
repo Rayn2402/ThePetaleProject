@@ -71,6 +71,10 @@ class GAS(TorchCustomModel):
         # Attention map cache
         self._attn_cache = None
 
+    @property
+    def attn_cache(self) -> Tensor:
+        return self._attn_cache
+
     def _execute_valid_step(self,
                             valid_data: Tuple[Optional[DataLoader], PetaleDataset],
                             early_stopper: EarlyStopper) -> bool:

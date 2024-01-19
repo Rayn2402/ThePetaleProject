@@ -44,12 +44,13 @@ if __name__ == '__main__':
 
     # 4. Create the dataset
     dts = PetaleDataset(df, target, cont_cols, cat_cols)
+    print(dts.original_data)
     print(dts.cont_idx)
 
     # 5. Add the predictions of the past model as a variable
 
     # 5.0 Load the predictions
-    pred_path = ''
+    pred_path = join(Paths.EXPERIMENTS_RECORDS, 'experiment_with_walk', 'original_equation')
     with open(join(pred_path, f"Split_{SPLIT}", Recorder.RECORDS_FILE), "r") as read_file:
         data = load(read_file)
 

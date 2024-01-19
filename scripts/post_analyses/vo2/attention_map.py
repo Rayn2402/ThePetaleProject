@@ -17,7 +17,7 @@ from matplotlib import ticker
 from numpy import isclose
 from pandas import DataFrame
 from seaborn import heatmap
-from torch import einsum, load
+from torch import load, topk
 from typing import Dict, List, Optional
 
 
@@ -45,7 +45,6 @@ if __name__ == '__main__':
 
     # 4. Create the dataset
     dts = PetaleDataset(df, target, cont_cols, cat_cols, to_tensor=True)
-    print(dts.original_data)
 
     # 5. Add the predictions of the past model as a variable
 
@@ -69,7 +68,6 @@ if __name__ == '__main__':
 
     # 6. Create the new augmented dataset
     dts = dts.create_superset(data=df, categorical=False)
-    print(dts.original_data)
 
     # 7. Extract and set the mask
     masks = extract_masks(Paths.VO2_MASK, k=3, l=0)
@@ -85,9 +83,6 @@ if __name__ == '__main__':
     mask_pos = test_mask.index(row_idx)
 
     # 10. Create the model
-    print(cat_cols)
-    print(dts.cat_idx)
-    print(dts.cat_sizes)
     epn_wrapper = PetaleGASR(previous_pred_idx=len(dts.cont_idx) - 1,
                              pred_mu=dts.original_data['pred0'].mean(),
                              pred_std=dts.original_data['pred0'].std(),
@@ -96,23 +91,23 @@ if __name__ == '__main__':
                              cat_sizes=dts.cat_sizes,
                              cat_emb_sizes=dts.cat_sizes)
 
-    for name, param in epn_wrapper.model.named_parameters():
-        if param.requires_grad:
-            print(name)
-
     # 11. Load the parameters of the model
     path = join(Paths.EXPERIMENTS_RECORDS, 'experiment_with_walk',
                 'GASOE_vo2_automated_ns', 'Split_2', 'torch_model.pt')
 
-    d = load(path)
-    print(d)
     epn_wrapper.model.load_state_dict(load(path))
 
     # 12. Execute the forward pass and load the attention scores
     y = epn_wrapper.predict(dts)
     attn = epn_wrapper.model.attn_cache
-    print(attn)
-    print(attn.shape)
+
+    # 13. Extract the row associated to P111
+    attn = attn[mask_pos]
+
+    # 14. Identify the 10 patients with the highest attention scores
+    _, idx = topk(attn, k=10)
+    print(idx)
+
 
     #
     # # Dataframe creation

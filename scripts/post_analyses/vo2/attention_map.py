@@ -26,7 +26,7 @@ if __name__ == '__main__':
     # Imports specific to project
     sys.path.append(dirname(dirname(dirname(dirname(realpath(__file__))))))
     from settings.paths import Paths
-    from src.data.extraction.constants import PARTICIPANT, TDM6_DIST, TDM6_HR_END
+    from src.data.extraction.constants import PARTICIPANT, SEX, TDM6_DIST, TDM6_HR_END
     from src.data.extraction.data_management import PetaleDataManager
     from src.data.processing.datasets import MaskType, PetaleDataset
     from src.data.processing.sampling import extract_masks, get_VO2_data
@@ -39,9 +39,11 @@ if __name__ == '__main__':
     # 2. Load the data
     df, target, cont_cols, cat_cols = get_VO2_data()
 
-    # 3. Remove the walk variables
+    # 3. Remove the walk variables and the sex
     df.drop([TDM6_HR_END, TDM6_DIST], axis=1, inplace=True)
     cont_cols = [c for c in cont_cols if c not in [TDM6_HR_END, TDM6_DIST]]
+    df.drop([SEX], axis=1, inplace=True)
+    cat_cols = None
 
     # 4. Create the dataset
     dts = PetaleDataset(df, target, cont_cols, cat_cols)
@@ -70,7 +72,6 @@ if __name__ == '__main__':
     # 6. Create the new augmented dataset
     dts = dts.create_superset(data=df, categorical=False)
     print(dts.original_data)
-    print(dts.cont_idx)
 
     # 7. Extract and set the mask
     masks = extract_masks(Paths.VO2_MASK, k=3, l=0)

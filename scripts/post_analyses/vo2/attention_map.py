@@ -36,7 +36,7 @@ if __name__ == '__main__':
     SPLIT: int = 2
 
     # 2. Load the data
-    df, target, cont_cols, cat_cols = get_VO2_data(PetaleDataManager())
+    df, target, cont_cols, cat_cols = get_VO2_data()
 
     # 3. Remove the walk variables
     df.drop([TDM6_HR_END, TDM6_DIST], axis=1, inplace=True)

@@ -10,6 +10,7 @@ Date of last modification: -
 """
 
 import sys
+from json import load as jsload
 from os.path import dirname, join, realpath
 from matplotlib import pyplot as plt
 from matplotlib import ticker
@@ -45,14 +46,13 @@ if __name__ == '__main__':
     # 4. Create the dataset
     dts = PetaleDataset(df, target, cont_cols, cat_cols)
     print(dts.original_data)
-    print(dts.cont_idx)
 
     # 5. Add the predictions of the past model as a variable
 
     # 5.0 Load the predictions
     pred_path = join(Paths.EXPERIMENTS_RECORDS, 'experiment_with_walk', 'original_equation')
     with open(join(pred_path, f"Split_{SPLIT}", Recorder.RECORDS_FILE), "r") as read_file:
-        data = load(read_file)
+        data = jsload(read_file)
 
     # 5.1 Create the conversion function to extract predictions from strings
     def convert(x: str) -> List[float]:

@@ -97,6 +97,10 @@ if __name__ == '__main__':
                              cat_sizes=dts.cat_sizes,
                              cat_emb_sizes=dts.cat_sizes)
 
+    for name, param in epn_wrapper.model.named_parameters():
+        if param.requires_grad:
+            print(name)
+
     # 11. Load the parameters of the model
     path = join(Paths.EXPERIMENTS_RECORDS, 'experiment_with_walk',
                 'GASOE_vo2_automated_ns', 'Split_2', 'torch_model.pt')

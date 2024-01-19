@@ -44,7 +44,7 @@ if __name__ == '__main__':
     cat_cols = None
 
     # 4. Create the dataset
-    dts = PetaleDataset(df, target, cont_cols, cat_cols)
+    dts = PetaleDataset(df, target, cont_cols, cat_cols, to_tensor=True)
     print(dts.original_data)
 
     # 5. Add the predictions of the past model as a variable

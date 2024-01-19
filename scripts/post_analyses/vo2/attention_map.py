@@ -39,9 +39,7 @@ if __name__ == '__main__':
     # 2. Load the data
     df, target, cont_cols, cat_cols = get_VO2_data()
 
-    # 3. Remove the walk variables and the sex
-    df.drop([TDM6_HR_END, TDM6_DIST], axis=1, inplace=True)
-    cont_cols = [c for c in cont_cols if c not in [TDM6_HR_END, TDM6_DIST]]
+    # 3. Remove the sex
     df.drop([SEX], axis=1, inplace=True)
     cat_cols = None
 

@@ -105,8 +105,13 @@ if __name__ == '__main__':
     attn = attn[mask_pos]
 
     # 14. Identify the 10 patients with the highest attention scores
-    _, idx = topk(attn, k=10)
-    print(idx)
+    _, pos_idx = topk(attn, k=10)
+
+    # 15. Identify their original position in the dataset
+    batch_idx = dts.train_mask + dts.test_mask
+    idx = [batch_idx[i] for i in pos_idx]
+
+
 
 
     #

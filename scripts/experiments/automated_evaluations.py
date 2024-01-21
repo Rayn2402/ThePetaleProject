@@ -275,8 +275,9 @@ if __name__ == '__main__':
                   'patience': args.patience}
 
             if 'pred0' in dts.original_data.columns:
-                fp['pred_mu'] = dts.original_data['pred0'].mean()
-                fp['pred_std'] = dts.original_data['pred0'].std()
+                mu, std, _ = dts.current_train_stats()
+                fp['pred_mu'] = mu.loc['pred0']
+                fp['pred_std'] = std.loc['pred0']
 
             return fp
 

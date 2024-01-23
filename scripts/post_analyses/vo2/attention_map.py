@@ -26,15 +26,14 @@ if __name__ == '__main__':
     # Imports specific to project
     sys.path.append(dirname(dirname(dirname(dirname(realpath(__file__))))))
     from settings.paths import Paths
-    from src.data.extraction.constants import PARTICIPANT, SEX, TDM6_DIST, TDM6_HR_END
-    from src.data.extraction.data_management import PetaleDataManager
+    from src.data.extraction.constants import PARTICIPANT, SEX
     from src.data.processing.datasets import MaskType, PetaleDataset
     from src.data.processing.sampling import extract_masks, get_VO2_data
     from src.models.gas import PetaleGASR
     from src.recording.recording import Recorder
 
-    # 1. Set the number of the data split for which P111 is in the test set
-    SPLIT: int = 2
+    # 1. Set the number of the data split for which P057 is in the test set
+    SPLIT: int = 1
 
     # 2. Load the data
     df, target, cont_cols, cat_cols = get_VO2_data()
@@ -49,7 +48,7 @@ if __name__ == '__main__':
     # 5. Add the predictions of the past model as a variable
 
     # 5.0 Load the predictions
-    pred_path = join(Paths.EXPERIMENTS_RECORDS, 'experiment_with_walk', 'original_equation')
+    pred_path = join(Paths.EXPERIMENTS_RECORDS, 'with_walk', 'original_equation')
     with open(join(pred_path, f"Split_{SPLIT}", Recorder.RECORDS_FILE), "r") as read_file:
         data = jsload(read_file)
 
@@ -77,23 +76,24 @@ if __name__ == '__main__':
                      test_mask=test_mask)
 
     # 8. Locate patient P111 in the dataset
-    row_idx = dts.ids_to_row_idx['P111']
+    row_idx = dts.ids_to_row_idx['P057']
 
     # 9. Locate the patient in the test mask
     mask_pos = test_mask.index(row_idx)
 
     # 10. Create the model
+    mu, std, _ = dts.current_train_stats()
     epn_wrapper = PetaleGASR(previous_pred_idx=len(dts.cont_idx) - 1,
-                             pred_mu=dts.original_data['pred0'].mean(),
-                             pred_std=dts.original_data['pred0'].std(),
+                             pred_mu=mu.loc['pred0'],
+                             pred_std=std.loc['pred0'],
                              num_cont_col=len(dts.cont_idx),
                              cat_idx=dts.cat_idx,
                              cat_sizes=dts.cat_sizes,
                              cat_emb_sizes=dts.cat_sizes)
 
     # 11. Load the parameters of the model
-    path = join(Paths.EXPERIMENTS_RECORDS, 'experiment_with_walk',
-                'GASOE_vo2_automated_ns', 'Split_2', 'torch_model.pt')
+    path = join(Paths.EXPERIMENTS_RECORDS, 'with_walk',
+                'EPN_OE', f'Split_{SPLIT}', 'torch_model.pt')
 
     epn_wrapper.model.load_state_dict(load(path))
 
@@ -101,15 +101,19 @@ if __name__ == '__main__':
     y = epn_wrapper.predict(dts)
     attn = epn_wrapper.model.attn_cache
 
-    # 13. Extract the row associated to P111
+    # 13. Extract the row associated to P057
     attn = attn[mask_pos]
 
     # 14. Identify the 10 patients with the highest attention scores
-    _, pos_idx = topk(attn, k=10)
+    top10_attn, pos_idx = topk(attn, k=10)
 
     # 15. Identify their original position in the dataset
     batch_idx = dts.train_mask + dts.test_mask
-    idx = [batch_idx[i] for i in pos_idx]
+    idx = [batch_idx[i] for i in list(pos_idx)]
+
+    # 16. Extract patient ids
+    print(f'Patients: {[dts.ids[i] for i in idx]}')
+    print(f'Attn scores: {top10_attn}')
 
 
 

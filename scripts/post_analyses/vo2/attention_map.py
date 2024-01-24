@@ -12,13 +12,9 @@ Date of last modification: -
 import sys
 from json import load as jsload
 from os.path import dirname, join, realpath
-from matplotlib import pyplot as plt
-from matplotlib import ticker
-from numpy import isclose
 from pandas import DataFrame
-from seaborn import heatmap
 from torch import load, topk
-from typing import Dict, List, Optional
+from typing import List
 
 
 if __name__ == '__main__':
@@ -93,7 +89,7 @@ if __name__ == '__main__':
 
     # 11. Load the parameters of the model
     path = join(Paths.EXPERIMENTS_RECORDS, 'with_walk',
-                'EPN_OE', f'Split_{SPLIT}', 'torch_model.pt')
+                'EPN-OE', f'Split_{SPLIT}', 'torch_model.pt')
 
     epn_wrapper.model.load_state_dict(load(path))
 

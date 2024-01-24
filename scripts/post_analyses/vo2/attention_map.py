@@ -70,9 +70,9 @@ if __name__ == '__main__':
 
     # 7. Extract and set the mask
     masks = extract_masks(Paths.VO2_MASK, k=3, l=0)
-    test_mask = masks[2][MaskType.TEST]
-    dts.update_masks(train_mask=masks[2][MaskType.TRAIN],
-                     valid_mask=masks[2][MaskType.VALID],
+    test_mask = masks[SPLIT][MaskType.TEST]
+    dts.update_masks(train_mask=masks[SPLIT][MaskType.TRAIN],
+                     valid_mask=masks[SPLIT][MaskType.VALID],
                      test_mask=test_mask)
 
     # 8. Locate patient P111 in the dataset

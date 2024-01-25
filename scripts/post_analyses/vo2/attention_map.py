@@ -95,6 +95,7 @@ if __name__ == '__main__':
 
     # 12. Execute the forward pass and load the attention scores
     y = epn_wrapper.predict(dts)
+    print(y[mask_pos])
     attn = epn_wrapper.model.attn_cache
 
     # 13. Extract the row associated to P057

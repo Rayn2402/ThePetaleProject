@@ -233,6 +233,8 @@ class GAS(TorchCustomModel):
             # We only keep predictions previously made for test idx
             y_hat = y_hat[test_idx]
 
+            print(matmul(att, errors))
+
         return (matmul(att, errors) + y_hat).squeeze(dim=-1)
 
     def predict(self,

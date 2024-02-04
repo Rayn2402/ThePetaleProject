@@ -71,7 +71,7 @@ if __name__ == '__main__':
                      valid_mask=masks[SPLIT][MaskType.VALID],
                      test_mask=test_mask)
 
-    # 8. Locate patient P111 in the dataset
+    # 8. Locate patient P057 in the dataset
     row_idx = dts.ids_to_row_idx['P057']
 
     # 9. Locate the patient in the test mask
@@ -95,7 +95,6 @@ if __name__ == '__main__':
 
     # 12. Execute the forward pass and load the attention scores
     y = epn_wrapper.predict(dts)
-    print(y[mask_pos])
     attn = epn_wrapper.model.attn_cache
 
     # 13. Extract the row associated to P057
